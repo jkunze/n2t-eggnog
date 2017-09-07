@@ -1,0 +1,338 @@
+#!/usr/bin/env perl
+
+use 5.006;
+use strict;
+use warnings;
+
+use File::Copy 'mv';
+
+my $rep = 'egg.orlogs';
+my $to_ship = "$rep/to_ship";
+my $shipping = "$rep/shipping";
+my $shipped = "$rep/shipped";
+my $receiving = "$rep/receiving";
+my $received = "$rep/received";
+#my $to_play = "$rep/to_play";
+my $playing = "$rep/playing";
+my $played = "$rep/played";
+
+#my $egg = 'egg';
+my $egg = 'perl -Mblib egg';
+
+my $usage_text = << "EOF";
+
+$0 - process old rlogs
+
+ Usage: $0 cull Binder 
+        $0 shipto DestBinder Binder
+        $0 play Binder 
+        $0 clean Binder N
+        $0 doodle Binder
+
+The "cull" form moves a Binder's current rlog into its "$to_ship"
+directory.  The "shipto" form processes any rlogs, from oldest to newest,
+found in a Binder's "$to_ship" directory, scp's them to DestBinder,
+and moves each successfully copied file into that Binder's "$shipped"
+directory.  These two forms are typically called from crontab on the host
+that is pushing rlogs to a replica site.
+
+The "play" form is used to play back rlogs to a replica Binder.  It processes
+any rlogs, from oldest to newest, found in a Binder's "$received"
+directory, updates the Binder with any change lines (marked with C:), and
+moves each successfully played-back rlog into that Binder's "$played"
+directory.  This form is typically called from crontab (see "set_crontab")
+on a replica site that ingests rlogs pushed to it.
+
+The "clean" form removes all but the N newest rlogs from a Binder's
+"$shipped" and "$played" directories, if any.  The "doodle"
+form makes some random changes to the binder in order to create test rlogs.
+
+Give Binder and DestBinder as names of directories enclosing egg.* files.
+Determination of older vs newer relies on filenames constructed by "cull"
+with timestamps appended so that they naturally sort in old-to-new order.
+
+EOF
+
+# main
+{
+	my $cmd = shift;
+	$cmd or
+		print($usage_text),
+		exit 0;
+	$cmd eq 'cull' and
+		exit cull(@ARGV);
+	$cmd eq 'shipto' and
+		exit shipto(@ARGV);
+	$cmd eq 'play' and
+		exit play(@ARGV);
+	$cmd eq 'clean' and
+		exit clean(@ARGV);
+	$cmd eq 'doodle' and
+		exit doodle(@ARGV);
+	print("error: unknown command: $cmd\n$usage_text"),
+	exit 1;
+}
+
+# The cull and shipto arguments
+# return code suitable for exit() (0=success, !0=error)
+sub cull { my( $binder )=@_;
+
+	$binder or
+		print("error: no binder given\n$usage_text"),
+		return 1;
+	-d $binder or
+		print("error: $binder: no such binder directory\n$usage_text"),
+		return 1;
+	# This should move the current egg.rlog file for $binder into
+	# egg.orlogs/to_ship/rlog.<temperstamp>.  We don't need to know
+	# if there's nothing to cull, so we redirect to /dev/null.
+	#
+	my $status = system("$egg -d $binder cullrlog >& /dev/null");
+	$status >>= 8;			# true status is in higher-order bits
+	$status != 0 and
+		print("error: cull failed with binder $binder: $status\n"),
+		return 1;
+	return 0;
+}
+
+# return 0 on success, 1 on error
+sub make_remote_play { my( $rdir )=@_;
+
+	$rdir =~ m/^([^:]+):(.*)/ or		# if a local dest
+		return 1;			# return failure
+	my ($ruser, $dir) = ($1, $2);
+	my $cmd = "ssh $ruser mkdir -p $dir";
+	my $status = system($cmd);
+	return ($status >> 8);		# true status is in higher-order bits
+}
+
+# xxx set_crontab will process warts/env.sh to discover how often and
+# what exactly to call here, eg,
+#N2T_REPLICAS=n2tlx.edina.ac.uk=5
+#N2T_REPLICAS=ezid,yamz,oca,n2t->5,n2tlx.edina.ac.uk:foo->30,a.b.com
+# crontab:
+# */5 * * * * scp ... n2tlx; ssh n2tlx orlogs play ezid yamz oca n2t
+# scp -p $binder/egg.orlogs/to_ship/$r n2tlx.edina.ac.uk:$binder/egg.orlogs/to_play/
+
+# The $destbinderdir arg will normally be a remote host destination with
+# an embedded ':', in which case we extend it with "/$received".  If not,
+# it's a local destination and we don't alter the name.
+# 
+# return code suitable for exit() (<= 0 for success, > 0 means error)
+# returns the negative of the number of rlogs found to process
+#
+sub shipto { my( $destbinderdir, $binder )=@_;
+
+	$destbinderdir or
+		print("error: no DestBinder given\n$usage_text"),
+		return 1;
+	$destbinderdir =~ /:/ and	# if a remote binder, extend name
+		$destbinderdir .= "/$received";
+	$binder or
+		print("error: no binder given\n$usage_text"),
+		return 1;
+	-d $binder or
+		print("error: $binder: no such binder directory\n$usage_text"),
+		return 1;
+	my $shipdir = "$binder/$to_ship";
+	-d $shipdir or		# ok since maybe there was nothing to cull yet
+		print("note: no $to_ship directory yet\n"),
+		return 0;		# not an error
+	my @rlogs = <${shipdir}/*>;	# oldest first, due to filename format
+	my $shippeddir = "$binder/$shipped";
+	my $shippingdir = "$binder/$shipping";	# yyy no existence check
+	my $n = - scalar @rlogs;	# negative means number, 0 means none
+	$n and ! -e $shippeddir and ! mkdir $shippeddir and
+		print("error: cannot create $shippeddir directory\n",
+			$usage_text),
+		return 1;
+	#print "xxx n=$n, rlogs=", join(", ", @rlogs), "\n";
+	my ($r, $cmd, $status, $tail);
+	my $redone = 0;
+	foreach $r ( @rlogs ) {
+
+		# Although we expect to cull an rlog and ship it right away,
+		# we treat this is a producer/consumer problem where either
+		# party can get behind in its work (eg, a network timeout may
+		# prevent immediate shipping).  So we need to be able to deal
+		# with more than one file, ie, we expect a group of one or
+		# more files, and we need to process them oldest-to-youngest.
+		#
+		# Each time we scp a file we immediately move it to another
+		# directory; that way we don't lose track of which files have
+		# been processed and which haven't been processed.  We'd lose
+		# that control if we copied the entire group in one scp,
+		# because if it failed we wouldn't know which files in the
+		# group hadn't made it.  Note that scp degenerates to cp if
+		# $destbinderdir is a local name.
+		#
+		($tail) = $r =~ m{/([^/]+)$};
+		my $s = "$shippingdir/$tail";
+		print "xxx trying: mv $r $s\n";
+		mv $r, $s or
+			print("error: cannot move $r to $s: $!\n"),
+			next;			# try the next one
+
+		#$cmd = "scp -p $r $destbinderdir";
+		$cmd = "scp -p $s $destbinderdir";
+		$status = system($cmd);
+		$status >>= 8;		# true status is in higher-order bits
+		if ($status != 0) {
+			# Maybe there's no remote "received" directory.
+			# XXXX test this
+			$status = make_remote_play $destbinderdir;
+			$status == 0 and ! $redone and	# if we created it
+				$redone++,	# successfully, then note it
+				redo;		# and retry the scp command
+			print "error: shipto failed (status $status) on ",
+				"command: $cmd\n";
+			next;			# otherwise try the next one
+		}
+		$redone = 0; 		# this is so we attempt redo only ONCE
+		mv $s, $shippeddir or
+			print("error: cannot move $s to $shippeddir: $!\n"),
+			next;			# try the next one
+	}
+	return $n;
+}
+
+# return code suitable for exit() (0=success, !0=error)
+sub play { my( $binder )=@_;
+
+	$binder or
+		print("error: no binder given\n$usage_text"),
+		return 1;
+	-d $binder or
+		print("error: $binder: no such binder directory\n$usage_text"),
+		return 1;
+	my $playdir = "$binder/$received";
+	-d $playdir or
+		print("error: no $received directory\n$usage_text"),
+		return 1;
+	my @rlogs = <${playdir}/*>;	# oldest first, due to filename format
+	my $playeddir = "$binder/$played";
+	scalar @rlogs and ! -e $playeddir and ! mkdir $playeddir and
+		print("error: cannot create $playeddir directory\n$usage_text"),
+		return 1;
+	play_rlog($binder, $_, $playeddir)	# process files one at a time
+		foreach ( @rlogs );		# so we know which are done
+	return 0;
+}
+
+# Sample log line:
+#ezid 128.48.204.119 U14EE_16:37:09 C: ark:/99999/fk9123|_t.set http://jak-macbook-pro.local:8080/
+
+# This code is to be run on the remote replica site.
+# return code suitable for exit() (0=success, !0=error)
+sub play_rlog { my( $binder, $file, $destfile )=@_;
+
+	open IN, "< $file" or
+		print("error: cannot open $file: $!\n"),
+		return 1;
+	print "Processing $binder $file\n";
+	my ($who, $where, $when, $what, $arg0, $rest, $id, $elemcom, $iec);
+	my ($cmd, $status);
+	my $changeno = 0;
+	while (<IN>) {		# read each log line and split
+		chop;
+		($who, $where, $when, $what, $arg0, $rest) =
+			split ' ', $_, 6;
+		($. % 10) == 0 and print "Line $.: $arg0\n";
+		$what ne 'C:'		and next;	# skip unless C:
+		$changeno++;
+		# xxxxxx do one process per command, or do bulk block?
+		# xxx preserve the $who??? how?
+
+		# XXX do this after egg code change in production
+		#$cmd = "echo ':hx% $rest' | $egg -d $binder -";
+		# XXX kludge to test current dumb \n-only encoding
+		#$cmd = "perl -e '$_ = q/$rest\'; s/%0a/\n/g; print' " .
+		#echo "$rest" | perl -pe "s/%0a/\n/g"
+		#	"| $egg -d $binder -";
+		#$cmd = "echo '$rest' | $egg -d $binder -";
+
+		$cmd = "$egg -d $binder -";
+		open(EGG, "| $cmd") or
+			print("error: failed to open pipe to $cmd: $!\n",
+				"Bailing at line $., change $changeno", "\n"),
+			return 1;
+		# for now we'll replace my kludgy %0a with \n and use @-
+		# (token follows up to a blank line) to encode value.
+		#print "YYY split=", join(", ", split /\|/, $arg0), "\n";
+		#($id, $elemcom) = map
+		#	s{ ([%'"\\&@|;()[\]=:<]|[^!-~]) }
+		#	 { sprintf("%%%02x", ord($1))    }xego && $_ || $_,
+		#		split /\|/, $arg0;
+		($id, $elemcom) = split /\|/, $arg0;
+		$id or
+			print("error: no id in arg0 ($arg0)\n"),
+			$id = '';
+		# note: this is ezid's python encoding 4 (or 3?)
+		$id =~ s{ ([%'"\\&@|;()[\]=:<]|[^!-~]) }
+			{ sprintf("%%%02x", ord($1))   }xego;
+		$iec = $id;
+		$elemcom ||= '';
+		$elemcom =~ s{ ([%'"\\&@|;()[\]=:<]|[^!-~]) }
+			     { sprintf("%%%02x", ord($1))    }xego;
+		$elemcom and
+			$iec .= "|$elemcom";
+
+		#print EGG ":hx% $id|$elemcom";	# eg, ark:/...|title.set
+		print EGG ":hx% $iec";		# eg, ark:/...|title.set
+		#print "to EGG ", ":hx% $iec";
+		if ($rest) {
+			$rest =~ s/%0a/\n/g;
+			print(EGG ' @--', "\n", $rest);		# no final \n
+			#print(' @--', "\n", $rest, "\n");
+		}
+		else {
+			print EGG "\n";
+		}
+		close EGG;
+
+		$? != 0 and		# after process close $? has status
+			print("error: binder $binder didn't like \"$rest\" ",
+				"(status $?) on line $.\n");
+		#$. > 1000 and exit;	# artificial limiting
+	}
+	close IN;
+	print "Changes: $changeno\n";
+	mv $file, $destfile or
+		print("error: cannot move $file to $destfile: $!\n"),
+		return 1;
+
+	return 0;
+}
+
+# return code suitable for exit() (0=success, !0=error)
+# xxx to do
+#
+sub clean {
+
+	print "Not implemented yet.\n";
+	return 0;
+}
+
+sub doodle { my( $binder )=@_;
+
+	$binder or
+		print("error: no binder given\n$usage_text"),
+		return 1;
+	-d $binder or
+		print("error: $binder: no such binder directory\n$usage_text"),
+		return 1;
+	open(EGG, "| $egg -d $binder -") or
+		print("error: failed to open pipe to binder $binder: $!\n"),
+		return 1;
+	print EGG <<EOT;
+		jj.set a b
+		kk.set c d
+		jj.fetch
+		kk.fetch
+		jj.purge
+		jj.fetch
+EOT
+	close EGG;
+	return 0;
+}
+

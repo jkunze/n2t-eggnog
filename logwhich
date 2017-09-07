@@ -1,0 +1,59 @@
+#!/bin/bash
+
+function usage {
+	cat << EOT
+
+Usage:  $0 Dir [ String ]
+
+Given a Dir directory argument, logwhich prints the names of the "most
+interesting log files" to watch.  File names to print are determined
+by the given string, String ('_log' by default), as follows:
+
+    1. create a list of all files of the form Dir/*String*
+    2. from that list, create a list of distinct Dir/*String prefixes
+    3. using each prefix to represent its own file group, print the
+       name of the file that is last (by lexical sort) in each group
+
+The "last" test is a cheap way to find the most recently created logfile in
+a common httpd use case.  For example, if Dir is ../../logs and contained
+
+    access_log.2015.04.01    error_log.2015.04.01    rewrite_log
+    access_log.2015.04.02    error_log.2015.04.02
+    access_log.2015.04.03    error_log.2015.04.03
+
+this effect would be produced:
+
+    \$ $0 ../../logs
+    access_log.2014.04.03
+    error_log.2015.04.03
+    rewrite_log
+
+EOT
+}
+
+Dir=$1
+[[ $Dir ]] || {		# if no args, print usage info
+	usage
+	exit
+}
+String=${2:-_log}
+
+files_b=( $Dir/*$String* )	# lexically sorted files array (bash)
+# if verbose
+#	echo files_b: ${files_b[@]}
+
+perl -w -e "	# double quote first block to interpolate shell values
+	use strict;
+	my @files = (qw( 
+	      	${files_b[*]}
+	));
+	my (\$d, \$s) = (qw( $Dir $String ));
+
+"'		# single quote second block to shield from shell values
+	my (%h, $f, $b);	# hash, filename, basename before $String
+	foreach $f (@files) {
+		($b = $f) =~ s|(\Q$d/\E.*\Q$s\E).*|$1|;
+		$h{$b} = $f;	# final (most recent) value clobbers on purpose
+	}
+	map { print "$h{$_}\n" } sort keys %h;
+'

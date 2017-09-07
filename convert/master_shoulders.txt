@@ -1,0 +1,2094 @@
+:: doi:10.7939/DVN
+type: shoulder
+manager: ezid
+name: University of Alberta Libraries
+date: 2014.04.09
+minter:
+datacenter: CDL.UAL
+
+:: ark:/87938/m2
+type: shoulder
+manager: ezid
+name: Statistics (ResearchCompendia.org)
+date: 2014.04.03
+minter: http://noid.cdlib.org/md/noidu_m2
+
+:: doi:10.7938/M1
+type: shoulder
+manager: ezid
+name: Statistics (ResearchCompendia.org)
+date: 2014.04.03
+minter: http://noid.cdlib.org/md/noidu_m1
+datacenter: CDL.STATSRC
+
+:: doi:10.13014/S1
+type: shoulder
+manager: ezid
+name: Penn State ScholarSphere
+date: 2013.06.18
+minter: http://noid.cdlib.org/md/noidu_s1
+datacenter: PURDUE.PSIEE
+
+:: ark:/87937/m0
+type: shoulder
+manager: ezid
+name: The Cancer Imaging Archive
+date: 2014.03.21
+minter: http://noid.cdlib.org/md/noidu_m0
+
+:: doi:10.7937/K9
+type: shoulder
+manager: ezid
+name: The Cancer Imaging Archive
+date: 2014.03.21
+minter: http://noid.cdlib.org/md/noidu_k9
+datacenter: CDL.TCIA
+
+:: ark:/87936/k8
+type: shoulder
+manager: ezid
+name: Washington University in St. Louis
+date: 2014.03.18
+minter: http://noid.cdlib.org/md/noidu_k8
+
+:: doi:10.7936/K7
+type: shoulder
+manager: ezid
+name: Washington University in St. Louis
+date: 2014.03.18
+minter: http://noid.cdlib.org/md/noidu_k7
+datacenter: CDL.WUSTL
+
+:: ark:/87935/k6
+type: shoulder
+manager: ezid
+name: LIGO Open Science Center
+date: 2014.03.13
+minter: http://noid.cdlib.org/md/noidu_k6
+
+:: doi:10.7935/K5
+type: shoulder
+manager: ezid
+name: LIGO Open Science Center
+date: 2014.03.13
+minter: http://noid.cdlib.org/md/noidu_k5
+datacenter: CDL.LIGO
+
+:: ark:/87934/
+type: shoulder
+manager: ezid
+name: MorphoBank
+date: 2014.03.13
+minter: 
+
+:: doi:10.7934/
+type: shoulder
+manager: ezid
+name: MorphoBank
+date: 2014.03.13
+minter: 
+datacenter: CDL.MORPHOBA
+
+:: doi:10.4231/K4
+type: shoulder
+manager: ezid
+name: Purdue University Joint Transportation Research Program
+date: 2014.02.27
+minter: http://noid.cdlib.org/md/noidu_k4
+datacenter: PURDUE.EZID
+
+:: ark:/83014/k3
+type: shoulder
+manager: ezid
+name: University of Nebraska-Lincoln Libraries
+date: 2014.02.27
+minter: http://noid.cdlib.org/md/noidu_k3
+
+:: doi:10.13014/K2
+type: shoulder
+manager: ezid
+name: University of Nebraska-Lincoln Libraries
+date: 2014.02.27
+minter: http://noid.cdlib.org/md/noidu_k2
+datacenter: PURDUE.UNL
+
+:: ark:/87933/j9
+type: shoulder
+manager: ezid
+name: Laboratory for Anthropogenic Landscape Ecology
+date: 2014.02.13
+minter: http://noid.cdlib.org/md/noidu_j9
+
+:: doi:10.7933/K1
+type: shoulder
+manager: ezid
+name: Laboratory for Anthropogenic Landscape Ecology
+date: 2014.02.13
+minter: http://noid.cdlib.org/md/noidu_k1
+datacenter: CDL.LALEUMBC
+
+:: ark:/87932/k0
+type: shoulder
+manager: ezid
+name: Berkeley Seismological Laboratory
+date: 2014.02.13
+minter: http://noid.cdlib.org/md/noidu_k0
+
+:: doi:10.7932/
+type: shoulder
+manager: ezid
+name: Berkeley Seismological Laboratory
+date: 2014.02.13
+minter: 
+datacenter: CDL.BSL
+
+:: doi:10.13012/J8
+type: shoulder
+manager: ezid
+name: University of Illinois Libraries
+date: 2014.01.27
+minter: http://noid.cdlib.org/md/noidu_j8
+datacenter: PURDUE.UIUCLIB
+
+:: doi:10.13013/J6
+type: shoulder
+manager: ezid
+name: Intrepid Bioinformatics
+date: 2013.12.17
+minter: http://noid.cdlib.org/md/noidu_j6
+datacenter: PURDUE.INTBIO
+
+:: ark:/83013/j7
+type: shoulder
+manager: ezid
+name: Intrepid Bioinformatics
+date: 2013.12.17
+minter: http://noid.cdlib.org/md/noidu_j7
+
+:: doi:10.13012/C5
+type: shoulder
+manager: ezid
+name: University of Illinois Libraries IDEALS
+date: 2013.12.16
+minter: http://noid.cdlib.org/md/noidu_c5
+datacenter: PURDUE.UIUCLIB
+
+:: ark:/83012/c6
+type: shoulder
+manager: ezid
+name: University of Illinois Libraries IDEALS
+date: 2013.12.16
+minter: http://noid.cdlib.org/md/noidu_c6
+
+:: doi:10.13012/J4
+type: shoulder
+manager: ezid
+name: University of Illinois Libraries NADP
+date: 2013.12.16
+minter: http://noid.cdlib.org/md/noidu_j4
+datacenter: PURDUE.UIUCLIB
+
+:: ark:/83012/j5
+type: shoulder
+manager: ezid
+name: University of Illinois Libraries NADP
+date: 2013.12.16
+minter: http://noid.cdlib.org/md/noidu_j5
+
+:: ark:/87931/j3
+type: shoulder
+manager: ezid
+name: Landcare Research New Zealand Ltd
+date: 2013.11.20
+minter: http://noid.cdlib.org/md/noidu_j3
+
+:: doi:10.7931/J2
+type: shoulder
+manager: ezid
+name: Landcare Research New Zealand Ltd
+date: 2013.11.20
+minter: http://noid.cdlib.org/md/noidu_j2
+datacenter: CDL.LCRNZ
+
+:: ark:/87930/j1
+type: shoulder
+manager: ezid
+name: U.S. Global Change Research Program/UCAR
+date: 2013.11.08
+minter: http://noid.cdlib.org/md/noidu_j1
+
+:: doi:10.7930/J0
+type: shoulder
+manager: ezid
+name: U.S. Global Change Research Program/UCAR
+date: 2013.11.08
+minter: http://noid.cdlib.org/md/noidu_j0
+datacenter: CDL.USGCRP
+
+:: ark:/87929/
+type: shoulder
+manager: ezid
+name: Irish Social Science Data Archive (ISSDA)
+date: 2013.11.05
+minter: http://noid.cdlib.org/md/noidu_h9
+
+:: doi:10.7929/
+type: shoulder
+manager: ezid
+name: Irish Social Science Data Archive (ISSDA)
+date: 2013.11.05
+minter: http://noid.cdlib.org/md/noidu_h8
+datacenter: CDL.ISSDA
+
+:: ark:/87928/h7
+type: shoulder
+manager: ezid
+name: UC Berkeley Research IT
+date: 2013.11.05
+minter: http://noid.cdlib.org/md/noidu_h7
+
+:: doi:10.7928/H6
+type: shoulder
+manager: ezid
+name: UC Berkeley Research IT
+date: 2013.11.05
+minter: http://noid.cdlib.org/md/noidu_h6
+datacenter: CDL.UCBRIT
+
+:: ark:/87927/h5
+type: shoulder
+manager: ezid
+name: Center for International Earth Science Information Network (CIESIN)
+date: 2013.10.28
+minter: http://noid.cdlib.org/md/noidu_h5
+
+:: doi:10.7927/H4
+type: shoulder
+manager: ezid
+name: Center for International Earth Science Information Network (CIESIN)
+date: 2013.10.28
+minter: http://noid.cdlib.org/md/noidu_h4
+datacenter: CDL.CIESIN
+
+:: ark:/87926/h3
+type: shoulder
+manager: ezid
+name: Middlebury College
+date: 2013.10.28
+minter: http://noid.cdlib.org/md/noidu_h3
+
+:: doi:10.7926/H2
+type: shoulder
+manager: ezid
+name: Middlebury College
+date: 2013.10.28
+minter: http://noid.cdlib.org/md/noidu_h2
+datacenter: CDL.MDY
+
+:: ark:/87925/h1
+type: shoulder
+manager: ezid
+name: University College Dublin
+date: 2013.10.18
+minter: http://noid.cdlib.org/md/noidu_h1
+
+:: doi:10.7925/
+type: shoulder
+manager: ezid
+name: University College Dublin
+date: 2013.10.18
+minter: http://noid.cdlib.org/md/noidu_h0
+datacenter: CDL.UCDIRL
+
+:: ark:/87924/g9
+type: shoulder
+manager: ezid
+name: Duke University
+date: 2013.10.14
+minter: http://noid.cdlib.org/md/noidu_g9
+
+:: doi:10.7924/G8
+type: shoulder
+manager: ezid
+name: Duke University
+date: 2013.10.14
+minter: http://noid.cdlib.org/md/noidu_g8
+datacenter: CDL.DUL
+
+:: ark:/83011/g7
+type: shoulder
+manager: ezid
+name: Network for Earthquake Engineering Simulation (NEES)
+date: 2013.10.07
+minter: http://noid.cdlib.org/md/noidu_g7
+
+:: doi:10.13011/G6
+type: shoulder
+manager: ezid
+name: Network for Earthquake Engineering Simulation (NEES)
+date: 2013.10.07
+minter: http://noid.cdlib.org/md/noidu_g6
+datacenter: PURDUE.NEES
+
+:: ark:/87923/g5
+type: shoulder
+manager: ezid
+name: Northwest Knowledge Network (NKN)
+date: 2013.10.02
+minter: http://noid.cdlib.org/md/noidu_g5
+
+:: doi:10.7923/G4
+type: shoulder
+manager: ezid
+name: Northwest Knowledge Network (NKN)
+date: 2013.10.02
+minter: http://noid.cdlib.org/md/noidu_g4
+datacenter: CDL.NKN
+
+:: ark:/21198/z1
+type: shoulder
+manager: ezid
+name: UCLA Digital Library
+date: 2013.10.02
+minter: http://noid.cdlib.org/md/noidu_z1
+
+:: ark:/87922/g3
+type: shoulder
+manager: ezid
+name: UC Berkeley Institute of Transportation Studies (ITS)
+date: 2013.09.30
+minter: http://noid.cdlib.org/md/noidu_g3
+
+:: doi:10.7922/G2
+type: shoulder
+manager: ezid
+name: UC Berkeley Institute of Transportation Studies (ITS)
+date: 2013.09.30
+minter: http://noid.cdlib.org/md/noidu_g2
+datacenter: CDL.UCBITS
+
+:: ark:/87920/f9
+type: shoulder
+manager: ezid
+name: Cyberinfrastructure for Atomistic Materials Science (CAMS)
+date: 2013.09.09
+minter: http://noid.cdlib.org/md/noidu_f9
+
+:: doi:10.7920/F8
+type: shoulder
+manager: ezid
+name: Cyberinfrastructure for Atomistic Materials Science (CAMS)
+date: 2013.09.09
+minter: http://noid.cdlib.org/md/noidu_f8
+datacenter: CDL.CAMS
+
+:: ark:/87921/g1
+type: shoulder
+manager: ezid
+name: RENCI (Renaissance Computing Institute)
+date: 2013.09.09
+minter: http://noid.cdlib.org/md/noidu_g1
+
+:: doi:10.7921/G0
+type: shoulder
+manager: ezid
+name: RENCI (Renaissance Computing Institute)
+date: 2013.09.09
+minter: http://noid.cdlib.org/md/noidu_g0
+datacenter: CDL.RENCI
+
+:: ark:/87919/f5
+type: shoulder
+manager: ezid
+name: UCSB Advanced Graphics Lab
+date: 2013.09.01
+minter: http://noid.cdlib.org/md/noidu_f5
+
+:: doi:10.7919/F4
+type: shoulder
+manager: ezid
+name: UCSB Advanced Graphics Lab
+date: 2013.09.01
+minter: http://noid.cdlib.org/md/noidu_f4
+datacenter: CDL.UCSBAGL
+
+:: ark:/83010/f7
+type: shoulder
+manager: ezid
+name: University of Michigan Biological Station (UMBS)
+date: 2013.09.01
+minter: http://noid.cdlib.org/md/noidu_f7
+
+:: doi:10.13010/F6
+type: shoulder
+manager: ezid
+name: University of Michigan Biological Station (UMBS)
+date: 2013.09.01
+minter: http://noid.cdlib.org/md/noidu_f6
+datacenter: PURDUE.UMBS
+
+:: doi:10.5063/
+type: shoulder
+manager: ezid
+name: National Center for Ecological Analysis and Synthesis (NCEAS)
+date: 2013.08.29
+minter: http://noid.cdlib.org/md/noidu_f1
+datacenter: CDL.NCEAS
+
+:: ark:/87917/f0
+type: shoulder
+manager: ezid
+name: NASA Center for Climate Simulation (NCCS)
+date: 2013.08.02
+minter: http://noid.cdlib.org/md/noidu_f0
+
+:: doi:10.7917/D7
+type: shoulder
+manager: ezid
+name: NASA Center for Climate Simulation (NCCS)
+date: 2013.08.02
+minter: http://noid.cdlib.org/md/noidu_d7
+datacenter: CDL.NCCS
+
+# This has a new minter on it.  For temporary ids with no defined
+# expiration date ('8' suggests infinity).
+:: ark:/99999/fk8
+type: shoulder
+manager: ezid
+name: ARK Test (non-expiring)
+date: 2013.07.16
+minter: http://noid.cdlib.org/nd/noidu_fk8
+
+# Note: legacy ids on minterless, non-first-digit observing shoulder.
+# For use by SeaIce metadictionary.
+:: ark:/99152/h
+type: shoulder
+manager: ezid
+name: Metadata
+date: 2013.07.16
+minter:
+
+:: ark:/87916/d9
+type: shoulder
+manager: ezid
+name: Columbia University Libraries/Information Services (CUL/IS)
+date: 2013.06.27
+minter: http://noid.cdlib.org/md/noidu_d9
+
+:: doi:10.7916/D8
+type: shoulder
+manager: ezid
+name: Columbia University Libraries/Information Services (CUL/IS)
+date: 2013.06.27
+minter: http://noid.cdlib.org/md/noidu_d8
+datacenter: CDL.CULIS
+
+:: ark:/87915/d6
+type: shoulder
+manager: ezid
+name: University of Washington College of the Environment Climate Impacts Group (CIG)
+date: 2013.06.27
+minter: http://noid.cdlib.org/md/noidu_d6
+
+:: doi:10.7915/CIG
+type: shoulder
+manager: ezid
+name: University of Washington College of the Environment Climate Impacts Group (CIG)
+date: 2013.06.27
+minter: http://noid.cdlib.org/md/noidu_cig
+datacenter: CDL.UWCIG
+
+:: ark:/87914/d4
+type: shoulder
+manager: ezid
+name: Incorporated Research Institutions for Seismology (IRIS)
+date: 2013.06.18
+minter: http://noid.cdlib.org/md/noidu_d4
+
+:: doi:10.7914/
+type: shoulder
+manager: ezid
+name: Incorporated Research Institutions for Seismology (IRIS)
+date: 2013.06.18
+minter:
+datacenter: CDL.IRIS
+
+# corrected from 85967; c7 minter produces different strings now
+:: ark:/83014/c7
+type: shoulder
+manager: ezid
+name: Penn State Institutes of Energy and the Environment/PSU Data Commons
+date: 2013.06.18
+minter: http://noid.cdlib.org/md/noidu_c7
+
+# corrected from b5967; d3 minter produces different strings now
+:: doi:10.13014/D3
+type: shoulder
+manager: ezid
+name: Penn State Institutes of Energy and the Environment/PSU Data Commons
+date: 2013.06.18
+minter: http://noid.cdlib.org/md/noidu_d3
+datacenter: PURDUE.PSIEE
+
+:: doi:10.5967/D3
+type: shoulder
+manager: ezid
+name: {legacy} Penn State Institutes of Energy and the Environment/PSU Data Commons
+date: 2013.06.18
+minter:
+datacenter: PURDUE.EZID
+
+:: ark:/87913/d2
+type: shoulder
+manager: ezid
+name: University of Washington eScience Institute
+date: 2013.06.05
+minter: http://noid.cdlib.org/md/noidu_d2
+
+:: doi:10.7913/D1
+type: shoulder
+manager: ezid
+name: University of Washington eScience Institute
+date: 2013.06.05
+minter: http://noid.cdlib.org/md/noidu_d1
+datacenter: CDL.UWESCI
+
+:: ark:/87912/d0
+type: shoulder
+manager: ezid
+name: Indiana University-Purdue University Indianapolis
+date: 2013.05.22
+minter: http://noid.cdlib.org/md/noidu_d0
+
+:: doi:10.7912/C9
+type: shoulder
+manager: ezid
+name: Indiana University-Purdue University Indianapolis
+date: 2013.05.22
+minter: http://noid.cdlib.org/md/noidu_c9
+datacenter: CDL.IUPUI
+
+:: doi:10.7911/
+type: shoulder
+manager: ezid
+name: OneOcean
+date: 2013.05.03
+minter: http://noid.cdlib.org/md/noidu_cc0
+datacenter: CDL.ONEOCEAN
+
+:: ark:/87910/DVN1
+type: shoulder
+manager: ezid
+name: Harvard Dataverse
+date: 2013.04.30
+minter:
+
+:: doi:10.7910/DVN
+type: shoulder
+manager: ezid
+name: Harvard Dataverse
+date: 2013.04.30
+minter:
+datacenter: CDL.DATAVERS
+
+:: ark:/87909/c4
+type: shoulder
+manager: ezid
+name: Caltech Seismological Laboratory
+date: 2013.04.29
+minter: http://noid.cdlib.org/md/noidu_c4
+
+:: doi:10.7909/C3
+type: shoulder
+manager: ezid
+name: Caltech Seismological Laboratory
+date: 2013.04.29
+minter: http://noid.cdlib.org/md/noidu_c3
+datacenter: CDL.SEISMOLA
+
+:: ark:/87908/c2
+type: shoulder
+manager: ezid
+name: Broad Institute of MIT and Harvard
+date: 2013.04.24
+minter: http://noid.cdlib.org/md/noidu_c2
+
+:: doi:10.7908/C1
+type: shoulder
+manager: ezid
+name: Broad Institute of MIT and Harvard
+date: 2013.04.24
+minter: http://noid.cdlib.org/md/noidu_c1
+datacenter: CDL.BROAD
+
+:: ark:/87907/c0
+type: shoulder
+manager: ezid
+name: California Institute of Technology (Caltech)
+date: 2013.04.15
+minter: http://noid.cdlib.org/md/noidu_c0
+
+:: doi:10.7907/Z9
+type: shoulder
+manager: ezid
+name: California Institute of Technology (Caltech)
+date: 2013.04.15
+minter: http://noid.cdlib.org/md/noidu_z9
+datacenter: CDL.CALTECH
+
+:: ark:/87303/z4
+type: shoulder
+manager: ezid
+name: Sage Bionetworks
+date: 2013.04.10
+minter: http://noid.cdlib.org/nd/noidu_z4
+
+:: doi:10.7303/
+type: shoulder
+manager: ezid
+name: Sage Bionetworks
+date: 2013.04.10
+minter:
+datacenter: CDL.SAGEBIO
+
+:: ark:/87301/z1
+type: shoulder
+manager: ezid
+name: Brown University Library
+date: 2013.04.01
+minter: http://noid.cdlib.org/nd/noidu_z1
+
+:: doi:10.7301/Z0
+type: shoulder
+manager: ezid
+name: Brown University Library
+date: 2013.04.01
+minter: http://noid.cdlib.org/nd/noidu_z0
+datacenter: CDL.BUL
+
+:: ark:/87300/x9
+type: shoulder
+manager: ezid
+name: UCSD OneLab
+date: 2013.04.01
+minter: http://noid.cdlib.org/nd/noidu_x9
+
+:: doi:10.7300/X8
+type: shoulder
+manager: ezid
+name: UCSD OneLab
+date: 2013.04.01
+minter: http://noid.cdlib.org/nd/noidu_x8
+datacenter: CDL.ONELAB
+
+:: ark:/87302/z3
+type: shoulder
+manager: ezid
+name: University of Michigan Library
+date: 2013.04.01
+minter: http://noid.cdlib.org/nd/noidu_z3
+
+:: doi:10.7302/Z2
+type: shoulder
+manager: ezid
+name: University of Michigan Library
+date: 2013.04.01
+minter: http://noid.cdlib.org/nd/noidu_z2
+datacenter: PURDUE.UMICH
+
+:: doi:10.7299/X7
+type: shoulder
+manager: ezid
+name: UC Berkeley Museum of Vertebrate Zoology
+date: 2013.03.25
+minter: http://noid.cdlib.org/nd/noidu_x7
+datacenter: CDL.UCBMVZ
+
+:: ark:/21547/
+type: shoulder
+manager: ezid
+name: Biocode Commons
+date: 2013.03.23
+minter:
+
+:: ark:/87299/x6
+type: shoulder
+manager: ezid
+name: UC Berkeley Museum of Vertebrate Zoology
+date: 2013.03.20
+minter: http://noid.cdlib.org/nd/noidu_x6
+
+:: ark:/87298/x5
+type: shoulder
+manager: ezid
+name: Cornell University Library
+date: 2013.03.11
+minter: http://noid.cdlib.org/nd/noidu_x5
+
+:: doi:10.7298/X4
+type: shoulder
+manager: ezid
+name: Cornell University Library
+date: 2013.03.11
+minter: http://noid.cdlib.org/nd/noidu_x4
+datacenter: CDL.CUL
+
+:: ark:/87296/x1
+type: shoulder
+manager: ezid
+name: Edom Lowlands Regional Archaeology Project
+date: 2013.03.07
+minter: http://noid.cdlib.org/nd/noidu_x1
+
+:: doi:10.7296/X0
+type: shoulder
+manager: ezid
+name: Edom Lowlands Regional Archaeology Project
+date: 2013.03.07
+minter: http://noid.cdlib.org/nd/noidu_x0
+datacenter: CDL.ELRAP
+
+:: ark:/87297/x3
+type: shoulder
+manager: ezid
+name: UC Berkeley Department of Linguistics
+date: 2013.03.07
+minter: http://noid.cdlib.org/nd/noidu_x3
+
+:: doi:10.7297/X2
+type: shoulder
+manager: ezid
+name: UC Berkeley Department of Linguistics
+date: 2013.03.07
+minter: http://noid.cdlib.org/nd/noidu_x2
+datacenter: CDL.UCBLING
+
+:: ark:/87295/w8
+type: shoulder
+manager: ezid
+name: Center for Research in Biological Systems
+date: 2013.03.04
+minter: http://noid.cdlib.org/nd/noidu_w8
+
+:: doi:10.7295/W9
+type: shoulder
+manager: ezid
+name: Center for Research in Biological Systems
+date: 2013.03.04
+minter: http://noid.cdlib.org/nd/noidu_w9
+datacenter: CDL.CRBS
+
+:: doi:10.6075/W7
+type: shoulder
+manager: ezid
+name: UCSD Research Cyberinfrastructure Data Curation
+date: 2013.02.21
+minter: http://noid.cdlib.org/nd/noidu_w7
+datacenter: CDL.RCIDC
+
+# reserved for SNAC (facebook for dead people) Tingle/Pitti/Larson
+:: ark:/99166/w6
+type: shoulder
+manager: ezid
+name: Social Networks and Archival Context (SNAC) Project
+date: 2013.02.12
+minter: http://noid.cdlib.org/nd/noidu_w6
+
+:: ark:/87293/w3
+type: shoulder
+manager: ezid
+name: BenchFly
+date: 2013.02.11
+minter: http://noid.cdlib.org/nd/noidu_w3
+
+:: doi:10.7293/W2
+type: shoulder
+manager: ezid
+name: BenchFly
+date: 2013.02.11
+minter: http://noid.cdlib.org/nd/noidu_w2
+datacenter: CDL.BENCHFLY
+
+:: ark:/87294/w5
+type: shoulder
+manager: ezid
+name: Virginia Tech University Libraries
+date: 2013.02.11
+minter: http://noid.cdlib.org/nd/noidu_w5
+
+:: doi:10.7294/W4
+type: shoulder
+manager: ezid
+name: Virginia Tech University Libraries
+date: 2013.02.11
+minter: http://noid.cdlib.org/nd/noidu_w4
+datacenter: CDL.VTLIB
+
+:: ark:/87292/w1
+type: shoulder
+manager: ezid
+name: Bay Area Environmental Research (BAER) Institute
+date: 2013.01.28
+minter: http://noid.cdlib.org/nd/noidu_w1
+
+:: doi:10.7292/W0
+type: shoulder
+manager: ezid
+name: Bay Area Environmental Research (BAER) Institute
+date: 2013.01.28
+minter: http://noid.cdlib.org/nd/noidu_w0
+datacenter: CDL.BAER
+
+:: doi:10.7291/V9
+type: shoulder
+manager: ezid
+name: UCSC Library
+date: 2013.01.23
+minter: http://noid.cdlib.org/nd/noidu_v9
+datacenter: CDL.UCSC
+
+:: ark:/87290/v8
+type: shoulder
+manager: ezid
+name: University of Tennessee
+date: 2013.01.18
+minter: http://noid.cdlib.org/nd/noidu_v8
+
+:: doi:10.7290/V7
+type: shoulder
+manager: ezid
+name: University of Tennessee
+date: 2013.01.18
+minter: http://noid.cdlib.org/nd/noidu_v7
+datacenter: CDL.UTENN
+
+:: ark:/87289/v6
+type: shoulder
+manager: ezid
+name: US National Oceanic and Atmospheric Administration (NOAA)
+date: 2013.01.18
+minter: http://noid.cdlib.org/nd/noidu_v6
+
+:: doi:10.7289/V5
+type: shoulder
+manager: ezid
+name: US National Oceanic and Atmospheric Administration (NOAA)
+date: 2013.01.18
+minter: http://noid.cdlib.org/nd/noidu_v5
+datacenter: CDL.NOAA
+
+:: doi:10.7288/V4
+type: shoulder
+manager: ezid
+name: EarthRef
+date: 2012.12.17
+minter: http://noid.cdlib.org/nd/noidu_v4
+datacenter: CDL.EARTHREF
+
+:: ark:/87286/
+type: shoulder
+manager: ezid
+name: Biocode Commons (UCB only)
+date: 2012.12.06
+minter:
+
+:: doi:10.7286/
+type: shoulder
+manager: ezid
+name: Biocode Commons (UCB only)
+date: 2012.12.06
+minter: http://noid.cdlib.org/nd/noidu_v1
+datacenter: CDL.BIOCODE
+
+:: ark:/87287/v3
+type: shoulder
+manager: ezid
+name: PeerJ
+date: 2012.12.06
+minter: http://noid.cdlib.org/nd/noidu_v3
+
+:: doi:10.7287/
+type: shoulder
+manager: ezid
+name: PeerJ
+date: 2012.12.06
+minter:
+datacenter: CDL.PEERJ
+
+:: ark:/34231/v0
+type: shoulder
+manager: ezid
+name: Purdue University CyberCenter
+date: 2012.11.16
+minter: http://noid.cdlib.org/nd/noidu_v0
+
+:: doi:10.4231/T9
+type: shoulder
+manager: ezid
+name: Purdue University CyberCenter
+date: 2012.11.16
+minter: http://noid.cdlib.org/nd/noidu_t9
+datacenter: PURDUE.EZID
+
+:: ark:/87285/t8
+type: shoulder
+manager: ezid
+name: Center for Multiscale Modeling of Atmospheric Processes
+date: 2012.11.10
+minter: http://noid.cdlib.org/nd/noidu_t8
+
+:: doi:10.7285/T7
+type: shoulder
+manager: ezid
+name: Center for Multiscale Modeling of Atmospheric Processes
+date: 2012.11.10
+minter: http://noid.cdlib.org/nd/noidu_t7
+datacenter: CDL.CMMAP
+
+:: ark:/87284/
+type: shoulder
+manager: ezid
+name: Rolling Deck to Repository Program
+date: 2012.10.04
+minter:
+
+:: doi:10.7284/
+type: shoulder
+manager: ezid
+name: Rolling Deck to Repository Program
+date: 2012.10.04
+minter:
+datacenter: CDL.R2R
+
+:: ark:/15230/t4
+type: shoulder
+manager: ezid
+name: Rutgers University Library
+date: 2012.09.21
+minter: http://noid.cdlib.org/nd/noidu_t4
+
+:: doi:10.7282/T3
+type: shoulder
+manager: ezid
+name: Rutgers University Library
+date: 2012.09.21
+minter: http://noid.cdlib.org/nd/noidu_t3
+datacenter: CDL.RUTGERS
+
+:: ark:/87283/t6
+type: shoulder
+manager: ezid
+name: UNAVCO
+date: 2012.09.21
+minter: http://noid.cdlib.org/nd/noidu_t6
+
+:: doi:10.7283/T5
+type: shoulder
+manager: ezid
+name: UNAVCO
+date: 2012.09.21
+minter: http://noid.cdlib.org/nd/noidu_t5
+datacenter: CDL.UNAVCO
+
+:: ark:/87281/t2
+type: shoulder
+manager: ezid
+name: Johns Hopkins University Data Archive
+date: 2012.09.13
+minter: http://noid.cdlib.org/nd/noidu_t2
+
+:: doi:10.7281/T1
+type: shoulder
+manager: ezid
+name: Johns Hopkins University Data Archive
+date: 2012.09.13
+minter: http://noid.cdlib.org/nd/noidu_t1
+datacenter: CDL.JHU
+
+:: ark:/87280/t0
+type: shoulder
+manager: ezid
+name: UC Irvine Library
+date: 2012.09.10
+minter: http://noid.cdlib.org/nd/noidu_t0
+
+:: doi:10.7280/S9
+type: shoulder
+manager: ezid
+name: UC Irvine Library
+date: 2012.09.10
+minter: http://noid.cdlib.org/nd/noidu_s9
+datacenter: CDL.UCI
+
+:: ark:/87279/s8
+type: shoulder
+manager: ezid
+name: UCSD Ocean Observatory Initiative
+date: 2012.08.16
+minter: http://noid.cdlib.org/nd/noidu_s8
+
+:: doi:10.7279/S7
+type: shoulder
+manager: ezid
+name: UCSD Ocean Observatory Initiative
+date: 2012.08.16
+minter: http://noid.cdlib.org/nd/noidu_s7
+datacenter: CDL.UCSDOOI
+
+:: ark:/87278/s6
+type: shoulder
+manager: ezid
+name: University of Utah
+date: 2012.08.16
+minter: http://noid.cdlib.org/nd/noidu_s6
+
+:: doi:10.7278/S5
+type: shoulder
+manager: ezid
+name: University of Utah
+date: 2012.08.16
+minter: http://noid.cdlib.org/nd/noidu_s5
+datacenter: CDL.UUTAH
+
+:: ark:/87277/s4
+type: shoulder
+manager: ezid
+name: Indiana University Cyberinfrastructure for Network Science Center
+date: 2012.08.11
+minter: http://noid.cdlib.org/nd/noidu_s4
+
+:: doi:10.7277/S3
+type: shoulder
+manager: ezid
+name: Indiana University Cyberinfrastructure for Network Science Center
+date: 2012.08.11
+minter: http://noid.cdlib.org/nd/noidu_s3
+datacenter: PURDUE.IUCNS
+
+:: ark:/87276/s2
+type: shoulder
+manager: ezid
+name: University of Washington Center for Studies in Demography and Ecology
+date: 2012.08.07
+minter: http://noid.cdlib.org/nd/noidu_s2
+
+:: doi:10.7276/S1
+type: shoulder
+manager: ezid
+name: University of Washington Center for Studies in Demography and Ecology
+date: 2012.08.07
+minter: http://noid.cdlib.org/nd/noidu_s1
+datacenter: CDL.UWCSDE
+
+:: ark:/34231/s0
+type: shoulder
+manager: ezid
+name: nanoHUB
+date: 2012.08.01
+minter: http://noid.cdlib.org/nd/noidu_s0
+
+:: doi:10.4231/R9
+type: shoulder
+manager: ezid
+name: nanoHUB
+date: 2012.08.01
+minter: http://noid.cdlib.org/nd/noidu_r9
+datacenter: PURDUE.EZID
+
+:: ark:/34231/r8
+type: shoulder
+manager: ezid
+name: Purdue University Research Repository (PURR)
+date: 2012.08.01
+minter: http://noid.cdlib.org/nd/noidu_r8
+
+:: doi:10.4231/R7
+type: shoulder
+manager: ezid
+name: Purdue University Research Repository (PURR)
+date: 2012.08.01
+minter: http://noid.cdlib.org/nd/noidu_r7
+datacenter: PURDUE.EZID
+
+:: ark:/87275/r6
+type: shoulder
+manager: ezid
+name: UMass Amherst
+date: 2012.07.24
+minter: http://noid.cdlib.org/nd/noidu_r6
+
+:: doi:10.7275/R5
+type: shoulder
+manager: ezid
+name: UMass Amherst
+date: 2012.07.24
+minter: http://noid.cdlib.org/nd/noidu_r5
+datacenter: CDL.UMA
+
+:: ark:/87274/r4
+type: shoulder
+manager: ezid
+name: University of Notre Dame
+date: 2012.07.20
+minter: http://noid.cdlib.org/nd/noidu_r4
+
+:: doi:10.7274/R0
+type: shoulder
+manager: ezid
+name: University of Notre Dame
+date: 2012.07.20
+minter: http://noid.cdlib.org/nd/noidu_r0
+datacenter: PURDUE.UND
+
+:: ark:/87273/q8
+type: shoulder
+manager: ezid
+name: Washington State University
+date: 2012.07.20
+minter: http://noid.cdlib.org/nd/noidu_q8
+
+:: doi:10.7273/Q9
+type: shoulder
+manager: ezid
+name: Washington State University
+date: 2012.07.20
+minter: http://noid.cdlib.org/nd/noidu_q9
+datacenter: CDL.WSU
+
+:: ark:/87272/q7
+type: shoulder
+manager: ezid
+name: UCSF Clinical & Translational Science Institute (CTSI)
+date: 2012.07.10
+minter: http://noid.cdlib.org/nd/noidu_q7
+
+:: doi:10.7272/Q6
+type: shoulder
+manager: ezid
+name: UCSF Clinical & Translational Science Institute (CTSI)
+date: 2012.07.10
+minter: http://noid.cdlib.org/nd/noidu_q6
+datacenter: CDL.UCSFCTSI
+
+:: ark:/29114/q5
+type: shoulder
+manager: ezid
+name: UCSF
+date: 2012.07.10
+minter: http://noid.cdlib.org/nd/noidu_q5
+
+:: doi:10.7271/Q4
+type: shoulder
+manager: ezid
+name: UCSF
+date: 2012.07.10
+minter: http://noid.cdlib.org/nd/noidu_q4
+datacenter: CDL.UCSFLIB
+
+:: ark:/90135/q1
+type: shoulder
+manager: ezid
+name: ONEShare Data Service
+date: 2012.07.02
+minter: http://noid.cdlib.org/nd/noidu_q1
+
+:: ark:/87270/q3
+type: shoulder
+manager: ezid
+name: UCSD Skaggs School of Pharmacy and Pharmaceutical Sciences
+date: 2012.07.02
+minter: http://noid.cdlib.org/nd/noidu_q3
+
+:: doi:10.7270/Q2
+type: shoulder
+manager: ezid
+name: UCSD Skaggs School of Pharmacy and Pharmaceutical Sciences
+date: 2012.07.02
+minter: http://noid.cdlib.org/nd/noidu_q2
+datacenter: CDL.UCSDSSPP
+
+:: ark:/13030/q0
+type: shoulder
+manager: ezid
+name: eScholarship
+date: 2012.06.28
+minter: http://noid.cdlib.org/nd/noidu_q0
+
+:: ark:/84246/p7
+type: shoulder
+manager: ezid
+name: California Coastal Atlas
+date: 2012.06.27
+minter: http://noid.cdlib.org/nd/noidu_p7
+
+:: doi:10.4246/
+type: shoulder
+manager: ezid
+name: California Coastal Atlas
+date: 2012.06.27
+minter: http://noid.cdlib.org/nd/noidu_p6
+datacenter: CDL.UCSDCCA
+
+:: ark:/87269/p4
+type: shoulder
+manager: ezid
+name: Federation of Earth Science Information Partners (ESIP) Commons
+date: 2012.06.27
+minter: http://noid.cdlib.org/nd/noidu_p4
+
+:: doi:10.7269/P3
+type: shoulder
+manager: ezid
+name: Federation of Earth Science Information Partners (ESIP) Commons
+date: 2012.06.27
+minter: http://noid.cdlib.org/nd/noidu_p3
+datacenter: CDL.ESIP
+
+:: doi:10.5967/P8
+type: shoulder
+manager: ezid
+name: Indiana University Data to Insight
+date: 2012.06.27
+minter: http://noid.cdlib.org/nd/noidu_p8
+datacenter: PURDUE.EZID
+
+:: ark:/87268/p2
+type: shoulder
+manager: ezid
+name: UC Riverside Bourns College of Engineering
+date: 2012.06.27
+minter: http://noid.cdlib.org/nd/noidu_p2
+
+:: doi:10.7268/P1
+type: shoulder
+manager: ezid
+name: UC Riverside Bourns College of Engineering
+date: 2012.06.27
+minter: http://noid.cdlib.org/nd/noidu_p1
+datacenter: CDL.UCRBCOE
+
+:: ark:/87267/p0
+type: shoulder
+manager: ezid
+name: Oregon State University
+date: 2012.06.21
+minter: http://noid.cdlib.org/nd/noidu_p0
+
+:: doi:10.7267/N9
+type: shoulder
+manager: ezid
+name: Oregon State University
+date: 2012.06.21
+minter: http://noid.cdlib.org/nd/noidu_n9
+datacenter: CDL.OSU
+
+:: ark:/87266/n8
+type: shoulder
+manager: ezid
+name: Harte Research Institute
+date: 2012.06.08
+minter: http://noid.cdlib.org/nd/noidu_n8
+
+:: doi:10.7266/N7
+type: shoulder
+manager: ezid
+name: Harte Research Institute
+date: 2012.06.08
+minter: http://noid.cdlib.org/nd/noidu_n7
+datacenter: CDL.HRI
+
+:: ark:/87265/n6
+type: shoulder
+manager: ezid
+name: National Snow & Ice Data Center (NSIDC)
+date: 2012.05.30
+minter: http://noid.cdlib.org/nd/noidu_n6
+
+:: doi:10.7265/N5
+type: shoulder
+manager: ezid
+name: National Snow & Ice Data Center (NSIDC)
+date: 2012.05.30
+minter: http://noid.cdlib.org/nd/noidu_n5
+datacenter: CDL.NSIDC
+
+:: ark:/86086/n2
+type: shoulder
+manager: ezid
+name: UC Riverside
+date: 2012.05.26
+minter: http://noid.cdlib.org/nd/noidu_n2
+
+:: doi:10.6086/N1
+type: shoulder
+manager: ezid
+name: UC Riverside
+date: 2012.05.26
+minter: http://noid.cdlib.org/nd/noidu_n1
+datacenter: CDL.UCR
+
+:: ark:/87264/n4
+type: shoulder
+manager: ezid
+name: University of Oregon
+date: 2012.05.26
+minter: http://noid.cdlib.org/nd/noidu_n4
+
+:: doi:10.7264/N3
+type: shoulder
+manager: ezid
+name: University of Oregon
+date: 2012.05.26
+minter: http://noid.cdlib.org/nd/noidu_n3
+datacenter: CDL.UOREGON
+
+:: ark:/86085/n0
+type: shoulder
+manager: ezid
+name: Partnership for Interdisciplinary Studies of Coastal Oceans (PISCO)
+date: 2012.05.22
+minter: http://noid.cdlib.org/nd/noidu_n0
+
+:: doi:10.6085/
+type: shoulder
+manager: ezid
+name: Partnership for Interdisciplinary Studies of Coastal Oceans (PISCO)
+date: 2012.05.22
+minter:
+datacenter: CDL.PISCO
+
+:: ark:/86084/m8
+type: shoulder
+manager: ezid
+name: Digital Science
+date: 2012.05.17
+minter: http://noid.cdlib.org/nd/noidu_m8
+
+:: doi:10.6084/M9
+type: shoulder
+manager: ezid
+name: Digital Science
+date: 2012.05.17
+minter: http://noid.cdlib.org/nd/noidu_m9
+datacenter: CDL.DIGSCI
+
+:: doi:10.6078/M7
+type: shoulder
+manager: ezid
+name: UC Berkeley iSchool
+date: 2012.05.04
+minter: http://noid.cdlib.org/nd/noidu_m7
+datacenter: CDL.UCB
+
+:: ark:/47881/m6
+type: shoulder
+manager: ezid
+name: University of Lyon
+date: 2012.04.13
+minter: http://noid.cdlib.org/nd/noidu_m6
+
+:: doi:10.5967/K9
+type: shoulder
+manager: ezid
+name: HathiTrust Research Center
+date: 2012.04.03
+minter: http://noid.cdlib.org/nd/noidu_k9
+datacenter: PURDUE.EZID
+
+:: doi:10.5967/K8
+type: shoulder
+manager: ezid
+name: Indiana University IUScholarWorks
+date: 2012.04.03
+minter: http://noid.cdlib.org/nd/noidu_k8
+datacenter: PURDUE.EZID
+
+:: doi:10.5967/M0
+type: shoulder
+manager: ezid
+name: Indiana University Sustainable Environment-Actionable Data (SEAD)
+date: 2012.04.03
+minter: http://noid.cdlib.org/nd/noidu_m0
+datacenter: PURDUE.EZID
+
+:: ark:/85967/k7
+type: shoulder
+manager: ezid
+name: Indiana University
+date: 2012.04.03
+minter: http://noid.cdlib.org/nd/noidu_k7
+
+:: ark:/86083/m3
+type: shoulder
+manager: ezid
+name: Oregon Health & Science University
+date: 2012.04.03
+minter: http://noid.cdlib.org/nd/noidu_m3
+
+:: doi:10.6083/M4
+type: shoulder
+manager: ezid
+name: Oregon Health & Science University
+date: 2012.04.03
+minter: http://noid.cdlib.org/nd/noidu_m4
+datacenter: CDL.OHSU
+
+:: ark:/61001/m2
+type: shoulder
+manager: ezid
+name: University of Chicago
+date: 2012.04.03
+minter: http://noid.cdlib.org/nd/noidu_m2
+
+:: doi:10.6082/M1
+type: shoulder
+manager: ezid
+name: University of Chicago
+date: 2012.04.03
+minter: http://noid.cdlib.org/nd/noidu_m1
+datacenter: PURDUE.UCHIG
+
+# k6 ARKs in a partnership between the UCB library and CDL DSC program
+:: ark:/13030/k6
+type: shoulder
+manager: ezid
+name: UC Berkeley/Digital Special Collections
+date: 2012.03.28
+minter: http://noid.cdlib.org/nd/noidu_k6
+
+:: ark:/86081/k5
+type: shoulder
+manager: ezid
+name: UCSD Nieh Lab
+date: 2012.03.28
+minter: http://noid.cdlib.org/nd/noidu_k5
+
+:: doi:10.6081/K4
+type: shoulder
+manager: ezid
+name: UCSD Nieh Lab
+date: 2012.03.28
+minter: http://noid.cdlib.org/nd/noidu_k4
+datacenter: CDL.UCSDBIO
+
+:: ark:/86080/k3
+type: shoulder
+manager: ezid
+name: Collaborative Research in Computational Neuroscience (CRCNS)
+date: 2012.03.12
+minter: http://noid.cdlib.org/nd/noidu_k3
+
+:: ark:/86079/k1
+type: shoulder
+manager: ezid
+name: UCLA Department of Ecology and Evolutionary Biology
+date: 2012.03.12
+minter: http://noid.cdlib.org/nd/noidu_k1
+
+:: doi:10.6080/K0
+type: shoulder
+manager: ezid
+name: Collaborative Research in Computational Neuroscience (CRCNS)
+date: 2012.03.08
+minter: http://noid.cdlib.org/nd/noidu_k0
+datacenter: CDL.UCBCRCNS
+
+:: doi:10.6075/J0
+type: shoulder
+manager: ezid
+name: UCSD
+date: 2012.03.06
+minter: http://noid.cdlib.org/nd/noidu_j0
+datacenter: CDL.UCSD
+
+:: ark:/86074/r3
+type: shoulder
+manager: ezid
+name: American Astronomical Society (AAS)
+date: 2012.03.05
+minter: http://noid.cdlib.org/nd/noidu_r3
+
+:: doi:10.6074/D8
+type: shoulder
+manager: ezid
+name: American Astronomical Society (AAS)
+date: 2012.03.05
+minter: http://noid.cdlib.org/nd/noidu_d8
+datacenter: CDL.AAS
+
+:: ark:/86077/j4
+type: shoulder
+manager: ezid
+name: Cornell Institute for Social and Economic Research (CISER)
+date: 2012.03.05
+minter: http://noid.cdlib.org/nd/noidu_j4
+
+:: doi:10.6077/J5
+type: shoulder
+manager: ezid
+name: Cornell Institute for Social and Economic Research (CISER)
+date: 2012.03.05
+minter: http://noid.cdlib.org/nd/noidu_j5
+datacenter: CDL.CISER
+
+:: ark:/86076/j6
+type: shoulder
+manager: ezid
+name: Fred Hutchinson Cancer Research Center
+date: 2012.03.05
+minter: http://noid.cdlib.org/nd/noidu_j6
+
+:: doi:10.6076/J7
+type: shoulder
+manager: ezid
+name: Fred Hutchinson Cancer Research Center
+date: 2012.03.05
+minter: http://noid.cdlib.org/nd/noidu_j7
+datacenter: CDL.FHCRC
+
+:: ark:/86073/
+type: shoulder
+manager: ezid
+name: Long Term Ecological Research (LTER) Network
+date: 2012.03.05
+minter: http://noid.cdlib.org/nd/noidu_j3
+
+:: doi:10.6073/
+type: shoulder
+manager: ezid
+name: Long Term Ecological Research (LTER) Network
+date: 2012.03.05
+minter: http://noid.cdlib.org/nd/noidu_j1
+datacenter: CDL.LTERNET
+
+:: doi:10.6078/J8
+type: shoulder
+manager: ezid
+name: UC Berkeley
+date: 2012.03.05
+minter: http://noid.cdlib.org/nd/noidu_j8
+datacenter: CDL.UCB
+
+:: doi:10.6079/J9
+type: shoulder
+manager: ezid
+name: UCLA Department of Ecology and Evolutionary Biology
+date: 2012.03.05
+minter: http://noid.cdlib.org/nd/noidu_j9
+datacenter: CDL.UCLAEEB
+
+:: ark:/86072/h9
+type: shoulder
+manager: ezid
+name: UCSD Signaling Gateway
+date: 2012.03.05
+minter: http://noid.cdlib.org/nd/noidu_h9
+
+:: doi:10.6072/H0
+type: shoulder
+manager: ezid
+name: UCSD Signaling Gateway
+date: 2012.03.05
+minter: http://noid.cdlib.org/nd/noidu_h0
+datacenter: CDL.SDSCSG
+
+:: ark:/86071/h7
+type: shoulder
+manager: ezid
+name: UC Merced
+date: 2012.03.02
+minter: http://noid.cdlib.org/nd/noidu_h7
+
+:: doi:10.6071/H8
+type: shoulder
+manager: ezid
+name: UC Merced
+date: 2012.03.02
+minter: http://noid.cdlib.org/nd/noidu_h8
+datacenter: CDL.UCM
+
+# note: prior ARK contact, Maguire, Marsha | University of Washington
+#       Libraries || mmaguire@u.washington.edu
+# is different from current EZID customer
+:: ark:/78428/h6
+type: shoulder
+manager: ezid
+name: University of Washington
+date: 2012.03.02
+minter: http://noid.cdlib.org/nd/noidu_h6
+
+:: doi:10.6069/H5
+type: shoulder
+manager: ezid
+name: University of Washington
+date: 2012.03.02
+minter: http://noid.cdlib.org/nd/noidu_h5
+datacenter: CDL.UWL
+
+:: ark:/86070/h3
+type: shoulder
+manager: ezid
+name: LabArchives
+date: 2012.02.29
+minter: http://noid.cdlib.org/nd/noidu_h3
+
+:: doi:10.6070/H4
+type: shoulder
+manager: ezid
+name: LabArchives
+date: 2012.02.29
+minter: http://noid.cdlib.org/nd/noidu_h4
+datacenter: CDL.LABARCH
+
+:: ark:/86068/
+type: shoulder
+manager: ezid
+name: Data-Planet
+date: 2012.02.21
+minter: http://noid.cdlib.org/nd/noidu_h1
+
+:: doi:10.6068/
+type: shoulder
+manager: ezid
+name: Data-Planet
+date: 2012.02.21
+minter: http://noid.cdlib.org/nd/noidu_h2
+datacenter: CDL.DPLANET
+
+:: ark:/86067/xcv8
+type: shoulder
+manager: ezid
+name: Digital Antiquity
+date: 2012.02.21
+minter: http://noid.cdlib.org/md/noidu_xcv8
+
+:: doi:10.6067/XCV8
+type: shoulder
+manager: ezid
+name: Digital Antiquity
+date: 2012.02.21
+minter: http://noid.cdlib.org/nd/noidu_xcv8
+datacenter: CDL.DIGANT
+
+:: ark:/85069/g8
+type: shoulder
+manager: ezid
+name: OpenTopography Facility
+date: 2012.02.07
+minter: http://noid.cdlib.org/nd/noidu_g8
+
+:: doi:10.5069/G9
+type: shoulder
+manager: ezid
+name: OpenTopography Facility
+date: 2012.02.07
+minter: http://noid.cdlib.org/nd/noidu_g9
+datacenter: CDL.SDSCOT
+
+:: ark:/85067/g6
+type: shoulder
+manager: ezid
+name: NASA Goddard Space Flight Center (GSFC)
+date: 2012.01.24
+minter: http://noid.cdlib.org/nd/noidu_g6
+
+:: doi:10.5067/
+type: shoulder
+manager: ezid
+name: NASA Goddard Space Flight Center (GSFC)
+date: 2012.01.24
+minter: http://noid.cdlib.org/nd/noidu_g7
+datacenter: CDL.NASAGSFC
+
+:: ark:/21198/r2
+type: shoulder
+manager: ezid
+name: UCLA Library
+date: 2012.01.17
+minter: http://noid.cdlib.org/nd/noidu_r2
+
+:: doi:10.5068/G5
+type: shoulder
+manager: ezid
+name: UCLA
+date: 2012.01.17
+minter: http://noid.cdlib.org/nd/noidu_g5
+datacenter: CDL.UCLA
+
+:: ark:/38305/g4
+type: shoulder
+manager: ezid
+name: UCSC Grateful Dead Archive
+date: 2011.12.16
+minter: http://noid.cdlib.org/nd/noidu_g4
+
+:: ark:/13030/fq
+type: shoulder
+manager: ezid
+name: DPR Legacy
+date: 2011.12.13
+minter:
+
+:: ark:/85065/d7
+type: shoulder
+manager: ezid
+name: National Center for Atmospheric Research (NCAR)
+date: 2011.12.13
+minter: http://noid.cdlib.org/nd/noidu_d7
+
+:: doi:10.5065/D6
+type: shoulder
+manager: ezid
+name: National Center for Atmospheric Research (NCAR)
+date: 2011.12.13
+minter: http://noid.cdlib.org/nd/noidu_d6
+datacenter: CDL.NCAR
+
+:: ark:/83334/f9
+type: shoulder
+manager: ezid
+name: Oak Ridge National Laboratory Distributed Active Archive Center (ORNL DAAC)
+date: 2011.12.13
+minter: http://noid.cdlib.org/nd/noidu_f9
+
+:: doi:10.3334/
+type: shoulder
+manager: ezid
+name: Oak Ridge National Laboratory Distributed Active Archive Center (ORNL DAAC)
+date: 2011.12.13
+minter:
+datacenter: CDL.ORNL
+
+:: ark:/85066/f8
+type: shoulder
+manager: ezid
+name: USGS Core Science Analytics and Synthesis (CSAS)
+date: 2011.12.13
+minter: http://noid.cdlib.org/nd/noidu_f8
+
+:: doi:10.5066/F7
+type: shoulder
+manager: ezid
+name: USGS Core Science Analytics and Synthesis (CSAS)
+date: 2011.12.13
+minter: http://noid.cdlib.org/nd/noidu_f7
+datacenter: CDL.USGS
+
+:: ark:/85064/f5
+type: shoulder
+manager: ezid
+name: Consortium for Qualitative Research Methods
+date: 2011.12.12
+minter: http://noid.cdlib.org/nd/noidu_f5
+
+:: doi:10.5064/F6
+type: shoulder
+manager: ezid
+name: Consortium for Qualitative Research Methods
+date: 2011.12.12
+minter: http://noid.cdlib.org/nd/noidu_f6
+datacenter: CDL.QDR
+
+:: ark:/85063/f2
+type: shoulder
+manager: ezid
+name: National Center for Ecological Analysis and Synthesis (NCEAS)
+date: 2011.12.12
+minter: http://noid.cdlib.org/nd/noidu_f2
+
+:: doi:10.5062/F4
+type: shoulder
+manager: ezid
+name: UCSB
+date: 2011.12.12
+minter: http://noid.cdlib.org/nd/noidu_f4
+datacenter: CDL.UCSB
+
+:: ark:/48907/f3
+type: shoulder
+manager: ezid
+name: UCSB
+date: 2011.11.15
+minter: http://noid.cdlib.org/nd/noidu_f3
+
+:: ark:/38305/f1
+type: shoulder
+manager: ezid
+name: UCSC Library
+date: 2011.11.06
+minter: http://noid.cdlib.org/nd/noidu_f1
+
+:: ark:/28722/d9
+type: shoulder
+manager: ezid
+name: UC Berkeley
+date: 2011.09.20
+minter: http://noid.cdlib.org/nd/noidu_d9
+
+:: doi:10.5072/FK2
+type: shoulder
+manager: ezid
+name: DOI Test
+date: 2011.08.18
+minter: http://noid.cdlib.org/nd/noidu_fk2
+datacenter: CDL.CDL
+
+:: ark:/21198/r1
+type: shoulder
+manager: ezid
+name: UCLA
+date: 2011.06.24
+minter: http://noid.cdlib.org/nd/noidu_r1
+
+# This shoulder is special-cased in EZID for temporary, expiring ids.
+:: ark:/99999/fk4
+type: shoulder
+manager: ezid
+name: ARK Test
+date: 2011.06.22
+minter: http://noid.cdlib.org/nd/noidu_fk4
+
+:: ark:/13030/p5
+type: shoulder
+manager: ezid
+name: NASA Heliophysics Data Environment
+date: 2011.03.02
+minter: http://noid.cdlib.org/nd/noidu_p5
+
+:: doi:10.5060/D5
+type: shoulder
+manager: ezid
+name: NASA Heliophysics Data Environment
+date: 2011.03.02
+minter: http://noid.cdlib.org/nd/noidu_d5
+datacenter: CDL.CDL
+
+:: ark:/87911/c8
+type: shoulder
+manager: ezid
+name: OneOcean
+date: 2011.03.02
+minter: http://noid.cdlib.org/md/noidu_c8
+
+:: ark:/19153/b2
+type: shoulder
+manager: ezid
+name: CRDP academie d'Aix-Marseille
+date: 2011.03.01
+minter: http://noid.cdlib.org/nd/noidu_b2
+
+:: doi:10.5060/D4
+type: shoulder
+manager: ezid
+name: {legacy} ESIP Preservation and Stewardship Cluster
+date: 2011.02.18
+minter:
+datacenter: CDL.CDL
+
+:: ark:/34231/c6
+type: shoulder
+manager: ezid
+name: Purdue Libraries
+date: 2011.01.24
+minter: http://noid.cdlib.org/nd/noidu_c6
+
+:: doi:10.4231/D3
+type: shoulder
+manager: ezid
+name: Purdue Libraries
+date: 2011.01.24
+minter: http://noid.cdlib.org/nd/noidu_d3
+datacenter: PURDUE.EZID
+
+# j2 for admin/auxiliary stuff (eg, service agreements, "owner collections")
+:: ark:/13030/j2
+type: shoulder
+manager: ezid
+name: CDL Auxiliary
+date: 2010.09.10
+minter: http://noid.cdlib.org/nd/noidu_j2
+
+# m5 for Merritt ingest ids and user-defined classes (eg, collections)
+:: ark:/13030/m5
+type: shoulder
+manager: ezid
+name: Merritt
+date: 2010.09.10
+minter: http://noid.cdlib.org/nd/noidu_m5
+
+:: ark:/13030/c7
+type: shoulder
+manager: ezid
+name: EZID
+date: 2010.09.09
+minter: http://noid.cdlib.org/nd/noidu_c7
+
+:: ark:/99166/p9
+type: shoulder
+manager: ezid
+name: CDL Agent
+date: 2010.09.01
+minter: http://noid.cdlib.org/nd/noidu_p9
+
+:: ark:/28722/k2
+type: shoulder
+manager: ezid
+name: UC Berkeley iSchool
+date: 2010.02.01
+minter: http://noid.cdlib.org/nd/noidu_ucbek
+
+# Content for zz and vf from CDL DPR conversion in 2013
+:: ark:/13030/vf
+type: shoulder
+manager: ezid
+name: Legacy arkpreserve
+date: 2009.03.09
+minter:
+
+:: ark:/13030/qt
+type: shoulder
+manager: ezid
+name: eScholarship Legacy
+date: 2007.06.01
+minter:
+
+# Content for ft and tf managed by Brian Tingle (now closed, non-ezid minters).
+:: ark:/13030/ft
+type: shoulder
+manager: ezid
+name: Online Archive of California (OAC) Legacy ft
+date: 2007.06.01
+minter:
+
+:: ark:/13030/tf
+type: shoulder
+manager: ezid
+name: Online Archive of California (OAC) Legacy tf
+date: 2007.06.01
+minter:
+
+# kt from Brian Tingle, no more minting
+:: ark:/13030/kt
+type: shoulder
+manager: ezid
+name: Online Archive of California (OAC)
+date: 2007.06.01
+minter:
+
+# hb retired from ark.cdlib.org, run by UCB (Garey Mills) for EADs et al
+:: ark:/13030/hb
+type: shoulder
+manager: ezid
+name: UC Berkeley Legacy Library
+date: 2007.06.01
+minter:
+
+# contact: Mills, Garey ||| gmills@library.berkeley.edu | +1 510-643-4092
+:: ark:/28722/bk
+type: shoulder
+manager: ezid
+name: UC Berkeley Legacy Library bk
+date: 2007.06.01
+minter:
+
+# Content for zz and vf from CDL DPR conversion in 2013
+:: ark:/21198/zz
+type: shoulder
+manager: ezid
+name: UCLA Legacy
+date: 2007.06.01
+minter:
+
+:: ark:/13030/c8
+type: shoulder
+manager: ezid
+name: CDL Digital Special Collections
+minter: http://noid.cdlib.org/nd/noidu_c8
+
+:: doi:10.5061/
+type: shoulder
+manager: ezid
+name: Dryad
+minter: http://noid.cdlib.org/nd/noidu_rd8
+datacenter: CDL.DRYAD
+
+# Merritt is using this
+:: doi:10.5060/D2
+type: shoulder
+manager: ezid
+name: EZID
+minter: http://noid.cdlib.org/nd/noidu_d2
+datacenter: CDL.CDL
+
+# contact: Mills, Garey ||| gmills@library.berkeley.edu | +1 510-643-4092
+:: ark:/28722/tst
+type: shoulder
+manager: ezid
+name: UC Berkeley Legacy Library tst
+minter:
+
+:: ark:/20775/
+type: shoulder
+manager: ezid
+name: UCSD
+minter:
+
+# urn naan: 97720
+:: urn:uuid:
+type: shoulder
+manager: ezid
+name: UUID URN
+minter:
+
+:: doi:10.5060/XCV8
+type: shoulder
+manager: ezid
+name: {legacy} Digital Antiquity
+minter:
+datacenter: CDL.CDL
+
+:: doi:10.4231/
+type: shoulder
+is_supershoulder: true
+manager: ezid
+name: {legacy} Purdue Libraries
+minter:
+datacenter: PURDUE.EZID
+
+# contact: Miller, Robert
+# contact: Bromley, Hank
+:: ark:/13960/t
+type: shoulder
+manager: oca
+name: Open Content Alliance
+minter:
+
+# contact: Hetzner, Erik
+:: ark:/13030/sw1
+type: shoulder
+manager: other
+name: CDL Web Archiving System
+minter:
+
+# From Brian Tingle
+# M. Low assigned for Cal Counts; no extant objects [bn5]
+:: ark:/13030/bn
+type: shoulder
+manager: other
+name: ?1?
+minter:
+
+# redirects to http://guilda.library.ucsf.edu/ark:/13030/p
+:: ark:/13030/p
+type: shoulder
+is_supershoulder: true
+manager: other
+name: ?2?
+minter:
+
+:: ark:/13030/g3
+type: shoulder
+manager: other
+name: EZID binder ids
+minter:
+

@@ -1,0 +1,200 @@
+#!/usr/bin/perl
+
+use 5.006;
+use strict;
+use warnings;
+
+# Author:  John A. Kunze, jak@ucop.edu, California Digital Library
+# Copyright (c) 2013 UC Regents
+
+use File::ANVL;
+
+my ($msg, @elems, %hash);		# global, but efficient
+
+# main
+{
+	$#ARGV < 3 and
+		print('
+Usage: ezidnewacct [bc]NNNN doi_shdr 8NNNN ark_shdr < newaccount.txt
+
+Run "ezidnewacct" with a new account form on stdin and 4 arguments:
+the DOI "NAAN" (bNNNN instead of 10.NNNN), a shoulder string, the
+corresponding ARK NAAN, and another shoulder string.  This will
+create the strings you need to copy and paste into various files.
+'),
+		exit 1;
+
+	my ($doip, $dshdr, $naan, $ashdr) = @ARGV[0,1,2,3];
+	# xxx verify type checks with regexps?
+
+	use File::Temper 'etemper';
+	my ($edate, $eyear);
+	($edate, $eyear) = File::Temper::etemper() =~ /^((....)......)/;
+
+	local $/;	# set so one read slurps entire file
+	$_ = <STDIN>;	# now slurp entire file from stdin
+	#perl -0777 -pe 's/^From .*\n//m; s/^\s*\n//mg' < ezidnewacct
+
+	s/^From .*\n//m;	# include email headers, but not first
+	s/^\s*\n//mg;		# drop blank lines
+
+	$msg = File::ANVL::anvl_recarray(	# make an array from
+		$_,				# the record string
+		\@elems,			# the made array
+		1,				# starting line number
+		{ comments => 1,		# preserve comments and
+		  autoindent => 1 }		# forgive most indention
+	);				# problems, eg, from email formatting
+	$msg and $msg =~ /^error/ and
+		die($msg);
+
+	$msg = File::ANVL::anvl_arrayhash(	# make map from a tag to array
+		\@elems, \%hash);		# indices of elems holding it
+	$msg and $msg =~ /^error/ and
+		die($msg);
+
+	my ($org, $acronym, $org_www, $acct_name) =
+		map t2e($_), (qw(org org_acroynm org_www acct_name));
+	$org_www =~ s,/+$,,;
+	$acronym = uc $acronym;
+	my $datacenterclass = $doip =~ /^b/ ? 'CDL' : 'PURDUE';
+	my $alloc_pw = ( $doip =~ /^b/ ?
+		"'snorx & lox'" : "'#BoilerDOI12\\!'" );
+	my $datacenter;			# DataCite datacenter name, rules for
+	($datacenter = $acronym) =~	# which allow max 8 uppercase letters
+		s/^(.{8}).+/$1/;
+
+	$doip =~ s/^b/10./;		# decode initial b
+	$doip =~ s/^c/10.1/;		# decode initial c
+	
+	my $minter_base = 'http://noid.cdlib.org/md/noidu_';
+	my $DSHDR = uc $dshdr;		# uppercase version of DOI shoulder
+	my $ark_minter = "$minter_base$ashdr";
+	my $doi_minter = "$minter_base$dshdr";
+	my $validater = "\$ ./validate-shoulders master_shoulders.txt";
+	my $ark_validater = "$validater ark:/$naan/$ashdr";
+	my $doi_validater = "$validater doi:$doip/$DSHDR -p $alloc_pw";
+
+	if ($ashdr eq '-') {
+		$ark_minter = $ashdr = '';
+		$ark_validater = "# Nothing to do";
+	}
+	if ($dshdr eq '-') {
+		$doi_minter = $dshdr = $DSHDR = '';
+		$doi_validater = "# Nothing to do";
+	}
+
+# # Note minter parent directory:  md/... not nd/...
+# shdr: $doip/$dshdr | $acronym DOIs | $edate | md/noidu_$dshdr
+# shdr: $naan/$ashdr | $acronym ARKs | $edate | md/noidu_$ashdr
+# data center: $datacenterclass.$datacenter
+# long label: $org
+# user: $acct_name
+
+	print << "EOF";
+You'll need to insert the following in /noid/shoulders/master_shoulders.txt
+just after the line "...==== Add new shoulders after this line ====...":
+
+:: ark:/$naan/$ashdr
+type: shoulder
+manager: ezid
+name: $org
+date: $edate
+minter: $ark_minter
+
+:: doi:$doip/$DSHDR
+type: shoulder
+manager: ezid
+name: $org
+date: $edate
+minter: $doi_minter
+datacenter: $datacenterclass.$datacenter
+
+In /noid/shoulders, validate the file and create a new datacenter with
+
+    \$ ./validate-shoulders master_shoulders.txt
+    \$ ./mdsadmin $alloc_pw create $datacenterclass.$datacenter '$org' $doip
+
+(using the allocator password for CDL or PURDUE).  Perform an operational
+test (not just a syntactic test) on each shoulder with
+
+    $ark_validater
+    $doi_validater
+
+When everything checks out, install the new shoulders and reload EZID
+
+    \$ ./install-shoulders
+    \$ ./reload-all coffeefingerowthathurts
+
+Optionally, login to EZID as 'admin', visit 'Create IDs' and verify that
+
+    $org
+    
+shows up in the shoulder list.  Now turn the pivotal story over to Joan.
+
+Then, in /noid/naans/forge, insert the following in "../master_naans"
+near the bottom, just before the URNS entry:
+
+naa:
+who:    $org (=) $acronym
+what:   $naan
+when:   $edate
+where:	$org_www
+how:	NP | (:unkn) unknown | $eyear |
+!why:   EZID ARK
+!contact: eziduserid $acct_name
+
+Finally, append these lines to the end of "grandfathered",
+
+EOF
+
+	#87290: UTK       2013.01.18   # University of Tennessee (xxx)
+	printf "${naan}: %-9s $edate   # $org (xxx)\n", $acronym;
+	print << "EOF";
+$doip  # $org
+
+EOF
+}
+
+# tag2element: given hash tag, return corresponding array element value
+# Call:  t2e( $tag )
+#
+sub t2e { my( $tag ) = ( shift );
+
+	join ' ; ',	# separate if more than one (if not, no harm done)
+		map $elems[ $_ + 2 ],	# add 2 to each index stored under
+			@{ $hash{ $tag } };	# the requested hash tag
+}
+
+1;
+
+__END__
+
+From ezid@n2t.net Wed Feb  6 16:24:40 2013
+Date: Wed, 6 Feb 2013 16:24:48 -0800
+From: ezid@n2t.net
+To: jak@ucop.edu, jstarr@ucop.edu
+Subject: new ezid account: benchfly
+
+todays_date: 02/06/2013
+submitters_name: Joan Starr
+acct_name: benchfly
+acct_email: info@benchfly.com
+primary_contact: Alan Marnett
+contact_email: alan@benchfly.com
+contact_phone: 415-312-3165
+contact_fax: 617-284-6279
+org: BenchFly
+org_acroynm: BenchFly
+org_www: http://www.benchfly.com/
+mailing_address1: 955 Massachusetts Ave
+mailing_address2: #543
+mailing_city: Cambridge
+mailing_state: MA
+mailing_zip: 02139
+mailing_country: USA
+identifiers: DOIs and ARKs
+created_before: NO
+internal_identifiers: YES
+identifier_plans: At BenchFly, we provide a platform for researchers to record and share their technical knowledge with the scientific community. We plan on assigning these technical videos identifiers so that as researchers share their content around the web, there will be a solid identifier in place that points to the original source file. This will also allow them to use the DOIs to get credit for the work they’ve done in emerging “altmetrics” systems. We already have the infrastructure in place to accommodate all of the DOI requirements, so issuing the DOI number will be an easy addition to our platform.
+comments: I've written him to ask about the internal/local identifiers. Haven't heard back yet. I'll update the  Pivotal ticket when I do.

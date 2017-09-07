@@ -1,0 +1,310 @@
+#!/usr/bin/env perl
+
+use 5.006;
+use strict;
+use warnings;
+
+use File::Copy 'mv';
+
+my $rep = 'egg.replay';
+my $to_ship = "$rep/to_ship";
+my $shipped = "$rep/shipped";
+my $received = "$rep/received";
+my $played = "$rep/played";
+my $archived = "$rep/archived";
+#my $shipping = "$rep/shipping";
+#my $receiving = "$rep/receiving";
+#my $playing = "$rep/playing";
+#my $archiving = "$rep/archiving";
+
+my @local_dirs =
+	($to_ship, $shipped, $archived);
+#	($to_ship, $shipping, $shipped, $archiving, $archived);
+my @remote_dirs =
+	($received, $played, $archived);
+#	($receiving, $received, $playing, $played, $archiving, $archived);
+# xxx remove to_play dir from replica
+
+#my $egg = 'egg';
+my $egg = 'perl -Mblib egg';
+
+my $usage_text = << "EOF";
+
+$0 - harvest and replay a binder's rlog files on a remote site
+
+ Usage: $0 cull Binder DestHost
+        $0 play [ --do ] Binder RlogFile
+        $0 clean Binder DestHost
+        $0 init Binder DestHost
+
+The "cull" form moves a Binder's current rlog into its "$to_ship"
+directory, copies it via scp to the corresponding directory at DestHost,
+and returns "note: culled to RlogFile", where RlogFile is the local name
+of the culled file and DestHost is of the form user\@hostname.
+
+The "play" form is used to play back an RlogFile against the named Binder.
+Use --do to actually perform the operations instead of merely printing the
+egg commands that _would_ peform them.
+The RlogFile is looked for in Binder's "$received" directory.
+
+The "clean" form is used to consolidate older files, on both the local host
+and DestHost, in the "$shipped" and "$played" directories,
+moving some to an "$archived" directory as needed.  This form also
+looks for and reports on any abandoned rlog files found but not yet processed.
+
+Generally, "$0" will be called via crontab on a site that periodically
+pushes Binder rlogs to a replica site.  Typically, "clean" is called much
+less often than "cull" or "play".  The "init" form is called internally
+if it appears that this is the first time "$0" has been called.
+
+A Binder should name a directory enclosing egg.* files.  Culled RlogFile
+names bear timestamps such that names naturally sort in old-to-new order.
+
+EOF
+
+# main
+{
+	my $cmd = shift;
+	$cmd or
+		print($usage_text),
+		exit 0;
+	$cmd eq 'cull' and
+		exit cull(@ARGV);
+	$cmd eq 'play' and
+		exit play(@ARGV);
+	$cmd eq 'clean' and
+		exit clean(@ARGV);
+	$cmd eq 'init' and
+		exit init(@ARGV);
+	$cmd eq 'doodle' and
+		exit doodle(@ARGV);
+	print("error: unknown command: $cmd\n$usage_text"),
+	exit 1;
+}
+
+# The cull and play (xxx?) arguments
+# return code suitable for exit() (0=success, !0=error)
+
+# Usage: $0 cull Binder DestHost
+#        $0 play Binder RlogFile
+#        $0 clean Binder DestHost
+#        $0 init Binder DestHost
+
+sub cull { my( $binder, $desthost )=@_;
+
+	my $msg;
+	$binder or
+		print("error: no binder given\n$usage_text"),
+		return 1;
+	-d $binder or
+		print("error: $binder: no such binder directory\n$usage_text"),
+		return 1;
+	$desthost or
+		print("error: no desthost given\n$usage_text"),
+		return 1;
+	if (! -d "$binder/$archived") {
+		init($binder, $desthost) and
+			print("error: init($binder, $desthost): $msg\n"),
+			return 1;
+	}
+
+	# This should move the current egg.rlog file for $binder into
+	# rlogs/to_ship/rlog.<temperstamp>.
+	#
+	$msg = `$egg -d $binder cullrlog 2>&1`;
+	my $status = $? >> 8;		# true status is in higher-order bits
+	chop $msg;
+	$status != 0 and
+		print("error: cull failed ($status) with binder $binder: ",
+			"$msg\n"),
+		return 1;
+	# Return from egg cullrlog is either "note: nothing to cull" or, eg,
+	#"note: culled to \
+	#     /apps/n2t/binders/ezid/egg.orlogs/to_ship/rlog.20140606142214"
+	$msg =~ m{nothing to cull} and
+		return 0;		# silent success, print nothing
+	my ($rlogfile) = $msg =~ m{culled to .*(rlog\..*)};
+	$rlogfile and
+		print("$rlogfile\n"),
+		return 0;		# success, print filename
+	print("error: unknown return from cull on $binder: $msg\n"),
+	return 1;
+}
+
+# Sample log line:
+#ezid 128.48.204.119 U14EE_16:37:09 C: ark:/99999/fk9123|_t.set http://jak-macbook-pro.local:8080/
+
+# This code is to be run on the remote replica site and called via ssh.
+# return code suitable for exit() (0=success, !0=error)
+sub play {
+
+	my $noexec = $_[0] ne '--do';
+	! $noexec and
+		shift;
+
+	! $noexec and print(STDERR "comment this line out to proceed\n"), exit;
+
+	my( $binder, $file )=@_;
+	open IN, "< $file" or
+		print(STDERR "error: cannot open $file: $!\n"),
+		return 1;
+	print STDERR "Processing $binder $file\n";
+
+	my ($who, $where, $when, $what, $arg0, $rest, $id, $elemcom, $iec);
+	my $cmd = "$egg -d $binder -";
+	my $changeno = 0;
+	my ($status, $len);
+	my $fh = *STDOUT;
+	my $progress_interval = 10;
+	$noexec and
+		$progress_interval = 5000;	# much faster
+
+	while (<IN>) {		# read each log line and split
+		chop;
+		($who, $where, $when, $what, $arg0, $rest) =
+			split ' ', $_, 6;
+		($. % $progress_interval) == 0 and
+			print STDERR "Line $.: $arg0\n";
+		$what ne 'C:'		and next;	# skip unless C:
+		$changeno++;
+		# xxx preserve the $who??? how?
+
+		# XXX kludge to test current dumb \n-only encoding
+		#$cmd = "perl -e '$_ = q/$rest\'; s/%0a/\n/g; print' " .
+		#echo "$rest" | perl -pe "s/%0a/\n/g"
+		#	"| $egg -d $binder -";
+		#$cmd = "echo '$rest' | $egg -d $binder -";
+
+		unless ($noexec) {
+			# one perl process per log line -- not very efficient
+			open(EGG, "| $cmd") or print(STDERR
+				"error: failed to open pipe to $cmd: $!\n",
+				"Bailing at line $., change $changeno", "\n"),
+				return 1;
+			$fh = *EGG;
+		}
+
+		# Which indirect token?
+		#   @-- to end of file?
+		#   @-  to first blank line (but that could be real input)
+		#   @-N to first gather N+6 bytes (terminal \n#eot\n)
+
+		($id, $elemcom) = split /\|/, $arg0;
+		$id or
+			print(STDERR "error: no id in arg0 ($arg0)\n"),
+			$id = '';
+
+		# note: this is ezid's python encoding 4 (or 3?)
+		#		split /\|/, $arg0;
+		$id =~ s{ ([%'"\\&@|;()[\]=:<]|[^!-~]) }
+			{ sprintf("%%%02x", ord($1))   }xego;
+		$iec = $id;
+		$elemcom ||= '';
+		$elemcom =~ s{ ([%'"\\&@|;()[\]=:<]|[^!-~]) }
+			     { sprintf("%%%02x", ord($1))    }xego;
+		$elemcom and
+			$iec .= "|$elemcom";
+
+		print $fh ":hx% $iec";		# start, eg, ark:/...|title.set
+		if ($rest) {			# add rest, if any
+			$rest =~ s/%0a/\n/g;
+			$len = length $rest;
+			print($fh ' @-', "$len\n", $rest, "\n#eot\n");
+
+			#if ($noexec) {
+			#} else {
+			#	print($fh ' @--', "\n", $rest);	# no final \n
+			#	#print(' @--', "\n", $rest, "\n");
+			#}
+		}
+		else {
+			print $fh "\n";
+		}
+		unless ($noexec) {
+			close EGG;
+			$? != 0 and	# after process close $? has status
+				print(STDERR "error: binder $binder didn't ",
+				"like \"$rest\" (status $?) on line $.\n");
+		}
+		#$. > 1000 and exit;	# artificial limiting
+	}
+	close IN;
+	print STDERR "Changes: $changeno\n";
+	return 0;
+# XXX it is the caller's responsibility to move this file away
+#mv $file, $destfile or
+#	print("error: cannot move $file to $destfile: $!\n"),
+#	return 1;
+}
+
+# xxx set_crontab will process warts/env.sh to discover how often and
+# what exactly to call here, eg,
+#N2T_REPLICAS=n2tlx.edina.ac.uk=5
+#N2T_REPLICAS=ezid,yamz,oca,n2t->5,n2tlx.edina.ac.uk:foo->30,a.b.com
+# crontab:
+# */5 * * * * scp ... n2tlx; ssh n2tlx orlogs play ezid yamz oca n2t
+# scp -p $binder/egg.orlogs/to_ship/$r n2tlx.edina.ac.uk:$binder/egg.orlogs/to_play/
+
+# return code suitable for exit() (0=success, !0=error)
+# xxx to do
+#
+sub clean {
+
+	print "Not implemented yet.\n";
+	return 0;
+}
+
+sub init { my( $binder, $desthost )=@_;
+
+	my ($cmd, $msg, $status);
+	# no need to check args, since caller checked them already
+
+	# do remote
+	my ($tb) = $binder =~ m{([^/]+)/*$};	# tail of path to binder
+	$cmd = "ssh $desthost mkdir -p " .	# '' puts join string before
+		join(" binders/$tb/", '', @remote_dirs);	# first elem
+	$msg = `$cmd 2>&1`;
+	$status = $? >> 8;		# true status is in higher-order bits
+	chop $msg;
+	$status != 0 and
+		print("error: remote init command ($cmd) failed ($status) ",
+			"with binder $binder: $msg\n"),
+		return 1;
+
+	# do local
+	$cmd = 'mkdir -p ' .	# the '' below puts join string in front of
+		join(" $binder/", '', @local_dirs);	# the first element
+	$msg = `$cmd 2>&1`;
+	$status = $? >> 8;		# true status is in higher-order bits
+	chop $msg;
+	$status != 0 and
+		print("error: local init command ($cmd) failed ($status) ",
+			"with binder $binder: $msg\n"),
+		return 1;
+
+	return 0;
+}
+
+sub doodle { my( $binder )=@_;
+
+	$binder or
+		print("error: no binder given\n$usage_text"),
+		return 1;
+	-d $binder or
+		print("error: $binder: no such binder directory\n$usage_text"),
+		return 1;
+	open(EGG, "| $egg -d $binder -") or
+		print("error: failed to open pipe to binder $binder: $!\n"),
+		return 1;
+	print EGG <<EOT;
+		jj.set a b
+		kk.set c d
+		jj.fetch
+		kk.fetch
+		jj.purge
+		jj.fetch
+EOT
+	close EGG;
+	return 0;
+}
+

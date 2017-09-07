@@ -1,0 +1,172 @@
+#!/usr/bin/perl
+
+use 5.006;
+use strict;
+use warnings;
+
+# Author:  John A. Kunze, jak@ucop.edu, California Digital Library
+# Copyright (c) 2014 UC Regents
+
+# The arg should be a DOI prefix tail, ie, the prefix part following "10.",
+# and should consist of pure digits.
+#
+sub d2n { my $ptail = shift || '';
+
+	# First make sure it has at least 4 digits by zero-padding.
+	my $min4 = sprintf "%04d", $ptail;
+
+	$min4 <= 9999 and
+		return 'b' . $min4;
+	$min4 <= 19999 and
+		return 'c' . $min4;
+	$min4 <= 29999 and
+		return 'd' . $min4;
+	$min4 <= 39999 and
+		return 'f' . $min4;
+	$min4 <= 49999 and
+		return 'g' . $min4;
+	$min4 <= 59999 and
+		return 'h' . $min4;
+	$min4 <= 69999 and
+		return 'j' . $min4;
+	$min4 <= 79999 and
+		return 'k' . $min4;
+	$min4 <= 89999 and
+		return 'm' . $min4;
+	$min4 <= 99999 and
+		return 'n' . $min4;
+	$min4 <= 199999 and
+		return 'p' . $min4;
+	$min4 <= 299999 and
+		return 'q' . $min4;
+	$min4 <= 399999 and
+		return 'r' . $min4;
+	$min4 <= 499999 and
+		return 's' . $min4;
+	$min4 <= 599999 and
+		return 't' . $min4;
+	$min4 <= 699999 and
+		return 'v' . $min4;
+	$min4 <= 799999 and
+		return 'w' . $min4;
+	$min4 <= 899999 and
+		return 'x' . $min4;
+	$min4 <= 999999 and
+		return 'z' . $min4;
+
+	return 'OUTofRANGE' . $min4;
+}
+
+# returns 5-digit naan, for 10.\d{1,5}
+sub doip2naan { my $prefix = shift or return '';
+
+	# Be flexible.  Work with pure Prefixes or embedded Prefixes.
+	# xxx Test with doi:10.9876/ft91234 10.9 10.98 10.987
+	# xxx Test with 19.9876
+	#	# xxx need better error return protocol (stderr?)
+
+	# replace with a NAAN what looks like a prefix;
+	# if the prefix has no equivalent NAAN, return it untouched;
+	# everything else will be untouched
+	$prefix =~ s
+		{ \b (doi:)? 10\. (\d{1,5}) \b }
+		{ "ark:/" . d2n($2) }xeg;
+	return $prefix;
+}
+
+# We don't check, but both args should be non-empty strings,
+# the first being an NCDA-acceptable char [bcdfghjk...].
+#
+sub n2d { my( $chr1, $final4 )=( shift, shift );
+
+	my $finalpart = $final4 =~ s/^0+//;	# remove 0 padding, if any
+	my $firstpart =
+		($chr1 eq 'b' ? '' :
+		($chr1 eq 'c' ? '1' :
+		($chr1 eq 'd' ? '2' :
+		($chr1 eq 'f' ? '3' :
+		($chr1 eq 'g' ? '4' :
+		($chr1 eq 'h' ? '5' :
+		($chr1 eq 'j' ? '6' :
+		($chr1 eq 'k' ? '7' :
+		($chr1 eq 'm' ? '8' :
+		($chr1 eq 'n' ? '9' :
+		($chr1 eq 'p' ? '10' :
+		($chr1 eq 'q' ? '20' :
+		($chr1 eq 'r' ? '30' :
+		($chr1 eq 's' ? '40' :
+		($chr1 eq 't' ? '50' :
+		($chr1 eq 'v' ? '60' :
+		($chr1 eq 'w' ? '70' :
+		($chr1 eq 'x' ? '80' :
+		($chr1 eq 'z' ? '90' :
+				'OUTofRANGE'
+	)))))))))))))))))));
+
+	return $firstpart . $final4;
+}
+
+sub naan2doip { my $naan = shift or return '';
+
+	# Be flexible.  Work with pure NAANs or embedded NAANs.
+	# xxx Test with ark:/13030/ft91234 b5072 c4456 13030
+	# xxx Test with b0004 b0043 b0432 b4321
+	#	# xxx need better error return protocol (stderr?)
+
+	# replace with a prefix what looks like a NAAN with prefix;
+	# if the NAAN has no equivalent, return it untouched;
+	# everything else will be untouched
+	$naan =~ s
+		{ \b (ark:/*)? ([bcdfghjkmnpqrstvwxz]) (\w{4}) \b (\S*) }
+		{ "doi:10." . n2d($2, $3) . "\U$4\L" }xeg;
+	return $naan;
+}
+
+my $cmd = $0;
+$cmd =~ s,.*/,,;		# drop path part
+my $usage_text = qq@
+$cmd - convert a DOI Prefix to or from an ARK NAAN
+
+Usage:	$cmd [ -r ] NorP ...
+	$cmd [ -r ] -
+	
+where NorP is a NAAN if -r (reverse) is given or a Prefix without -r.
+With just a '-' argument, NorP's are read a line at a time from the stdin.
+@;
+
+# main
+{
+	$#ARGV < 0 and
+		print($usage_text),
+		exit 1;
+	my ($rev, $stdin) = (0, 0);
+	$ARGV[0] eq '-r' and
+		$rev = 1,
+		shift;
+	$#ARGV >= 0 and $ARGV[0] eq '-' and
+		$stdin = 1,
+		shift;
+	$#ARGV >= 0 and $ARGV[0] =~ /^-/ and
+		print("error: unknown option $ARGV[0]\n$usage_text"),
+		exit 1;
+	$stdin and $#ARGV >= 0 and
+		print("error: why extra arguments after '-'?\n$usage_text"),
+		exit 1;
+	! $stdin and $#ARGV < 0 and
+		print("error: no NorP arguments?\n$usage_text"),
+		exit 1;
+
+	if ($stdin) {		# NorPs are on stdin; read and exit
+		while (<>) {
+			chop;
+			print "", ($rev ? naan2doip($_) : doip2naan($_)), "\n";
+		}
+		exit 0;
+	}
+
+	# ... else NorPs given as args; read and exit
+	foreach my $norp (@ARGV) {
+		print "", ($rev ? naan2doip($norp) : doip2naan($norp)), "\n";
+	}
+	exit 0;
+}

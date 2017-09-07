@@ -1,0 +1,10 @@
+^blib
+\.tar$
+\.norepo$
+pm_to_blib
+^td_
+\.swp$
+^old/
+^pfx_build/.+
+^scaler/scaler.seqids/
+^scaler/scaler/

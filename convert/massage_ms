@@ -1,0 +1,1 @@
+cp master_shoulders.txt ms.txt ; perl -00 -i -pe '($x) = /^::\s*([^\n]*)\n/s and s,(\nminter: *\S),\nnewminter: https://n2t-pre.cdlib.org/a/ezid/m/$x$1,s' ms.txt && m ms.txt

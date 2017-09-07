@@ -1,0 +1,1901 @@
+#!/usr/bin/env perl
+
+# yyy for converting from BDB minters to json blob minters
+# (https://perlmaven.com/json) 
+# *** use JSON::MaybeXS   as the best library
+
+##!/usr/bin/perl
+
+# xxx fix "erc:where: to list absolute path, eg, not
+#     where:     cdl-n2tpre-p01:./../minters/ezid/ark/b7282/t3
+# xxx fix erc:what: to be one long line; don't wrap erc text any more
+
+# XXX must have way to inspect queue(s) and holds
+# XXX nog rlog is way too verbose (see scaler/scaler)
+### XXXXX !!!! add modifier and indirect tokens support! @ :hx
+#   for hold and queue (at least)
+# xxx for naan/shdr admin, need way to inspect the queue
+
+# xxx bug: when making default binder ("" arg), the default binder's
+#         name appear as "" in the report (just the supplied "")
+# xxx fix: don't report binder creation for the default case
+#        unless --verbose (compares better to quiet "nog nab" experience)
+
+use 5.010;
+use strict;
+use warnings;
+
+# See lib/File/Cmdline.pm for old notes
+
+# Author:  John A. Kunze, jak@ucop.edu, California Digital Library
+#    Orginally created Nov. 2002 at UCSF Center for Knowledge Management
+# 
+# ---------
+# Copyright (c) 2002-2017 UC Regents
+# 
+# Permission to use, copy, modify, distribute, and sell this software and
+# its documentation for any purpose is hereby granted without fee, provided
+# that (i) the above copyright notices and this permission notice appear in
+# all copies of the software and related documentation, and (ii) the names
+# of the UC Regents and the University of California are not used in any
+# advertising or publicity relating to the software without the specific,
+# prior written permission of the University of California.
+# 
+# THE SOFTWARE IS PROVIDED "AS-IS" AND WITHOUT WARRANTY OF ANY KIND, 
+# EXPRESS, IMPLIED OR OTHERWISE, INCLUDING WITHOUT LIMITATION, ANY 
+# WARRANTY OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.  
+# 
+# IN NO EVENT SHALL THE UNIVERSITY OF CALIFORNIA BE LIABLE FOR ANY
+# SPECIAL, INCIDENTAL, INDIRECT OR CONSEQUENTIAL DAMAGES OF ANY KIND,
+# OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+# WHETHER OR NOT ADVISED OF THE POSSIBILITY OF DAMAGE, AND ON ANY
+# THEORY OF LIABILITY, ARISING OUT OF OR IN CONNECTION WITH THE USE
+# OR PERFORMANCE OF THIS SOFTWARE.
+# ---------
+
+use File::Spec::Functions;
+use Text::ParseWords;
+#use File::Path;
+use File::OM;
+#use DB_File;		# xxx needed? provides only O_RDWR?
+use Fcntl;
+use Config;
+use File::Minder ':all';
+use File::Cmdline ':all';
+use File::Nog;
+use File::Value ":all";
+use Pod::Usage;
+#use File::RUU;
+
+my $usage_text = << "EOF";
+
+ Usage: nog [ options ] command [ args ]
+
+The "nog" (Nice Opaque Generator) utility manages "spings", or semi-opaque
+strings.  Spings may be embedded in strings that are then bound to things
+(eg, with egg(1)).  Sharing a string's bindings for the first time creates
+an identifier.  Spings are used in this way to produce strings that later
+become ARKs, URLs, DOIs, Handles, variable names, XML elements, session
+cookies, etc.  Some commands:
+
+ nab N                     output N (default 1) filename-friendly spings
+ mint N                    output N premium spings using a default minter
+ M.mint N                  output N premium spings using minter M
+ M.mstat                   show various minter counts
+ M.hold set S ...          reserve spings (S) to prevent their being minted
+ M.hold release S ...      unreserve spings
+ M.queue now S ...         recycle spings (queue for immediate minting)
+ M.queue delete S ...      delete spings from queue
+ help readme               describe the latest "nog" essentials
+
+There are also commands to manage minters:
+
+ mkminter [SHLDR [BLADE]]  make a minter with a fixed "shoulder", SHLDR,
+			   and a variable "blade" using the template, BLADE,
+                           with d=digit, e=extended digit, f=filtered extended
+                           digit (skip spings with digit there), k=check char
+
+   Options for mkminter:
+     --type [rand|seq]     generator type: random or sequential
+     --atlast [stop|wrap]  when minter runs out, stop or reset minter, or ...
+     --atlast addN         duplicate first N blade chars and continue (def. 3)
+     --oklz N              0 means skip leading zero spings (def. for type seq)
+     --germ N              seed random number generator (default 0)
+ rmminter M ...            remove minter M (actually, move to trash dir)
+ mshow                     show all minders (binders, minters) in path
+
+Examples
+ \$ mkminter -p ark/12345 fk4 eedk   # minter ends up in ark/12345/fk4/ dir
+ \$ mkminter -d tmp "" ddddd         # "empty shoulder" minter ends up in tmp/
+
+Some nog options:
+ -d minter   relative or absolute path to minter, ignoring any path
+ -p path     search path to minter, used to look up 'm' (default ~/.minders)
+ -m format   output format, one of ANVL, XML, JSON, Plain (default)
+
+EOF
+
+my ($WeAreOnWeb, $WeAreResolver) = (0, 0);
+my ($contact, $template, $snaa, $total);
+
+# XXX we don't really need this, right?
+my @valid_commands = qw(
+
+	dbinfo gen get hello help hold man
+	mint nab peppermint queue usage validate version
+	mkminter rmminter delminter
+	mstat
+	mstatus
+	pause unpause
+	mshow
+	deal
+	freeze thaw
+);
+my $default_command = "usage";
+my $do_command;			# prefixed subroutine name to execute command
+my $BulkCmdMode;
+
+my $WeAreBinder = 0;		# assume _not_ called as 'bind'
+my $cmdr_from_d_flag = 0;	# assume candidate minder _not_ from -d
+
+my %opt;			# global options hash
+my $mdr;			# global minder name
+my $cmdr;			# global candidate minder name
+my $dontsearch;			# global flag to not search minder path
+my $pname_mdr;			# global with minder in program name
+my $om;				# global output multiplexer choices
+my $cgih;			# global HTTP headers, if any
+
+my $mh;				# global minder handler
+my $bindid = '';		# global identifier string?? xxx?
+my $mods = undef;		# global command modifier has to pass to Noid
+
+my ($m_evar, $m_cmd, $m_dbbase, $v1bdb);
+
+#=for removal
+#
+## XXXX shouldn't these routines also echo msgs to STDERR??
+##      eg, if (esp. if?) using 'plain'?
+#sub err2 { err1(@_); return 2; }
+#sub err1 { my( $msg )=@_;
+#	# xxx feels like 'plain' wants to borrow 'anvl' for errors
+#	$om->isa('File::OM::Plain') and
+#		$msg = 'error: ' . $msg;	# add helpful ANVL-like label
+#	#$om->elem('error', $msg);
+#	return 1;
+#}
+#
+#=cut
+#
+#=for later
+#
+## verbose print
+#sub vbpr { my( $om, $msg )=@_;
+#
+#	$om and
+#		$om->elem('', $msg), 1
+#	or
+#		print($msg, "\n");
+#}
+#
+## debug print
+#sub dbgpr { my( $msg, $outfile )=@_;
+#	$om and
+#		$om->elem('dbg', $msg), 1
+#	or
+#		print($msg, "\n") ;		# backup output method
+#	$WeAreOnWeb and ! $outfile and
+#		$outfile = "/tmp/mdrdbg";
+#	$outfile and				# doesn't need to be efficient
+#		filval(">>$file", $msg . "\n");
+#}
+#
+#=cut
+
+#    get static_execution_context (xfn, v1bdb)
+#    get dynamic_execution_context (env vars, options, web or shell)
+#    gather command parts, pre-process options
+#    get options (opt)
+#    set up output (om)
+#    --transfer calling options to module options
+#    set up minder object
+#    call cmdline on one or more commands
+# xxx outputs: contact, WeAreBinder, om, v1bdb
+# m_evar, m_cmd, m_dbbase
+# pname_mdr, mdr, cmdr, mh, format, 
+#	($xfn, $pname_mdr, $v1bdb) = def_execution_identity($WeAreBinder)
+# side effects: alters ARGV, may call exit
+
+my @getoptlist = (
+	'api',			# we are using web api
+	'as=s',			# content type for output
+	'atlast=s',		# what to do when last id is minted
+	'checksum=s',		# s=md5, sha1 (def) ack changes with
+					# checksum (not yet)
+	'debug',		# flag
+	'directory|d=s',	# filesystem directory name
+	'echo|e',		# echo small elem values set (let)
+	'echoall|E',		# echo all elem values set (let)
+	'force|f',		# force create
+	'format|m=s',		# use om_*
+	'germ=s',		# germ (quasi-seed)
+	'help|h|?',		# flag
+	'home=s',		# eggnog home directory (default: ~/.eggnog)
+				# yyy unused in nog right now
+	'lock',			# lock db even on O_RDONLY open
+	'long|l',		# flag (unused)
+	'man',			# flag
+	'minder=s',		# flag
+	'minderpath|p=s',	# minder path
+	#'mode=s',		# s=shell, u=url, r=resolver
+	'no_exec|n',		# no execute
+	'oklz=n',		# 0 means skip over spings with leading zeroes
+	'noop',			# marker ending synthetic options
+	'persistomax=n',	# max number of opens in persistent connection
+	'qs=s',			# query string for testing http
+	'recurse|r',		# perform action recursively (unused)
+	'sif=s',		# succeed if elem exists/doesn't (bind)
+	'testlock=i',		# flag xxx test
+	'txnlog=s',		# optional transaction log, eg, per-server
+	'type|t=s',		# mkminter type (noid only)
+	'ua',			# marker for start of user args in query string
+	'verbose',
+	'version|v|V',
+	'wrap=i',		# wrap text to N cols, 0 means don't wrap
+);
+
+# main
+{
+	# call from main to set globals
+	$WeAreBinder = 0;	# or? $WeAreBinder = ($xfn =~ m|binder[^/]*$|)
+
+	($m_evar, $m_cmd, $m_dbbase) = ("NOG", "nog", "nog");
+
+	# One part of our identity is whether we're running Berkeley DB V1.
+	#
+	my $v1bdb = get_dbversion($WeAreBinder);		# true if BDB V1
+
+	my $om_formal;
+	($pname_mdr, $WeAreOnWeb, $WeAreResolver,
+	 $om, $om_formal, $BulkCmdMode, $cgih) =
+	 	get_execution_context($m_cmd, $File::Nog::VERSION,
+			\@getoptlist, \%opt);
+
+#	# For many ops we want to record as much as we can find out about
+#	# the person or agent who is calling us.
+#	#
+#	my $ruu = File::RUU->new( $WeAreOnWeb, {
+#		default_user => 'public',
+#	} );
+
+	# Pass options from command line to the minder handler.
+	#
+	my $mh_opt = {};			# minder handler options
+	$mh_opt->{$_} = $opt{$_}		# options sharing same key
+		for (qw(
+			ack txnlog api atlast
+			checksum debug defuser echo force format
+			germ lock oklz persistomax recurse sif type
+			testlock verbose ));
+
+	# Options without one-to-one key/value to transfer.
+	#
+	$mh_opt->{om_formal} = $om_formal;
+	$mh_opt->{version} = $File::Nog::VERSION;
+
+	$mh = File::Minder->new(File::Minder::ND_MINTER,
+			$WeAreOnWeb, $om, $opt{minderpath}, $mh_opt) or
+#			$ruu, $om, $opt{minderpath}, $mh_opt) or
+		outmsg("couldn't create minder handler"),
+		exit 1;
+
+	exit launch_commands($mh, $BulkCmdMode, $WeAreOnWeb, $m_cmd,
+		\%opt, \&cmd_line);
+}
+
+# the return value from cmd_line becomes process' exit code!
+sub cmd_line {
+
+# try to determine the command and the minder (if any)
+# some commands don't need a minder (eg, gen, help)
+# some commands need a minder that doesn't yet exist (mkminter)
+
+	# Any remaining args should form a noid/bind command.
+	# We use the $do_command (below) prefix in front of the
+	# user-supplied command in order to reduce chance of collision
+	# with imported subroutine names.
+	# Look at the command part (if any) now, and complain about
+	# a non-existent database unless the command is "dbcreate".
+	# xxx is that still true?
+	#
+
+	# First arg is possibly new value for $BulkCmdMode (which we shift).
+	#
+	$BulkCmdMode = shift;
+
+	# Re-set error messages and global modifiers between commands.
+	#
+	$mods = undef;
+	initmsg($mh);
+
+	$opt{verbose} and	# xxx this is more of a debug
+		$om->elem("note", scalar(@_) . " cmd_line tokens");
+
+	$mods = extract_modifiers \@_;
+
+	$opt{verbose} and	# xxx this is more of a debug
+		$om->elem("note", "modifiers: " . join("|", %$mods) .
+				"; args: " . join("|", @_));
+
+	my $command = shift || "";		# first non-option argument
+	unless ($command) {
+		$opt{version}	and $command = "version";
+		$opt{help}	and $command = "help";
+		$opt{man}	and $command = "man";
+		$command ||= $default_command;		# if still not set
+	}
+
+	my $smdr = '';			# initialize searchable minder
+	if (grep(/^$command$/, @valid_commands) != 1) {
+		# Command not found, but don't give up yet.
+		# Caller might have used a shortcut of either the
+		# OO form (minder.method) or omission of the -d, eg,
+		#  a.   noid xz.mint ...
+		#  b.   noid xz mint ...
+		# for bind, OO form is id.method
+		#  c.   bind xz.set ...
+		#  d.   noid xz set ...
+
+	# xxx ServiceIdentifierMethod (SIM) parser
+	# xxx sub fiso_sim { }
+		my ($obj, $cmd) = $command =~ /^(.*)\.(.*)$/;
+		# Notes for the ($obj, $cmd) tuple:
+		#   - greedy match splits 'a.b.c' into 'a.b' and 'c'
+		#   - '.mint' becomes '' and 'mint'
+		#   - 'abc.' becomes 'abc' and ''
+		#   - 'abc' (no '.') becomes '' and ''
+		#
+		$obj ||= $command;	# if not case a, then case b
+		$cmd ||= shift || "";	# if not case a, then case b
+		if (grep(/^$cmd$/, @valid_commands) != 1) {
+			# ok, still not found, so now give up
+			#usage($om,
+			#	"unknown command: $command " . join(" ", @_),
+			#	$usage_text);
+			usage("unknown command: $command " . join(" ", @_));
+			return 1;
+		}
+		$command = $cmd;	# now we have a valid command
+		#$obj or		# empty $obj (eg, noid .mint ...)
+		#	$opt{directory} = "."	# is same as "-d ."
+		#	&& $opt{verbose} && print "-d . from $command\n";
+		#$smdr = $obj;
+		$WeAreBinder and
+# XXX what is the default $obj, hence $bindid and $smdr??
+			($bindid = $obj),
+		1
+		or
+			($smdr = $obj)
+		;
+	}
+	($opt{verbose} and $om->elem("note",
+		"received command '$command'" .
+		($smdr ? ", minter '$smdr'" : "")));
+
+	# If we get here, we have a valid command.
+	# We may also have a modified idea of what minder to use.
+	#
+	$do_command = "ndx_$command";
+
+	if (! defined(&$do_command)) {
+		#usage($om,
+		#	"no subroutine for command: $command " . join(" ", @_),
+		#	$usage_text);
+		usage("no subroutine for command: $command " . join(" ", @_));
+		return 2;
+	}
+	# If we emerge here, we have a command for which we have a
+	# corresponding subroutine.
+
+#	# Perform extra checks in $WeAreOnWeb case.
+#	# xxx this should be based on true auth
+#	if ($WeAreOnWeb && $command eq 'mkminter') {
+#		# xxx really?
+#		usage($om,
+#			qq@command "$command" not allowed in URL interface@,
+#			$usage_text);
+#		return 0;
+#	}
+
+	# Priority needs:
+	# A. easy to use as uuidgen for no-db-based ids: noid gen ->
+	#                b64-encoded uuid with checkchar
+	#  perl -MData::UUID -e '$ug    = new Data::UUID;
+	#         print $ug->create_b64(), "\n";'
+	#     uses / and + and two terminal '=='
+	# * bottom line: 'noid <return>' produces an id using 'gen'
+	# 
+	# B. easy to use for shorter locally unique ids,
+	#                zero-config: 'noid nab' -> d4...
+	# * bottom line: 'noid nab' always returns something (zero-config)
+	# C. implicit auto-create of nabber (not minter?) ie, create
+	#                (default template) on first use?
+	#      eg, if no xz shoulder, 'noid -d xz nab 1 ....' creates first
+	# D. oo-type shortcut: 'noid xz.nab 1'   and 'noid xz nab 1' 
+	#                where xz cannot conflict with cmd
+	# Differences:  nab               mint
+	#            auto-create          no auto-create
+	#            minter defaults      no default minter
+	#            no logging (dflt)    logging (dflt)
+	#            mint or nab          mint only, no nab
+	# E. is there such a thing as a default minter?  (no?)
+	# F. almost as easy for globally unique ids, offering to register
+	#     a generic shoulder, eg,
+	#   90130/1 ... 90130/b1 ... 90130/bb1    if not, a NAAN or a
+	#   NAAN-specific shoulder.
+	# * bottom line:  'noid mint' still requires db creation step
+	#
+	# (requiring explicit dbcreate -> noid mint
+	#    ... but how to make it globally unique unless you have a
+	#       relationship with a known
+	#    NAAN holder whose minter shoulder you get to use,
+	#        eg, <90130/1> hosted at n2t, or maybe
+	#    better, n2t maintains a shoulder minter and gives it out
+	#        to those who install Noid and
+	#    register with us, eg, 90130/1 goes to j.smith@fresno
+	# 3. easy ...
+	# Desired behaviors:  noid mint -> mint something, anything dammit
+	#        as long as harmless?
+	#   what's harmless?  just the default minter, not others of
+	#      user's minters?
+	# yyy harmless=default minter given by absolute path (or least harmful)
+	#
+	# Undesired behaviors:  don't mint what you're not supposed to mint
+
+	############
+	# fonano should be fiso_midname
+	# up_dir should be fiso_weename
+	# find_minder should be fiso_find (fiso_bigname?)
+	# upper name, downer name / airship, airship + landing gear / flag, pole
+	#     iceberg tip, iceberg whole / ship above water line, whole ship
+	#     ship, dock / tree, tree with roots / 
+	############
+
+	($cmdr, $cmdr_from_d_flag) =
+		def_cmdr($pname_mdr, $smdr, $m_dbbase, \%opt);
+
+	# It should now be safe to turn off strict 'refs' when we
+	# invoke a command via its subroutine name.
+	#
+	no strict 'refs';
+
+	return &$do_command(@_);
+
+	# xxx old? still true?
+	# When a command is processed, any -d option or pre-command
+	# minder name will have been detected and its existence checked.
+	# An empty $cmdr means there is no candidate minder.  An empty $mdr
+	# means, whether or not a candidate was given, the existence of an
+	# actual minder was not detected.  If $mdr is not empty, it should
+	# contain the full pathname of a found minder.
+}
+
+########################################################
+# --- begin almost alphabetic listing of functions --- #
+########################################################
+
+# All do_* routines return values suitable for passing to exit().
+# xxx verify!
+# yyy add quiet option, eg, $opt{quiet} or $om->elem...
+
+# yyy what is the sensible thing to do if (a) no element given,
+#     (b) if no value, or (c) if there are multiple values?
+# yyy vbind(..., template, ...)?  nvbind()?
+#
+# xxx? Returns number of elements successfully bound.
+#
+# yyy what about append at the list vs the string level?
+
+#xxxx====;
+# noid mkminter [tag [shoulder [blade]]]
+#                             {template}
+#noid mkminter
+#noid rmminter
+#noid freeze mdr
+#noid thaw mdr
+#   minter manager "masterminder":
+#      .minders/masterminder.bdb
+#      .minders/.masterminder/ ?
+#      .minders/.frozen/		where noid/bind freeze puts things
+#      .minders/.trash/		where noid/bind rmminter/rmbinder puts things
+#      XXXX need dbcreate to check that named thing doesn't exist yet
+#	# noid [-p path] [-d dir] makeminter shoulder blade
+#	#	use -d if present, else use shoulder and put in first path elem
+#	# $dbdir ||= $shoulder;
+#	#
+#	# noid [-p path] [-d dir] delminter mdir ...
+#	# require mdir to exist? except with -f (force)
+#	#
+#	#====;
+#	($dbdir) = ($dbdir =~ m|^(.*)$|);	# yyy stupid $dbdir untaint
+
+
+# xxx how does minting work?
+# if ($mdr) use it
+# if (! $mdr) then Noid::imake_db($cnddtmdr, $contact, $WeAreBinder) (ok for with or without -d)
+#xxx enforce_exist(); for most do_* routines
+
+# case 1: % noid mkminter foo		# create foo minter
+# case 2: % noid -d foo mkminter	# create foo minter (no search)
+# case 2: % noid foo mkminter		# create foo minter
+# case 2: % noid foo.mkminter		# create foo minter
+# case 2: % noid .mkminter		# as if -d .   # xxx maybe not?
+# case 3: % noid -d foo mkminter bar	# create bar minter
+# case 4: % noid mkminter		# mint new shoulder, default blade
+#
+# mkminter never results in creation of the "default minter", which is
+# only created as a side-effect of no-name minting for the _first_ time
+
+# XXX check all return codes and statuses, esp. for 'quiet' operation
+
+# Globals used:  $cmdr and $mdr
+# General Principle:  push as much functionality as possible into
+#    the modules, where a broader base of users (command line and
+#    programmers) can use them.
+#
+
+sub ndx_mkminter { my( $shoulder_or_template, $blade )=@_;
+
+	$shoulder_or_template ||= "";
+	$blade ||= "";
+
+	$shoulder_or_template !~ /^([^{]*)({.*)?$/ and		# ever untrue?
+		outmsg($mh, "mkminter: 1st arg must be shoulder or template"),
+		return 1;
+	my ($shoulder, $nonshoulder) = ($1, $2);
+
+	my $template = $nonshoulder ?	# if there's a non-shoulder part then
+		$shoulder_or_template :	# arg1 is the template, else arg1 is
+		$shoulder . "{$blade}"; # now the shoulder, so form template
+
+	my $err = 0;
+	$shoulder and
+		($mdr, $cmdr, $cmdr_from_d_flag, $err) =
+			File::Cmdline::def_mdr($mh, $shoulder, 0),
+		($err		and outmsg($mh), return 1);
+#	my $retval = def_mdr($mh, $shoulder, 0);# 0 or '' is a normal return
+#	$retval	and				# bail if non-null
+#		return $retval;
+
+	$shoulder and		# xxx or another test for generated shoulder
+		$cmdr_from_d_flag = 0;
+	my $minderhome = $cmdr_from_d_flag ?	# if user specified -d
+		"." :			# use current context, not minderhome
+		"" ;			# else use $mh->{minderhome}
+# xxx what if user-specified a shoulder but wants name of minter to be
+#     other than the shoulder?
+	File::Nog::mkminter($mh, $mods, fiso_uname($cmdr),
+			$template, $minderhome) or
+		outmsg($mh), return 1;
+	hasmsg($mh) and
+		outmsg($mh);
+	return 0;
+}
+
+
+sub ndx_rmminter { dx_rmminder( "rmminter", @_ ) }
+sub dx_rmminder { my( $lcmd, $name )=@_;	# yyy works for noid and bind
+
+	$name ||= "";
+	my $err = 0;
+	$name and
+		($mdr, $cmdr, $cmdr_from_d_flag, $err) =
+			File::Cmdline::def_mdr($mh, $name, 1),
+		($err		and outmsg($mh), return 1);
+#	my $retval = def_mdr($mh, $name, 1);	# 0 or '' is a normal return
+#	# yyy that should have returned our candidate minder, right?
+#	$retval	and				# bail if non-null
+#		return $retval;
+
+	my $minderpath = $cmdr_from_d_flag ?	# if user specified -d
+		"" :			# ignore minderpath setting
+		$mh->{minderpath};	# else use $mh->{minderpath}
+# xxx these File::Nog::* routines should take a name that is either a
+#     fiso_dname or fiso_uname (which is easier on the caller/user)
+	File::Minder::rmminder($mh, $mods, $lcmd, fiso_uname($cmdr), $minderpath) or
+		outmsg($mh), return 1;
+	return 0;
+}
+
+# Context and Stats (show minders, minder stats, minder ping)
+#   pt mshow       "pairtree show known minders"
+# bind mshow       "binder show known minders"
+# noid mshow       "minder show known minders"
+#   pt mstat mdr   "pairtree show stats for minder 'mdr'"
+# bind mstat mdr   "binder show stats for minder 'mdr'"
+# noid mstat mdr   "minder show stats for minder 'mdr'"
+#   pt mping mdr   "pairtree ping minder 'mdr'"
+# bind mping mdr   "binder ping minder 'mdr'"
+# noid mping mdr   "minder ping minder 'mdr'"
+# XXX implement!!
+
+#sub ndx_mshow { dx_mshow( @_ ) }
+# show known binders
+sub ndx_mshow {
+
+	File::Nog::mshow($mh, $mods)	or return 1;
+	return 0;
+}
+
+# show stats of minder
+# XXX mstats?  minfo?
+# copycat of dbinfo
+sub ndx_mstat { my( $level )=@_;
+
+	$level ||= "brief";
+
+	my $minderpath = $cmdr_from_d_flag ?
+		"" : $mh->{minderpath};		# search unless -d used
+	mopen($mh, $cmdr, O_RDONLY, $minderpath) or
+		outmsg($mh), return 1;
+
+	File::Nog::mstat($mh, $mods, $mh->{om_formal}, $cmdr, $level);
+	return 0;
+}
+
+use DB_File;
+sub corrected_status { my( $status )=@_;
+
+	$status or
+		return ('', O_RDONLY);
+	'enabled' =~ /^$status/i and
+		$status = 'e'
+	or
+	'disabled' =~ /^$status/i and
+		$status = 'd'
+	or
+	'readonly' =~ /^$status/i and
+		$status = 'r'
+	or
+	'shoulderonly' =~ /^$status/i and
+		$status = 's'
+	or
+		return ("unknown minter status: $status", 0)
+	;
+	return ($status, O_RDWR);
+}
+
+# set or get minder status
+# xxx rename mstat to something else
+# call with ... mstatus [paused|readonly
+sub ndx_mstatus { my( $status )=@_;
+
+	my $flag;
+	#  one of enabled, disabled, readonly, or shoulderonly
+	($status, $flag) = corrected_status($status);
+	$status =~ /^unknown/ and
+		outmsg($mh, $status), return 1;
+	my $minderpath = $cmdr_from_d_flag ?
+		"" : $mh->{minderpath};		# search unless -d used
+	mopen($mh, $cmdr, $flag, $minderpath) or
+		outmsg($mh), return 1;
+
+	$om->elem('status', File::Minder::mstatus($mh, $mods, $status));
+	return 0;
+}
+
+# return pulse check
+sub ndx_mping { }
+# show stats of minder
+
+sub ndx_dbinfo { my( $level )=@_;
+
+	$level ||= "brief";
+	my $minderpath = $cmdr_from_d_flag ?
+		"" : $mh->{minderpath};		# search unless -d used
+	mopen($mh, $cmdr, O_RDONLY, $minderpath) or
+		outmsg($mh), return 1;
+
+	File::Nog::dbinfo($mh, $mods, $level);
+	return 0;
+}
+
+sub ndx_gen { my( $number, $niceness )=@_;
+
+	File::Nog::gen_c64($mh, $mods, $number, $niceness) or
+		outmsg($mh, "problem generating ids"), return 1;
+	return 0;
+}
+
+sub ndx_nab {
+
+	# yyy wrap in an eval (see Nog::nab)?
+	File::Nog::nab($mh, $mods, @_ ) or
+		outmsg($mh, "problem nabbing ids"), return 1;
+	return 0;
+}
+
+sub ndx_hello {
+	$om->elem("hello", "Hello");
+	return 0;
+}
+
+# yyy very stupid
+sub untaint { my( $s )=@_;
+	($s) = $s =~ /(.*)/;
+	return $s;
+}
+
+sub ndx_man { pod2use($cgih, -exitstatus => 0, -verbose => 2) }
+
+sub ndx_help {
+
+	use File::Help;
+
+	# xxx We're not properly able to use $om here, because we don't
+	#     know how to capture pod2usage as a string instead of printing
+	#     it.  This has the consequence that we have to put out CGI
+	#     headers (if need be) ourselves, and also to quell headers
+	#     (yyy) output by $om if object is destroyed without output.
+	#     
+	my $topic = shift;
+	my $t = $topic || "";
+	$t and "usage" =~ /^$t/i and
+		usage(undef),
+		return 0;
+	$WeAreOnWeb and $cgih and	# (yyy) by hand CGI headers
+		print ($cgih->take);
+	my $special = 'pronunciation';
+	$t and $special =~ /^$t/i and
+		File::Help::help(
+			{ $special => "Stay employed with noid!\n"}, $special),
+		return 0;
+	File::Help::help(undef, $topic, @_);
+	#$om->{cgih}->take;		# (yyy) quell any headers 
+
+	return 0;	# xxx return error if not found?
+}
+
+sub usage { my $errmsg = shift;
+
+	# xxx We're not properly able to use $om here, because we don't
+	#     know how to capture pod2usage as a string instead of printing
+	#     it.  This has the consequence that we have to put out CGI
+	#     headers (if need be) ourselves, and also to quell headers
+	#     (yyy) output by $om if object is destroyed without output.
+	#     
+	$WeAreOnWeb and $cgih and	# (yyy) by hand CGI headers
+		print ($cgih->take);
+	$errmsg and
+		outmsg($errmsg);
+	print $usage_text;
+	#$om->{cgih}->take;		# (yyy) quell any headers 
+
+	return 0;	# xxx return error if not found?
+}
+
+# yyy what about a "winnow" routine that is either started
+#     from cron or is started when an exiting noid call notices
+#     that there's some harvesting/garbage collecting to do and
+#     schedules it for, say, 10 minutes hence (by not exiting,
+#     but sleeping for 10 minutes and then harvesting)?
+
+sub ndx_hold { my( $on_off, @ids )=@_;
+
+	my $minderpath = $cmdr_from_d_flag ?
+		"" : $mh->{minderpath};		# search unless -d used
+	mopen($mh, $cmdr, O_RDWR, $minderpath) or
+		outmsg($mh), return 1;
+
+	# yyy silence $om->elem by changing output handler?
+	my $ret = File::Nog::hold($mh, $mods, "hold", $on_off, @ids);
+	defined($ret) or
+		outmsg($mh), return 1;
+
+	# If we get here $ret is ref to array, possibly empty, of error ids.
+	# XXX probably debug should imply verbose mode
+	my $n = scalar(@ids) - scalar(@$ret);
+	$opt{verbose} and $om->elem("note", "$n hold" .
+		($n == 1 ? "" : "s") . " placed");
+
+	return scalar(@$ret) ? 1 : 0;
+}
+
+sub ndx_peppermint { my( $n, $elem, $value )=@_;
+	ndx_mint($n, $elem, $value, 1);
+}
+
+sub ndx_mint { my( $n, $elem, $value, $pepper )=@_;
+
+	# xxx remove peppermint
+	defined($pepper) and
+		outmsg($mh, "The peppermint command is not implemented yet"),
+		return 1;
+	if (! defined($n) || $n !~ /^\d+$/) {
+		outmsg($mh, "Argument error: expected positive integer, got " .
+			(defined($n) ? qq@"$n"@ : "nothing"));
+		#usage(1, 1, "mint");
+		return 1;
+	}
+
+	my $minderpath = $cmdr_from_d_flag ?
+		"" : $mh->{minderpath};		# search unless -d used
+	mopen($mh, $cmdr, O_RDWR, $minderpath) or
+		#print("bad return from mopen\n"),
+		outmsg($mh), return 1;
+
+	my ($id, $atlast, $tnum);
+	my ($action, $exit_status) = ("", 0);
+	while ($n--) {
+		($id, $atlast, $tnum) = File::Nog::mint($mh, $mods, "mint", $pepper);
+		if ($atlast) {
+			$action = $atlast;
+			$action !~ /^add/ and		# the N in addN isn't
+				$exit_status = $tnum;	# an exit status
+		}
+		defined($id) or		# use 'defined' since "0" is a valid
+			last;		# (in fact, a common) $id.
+		#print "id: $id\n";
+	}
+	if (! defined($id)) {
+		outmsg($mh);
+		return $action =~ /^stop/ ? $exit_status : 1;
+	}
+	# If defined, $action may have been set at any point in the loop.
+	$action and
+		outmsg($mh);
+	return $exit_status;
+}
+
+sub ndx_queue { my( $when, @ids )=@_;
+
+	my $minderpath = $cmdr_from_d_flag ?
+		"" : $mh->{minderpath};		# search unless -d used
+	mopen($mh, $cmdr, O_RDWR, $minderpath) or
+		outmsg($mh), return 1;
+
+	# yyy silence $om->elem by changing output handler?
+	my $ret = File::Nog::queue($mh, $mods, "queue", $when, @ids);
+	defined($ret) or
+		outmsg($mh), return 1;
+
+	# If we get here $ret is ref to array, possibly empty, of error ids.
+	# XXX probably debug should imply verbose mode
+	my $n = scalar(@ids) - scalar(@$ret);
+	$opt{verbose} and $om->elem("note", "$n identifier" .
+		($n == 1 ? "" : "s") . " processed");
+	return scalar(@$ret) ? 1 : 0;
+}
+
+# Returns the number of valid ids.
+sub ndx_validate { my( $template, @ids )=@_;
+
+	# XXXX does this make sense?
+	if ($template eq "-") {		# have to open a minter to get template
+		my $minderpath = $cmdr_from_d_flag ?
+			"" : $mh->{minderpath};		# search unless -d used
+		mopen($mh, $cmdr, O_RDONLY, $minderpath) or
+		#Noid::dbopen($mh, $mdr, O_RDONLY) or
+			outmsg($mh), return 1;
+	}
+
+	my $n = File::Nog::validate($mh, $mods, $template, @ids);
+	$n or
+		outmsg($mh),
+		#usage(1, 1, "validate"),
+		return 1;
+
+	return 0;
+
+	#my @iderrs = grep(/^error:/, @valids);
+	#print($_, "\n")
+	#	for (@valids);
+	#Noid::dbclose($mh);
+	#return(scalar(@ids) - scalar(@iderrs));
+}
+
+sub ndx_usage { my( $errmsg )=@_;
+
+	# yyy for now this is where help with no topic goes
+	usage($errmsg);
+	return 0;
+}
+
+# xxxxxx have version mismatch auto-offer to upgrade db for you
+# XXXXXX move to Cmdline.pm??
+sub ndx_version { bdx_version(@_) }
+sub bdx_version {
+
+	# We take our version number from the Noid/Binder module version.
+	#
+	my ($v1bdb, $dbfile, $built, $running) = get_dbversion();
+
+	$om->elem("version",
+		qq@This is "$m_cmd" version $File::Nog::VERSION, with Berkeley DB @ .
+		qq@version $running@);
+
+	return 0			# normal return
+		unless $opt{verbose};
+
+	# If verbose, go on a bit after fetching version info.  We can
+	# use this detail to get test if the command line and in-Apache
+	# environments are set to give us the same Perl, BerkeleyDB, etc.
+	#
+	printf "  Running under Perl version v%vd\n", $^V;
+	print  "  Using DB_File version $dbfile\n";
+	print  "    Built with Berkeley DB version $built\n";
+	print  "    Running with Berkeley DB version $running\n";
+	# yyy move this to a place where it can be shared with egg?
+	# XXX output as subelement of version? use $om?
+
+	return 0;
+}
+
+__END__
+
+=pod
+
+=for roff
+.nr PS 12p
+.nr VS 14.4p
+
+=head1 NAME
+
+nog - nice opaque generator commands
+
+=head1 SYNOPSIS
+
+B<nog> [ I<options> ] I<command> [ I<arguments> ]
+
+=head1 DESCRIPTION
+
+The B<nog> utility creates minters (identifier generators) and accepts
+commands that operate them.  Once created, a minter can be used to produce
+globally unique names for documents, databases, images, vocabulary terms,
+etc.  Properly managed, using B<egg> for example, these identifiers can
+be used as long term durable information object references within naming
+schemes such as ARK, PURL, URN, DOI, and LSID.  At the same time,
+alternative minters can be set up to produce short-lived names for
+transaction identifiers, compact web server session keys, and other
+ephemera.
+
+A B<nog> minter is a lightweight database designed for efficiently
+generating unique identifiers, which are produced without replacement in
+random or sequential order, and with or without a check character that
+can be used for detecting transcription errors.  Nog minters are very
+fast, scalable, easy to create and tear down, and have a relatively small
+footprint.  They use BerkeleyDB as the underlying database.
+
+An identifier generated by a B<nog> minter is also known generically
+as a "nog" (standing for nice opaque generator).
+Minters are often used to generate identifier strings that carry no
+widely recognizable meaning.  This semantic opaqueness reduces their
+vulnerability to era-Z<> and language-specific change, and helps
+persistence by making for identifiers that can age and travel well.
+
+The form, number, and intended longevity of a minter's identifiers are given
+by a Template and a Term supplied when the generator database is created.
+A supplied Term of "long" establishes extra restrictions and logging
+appropriate for the support of persistent identifiers.  Across successive
+minting operations, the generator "uses up" its namespace (the pool of
+identifiers it is capable of minting) such that no identifier will ever be
+generated twice unless the supplied Term is "short" and the namespace is
+finite and completely exhausted.  The default Term is "medium".
+
+The basic B<nog> parameters are described later under COMMANDS AND MODES.
+There are also sections covering persistence, templates, rule-based
+mapping, and URL interface.
+
+=head1 README FOR THE NEW NOG
+
+=for help Other README - ESSENTIALS OF THE NEW NOG
+
+ Usage: nog [ options ] command [ args ]
+
+The Nice Opaque Generator (NOG) outputs semi-opaque strings, or "spings",
+in response to a number of commands.  Spings are often embedded in strings
+that, when bound to things and shared, produce identifiers such as ARKs,
+URLs, DOIs, variable names, session cookies, etc.  Some commands:
+
+ nab N                     output N (default 1) filename-friendly spings
+ mint N                    output N premium spings using a default minter
+ M.mint N                  output N premium spings using minter M
+ M.mstat                   show various minter counts
+ M.hold set S ...          reserve spings (S) to prevent their being minted
+ M.hold release S ...      unreserve spings
+ M.queue now S ...         recycle spings (queue for immediate minting)
+ M.queue delete S ...      delete spings from queue
+
+There are also commands to manage minters:
+
+ mkminter [SHLDR [BLADE]]  make a minter with a fixed "shoulder", SHLDR,
+			   and a variable "blade" using the template, BLADE,
+                           with d=digit, e=extended digit, f=filtered extended
+                           digit (skip spings with digit there), k=check char
+
+   Options for mkminter:
+     --type [rand|seq]     generator type: random or sequential
+     --atlast [stop|wrap]  when minter runs out, stop or reset minter, or ...
+     --atlast addN         duplicate first N blade chars and continue (def. 3)
+     --oklz N              0 means skip leading zero spings (def. for type seq)
+     --germ N              seed random number generator (default 0)
+ rmminter M ...            remove minter M (actually, move to trash dir)
+ mshow                     show all minders (binders, minters) in path
+
+=head2 Examples:
+
+ $ mkminter -p ark/12345 fk4 eedk   # minter ends up in ark/12345/fk4/ dir
+ $ mkminter -d tmp "" ddddd         # "empty shoulder" minter ends up in tmp/
+
+=head2 Some nog options:
+
+ -d minter   relative or absolute path to minter, ignoring any path
+ -p path     search path to minter, used to look up 'm' (default ~/.minders)
+ -m format   output format, one of ANVL, XML, JSON, Plain (default)
+
+=head2 Bulk operations:
+
+If the command is '-', commands are read one line at a time from stdin.
+Lines that are blank or begin with '#' are skipped over, and a line ending
+with newline immediately preceded by '\' continues on the next line.
+Typical shell quote characters ("'\) can be used to construct arguments.
+
+=head2 Web API operations:
+
+Nog can be invoked via URL, with command line arguments assumed to arrive
+URL-encoded in a URL's query string.  For the API the default output format
+is "ANVL" (normally "plain") and a final nog-status record is output.
+
+=head1 TUTORIAL INTRODUCTION
+
+=for help Other tutorial - introduction to nog
+
+Once the nog utility is installed, the command,
+
+    noid dbcreate s.zd
+
+will create a minter for an unlimited number of identifiers.
+It produces a generator for medium term identifiers (the default) with
+the Template, C<s.zd>, governing the order, number, and form of minted
+identifier strings.  These identifiers will begin with the constant part
+C<s> and end in a digit (the final C<d>), all within an unbounded sequential
+(C<z>) namespace.  The TEMPLATES section gives a full explanation.
+This generator will mint the identifiers, in order,
+
+    s0, s1, s2, ..., s9, s10, ..., s99, s100, ...
+
+and never run out.  To mint the first ten identifiers,
+
+    noid mint 10
+
+When you're done, on a UNIX platform you can remove that minter with
+
+    rm -fr dbnoid
+
+Now let's create a more complex minter.
+
+    noid dbcreate f5.reedeedk long 13030 cdlib.org oac/cmp
+
+This produces a generator for long term identifiers that begin with the
+constant part C<13030/f5>.  Exactly 70,728,100 identifiers will be minted
+before running out.
+
+The 13030 parameter is the registered Name Assigning Authority Number
+(NAAN) for the assigning authority known as "cdlib.org", and "oac/cmp"
+is a string chosen by the person setting up this minter to identify the
+project that will be operating it.  This particular minter generates
+identifiers that start with the prefix C<f5> in the 13030 namespace.
+If long term information retention is within the mission of your
+organization (this includes national and university libraries and archives),
+you may register for a globally unique NAAN by sending email to ark at
+cdlib dot org.
+
+Identifiers will emerge in "quasi-random" order, each consisting of six
+characters matching up one-for-one with the letters C<eedeed>.
+
+  noid mint 1
+
+The first identifier should be C<13030/f54x54g11>, with the namespace
+ranging from a low of C<13030/f5000000s> to a high of C<13030/f5zz9zz94>.
+You can create a "locations" element under a noid and bind three URLs
+to it with the command,
+
+  noid bind set 13030/f54x54g11 locations \
+    'http://a.b.org/foo|http://c.d.org/bar|http://e.f.org/zaf'
+
+The template's final C<k> causes a computed check character to be added
+to the end of every generated identifier.  It also accounts for why the
+lowest and highest noids look a little odd on the end.  The final check
+character allows detection of the most common transcription errors,
+namely, incorrect entry of one character and the transposition of two
+characters.  The next command takes three identifiers that someone
+might ask you about and determines that, despite appearances, only the
+first is in the namespace of this minter.
+
+  noid validate - 13030/f54x54g11 13030/f54y54g11 \
+    13030/f54x45g11
+
+To make way for creation of another minter, you can move the entire
+minter into a subdirectory with the command,
+
+  mkdir f57 ; mv dbnoid f57
+
+A minter may be set up on a web server, allowing the NAA organization
+easily to distribute name assigment to trusted parties operating from
+remote locations.  The URL INTERFACE section describes the procedure in
+detail.  Once set up, you could mint one identifier by entering a URL such
+as the following into your web browser:
+
+  http://foo.ucop.edu/nd/noidu_f57?mint+1 
+
+Using a different procedure, you can also make your identifier bindings
+(e.g., location information) visible to the Internet via a few web server
+configuration directives.  The NAME RESOLUTION section explains this further.
+
+=head1 IDENTIFIER - AN ASSOCIATION SUPPORTED BY BINDINGS
+
+=for help Other identifier - an association between a string and thing
+
+An identifier is not a string of character data -- an identifier is an
+association between a string of data and an object.  This abstraction
+is necessary because without it a string is just data.  It's
+nonsense to talk about a string's breaking, or about its being strong,
+maintained, and authentic.  But as a representative of an association,
+a string can do, metaphorically, the things that we expect of it.
+
+Without regard to whether an object is physical, digital, or conceptual,
+to identify it is to claim an association between it and a representative
+string, such as "Jane" or "ISBN 0596000278".  What gives your claim
+credibility is a set of verifiable assertions, or metadata, about the
+object, such as age, height, title, or number of pages.  Verifiability is
+outside the scope of the noid utility, but you can use a minter to record
+assertions supporting an association by binding arbitrary named elements
+and values to the identifier.  Noid database elements can be up to 4
+gigabytes in length, and one noid minter is capable of recording billions
+of identifiers.
+
+You don't have to use the noid binding features at all if you prefer to
+keep track of your metadata elsewhere, such as in a separate database
+management system (DBMS) or on a sheet of paper.  In any case, for each
+noid generated, the minter automatically stores its own lightweight
+"circulation" record asserting who generated it and when.  If most of
+your metadata is maintained in a separate database, the minter's own
+records play a back up role, providing a small amount of redundancy that
+may be useful in reconstructing database bindings that have become damaged.
+
+An arbitrary database system can complement a noid minter without any
+awareness or dependency on noids.  On computers, identifier bindings are
+typically managed using methods that at some point map identifier strings
+to database records and/or to filesystem entries (effectively using the
+filesystem as a DBMS).  The structures and logistics for bindings
+maintenance may reside entirely with the minter database, entirely outside
+the minter database, or anywhere in between.  An individual organization
+defines whatever maintenance configuration suits it.
+
+=head1 PERSISTENCE
+
+=for help Other persistence - a property of a service
+
+A persistent identifier is an identifier that an organization commits to
+retain in perpetuity.  Associations, the I<sine qua non> of identifiers,
+last only as long as they (in particular, their bindings) are maintained.
+Often maintaining identifiers goes hand in hand with controlling the
+objects to which they are bound.  No technology exists that automatically
+manages objects and associations; persistence is a matter of service
+commitment, tools that support that commitment, and information that
+allows users receiving identifiers to make the best judgment regarding
+an organization's ability and intention to maintain them.
+
+It will be normal for organizations to maintain their own assertions
+about identifiers that you issue, and vice versa.  In general there is
+nothing to prevent discrepancies among sets of assertions.  Effectively,
+the association -- the identifier -- is in the eye of the beholder.  As a
+simple example, authors create bibliography entries for cited works, and
+in that process they make their claims, often with small errors, about
+such things as the author and title of the identified thing.  It is common
+for a provider of an identifier-driven service such as digital object
+retrieval to allow users to review its own, typically better-maintained
+sets of identifier assertions (i.e., metadata), even if it minted none
+of the identifiers
+that it services.  We call such an organization a Name Mapping Authority
+(NMA) because it "maps" identifiers to services.  It is possible for an
+NMA to service identifiers even if it neither hosts nor controls any
+objects.
+
+It will also be normal for archiving organizations to maintain their own
+peculiar ideas about what persistence means.  Different flavors will
+exist even within one organization, where, for example, it may be
+appropriate to apply corrections to persistent objects of one category,
+to never change objects of another, and to remove objects of a third
+category with a promise never to re-assign those objects' identifiers.
+One institution will guarantee persistence for certain
+things, while the strongest commitment made by some
+prominent archives will be "reasonable effort".  Given the range of
+possibilities, a memory organization will need to record not only the
+identities but also the support policies for objects in its care.
+Any database, including a noid minter, can be used for this purpose.
+
+For persistence across decades or centuries, opinions regarding an
+object's identity and commitments made to various copies of it will
+tend naturally to become more diverse.  An object may have been inherited
+through a chain of stewardship, subtle identity changes, and peaks of
+renewed interest
+stretching back to a completely unrelated and now defunct organization
+that created and named it.  For its original identifier to have persisted
+across the intervening years, it must look the same as when first minted.
+At that particular time, global uniqueness required the minted identifier
+to bear the imprint of the issuing organization (the NAA, or Name
+Assigning Authority), which long ago ceased to have any responsibility
+for its persistence.  There is thus no conflict in a mapping authority
+(NMA) servicing identifiers that originate in many different assigning
+authorities.
+
+These notions of flavors of persistence and separation of name authority
+function are built into the ARK (Archival Resource Key) identifier scheme
+that the B<noid> utility was partly created to support.  By design, noid
+minters also work within other schemes in recognition that persistence
+has nothing to do with identifier syntax.  Opaque identifiers can be used
+by any application needing to reduce the liability created when identifier
+strings contain linguistic fragments that, however appropriate or even
+meaningless they are today, may one day create confusion, give offense,
+or infringe on a trademark as the semantic environment around us and our
+communities evolves.  If employed for persistence, noid minters ease the
+unavoidable costs of long term maintenance by having a small technical
+footprint and by being implemented completely as open source software.
+For more information on ARKs, please see L<http://ark.cdlib.org/> .
+
+=head1 COMMANDS AND MODES
+
+=for help Other commands - overview
+
+Once again, the overall utility summary is
+
+=over 5
+
+B<noid> [ B<-f> I<Dbdir> ] [ B<-vh> ] I<Command> I<Arguments>
+
+=back
+
+In all invocations, output is intended to be both human- and
+machine-readable.  Batch operations are possible, allowing multiple
+minting and binding commands within one invocation.  In particular,
+if I<Command> is given as a "-" argument, then actual I<Commands>
+are read in bulk from the standard input.
+
+The string, I<Dbdir>, specifies the directory where the database resides.
+To protect database coherence, it should not be located on a filesystem
+such as NFS or AFS that doesn't support POSIX file locking semantics.
+I<Dbdir> may be given with the B<NOG>
+environment variable, overridable with the B<-f> option.  If those strings
+are empty, the name or link name of the B<noid> executable (argv[0] for C
+programmers) is checked to see if it reveals I<Dbdir>.  If that check
+(described next) fails, I<Dbdir> is taken to be the current directory.
+
+To check the name of the executable for I<Dbdir>, the final pathname
+component (tail) is examined and split at the first "_" encountered.  If none,
+the check fails.  Otherwise, the check is considered successful and the
+latter half is taken as naming I<Dbdir> relative to the current directory.
+This mechanism is designed for cases when it is inconvenient to specify
+I<Dbdir> (such as in the URL interface) or when you are running several
+minters at once.  As an example, F</usr/bin/noid_fk9> specifies a
+I<Dbdir> of F<fk9>.
+
+All files associated with a minter will be organized in a subdirectory,
+F<dbnoid>, of I<Dbdir>; this has the consequence that there can be at most
+one minter in a directory.  To allow B<noid> to create a new minter in
+a directory already containing a F<dbnoid> subdirectory, remove or rename
+the entire F<dbnoid> subdirectory.
+
+The B<noid> utility may be run as a URL-driven web server application,
+such as in a CGI that allows name assignment via remote operator.
+If the executable begins B<noidu...>, the noid URL mode is in effect.
+Input parameters, separated by a "+" sign, are expected to arrive
+embedded in the query part of a URL, and output will be formatted
+for display on an ordinary web browser.  An executable of B<noidu_xk4>,
+for example, would turn on URL mode and set I<Dbdir> to F<xk4>.
+This is further described under URL INTERFACE.
+
+The B<noid> utility may be run as a name resolver running behind a web
+server.  If the executable begins B<noidr...>, the noid resolver mode is
+in effect, which means that commands will be read from the standard input
+(as if only the "-" argument had been given) and the script output will
+be unbuffered.  This mode is designed for machine interaction and is
+intended to be operated by rewriting rules listed in a web server
+configuration file as described later under NAME RESOLUTION AND
+REDIRECTION INTERFACE.
+
+At minter creation time, a report summarizing its properties is produced
+and stored in the file, F<dbnoid/minter.README>.  This report may be useful
+to the organization articulating the operating policy of the minter.  In
+a formal context, such as the creation of a minter for long term
+identifiers, that organization is the Name Assigning Authority.
+
+The B<-v> option prints the current version of the B<noid> utility and
+B<-h> prints a help message.
+
+In the I<Command> list below, capitalized symbols indicate values to be
+replaced by the caller.
+Optional arguments are in [brackets] and (A|B|C) means one of A or B or C.
+
+=head2 dbcreate [ I<Template> [ I<Term> [ I<NAAN NAA SubZ<>NAA> ] ] ]
+
+=for help OldCommands dbcreate [ Template [ Term [ NAAN NAA SubNAA ] ] ]
+
+=over 4
+
+Create a database that will mint (generate) identifiers according to the
+given Template and Term.  As a side-effect this causes the creation of
+a directory, F<dbnoid>, within I<Dbdir>.  If you have several generators,
+it may be convenient to operate each from within a I<Dbdir> that uniquely
+identifies each Template; for example, you might change to a directory
+that you named F<fk6> after the Template C<fk.rdeedde> ("fk" followed by
+6 variable characters) of the minter that resides there.
+
+The Term declares whether the identifiers are intended to be "long",
+"medium" (the default), or "short".  A short term identifier minter is
+the only one that will re-mint identifiers after the namespace is
+exhausted, simply returning the oldest previously minted identifier.
+As mentioned earlier, however, some namespaces are unbounded and never
+run out of identifiers.
+
+If Term is "long", the arguments NAAN, NAA, and SubZ<>NAA are required,
+and all minted identifiers will be returned with the NAAN and a "/"
+prepended to them.  The NAAN is a namespace identifier and should be a
+globally unique Name Assigning Authority (NAA) number.  Apply for one
+by email to ark@cdlib.org, or for testing purposes, use "00000" as a
+non-unique NAAN.
+
+The NAA argument is the character string equivalent for the NAAN; for
+example, 13960 corresponds to the NAA, "archive.org".  The SubNAA argument
+is also a character string, but is a locally determined and possibly
+structured subauthority string (e.g., "oac", "ucb/dpg", "practice_area")
+that is not globally registered.
+
+If Template is not supplied, the minter freely binds any identifier that
+you submit without validating it first.  In this case it also mints
+medium term identifiers under the default Template, C<.zd>.
+
+=back
+
+=head2 noid mint I<N> [ I<Element Value> ]
+
+=for help OldCommands mint N [ Element Value ]
+
+=over 4
+
+Generate N identifiers.  If other arguments are specified, for each
+generated noid, add the given Element and bind it to the given Value.
+[Element-Value binding upon minting is not implemented yet.]
+
+There is no "unmint" command.  In a multi-user environment, your unmint
+might effect someone else's minted identifier.  Moreover, once an
+identifier has been circulated in
+the outside world, it may be hard to withdraw because external users and
+systems will have bound it with their own assertions.
+Even within the minting organization, removing all of the identifier's
+supporting bindings could entail actions such as file deletion that are
+outside the scope of the minter.  While there is no command capable of
+withdrawing a circulated identifier, it is nonetheless easy to B<queue>
+an identifier for reminting and to B<hold> it against the possibility of
+minting at all.  Identifiers that are long term should be treated as
+non-renewable resources except when you are absolutely sure about
+recycling them.
+
+=back
+
+=head2 noid peppermint I<N> [ I<Element Value> ]
+
+=for help OldCommands peppermint N [ Element Value ]
+
+=over 4
+
+[This command is not implemented yet.]
+Generate N "peppered" identifiers.  A peppered identifier is a regular
+identifier concatenated with a "!" character and a randomly generated
+cookie -- the pepper -- which serves as a kind of per-identifier password.
+(Salt is a technical term for some extra data that makes it harder to
+crack encrypted values; we use pepper for some extra data that makes it
+harder to crack unencrypted values.)  To provide an extra level of
+database security, the base identifier, which is everything up to the "!",
+should be used in all public communication, but the complete peppered
+identifier is required for all noid operations that would change values
+in the database.
+
+As with the B<mint> command, if other arguments are specified, for each
+generated noid, add the given Element and bind it to the given Value.
+
+=back
+
+=head2 noid hold (B<set>|B<release>) I<Id> ...
+
+=for help OldCommands hold (set|release) Id ...
+
+=over 4
+
+Place or remove a B<hold> on one or more Ids.  A hold placed on an Id that
+has not been minted will cause it to be skipped when its turn to be minted
+comes around.  A hold placed on an Id that has already been minted will
+make it impossible to queue (typically for recycling).  Minters of long
+term identifiers automatically place a hold on every minted noid.
+Holds can be placed or removed manually at any time.
+
+=back
+
+=head2 noid queue (B<now>|B<first>|B<lvf>|I<Time>) I<Id> ...
+
+=for help OldCommands queue (now|first|lvf|Time) Id ...
+
+=over 4
+
+Queue one or more Ids for minting.  Time is a number followed by units,
+which can be B<d> for days or B<s> for seconds (the default units).  This
+can be used to recycle noids B<now> or after a delay period.  With
+B<first>, the Id(s) will be queued such that they will be minted before
+any of the time-delayed entries.  With B<lvf> (Lowest Value First), the
+lowest valued identifier (intended for use with numeric identifiers) will
+be taken from the queue for minting before all others.  [ needs testing ]
+
+=for comment XXX is lvf tested enough?
+=for comment XXX document delete
+
+=back
+
+=head2 noid validate (I<Template>|B<->) I<Id> ...
+
+=for help OldCommands validate (Template|-) Id ...
+
+=over 4
+
+Validate one or more Ids against a given Template, which, if given as "-",
+causes the minter's native I<Template> to be used.
+
+=back
+
+=head1 TEMPLATES
+
+=for help Other templates - identifier formatting
+
+A Template is a coded string of the form Prefix.Mask that is given to
+the noid B<dbcreate> command to govern how identifiers will be minted.
+The Prefix, which may be empty, specifies an initial constant string.
+For example, upon database creation, in the Template
+
+  tb7r.zdd
+
+the Prefix says that every minted identifier will begin with the literal
+string C<tb7r>.  Each identifier will end in at least two digits (C<dd>),
+and because of the C<z> they will be sequentially generated without limit.
+Beyond the first 100 mint operations, more digits will be added as needed.
+The minted noids will be, in order,
+
+  tb7r00, tb7r01, ..., tb7r100, tb7r101, ..., tb7r1000, ...
+
+The period (".") in the Template does not appear in the identifiers but
+serves to separate the constant first part (Prefix) from the variable
+second part (Mask).  In the Mask, the first letter determines either
+random or sequential ordering and the remaining letters each match up
+with characters in a generated identifier.  Perhaps the best way to
+introduce templates is with a series of increasingly complex examples.
+
+=over 12
+
+=item C<.rddd>
+
+to mint random 3-digit numbers, stopping after 1000th
+
+=item C<.sdddddd>
+
+to mint sequential 6-digit numbers, stopping after millionth
+
+=item C<.zd>
+
+sequential numbers without limit, adding new digits as needed
+ 
+=item C<bc.rdddd>
+
+random 4-digit numbers with constant prefix C<bc>
+
+=item C<8rf.sdd>
+
+sequential 2-digit numbers with constant prefix C<8rf>
+
+=item C<.se>
+
+sequential extended-digits (from 0123456789bcdfghjkmnpqrstvwxz)
+
+=item C<h9.reee>
+
+random 3-extended-digit numbers with constant prefix C<h9>
+
+=item C<.zeee>
+
+unlimited sequential numbers with at least 3 extended-digits
+
+=item C<.rdedeedd>
+
+random 7-char numbers, extended-digits at chars 2, 4, and 5
+
+=item C<.zededede>
+
+unlimited mixed digits, adding new extended-digits as needed
+
+=item C<sdd.sdede>
+
+sequential 4-mixed-digit numbers with constant prefix C<sdd>
+
+=item C<.rdedk>
+
+random 3 mixed digits plus final (4th) computed check character
+
+=item C<.sdeeedk>
+
+5 sequential mixed digits plus final extended-digit check char
+
+=item C<.zdeek>
+
+sequential digits plus check char, new digits added as needed
+
+=item C<63q.redek>
+
+prefix plus random 4 mixed digits, one of them a check char
+
+=back
+
+The first letter of the Mask, the generator type, determines the order
+and boundedness of the namespace.  For example, in the Template C<.sddd>,
+the Prefix is empty and the C<s> says that the namespace is sequentially
+generated but bounded.  The generator type may be one of,
+
+=over 4
+
+=item C<r>
+
+for quasi-randomly generated identifiers,
+
+=item C<s>
+
+for sequentially generated identifiers, limited in length and
+number by the length of the Mask,
+
+=item C<z>
+
+for sequentially generated identifiers, unlimited in length or
+number, re-using the most significant mask character (the second
+character of the Mask) as needed.
+
+=back
+
+Although the order of minting is not obvious for C<r> type minters,
+it is "quasi-random" in the sense that on your machine a minter created
+with the same Template will always produce the same sequence of noids
+over its lifetime.  Quasi-random is a shade more predictable than
+pseudo-random (which, techically, is as random as computers get).
+This is a feature designed to help noid managers in case they are
+forced to start minting again from scratch; they simply process their
+objects over in the same order as before to recover the original
+assignments.
+
+After the generator type, the rest of the Mask determines the form of
+the non-Prefix part, matching up letter-for-character with each generated
+noid character (an exception for the C<z> case is described below).
+In the case of the Template C<xv.sdddd>, the last four C<d> Mask characters
+say that all identifiers will end with four digits, so the last identifier
+in the namespace is C<xv9999>.
+
+When C<z> is used, the namespace is unbounded and therefore identifiers
+will eventually need to grow in length.  To accommodate the growth, the
+second character (C<e> or C<d>) of the Mask will be repeated as often as
+needed; for instance, when all 4-digit numbers are used up, a 5th digit
+will be added.  After the generator type character, Mask characters have
+the following meanings:
+
+=over 4
+
+=item C<d>
+
+a pure digit, one of { 0123456789 }
+
+=item C<e>
+
+an "extended digit", one of { 0123456789bcdfghjkmnpqrstvwxz }
+(lower case only)
+
+=item C<k>
+
+a computed extended digit check character;
+if present, it must be the final Mask character
+
+=back
+
+The set of extended digits is designed to help create more compact
+noids (a larger namespace for the same length of identifier) and
+discourage "accidental semantics", namely, the introduction of strings that
+have unintended but commonly recognized meanings.  Opaque identifiers are
+desirable in many situations and the absence of vowels in extended digits
+is a step in that direction.  To reduce visual mismatches, there is also
+no letter "l" (ell) because it is often mistaken for the digit "1".
+
+The optional C<k> Mask character, which may only appear at the end, enables
+detection of cases when a single character is mistyped and when two
+adjacent characters have been transposed -- the most common transcription
+errors.  A final C<k> in the Mask will cause a check character to be
+appended after first computing it on the entire identifier generated so
+far, including the NAAN if one was specified at database creation time.
+For example, the final digit C<1> in
+
+        13030/f54x54g11 
+
+was first computed over the string C<13030/f54x54g1> and then added to the end.
+
+=head1 NOG CHECK DIGIT ALGORITHM
+
+=for help Other algorithm - noid check digits
+
+XXXXXX
+A string's check character is a kind of signature that permits one to
+detect some common ways in which the string may be altered, for example,
+via a transcription error.  To determine a check character for a string,
+every character in the string and the check character itself must have a
+fixed non-negative integer associated with it, known as its ordinal
+value.  The ordinals used in the Noid Check Digit Algorithm (NCDA) are
+
+  character:  0  1  2  3  4  5  6  7  8  9
+    ordinal:  0  1  2  3  4  5  6  7  8  9
+
+  character:  b  c  d  f  g  h  j  k  m  n  p  q  r  s  t  v  w  x  z
+    ordinal: 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28
+
+  character:  a  e  i  l  o  u  y
+    ordinal: 29 30 31 32 33 34 35
+
+  character:  B  C  D  F  G  H  J  K  M  N  P  Q  R  S  T  V  W  X  Z
+    ordinal: 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54
+
+  character:  A  E  I  L  O  U  Y
+    ordinal: 55 56 57 58 59 60 61
+
+
+
+
+The
+check character is determined by applying a formula to the sequence of
+character ordinals in the string and mapping the result back to an extra
+character that is appended to the end of the string.  The string verifies
+if the final check character matches the character produced by running
+the formula over the preceding characters.
+
+There are no theoretical limits to the length of identifiers (thanks to
+bignums), but some limitations apply if there is a check character.
+
+1.  Check characters only appear at the end (is this required?)
+2.  The check character's alphabet must be a superset of (contain) the
+    union of the alphabets of all significant characters in the id ("bow
+    plus blade").  Significant characters are defined to be, eg, not the
+    fixed position '/' between bow and blade...
+3.  For the check character to work, the id's length must be less than
+    the highest ordinal value, H, in the check character's alphabet.  At
+    the same time, there must be character assignments in that alphabet
+    for every ordinal between 0 and H, and for high values of H, that
+    requires a large alphabet.  Given the limited number of 7-bit
+    characters that are identifier-friendly, there is downward pressure
+    on H, ... xxx
+    
+To keep the variation of characters in H low (so as not to introduce
+startlingly oddball characters at the end of an id), there is a natural
+desire to limit chose H alphabet.  At the same time, as ids lengthen
+over time (the default, low-maintenance way that minters will
+automatically lengthen an id when names are all used up), the alphabet H
+will have to grow increasingly larger ("precess through alphabets") until
+there are no more characters.  ... xxx there's a limit there.
+XXXXXX
+
+The following describes the Noid Check Digit Algorithm (NCDA).  Digits
+in question are actually "extended digits", or I<xdigits>, which form
+an ordered set of I<R> digits and characters.  This set has radix I<R>.
+In the examples below, we use a specific set of I<R=29> xdigits.
+
+When applied to substrings of well-formed identifiers, where the length
+of the substring is less than I<R>, the NCDA is "perfect" for single digit
+and transposition errors, by far the most common user transcription errors
+(see David Bressoud, Stan Wagon, "Computational Number Theory, 2000, Key
+College Publishing").  The NCDA is complemented by well-formedness rules
+that confirm the placement of constant data, including fixed labels and
+any characters that are not extended digits.  After running the NCDA on
+the selected substring, the resulting check digit, an xdigit actually,
+is used either for comparing with a received check digit or for appending
+to the substring prior to issuing the identifier that will contain it.
+
+For the algorithm to work, the substring in question must be less than
+I<R> characters, and each "significant" character must have a unique
+ordinal value assigned to it.  The extended digit set used in the current
+instance is a sequence of I<R=29> printable characters defined as
+follows:
+
+    xdigit:  0  1  2  3  4  5  6  7  8  9  b  c  d  f  g
+     value:  0  1  2  3  4  5  6  7  8  9 10 11 12 13 14
+
+    xdigit:  h  j  k  m  n  p  q  r  s  t  v  w  x  z
+     value: 15 16 17 18 19 20 21 22 23 24 25 26 27 28
+
+Each xdigit in the identifier has the corresponding ordinal value shown.
+Any character not in the xdigit set is not considered "significant", that
+is, to have an ordinal value of zero in the NCDA algorithm. XXXX?
+
+A check digit is an xdigit computed from the base substring and then
+appended to form the "checked substring" (less than I<R+1> characters long).
+To determine if a received identifier has been corrupted by a single
+digit or transposition error, the relevant substring is extracted and
+its last character is compared to the result of the same computation
+performed on the preceding substring characters.
+
+The computation has two steps.  Consider a base substring (no check
+digit appended) such as
+
+C<    13030/xf93gt2        >(base substring)
+
+Step 1.  Check that the substring is well-formed, that is, that all
+non-xdigit characters (often constant character data) are exactly
+where expected; if not, the substring is not well-formed and the
+computation aborts.  (This step is required to accommodate characters
+such as "/" that contribute nothing to the overall computation.)
+
+Step 2.  Multiply each character's ordinal value by its position number
+(starting at position 1), and sum the products.  For example,
+
+ char: 1   3   0   3   0   /   x   f   9   3   g   t   2
+  ord: 1   3   0   3   0   0  27  13   9   3  14  24   2
+  pos: 1   2   3   4   5   6   7   8   9  10  11  12  13
+ prod: 1 + 6 + 0 +12 + 0 + 0+189+104 +81 +30+154+288 +26=891
+
+Step 3.  The check digit is the xdigit whose ordinal value is that sum
+modulo I<R> (divide the sum by I<R> and take the remainder).
+
+In the example, I<891 = 21> mod I<R> (29) and so the check digit is C<q>.
+This is appended to obtain the "checked substring", which is
+
+C<    13030/xf93gt2q	   >(substring with check digit appended)
+
+What follows is a two-part proof that this algorithm is "perfect" with
+respect to single digit and transposition errors.
+
+B<Lemma 1:>  The NCDA is guaranteed against single-character errors.
+
+Proof:  We must prove that if two strings differ in one single character,
+then the check digit (xdigit) also differs.  If the I<n>-th xdigit's
+ordinal is I<d> in one string and I<e> in another, the sums of products
+differ only by
+
+   (... + nd + ...) - (... + ne + ...) = n(d - e)
+
+The check digits differ only if I<n(d - e)> is not I<0> mod I<R>.  Assume
+(contrapositively) that I<n(d - e)> does equal I<0> mod I<R>.  First, we
+know that I<n(d - e)> is not zero because I<n> is positive and I<d> is
+different from I<e>.  Therefore, there must be at least one positive
+integer I<i> such that
+
+   n|d - e| = Ri     =>     (n/i)|d - e| = R
+
+Now, because I<R> is prime,
+
+   either   (a)  n/i = 1    and   |d - e| = R
+   or       (b)  n/i = R    and   |d - e| = 1
+
+But (a) cannot hold because xdigit ordinals differ by at most I<R-1>.
+This leaves (b), which implies that there is an integer I<i = n/R>.
+But since I<R> is prime and I<n> (a position number) is a positive
+integer less than I<R>, then I<S<0 E<lt> i E<lt> 1>>, which cannot be true.
+So the check digits must differ.
+
+B<Lemma 2:>  The NCDA is guaranteed against transposition of two single
+characters.
+
+Proof:  Non-contributing characters (non-xdigits) transposed with other
+characters will be detected in Step 1 when checking the constraints for
+well-formedness (e.g., the "/" must be at position 6 and only at position
+6).  Therefore we need only consider transposition of two xdigit
+characters.  We must prove that if one string has an xdigit of ordinal
+I<e> in position I<i> and an xdigit of ordinal I<d> in position I<j>
+(I<j> greater than I<i>), and if another string is the same except for
+having I<d> in position I<i> and I<e> in position I<j>, then the check
+digits also differ.  The sums of the products differ by
+
+   (... + ie + ... + jd + ...) - (... + id + ... + je + ...)
+       = (ie + jd) - (id + je) = e(i - j) + d(j - i)
+       =  d(j - i) - e(j - i)  = n(d - e)
+
+where I<< n = j - i > 0 >> and I<< n < R >>.  The check digits differ
+only if I<n(d - e) = 0> mod I<R>.  This reduces to the central statement
+of Lemma 1, which has been proven.
+
+=head1 TO DO
+
+Add features that are documented but not implemented yet:  Element-Value
+binding upon minting; the B<peppermint> command.  The B<append> and
+B<prepend> kinds of binding currently have string-level semantics
+(new data is added as characters to an existing element); should there
+also be list-level semantics (new data added as an extra subelement)?
+
+Add extra options for B<dbcreate>.  An option to specify one or more
+identifier labels to strip from requests, and one canonical label to
+add upon minting and reporting.  An option to set the initial seed for
+quasi-random ordering.  Utilize the granular BerkeleyDB transaction and
+locking protection mechanisms.
+
+Extend the Template Mask to allow for other character repertoires with
+prime numbers of elements.  These would trade a some eye-friendliness
+for much more compact identifiers (cf. UUID/GUID), possibly also a way
+of asking that the last character of the repertoire only appear in the
+check character (e.g., for i and x below).
+
+ { 0-9 x }			 cardinality 11, mask char i
+ { 0-9 a-f _ }			 cardinality 17, mask char x
+ { 0-9 a-z _ }			 cardinality 37, mask char v
+ { 1-9 b-z B-Z } - {l, vowels}	 cardinality 47, mask char E
+ { 0-9 a-z A-Z # * + @ _ }	 cardinality 67, mask char w
+ Visible ASCII - { % - . / \ } 	 cardinality 89, mask char c
+
+Add support for simple file management associated with identifiers.
+For example, minting (and reminting) the noid C<xv8t984> could result in
+the creation (and re-creation) of a corresponding canonical directory
+C<xv/8t/98/4/>.
+
+=head1 BETA SOFTWARE
+
+This utility is in the beta phase of development.  It is open source
+software written in the Perl scripting language with strictest type,
+value, and security checking enabled.  While its readiness for
+long term application is still being evaluated, it comes with a
+growing suite of regression tests (currently about 250).
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright 2002-2017 UC Regents.  BSD-type open source license.
+
+=head1 BUGS
+
+Not yet platform-independent.
+
+Please report bugs to jak at ucop dot edu.
+
+=head1 FILES
+
+=over 17
+
+=item F<dbnoid>
+
+directory containing all database files related to a minter
+
+=item F<dbnoid/minter.bdb>
+
+the BerkeleyDB database file at the heart of a minter
+
+=item F<dbnoid/minter.README>
+
+the creation record containing minter analysis details
+
+=back
+
+=head1 SEE ALSO
+
+L<dbopen(3)>, L<perl(1)>, L<uuidgen(1)>, L<http://www.cdlib.org/inside/diglib/ark/>
+
+=head1 AUTHOR
+
+John A. Kunze, with contributions from Michael A. Russell and Rasan Rasch.
+
+=head1 PREREQUISITES
+
+Perl Modules: L<Noid>, L<Text::ParseWords>,
+L<Getopt::Long>, L<Fcntl>, L<Sys::Hostname>
+
+Script Categories:
+
+=for helptopic pronunciation - "stay employed/use noid"
+
+=pod SCRIPT CATEGORIES
+
+CGI
+UNIX : System_administration
+Web
+
+=cut

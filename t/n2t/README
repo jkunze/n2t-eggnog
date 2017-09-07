@@ -1,0 +1,15 @@
+To test the certificate code, before running any tests, do something like
+
+x=~/ssl/20150204
+export EGNAPA_SSL_CERTFILE=$x/ias-n2t-stg_cdlib_org_cert.cer
+export EGNAPA_SSL_KEYFILE=$x/ias-n2t-stg.cdlib.org.key
+export EGNAPA_SSL_CHAINFILE=$x/sha2_Intermediate-root_certs.cer
+
+or like this
+
+x=~/ssl/2016-07-19
+export EGNAPA_SSL_CERTFILE=$x/2b45e07e155e31.crt
+export EGNAPA_SSL_KEYFILE=$x/n2t.net.key
+export EGNAPA_SSL_CHAINFILE=$x/gd_bundle-g2-g1.crt
+
+For favicon conversion, I used http://converticon.com/

@@ -1,0 +1,19 @@
+#!/bin/sh
+
+CH="Batch Identifier Infrastructure"
+CF=`date '+%Y-%m-%d'`
+LF="CDL `perl VERSION`"
+
+pod2man -c "$CH" -d "$CF" -r "$LF" noid - | groff -man | \
+    gs -sDEVICE=pdfwrite -sOutputFile=noid.pdf -dNOPAUSE -dBATCH - > /dev/null
+#acroread noid.pdf; exit
+
+pod2man -c "$CH" -d "$CF" -r "$LF" lib/Noid.pm - | groff -man | \
+    gs -sDEVICE=pdfwrite -sOutputFile=Noid.pm.pdf -dNOPAUSE -dBATCH - \
+    	> /dev/null
+
+scp -p noid.pdf Noid.pm.pdf \
+	www.cdlib.org:/cdldir/stage/htdocs/inside/diglib/ark/
+
+echo 'Copied "noid.pdf" & "Noid.pm.pdf" to inside/diglib/ark on staging server.'
+echo Use http://www.cdlib.org/cgi-bin/shell/shellmove to move to production.

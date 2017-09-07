@@ -1,0 +1,47 @@
+#!/usr/bin/env perl
+
+use 5.006;
+use strict;
+use warnings;
+
+use DB_File;
+
+my $usage_text = << "EOF";
+
+ Usage: $0 var file ...
+
+For each BerkeleyDB file, output the value under key named var.  For noid
+and eggnog database files, administrative values all begin with ":/", eg,
+
+	\$ $0 :/oacounter nd/fk[45]/NOID/noid.bdb
+	nd/fk4/NOID/noid.bdb: 19876
+	nd/fk5/NOID/noid.bdb: 348
+
+EOF
+
+# main
+{
+	my $varname = shift;
+	$varname or
+		print("error: no variable name var given\n$usage_text"),
+		exit 1;
+	my ($hash, $file, $db, $value);
+	while ($file = shift) {
+		$db = tie(%$hash, "DB_File", $file, O_RDONLY, 0666, $DB_BTREE);
+		$db or
+			print("tie failed on $file\n"),
+			next;
+		$value = $hash->{$varname};
+		defined($value) or
+			$value = "<undef>";
+		print "$file: $value\n";
+		undef $db;
+		untie %$hash;
+		# $val = Noid::getnoid($nd, $varname);
+		# opendb # closedb
+	}
+	defined($value) or
+		print("error: no BDB file given\n$usage_text"),
+		exit 1;
+	exit 0;
+}

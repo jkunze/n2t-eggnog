@@ -1,0 +1,58 @@
+#!/usr/bin/perl
+# XXXXX deprecate?
+# Run this with "perl -Mblib t/n2t/apctl start|stop|restart".
+
+use 5.006;
+use Test::More;
+
+use strict;
+use warnings;
+
+use File::ValueTester ':all';
+use File::Value ':all';
+use File::ApacheTester ':all';
+
+! $ENV{EGNAPA_TEST} || ! $ENV{EGNAPA_DURABLE} and plan skip_all =>
+	"why: EGNAPA_TEST and EGNAPA_DURABLE not set for testing";
+
+$ENV{EGNAPA_TEST} ne 'test' and
+	plan skip_all => "why: EGNAPA_TEST not set to 'test'";
+
+$ENV{EGNAPA_DURABLE} and $ENV{EGNAPA_DURABLE} eq 'n2t' or
+	plan skip_all => "EGNAPA_DURABLE not set to 'n2t'";
+
+my $verb = $ARGV[0] || '';
+$verb =~ /stop|start|restart|graceful/ or
+	plan skip_all =>
+		'use "perl -Mblib with arg of "stop", "start", or "restart"';
+
+# xxx how many of these things returned by prep_server do we actually need?
+my ($msg, $src_top, $webcl,
+		$srvport, $srvbase_u, $ssvport, $ssvbase_u,
+	) = prep_server;
+$msg and
+	plan skip_all => $msg;
+
+plan 'no_plan';		# how we usually roll -- freedom to test whatever
+
+SKIP: {
+
+# Note: $td and $td2 are barely used here.
+# Instead we use non-temporary dirs $ntd and $ntd2.
+#
+my $buildout_root = $ENV{EGNAPA_BUILDOUT_ROOT};
+my $binders_root = $ENV{EGNAPA_BINDERS_ROOT};
+my $minters_root = $ENV{EGNAPA_MINTERS_ROOT};
+my ($ntd, $ntd2) = ($binders_root, $minters_root);
+
+my ($td, $cmd) = script_tester "egg";		# yyy needed?
+my ($td2, $cmd2) = script_tester "nog";		# yyy needed?
+remake_td($td);		# yyy needed?
+remake_td($td2);	# yyy needed?
+
+my ($x, $y);
+$x = apachectl($verb);
+skip "failed to $verb apache ($x)"
+	if $x;
+$verb eq 'stop'		and print("$x\n");
+}

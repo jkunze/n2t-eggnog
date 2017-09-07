@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# See t/web/pswdfile for explanation of the format.
+pwdfile="\
+	pwdfile_ezid	ezid	dumy1 \
+	pwdfile_oca	oca	dumy2 \
+	pwdfile_yamz	yamz	dumy3 \
+	pwdfile_xref	xref	dumy4 \
+	pwdfile_n2t	n2t	dumy5 \
+"

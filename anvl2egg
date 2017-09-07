@@ -1,0 +1,181 @@
+#!/usr/bin/env perl
+
+use 5.006;
+use strict;
+use warnings;
+
+#my $naans = "../master_naans";
+#my $shoulders = "../master_shoulders.txt";
+#my $naanders = "../naanders.txt";
+#my @recs;
+
+use File::Spec::Functions;
+use Text::ParseWords;
+#use File::Path;
+use File::OM;
+#use DB_File;		# xxx needed? provides only O_RDWR?
+use BerkeleyDB;
+use constant DB_RDWR => 0;		# why BerkeleyDB doesn't define this?
+use Fcntl;
+use Config;
+#use File::Minder ':all';
+use File::Binder ':all';
+use File::Cmdline ':all';
+use File::Egg;
+use File::Value ":all";
+use Pod::Usage;
+#use File::RUU;
+use File::Rlog;
+
+my $usage_text = << "EOF";
+
+ Usage: $0 [ -u Element ] Records.anvl
+
+Read a file, Records.anvl, of ANVL records and write them to a new egg
+binder.  The new binder will be written to a directory called Records.
+The input file is assumed to be in new ANVL format, in which records
+begin with a line starting ":: " (see t/n2t/make_naanders_input script).
+
+If -u Element is given, any non-unique values found for Element will
+cause a fatal error.
+
+EOF
+
+my $mh;				# global minder handler
+
+# (contributed by brian d foy and Benjamin Goldberg)
+# This subroutine will add commas to your number:
+sub commify {
+	local $_ = shift;
+	1 while s/^([-+]?\d+)(\d{3})/$1,$2/;
+	return $_;
+}
+
+# XXX placeholder code -- no options supported yet
+my %opt;			# global options hash
+my @getoptlist = (	# yyy possible future options
+	'ack',			# acknowledge changes with oxum
+	'all',			# always fetch all elements (like :all always)
+				# xxx can't turn this off locally?
+	'verbose|v',
+);
+
+# main
+{
+	my $arg = shift || '';		# get first command line arg
+	my $uniqe = '';			# unique element enforced
+	my %h;				# hash to enforce element uniqueness
+	my %idh;			# hash to enforce identifier uniqueness
+	if ($arg eq '-u') {
+		$uniqe = shift;
+		$uniqe or
+			print("error: no Element given for -u\n$usage_text"),
+			exit 1;
+		$arg = shift;
+	}
+	my $anvl_file = $arg;		# noid text db dump
+	$anvl_file or
+		print("error: no ANVL record file given\n$usage_text"),
+		exit 1;
+	my $cmdr;
+	($cmdr = $anvl_file) =~ s/\.anvl$// or
+		print("error: ANVL ($anvl_file) doesn't end in .anvl\n",
+			$usage_text),
+		exit 1;
+	open(FH, "< $anvl_file") or
+		print("$anvl_file: $!\n"),
+		exit 1;
+	if (-e "$cmdr/egg.bdb") {
+		! $opt{force} and
+			print("error: binder $cmdr already exists\n"),
+			exit 1,
+		;
+		system("rm -fr $cmdr");
+	}
+
+	# This script may be run very early, even before "egg" has been
+	# installed.  If run in test mode (grep'ing for /blib/lib in @INC),
+	# then call "egg" with -Mblib.
+	#
+	my $eggcmd = grep(/\/blib\/lib/, @INC) ? "perl -Mblib " : "";
+	$eggcmd .= "egg mkbinder -d $cmdr > /dev/null";
+	print "creating binder with $eggcmd\n";
+	system($eggcmd);
+	
+	#my $v1bdb = get_dbversion(1);		# true if BDB V1
+	# xxx bug in om->new?  shouldn't default outhandle be STDOUT
+	#     ie, if I don't specify it?
+
+	my $om = File::OM->new('anvl', { outhandle => *STDOUT } );
+
+	my $minderpath = '.';		# put the minder right here
+	#$mh = File::Minder->new(File::Minder::ND_BINDER,
+	$mh = File::Binder->new(File::Binder::ND_BINDER,
+			0, $om, $minderpath, undef) or
+		outmsg("couldn't create minder handler"),
+		exit 1;
+	#my $dbh = $mh->{tied_hash_ref};
+	#use constant A => ':';
+
+	#mopen($mh, $cmdr, O_RDWR) or
+	mopen($mh, $cmdr, DB_RDWR) or
+		outmsg($mh),
+		exit 1;
+
+	my $id;
+	my $mods = {};
+	my $recs = 0;			# number of element records
+	$| = 1;				# unbuffer STDOUT so \r works below
+	my ($elem, $val);
+
+	local $/ = "\n::";		# to start of next ANVL record
+	while (<FH>) {
+		s/^#.*//gm;		# drop comment lines
+		if ($. eq 1) {		# special processing for first record
+			s/.*?^:://m or	# discard all up to first :: but if
+				last;	# nothing there then there's no first
+					# record start at all
+					# yyy could be cleverer about preamble
+			next;
+		}
+		$recs++;
+
+		s/::$//;		# clean up; all but last rec ends
+					# this way (last rec ends with EOF)
+
+		s/^\s*(.*)\n// and	# :: foo means $id is foo
+			$id = $1;
+		$id ||= '';
+		$idh{$id}++;
+		$idh{$id} > 1 and	# complain if it's not unique
+			print("error: id $id appears more than once\n"),
+			exit 1;
+		#print "REC: $id\n";
+		while ( m/^\s*([^:]*)\s*:\s*(.*)$/gm ) {
+			# see bdx_add() for arg defs and signature
+			($elem, $val) = ($1, $2);
+			File::Egg::egg_set($mh, $mods,
+				'add',		# for the log
+				0, 0, File::Egg::HOW_ADD,
+				$id,
+				$elem,
+				$val,
+			) or
+				outmsg($mh),
+				exit 1
+			;
+			$elem eq $uniqe or	# next unless we're checking
+				next;		# uniqueness for this element
+			$h{$val}++;
+			$h{$val} > 1 and	# complain if it's not unique
+				print("error: value ($val) for element ",
+					"\"$uniqe\" appears more than once\n"),
+				exit 1;
+		}
+		#File::Egg::egg_fetch($mh, $mods, $om, undef, undef, $id) or...
+	}
+	print "Done: ", commify($recs), " records\n";
+
+	mclose($mh);
+	close(FH);
+}

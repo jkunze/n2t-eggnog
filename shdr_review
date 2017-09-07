@@ -1,0 +1,22 @@
+#!/usr/bin/perl
+
+use 5.006;
+use strict;
+use warnings;
+
+# Author:  John A. Kunze, jak@ucop.edu, California Digital Library
+# Copyright (c) 2013 UC Regents
+
+# To be run from /noid/naans/forge.
+
+# main
+{
+	system 'sed -n "/^shdr:/,\$p" /noid/naans/master_shoulders | more';
+	print '
+After that review, enter your estimate of the next prefix and shoulders
+as arguments to "shdr_prep", following these regexps:
+
+	./shdr_prep b\\d\\d\\d\\d [[:alpha:]]+\\d [[:alpha:]]+\\d
+
+';
+}

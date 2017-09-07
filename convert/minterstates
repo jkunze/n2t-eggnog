@@ -1,0 +1,16 @@
+#!/cdlcommon/products/bin/bash
+
+# XXX exceptions: /noid/nd/oca ? -> m/ark/13960/t ?
+# XXX exceptions: /noid/nd/yamz ? -> m/ark/99152/h ?
+
+# Prepare sed arguments
+#
+shoulders=/noid/shoulders/master_shoulders.txt
+match='^minter:.*http'
+old='.*http://noid.cdlib.org/\(.d\)/noidu_\(.*\)'
+new='/noid/\1/\2/NOID/noid.bdb'
+
+ominters=$( sed -n "/$match/s,$old,$new,p" $shoulders )
+./getbdbvar :/oacounter $ominters
+
+sed -n '/^:: /s///p' $shoulders

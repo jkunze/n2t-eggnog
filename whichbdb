@@ -1,0 +1,136 @@
+#!/usr/bin/env perl
+
+use 5.006;
+use strict;
+use warnings;
+
+my $usage_text = << "EOF";
+
+ Usage: $0 Module
+
+where Module is
+   "b" for BerkeleyDB.pm,
+   "f" for DB_File.pm, or
+   "bf" for both.
+
+Reports version numbers for the requested module(s), along with the C
+library version numbers that each module was built with and is now
+(currently) running with.
+
+EOF
+
+my (%h, $filename, $db, $msg);
+my ($modversion, $built, $running);
+my $testdir = '.testdir';
+my $backdir = '.backdir';
+
+sub remake_dirs {
+
+	# Make sure $testdir exists and is empty
+	$msg = `rm -fr $testdir $backdir 2>&1`;
+	my $msg and
+		die "Problem removing $testdir $backdir: $msg";
+	mkdir($testdir) or
+		die "Could not create dir $testdir.";
+	mkdir($backdir) or
+		die "Could not create dir $backdir.";
+}
+
+sub get_bdberr {
+	use BerkeleyDB;
+	$BerkeleyDB::Error and
+		return $BerkeleyDB::Error;
+	return '$!=' . $!;
+}
+
+#   $DB_File::VERSION      (BDB Perl module that we are running with)
+#   $DB_File::db_ver       (BDB C library version we were built with)
+#   $DB_File::db_version   (BDB C library version we are running with)
+#
+sub get_dbversion {
+
+	use BerkeleyDB;
+
+	remake_dirs;
+	# Note that an environment consists of a number of files that
+	# Berkeley DB manages behind the scenes for you. When you first use
+	# an environment, it needs to be explicitly created. This is done
+	# by including DB_CREATE with the Flags parameter, described below.
+	#
+	my $env = new BerkeleyDB::Env
+			-Home => $testdir,
+			-Flags => DB_CREATE | DB_INIT_TXN | DB_INIT_MPOOL,
+		or die "No env created";
+
+	my $filename = 'testdb.bdb';
+	my $db = tie %h, 'BerkeleyDB::Btree',
+			-Filename   => $filename,
+			-Flags      => DB_CREATE,
+			-Env	    => $env,
+		or die "Cannot open $filename: ", get_bdberr(), "\n";
+
+	$h{the} = 'quick';
+	$h{brown} = 'fox';
+	$h{jumped} = 'over';
+
+	undef $db;
+	untie %h;
+
+	my $dbmsg = `db_hotbackup -h $testdir -b $backdir 2>&1`;
+	$dbmsg ||= "db_hotbackup works";
+	return (
+		$dbmsg,
+		$BerkeleyDB::VERSION,
+		$BerkeleyDB::db_ver,
+		$BerkeleyDB::db_version,
+	);
+}
+
+sub get_dbfversion {
+
+	use DB_File;
+
+	remake_dirs;
+	$filename = "$testdir/testdbf.bdb";
+	$db = tie %h, 'DB_File', $filename, O_RDWR|O_CREAT, 0666, $DB_BTREE or
+		die "Cannot open $filename: $!\n";
+
+	$h{the} = 'quick';
+	$h{brown} = 'fox';
+	$h{jumped} = 'over';
+
+	undef $db;
+	untie %h;
+
+	my $dbmsg = `db_hotbackup -h $testdir -b $backdir 2>&1`;
+	$dbmsg ||= "db_hotbackup works";
+	return (
+		$dbmsg,
+		$DB_File::VERSION,
+		$DB_File::db_ver,
+		$DB_File::db_version,
+	);
+}
+
+my $mod = shift || '';;
+$mod or
+	print($usage_text),
+	exit 0;
+
+my $bmode = ($mod eq 'b' || $mod eq 'bf');
+my $fmode = ($mod eq 'f' || $mod eq 'bf');
+$bmode || $fmode or
+	print("Unknown argument: $mod\n"),
+	print($usage_text),
+	exit 1;
+
+if ($bmode) {
+	($msg, $modversion, $built, $running) = get_dbversion();
+	print "BerkeleyDB version $modversion, built with C libdb ",
+		"$built, running with C libdb $running\n\t$msg\n";
+}
+if ($fmode) {
+	($msg, $modversion, $built, $running) = get_dbfversion();
+	print "DB_File version $modversion; built with C libdb ",
+		"$built, running with C libdb $running\n\t$msg\n";
+}

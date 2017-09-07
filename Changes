@@ -1,0 +1,20 @@
+Revision history for noid script and Noid module.
+
+0.5     Synchronization with Java version of Noid-je 0.5.
+        Directory and module name change to avoid conflicts on
+        case-sensitive filesystems (eg, Mac OS): the main "NOID"
+	directory became "dbnoid".  Changes to improve portability,
+	including use of File::Spec.  Removed reliance on locking
+	and transaction subsystems of BerkeleyDB.  Fixed bug in
+	error return from 'queue'.
+	ActivePerl: catfile, srand can't be called multiple times xxxxx
+
+0.424	Some portability fixes.  Added notes to README file on installation
+	of noid and its prerequisites in user space, with addition of a
+	step to untaint PERL5LIB (which wasn't getting through).
+
+0.423	Documentation fixes.
+
+0.422	Fixed flock bug.
+
+0.421	Initial release.

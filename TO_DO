@@ -1,0 +1,91 @@
+XXXXXX VERY IMPORTANT
+passwords, certs, and n2t service details are secrets IN THE CURRENT REPO --
+** NO OPEN source distro can include passwords, certs, etc!!!
+
+
+Possible ideas for features/fixes.
+XXX recreate noid.pdf from docs?
+XXX  add pine-like feature to ask people to let us know when they've
+	installed noid
+XXX  for a blurb:
+   "The Perl script named 'noid' that is packaged together with the
+   Noid.pm Perl module on CPAN is working well at over two dozen
+   institutions.  Noid doesn't itself provide persistence, which may
+   or may not be a property of a service that maintains tables that
+   map incoming ids to actions (usually access).  Certainly, Handles
+   and DOIs don't provide persistence, as you have to maintain the
+   tables that they merely host, and access is only as good as the
+   web server (usually yours) hosting the objects.  You could also
+   maintain your own tables and a resolver on your own web server.
+   Noid is intended to provide you with opaque strings that are
+   suitable for embedding in ids (eg, ARKs, URLs, Handles, etc) that you
+   want to maintain (or have some provider maintain) for the long-term.
+   One side-feature that the minter provides is the ability to bind
+   metadata (eg, current location URL, and descriptive info ("identity"))
+   to an id, such that a web server can be configured to "resolve" ids
+   based on your bindings.  This is all done via a RESTful interface (not
+   tested in Java version), so can be called easily by applications in
+   almost any languate.  In summary, noid gives you opaque ids and
+   binding/resolving ability."
+XXXX note: new 13 digit ISBN checksum
+   algorithm (1 3 1 3 ... weighting mod 10)
+     is perfect for single digit errors, and protects against transposition
+     of any two adjacent digits unless they differ by 5; however it fails to
+     detect random shuffling of all even or all odd digits); old 11 digit
+     ISBN algorithm (10 9 8 ... 1 mod 11) was perfect for single digit and
+     two digit transpositions
+XXXXXXXXXX fix warning if PERL5LIB isn't set
+xxx add "noid dbstop/dbstart"?
+xxx add "noid deal N [ M ]" (stateless) to mint N random integers from 1 to N
+    without replacement choosing M (def M=N) at a time
+XXX clarify:
+      "If Template is not supplied, the minter freely binds
+       any identifier that you submit without validating it
+       first. In this case it also mints medium term identifiers
+       under the default Template, .zd"
+  when in fact it (a) freely binds always and (b) never validates.
+xxx new verb for a 'ping' test to see if it's up without minting?
+XXX new verb for record-less (just Logging): from Lena Z: Nab Scoop Float Sift Lift Net Snag Hook Spear Grab Coin Flip Peel Strip Wag Rope Lassoe
+XXX repertoires should come in two parts:  chars generated internally plus
+    additional chars up to a prime cardinality (maybe empty) for final
+    check char, eg, 0-9 plus x, 0-9a-z_ plus {}, a-z plus 789, and
+    a-zA-Z plus 9,
+{ a-z 789 }			 cardinality 29, mask char a
+{ a-zA-Z 7 }			 cardinality 53, mask char A
+{ 0-9 a-f _ }			 cardinality 17, mask char x
+{ 0-9 a-z _ }			 cardinality 37, mask char v
+{ 1-9 b-z B-Z } - {l, vowels}	 cardinality 47, mask char E
+{ 0-9 a-z A-Z # * + @ _ }	 cardinality 67, mask char w
+Visible ASCII - { % - . / \ } 	 cardinality 89, mask char c
+    primes: 2 3 5 7 11 13 17 19 23 29 31 37 41 43 47 53 59 61 67 71 73 79 83 89 97 101 103 107 109 113 127 131 137 139 149 151 157 163 167 173 179 181 191 193 197 199 211 223 227 229 233 239 241 251 257 263 269 271 277 281 283 293 307 311 313 317 331 337 347 349
+XXX why not make it so that 'r' might also have an expanding template when
+    it runs out, eg, .rdede -> .rddede
+XXX change lib/Noid.pm ine 685 to test PWD env before use, and ignore if not set; easiest: use Cwd; $cwd = getcwd;
+XXX change 'NOID' as database name to 'dbnoid' (for case insensitive filesys)
+XXX use Data::GUID (best probably) for uuid/guid integration: eg, "noid mint"
+    vs "noid nab", and nuid mint vs nuid nab
+XXX test with ActiveState Perl on windows
+XXX add logging as separable option that can be turned on and off during
+    minter lifetime
+XXX add option to do real pseudo-random (not quasi-random) in order to
+    cover application of random selection without replacement
+XXX add an option to do quasi-random, but with a fixed seed different from
+XXX create To Do alphabets
+XXX document an example of how to set up a rewrite rule that responds
+    to the ? and ?? at the end of an id, and convert to a CGI string
+XXX add java interface
+XXX fix env test to suggest that NFS and AFS filesystems not be used
+XXX why does dbopen fail when doing dbinfo from an account that can't
+    write the file -- should be doing readonly open
+XXX record literal noid dbcreate (re)creation command used into README
+xxx add template 'repeat' component, eg, r(ddee)dd which says 'when you
+    run out of noids, increase template to rddeeddeedd and keep minting
+    (the default behavior is just to add another instance of the leftmost
+    template char)
+xxx think about Math::bignum (for integers longer than 32 bits)
+xxx what about key insertion speed slowdown in mature minters
+xxx how it might be sped up just in case it does slow down, eg, by a
+    caching strategy of minting 50 in advance and putting them in a
+    special "use next" queue (or maybe the regular queue?) and minting
+    another 50 when the cache drains below 10.
+

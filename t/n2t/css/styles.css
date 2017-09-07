@@ -1,0 +1,160 @@
+/* Uncomment these 3 lines to see borders around everything */
+// * {
+//  border: 1px solid red;
+// }
+@font-face {
+  font-family: 'KievitWeb';
+  src: url('../fonts/KievitWeb.eot'); /* IE9 Compat Modes */
+  src: url('../fonts/KievitWeb.eot?#iefix') format('embedded-opentype'), /* IE6-IE8 */
+     url('../fonts/KievitWeb.woff') format('woff'); /* Modern Browsers */
+}
+body {
+  font-family: KievitWeb;
+  font-size: 18px;
+}
+html { 
+  /* Big Background Image */
+  /* background: url(../images/UCSD_day2-79_1920x1129.jpg) no-repeat center center fixed; */
+  background: url(../images/shore.jpg) no-repeat center center fixed;
+  -webkit-background-size: cover;
+  -moz-background-size: cover;
+  -o-background-size: cover;
+  background-size: cover;
+  /* End CSS for Big Background Image */
+}
+a,a:visited, a:active {
+  color: #00778a;
+  text-decoration: none;
+}
+a:hover {
+  color: #FFC857;
+}
+h2 {
+  margin: 10px 0px;
+}
+
+.box {
+  border-radius: 5px;
+  /* Background Color on un-linked boxes */
+  background-color: #FFFFFF;
+  padding: 20px;
+  margin: 10px 0px 0px;
+}
+.box-big-text {
+  font-size: 18px;
+}
+@media (min-width: 32em) {
+  .box-big-text {
+    font-size: 20px;
+  }
+}
+.box-fixed {
+  border-radius: 5px;
+  /* Background Color on un-linked boxes */
+  background-color: #FFFFFF;
+  padding: 0px 10px;
+  margin: 10px 0px 0px;
+  height: 6.5em;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Linked boxes */
+.box-linked {
+  border: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 6.3em;
+  width: 100%;
+  padding: 0px 26px 0px 8px;
+  font-size: inherit;
+  font-family: inherit;
+  /* Background Color on linked boxes */
+  background-color:  #C0D6DF;
+  /* External Link Image */
+  /* background-image: url("../images/ext-link.png"); */
+  background-repeat: no-repeat;
+  background-position: right center;
+}
+@media (min-width: 32em) {
+  .box-linked {
+    height: 4.5em;
+  }
+}
+.box-linked:hover, .box-linked:focus { 
+  background-color: #FFC857;
+}
+.box-linked:focus { 
+  outline: none;
+  border: 1px solid #505050;
+}
+.box-linked-text {
+  display: inline-block;
+  max-width: 200px;
+}
+.center-horiz {
+  text-align: center;
+}
+.container-narrowest {
+  margin: 0 auto;
+  max-width: 800px;
+}
+.container-widest {
+  margin: 0 auto;
+  max-width: 900px;
+}
+.ext-link {
+  display: inline-block;
+  margin-right: 24px;
+}
+.ext-link:after {
+  display: inline-block;
+  vertical-align: middle;
+  content: ">";
+}
+.footer {
+  background-color: #C0D6DF; 
+  min-height: 6.8em;
+}
+.header {
+  margin-top: -8px;
+  padding-top: 8px;
+  background-color: #FFFFFF; 
+}
+.header-logo-left {
+  margin: 0;
+  color: #00778a;
+  font-size: 2.5em;
+  font-weight: 700;
+  text-transform: uppercase;
+  text-align: right;
+}
+@media (min-width: 32em) {
+  .header-logo-left {
+    font-size: 3.6em;
+  }
+}
+.header-logo-right {
+  margin: 0;
+  text-align: left;
+}
+@media (min-width: 32em) {
+  .header-logo-right {
+    font-size: 1.1em;
+  }
+}
+.header2 {
+  font-size: 1.3em;
+  font-weight: 600;
+}
+.list {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+}
+}
+.text-sm {
+  font-size: 0.8em;
+}

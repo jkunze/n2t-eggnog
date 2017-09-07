@@ -1,0 +1,16 @@
+To improve the tracking of SSL certificates and their expiration dates for CDL dev, stage, and production hosts, IAS proposes the following standards.
+ 
+1- SSL certificates to be place in directory structured as /apps/<appdir>/ssl/<date>
+
+a.  Where <appdir> is the root of the application directory.
+b. Where <date> is the date the SSL certificate will expire.
+c.  Example 1: On cdl-mdig-p01, /apps/mdig/ssl/2016-11-30 holds SSL certificate files. The SSL certificate found in this directory will expire November 30, 2016.
+d. Example2: On osprey, /apps/devtools/hg/ssl/2016-11-30 holds SSL certificate files. The SSL certificate found in this directory will expire November 30, 2016.
+2- The SSL certificate files will use the following naming convention.
+a.  SSL certificate key equals <common name>.key   Examples are massdig.cdlib.org.key or hg.cdlib.org.key
+b. SSL certificate request equals <common name>.csr  Examples are massdig.cdlib.org.csr or hg.cdlib.org.csr
+c.  SSL certificate equals <common name>.crt   Examples are massdig.cdlib.org.crt or hg.cdlib.org.crt
+d. Root certificate equals root.crt
+e. Intermediate certificate equals intermediate.crt
+3- The role that runs the service is the owner of the ssl directory tree and its files. The directory permissions for /apps/<appdir>/ssl are 750 (Owner: read, write, search. Group: read, search. World: none.)
+4- It is the Developers role to either point their web service to these SSL certificate files or copy the SSL certificate files to a different location and use them fittingly. The developers should not rename or remove the files found in /apps/<appdir>/ssl/<date> directory.

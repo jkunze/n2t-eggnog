@@ -1,0 +1,184 @@
+#!/usr/bin/env bash
+
+if [[ ! "$PFX_REDIR" ]]
+then
+	source set_pfx_db_vars || echo \
+		"error: can't find PFX_... environment variable settings" 1>&2
+fi
+
+me=$( basename $0 )
+function usage {
+	cat <<- EOT
+
+Usage:
+    $me naansfile shouldersfile
+
+Write to stdout the results of converting four text files:
+
+  1. (from arg) naansfile (old style "naa:" records)
+  2. (from arg) the current shoulders database, usually master_shoulders.txt
+  3. (hardwired) ~/n2t_create/schemes.anvl (from miriam registry)
+  4. (hardwired) ~/n2t_create/lsregistry.yml (from prefixcommons)
+
+File records are all converted to "new ANVL", where each entry begins
+":: NAAN".  In "old ANVL" each record begins "naa:".  The combined records,
+which are written to stdout, will serve later to populate a "naanders"
+(naans+shoulders+schemes) binder.
+
+An example of the old "naa:" record format follows.
+
+    naa:
+    who:    University of Kentucky (=) UKY
+    what:   16417
+    when:   2010.04.09
+    where:  http://www.uky.edu
+    how:    NP | (:unkn) unknown | 2010 |
+    !why:   ARK
+    !contact: Smith, Eric ||| esmith@email.uky.edu
+    
+Examples of the new ANVL record format follow.  A record of type "scheme"
+may have an associated redirect rule that embeds "\$id" to indicate a
+string to be replaced by the incoming identifier (minus the scheme).
+
+    :: xyz
+    type: scheme
+    manager: n2t
+    name: XYZ
+    date: 2001.07.12
+    $PFX_REDIR: http://example.org/foo?bar=$id&zaf
+
+    :: ark:/87937/m0
+    type: shoulder
+    manager: ezid
+    name: The Cancer Imaging Archive
+    date: 2014.03.21
+    minter: https://n2t.net/a/ezid/m/ark/87937/m0
+
+    :: ark:/13030
+    type: naan
+    manager: n2t
+    name: California Digital Library (=) CDLIB
+    date: 2002.07.12
+    $PFX_REDIR: http://www.cdlib.org
+    na_policy: NP | NR, OP, CC | 2002 | http://www.cdlib.org/inside/diglib/ark/
+
+EOT
+}
+
+[[ $1 == "" || $2 == "" ]] && {
+	usage
+	exit 0
+}
+
+naans=$1
+shoulders=$2
+
+echo "#!/usr/bin/env perl
+# This file was created automatically by $me."		> naa2anvl
+
+chmod 755 naa2anvl
+
+cat << 'EOT' >> naa2anvl
+
+use 5.006;
+use strict;
+use warnings;
+
+# XXX Note: this does NOT preserve comments or the initial ERC record!
+#     Also, (a feature) it does NOT preserve private lines beginning '!'.
+
+local $/ = '';					# read paragraph at a time
+my ($who, $what, $date, $where, $how);
+
+while (<>) {
+	#/^erc:.*\nwhen:\s*(\S+)/s and		# skip file description
+	#	print("# Converting input file $naans dated $1\n"),
+	/^erc:/	and				# skip file description
+		next,
+	;
+	($who, $what, $date) =
+		m/\nwho:\s*(.*)\nwhat:\s*(.*)\nwhen:\s*(.*)/ or
+			print(STDERR "Malformed input: $_");
+	($where, $how) = m/\nwhere:\s*(.*)\nhow:\s*(.*)/;
+	! $who || ! $where and			# basic error check
+		s/\n/ /g,
+		print("# error: empty fields for record: $_"),
+	;
+	# now make sure it ends in a final /, ready for $id to be appended
+	# when a redirect is called for
+	$where =~ s|([^/])\s*$|$1/|;
+
+	# The main output
+	print "
+:: ark:/$what
+type: naan
+manager: n2t
+name: $who
+date: $date
+$ENV{PFX_REDIR}: $where
+na_policy: $how
+";
+
+}
+print "\n";			# make sure there's a record separator
+exit;
+
+#print "numrecs=", scalar(@recs), "\n";
+# read shoulders.txt format
+#perl -00 -ne 'push @recs, $_; END { print sort { $b =~ /^date: (.*)/m and $bx = $1; $a =~ /^date: (.*)/m and $ax = $1; $bx cmp $ax } @recs }' < dated > rsdated
+
+EOT
+
+export LC_ALL=C
+
+# NB: next line important for privacy policy compliance
+sed '/^[#!]/d' $naans |			# drop comment and private lines
+	perl naa2anvl - > naans.anvl
+echo '' >> naans.anvl		# make sure it ends in a blank line
+
+# kludge: convert XML and YAML from hardwired filenames
+
+sed "s/dataEntry:/$PFX_REDIR:/" ~/n2t_create/schemes.anvl > idotschemes.anvl
+echo '' >> idotschemes.anvl		# make sure it ends in a blank line
+
+perl -n -e \
+  's/^ *preferredPrefix: "([^"]*)" *$/\n:: \L$1\ntype: commonspfx/ and print;' \
+-e 's/^ *providerHtmlTemplate: "([^"]*)" *$/'$PFX_REDIR': $1/ and print' \
+		~/n2t_create/lsregistry.yml > pcomschemes.anvl
+echo '' >> pcomschemes.anvl		# make sure it ends in a blank line
+
+# Shoulders file should already be close to the right format
+cp $shoulders shoulders.anvl
+echo '' >> shoulders.anvl		# make sure it ends in a blank line
+
+# main output
+
+perl -00 - {naans,shoulders,idotschemes,pcomschemes}.anvl << 'EOT'
+#===========
+use 5.006;
+use strict;
+use warnings;
+my $me = 'make_naanders_input';
+my (%count, $key, $n);
+print "# This file was created by $me, combining $ENV{PFX_REDIR} records
+# from the NAANs, EZID shoulders, idot, and PrefixCommmons registries.
+
+";
+while (<>) {				# read paragraph at a time
+	/^type: commonspfx/m and ! /^$ENV{PFX_REDIR}: .*\$id/m and
+		next;			# delete non-actionable prefixes
+	/^::\s+(\S+)/m or		# capture any other prefix-like token
+		next;			# else delete block as non-actionable
+	$key = $1;			# got a prefix -- use token as key
+	++$count{$key} > 1 and		# earlier occurrences of key occlude
+		next;			# later duplicates, which we skip
+	$n++;
+	print;
+}
+print "\n";			# yyy make sure there's a final newline
+print STDERR "$me: preprocessed $n prefixes\n";
+#===========
+EOT
+
+# xxx clean up more than these files, eg, *.anvl
+#rm naa2anvl naans.anvl			# don't need any more

@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# XXXXX deprecate?
+
+export EGNAPA_TEST=test
+export EGNAPA_DURABLE=n2t
+
+if [[ ! "$1" ]]
+then
+	echo "Usage: $0 start | stop | restart"
+	exit 1
+fi
+
+if [[ -d ~/sv/new ]]		# xxx kludge to test if we're on my laptop
+then
+	# We need "svu new" to be in effect.  Since svu might not be
+	# defined, we need to source ~/.bashrc, but since that clobbers
+	# the PATH, if "svu <any>" was in effect, it causes an svu panic.
+	# So, first we make sure "svu off" and throw away any error if
+	# it's not defined.
+	# 
+	svu off >& /dev/null	# make sure it's off, even if svu undefined
+	source ~/.bashrc
+	svu new
+	cd ~/sv/new/build/noid
+else
+	cd ~/wr/noid/newnew/src
+fi
+
+perl -Mblib t/n2t/apctl $1

@@ -1,0 +1,158 @@
+
+			EGGNOG INSTALLATION INSTRUCTIONS
+
+EGGNOG OVERVIEW
+
+HISTORICAL ARTIFACTS
+
+This code is a direct descendant from the NOID package available from
+CPAN. It splits the binding (egg) away from the minting (nog), and is
+compatible with noid's minter templates and check digit computations.
+
+It's written in Perl, so it's unfashionable, but it's also fast, compact,
+and secure, and it runs everywhere.
+
+The architecture betrays the age of the code base, born in 2002.
+Originally written for an embedded database with no dependency on an
+externally running daemon, it used BerkeleyDB. To meet the demands of
+high availability, support is being added for an external database, in
+this case MongoDB. The code will support either or both models at once.
+The press of deadlines have not made it possible in to avoid coding in
+platform-specific assumptions in this first phase (another phase will
+be required to make the DB connections more generic).
+
+Morever, the original CGI-based architecture that kept pace with server
+loads until about 2013, is also in transition (to the Mojolicious web
+framework).
+
+The marriage in eggnog and noid between binding and minting has always
+been rocky. In honor of the union, even after the break up, the code
+relied on the metaphor of a "minder", an object that could be either a
+minter or a binder. That metaphor worked in the early days but became
+increasingly strained with the realization that (a) binders tend to be
+few and minters numerous, (b) a formal non-embedded database solution
+was right for binders, and (c) a lightweight, non-database solution was
+right for minters (eg, JSON blobs instead of separate key-value stores).
+
+In 2002 the code needed a serialization for metadata, and for want of an
+alternative to heavyweight and boring XML, I chose to pursue ANVL (A Name
+Value Language). Without development and promotion energy, ANVL was not
+destined to catch on as once hoped. As JSON and YAML have come to the
+fore, YAML is a first priority alternative because metadata activities
+significantly involve non-technical humans (the original target of ANVL)
+that would be put off by JSON.
+
+... <much to add>
+
+PERL STYLE NOTE
+
+This code often uses big boolean expressions instead
+typical if-elsif-else structures because entering a { block } is
+relatively expensive.  It looks strange if you're not used to it, but
+this is how it works.  Instead of
+
+    if ( e1 && e2 && e3 ) {
+    	s1;
+    	s2;
+    	...;
+    }
+    elsif ( e4 || e5 && e6 ) {
+    	s3;
+    }
+    else {
+    	s4;
+    	s5;
+    }
+
+we can write this series of conditional expressions and statements as
+
+    e1 && e2 && e3 and
+    	s1,
+    	s2,
+    1 or
+    e4 || e5 && e6 and
+    	s3,
+    1 or
+    	s4,
+    	s5,
+    1;
+
+That's the rigorous form, where the "1 or" makes sure that the list
+of statements ends with a "true" and stops ("closes the brace") the
+processing of the next boolean "or" clause.  The whole mess ends at
+the ";".
+
+Riskier to maintain but shorter is to omit the "1 or".  We can do this
+if we KNOW that the immediately preceding statements in the "," separated
+list will evaluate to "true" or if we're at the last statement before
+";".  For example, if s2 and s3 always return "true", we can shorten the
+above to
+
+    e1 && e2 && e3 and
+    	s1,
+    	s2
+    or
+    e4 || e5 && e6 and
+    	s3
+    or
+    	s4,
+    	s5
+    ;
+
+For this big boolean form to work along with list processing, it's
+common to parenthsize argument lists (so Perl know where the statement
+ends) as well as an entire assignment statements (so Perl knows where the
+RHS ends). If you don't do this, the commas terminating the boolean
+statements have a tendency to get swallowed up by Perl functions
+preceding them.
+
+INSTALLATION
+
+If not already unpacked, unpack with
+
+   tar xzf ...
+
+after adjusting the version number as needed.
+
+To install the module and script locally, type the following (adjust the
+"~/local" to wherever you put your local bin and man directories):
+
+   perl Makefile.PL INSTALL_BASE=~/local
+   make
+   make test
+   make install
+
+ACKNOWLEDGEMENTS
+
+Thanks to Greg Janee, Joan Starr, Brian Tingle, Martin Haye, and Paul
+Fogel for their contributions.
+
+COPYRIGHT AND LICENSE
+
+Copyright (c) 2002-2017, UC Regents.  BSD-type open source license.
+
+xxx modernize this block
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+    * Redistributions of source code must retain the above copyright
+      notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above copyright
+      notice, this list of conditions and the following disclaimer in the
+      documentation and/or other materials provided with the distribution.
+    * Neither the name of the University of California nor the names of
+      its contributors may be used to endorse or promote products derived
+      from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE REGENTS OF THE UNIVERSITY
+OF CALIFORNIA BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.

@@ -1,0 +1,124 @@
+# Section start -- n2t-local prefixes
+
+ark:
+  type: "scheme"
+  name: "Archival Resource Key"
+  alias: 
+  provider: "n2t"
+  primary: "true"
+  redirect: "n2t.net/ark:$id"
+  test: "/88435/hq37vq534"
+  probe: "http://n2t.net/ark:/88435/hq37vq534"
+  more: "https://wiki.ucop.edu/display/Curation/ARK"
+
+hdl:
+  type: "scheme"
+  name: "Handle System Identifier"
+  alias: handle
+  primary: "true"
+  redirect: "http://hdl.handle.net/$id"
+  test: "4263537/4000"
+  probe: "http://hdl.handle.net/4263537/4000"
+  more: "http://www.handle.net"
+
+igsn:
+  type: "scheme"
+  name: "International Geo Sample Number"
+  alias: 
+  primary: "true"
+  redirect: "hdl.handle.net/10273/$id"
+  test: "SSH000SUA"
+  probe: "http://hdl.handle.net/10273/SSH000SUA"
+  more: "http://www.geosamples.org/"
+
+purl:
+  type: "scheme"
+  name: "Persistent URL"
+  alias: 
+  primary: "true"
+  redirect: "http://purl.org/$id"
+  test: "dc/terms/creator"
+  probe: "http://purl.org/dc/terms/creator"
+  more: "http://purl.org/"
+
+rfc:
+  type: "scheme"
+  name: "Internet Standard -- IETF Request for Comments"
+  alias: 
+  primary: "true"
+  redirect: "https://www.ietf.org/rfc/rfc$id"
+  test: "5013"
+  probe: "https://www.ietf.org/rfc/rfc5013"
+  more: "https://www.ietf.org/"
+
+lsid:
+  type: "scheme"
+  name: "Life Sciences Identifier"
+  alias: 
+  primary: "true"
+  redirect: "http://www.lsid.info/urn:$id"
+  test: "lsid:ipni.org:names:77145066-1:1.4"
+  probe: "http://www.lsid.info/urn:lsid:ipni.org:names:77145066-1:1.4"
+  more: "https://www.lsid.info/"
+
+url:
+  type: "scheme"
+  name: "Uniform Resource Locator"
+  alias: 
+  primary: "true"
+  redirect: "$id"
+  test: "www.w3c.org"
+  probe: "http://www.w3c.org"
+  more: "https://www.w3c.org/"
+
+repec:
+  type: "scheme"
+  name: "Research Papers in Economics"
+  alias: 
+  primary: "true"
+  redirect: "http://repec.org/$id"
+  test: "pdi221"
+  probe: "http://repec.org/pdi221"
+  more: "http://repec.org/"
+
+# RePEc:aaa:ssssss:xxxxx where aaa is a three-letter archive code, ssssss
+# is a six-letter series or journal code, and xxxxx is a code for a
+# particular item, which can be any number of characters. The only
+# exceptions to this rule are author short-IDs, of the form pxxyyyy where
+# xx are two letters and yyyy are up to four (for now) digits, and
+# institutions handles, of the form RePEc:edi:yyyyyyy where yyyyyyy are
+# seven characters.
+
+# RePEc:fip:fedkrm:y:2013:n:qi
+# econpapers.repec.org/RePEc:fip:fedkrm:y:2013:n:qi
+
+zzztestprefix:
+  type: "scheme"
+  name: "Test Prefix"
+  alias: 
+  primary: "true"
+  redirect: "id.example.org/$id"
+  test: "0123456789"
+  probe: "id.example.org/0123456789"
+  more: "https://id.example.org/"
+
+ark:/99997/6:
+  type: "shoulder"
+  manager: "ezid"
+  name: "Test ARK Shoulder -- Minimal, Mixed case"
+  redirect: "id.example.org/nothing_to_subst"
+  norm: "mc"
+  date: "2017.02.17"
+  minter:
+
+ark:/99998/pfx8:
+  type: "shoulder"
+  manager: "ezid"
+  name: "Test ARK Shoulder -- Lowercasing"
+  redirect: "id.example.org/${blade}&null"
+  norm: "lc"
+  date: "2017.02.14"
+  minter:
+
+# Section end -- n2t-local prefixes
+

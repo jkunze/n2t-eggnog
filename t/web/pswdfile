@@ -1,0 +1,33 @@
+#!/bin/bash
+
+# This file contains INSECURE default passwords that should NOT be used
+# in production settings.  It is one of two files defining login and
+# password information, where this file will be consulted if and only if
+# the preferred file, ~/warts/pswdfile.web, does not exist.  The other
+# file is preferred because it is maintained outside the source repo.
+#
+# Both files have an identical format that defines logins and passwords
+# to be fed to Apache htpasswd in order to enable the web server to
+# recognize a separate authN realm for each populator.  You can have
+# multiple users in each realm if you want.  A user can have the same
+# name in two realms, but authN succeeds only if the user supplies the
+# correct password for the realm being accessed.  Which realm is being
+# accessed is determined by which API URL path is being accessed, eg,
+#
+#     /a/pestx/...		implies realm "pestx"
+#     /a/pesty/...		implies realm "pesty"
+#
+# Each triple corresponds to
+#
+#	pswdfilename	username	password
+#
+# NB: it is important that these lines be indented by exactly one tab,
+# as this section of the file is processed scripts such as "wegnpw".
+#
+pwdfile="\
+	pwdfile_pestx	testuser1	testpwd1a \
+	pwdfile_pestx	testuser2	testpwd2a \
+\
+	pwdfile_pesty	testuser1	testpwd1b \
+	pwdfile_pesty	testuser2	testpwd2b \
+"

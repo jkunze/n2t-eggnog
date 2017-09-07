@@ -1,0 +1,53 @@
+# This bash script subfile is meant to be source'd by a caller that defines
+# the current directory and any variable settings that may be needed.  
+# Should be run from within $buildout_root.
+
+echo Initializing rewrite-plus.conf.
+
+cat <<- EOT > $rwplus.pre
+# This file was automatically created by build_server_tree.
+# It deals with more frequently occurring resolution cases that should
+# appear (via early "Include") before less frequently occurring cases.
+
+# NB: The "prg:" programs won't start up properly until the binders they
+#     open actually exist.  You cannot easily create them within a test
+#     script that starts by starting apache, so we create them beforehand.
+
+# Each of these programs needs a corresponding create_test_rmap call
+# AND a rewrite rule for when a specific single resolver is requested
+# (using ^/r/...) by a user/tester.
+
+# xxx these rules actually drive some tests in t/apachebase.t,
+#     which is the wrong way to do tests -- do this more cleanly
+RewriteRule ^/(ark:/?13960/.*)\$	"_rslv_\${map_x:\$1.get _t}"
+RewriteRule ^/(ark:/?13030/.*)\$	"_rslv_\${map_xy:\$1.get _t}"
+RewriteRule ^/(ark:/?\\w+/.*)\$		"_rslv_\${map_y:\$1.get _t}"
+RewriteRule ^/(urn:/?\\w+:.*)\$		"_rslv_\${map_xy:\$1.get _t}"
+RewriteRule ^/(doi:/?10\\.\\w+/.*)\$	"_rslv_\${map:\$1.get _t}"
+
+# # Special case: map_all is special as it is the default top-level resolver.
+# # This is the most common and important rule to put first (for speed).
+# #     
+# RewriteRule ^/(\w+:.*)\$ "_rslv_\${map_all:\$1.get _t}"
+#
+
+# All the rest go to the EZID resolver, which is where, after
+# unsuccessful lookup, we expect non-N2T-hosted NAAN redirects to go
+# xxx not most graceful support multiple resolvers and non-N2T-hosted NAANs.
+#
+RewriteRule ^/ark:/?(.*)\$   "_rslv_\${map_ezid:ark:/\$1.get _t}"
+
+# Explicit resolver given by user (not so common)
+#RewriteRule ^/r/([^/]+)/+(.*)\$ "_rslv_\${map_\$1:\$2.get _t}"
+
+RewriteRule ^/[tT]-ark:/?(13960/?.*)\$      "_rslv_\${map_pestx_test:ark:/\$1.get _t}"
+RewriteRule ^/[tT]-ark:/?(.*)\$   "_rslv_\${map_pestxy_test:ark:/\$1.get _t}"
+
+# # Next rule lets us resolve against test binders with "t-ark:", "t-doi:", etc.
+# RewriteRule ^/[tT]-(\w+:.*)\$ "_rslv_\${map_all_test:\$1.get _t}"
+
+# RewriteMap refuses to pass any env vars, so we call a wrapper script first.
+
+# RewriteMap map_all	prg:$rmap_root/all/rmap_all
+# RewriteMap map_all_test	prg:$rmap_root/all_test/rmap_all_test
+EOT

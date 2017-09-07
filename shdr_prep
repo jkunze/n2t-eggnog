@@ -1,0 +1,58 @@
+#!/usr/bin/perl
+
+use 5.006;
+use strict;
+use warnings;
+
+# Author:  John A. Kunze, jak@ucop.edu, California Digital Library
+# Copyright (c) 2013 UC Regents
+
+# main
+{
+	$#ARGV < 2 and
+		print('
+Usage: ./shdr_prep bNNNN_guess ark_shdr_guess doi_shdr_guess
+
+From /noid/naans/forge, run "shdr_prep" to compare your guesses as to the
+next prefix/NAAN and shoulders against the more official machine-generated
+strings.  If the same, or not too different for comfort, copy and paste
+the proposed command to actually create the new shoulders.
+'),
+		exit 1;
+
+	my ($doip_g, $dshdr_g, $ashdr_g) = @ARGV[0,1,2];
+		#qw(8NNNN fk4 bNNNN fk4);
+	my $naan_g;
+	($naan_g = $doip_g) =~ s/^b(\d{4})$/8$1/ or
+		die("mal-formed prefix: $doip_g");
+
+	my ($doip, $dshdr, $ashdr) = split /\n/,
+		`./mint_doip mint; ./mint_shdr mint ./mint_shdr mint`;
+		#	`echo b9765; echo b1; echo c2`;
+
+	print "
+Your guesses: $doip_g, $dshdr_g, $naan_g, $ashdr_g
+ Our guesses: $doip, $dshdr, $naan, $ashdr
+
+If there's a problem, you may recycle strings by running any or all of
+
+	./mint_doip unmint X
+	./mint_shdr unmint Y
+	./mint_shdr unmint Z
+
+where X, Y, and Z are strings from the relevant source (mint_doip, mint_shdr).
+
+But if those are the same or close enough, run this command in production:
+
+	./make_shdr $doip/$dshdr; ./make_shdr $naan/$ashdr
+
+To make the text records you need to store, on the laptop (for now) run
+
+	./ezidnewacct $doip $dshdr $naan $ashdr < newaccount.txt
+
+from ~/wr/noid/newnew/src/, where newaccount.txt holds a copy of the
+emailed EZID new account information form.
+";
+
+EOF
+}

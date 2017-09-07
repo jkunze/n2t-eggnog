@@ -1,0 +1,386 @@
+###### Among other things this script calls
+#   make_naanders_input to create anvl from naan reg, prefix.yaml, lsregistry
+#      then converts anvl -> yaml
+#   Then it creates other infrastructure
+
+# yyy Preserving the ordering of these sections MAY be important
+
+# This bash script subfile is meant to be source'd by a caller that defines
+# the current directory and any variable settings that may be needed.  
+# Should be run from within $buildout_root.
+
+echo Initializing rewrite-plus.conf.
+
+# We need to define a one-line blob of headers with !!! separating each.
+# This will be encoded so it fits contains no newlines and can be passed
+# for logging and content negotiation purposes in the resolver protocol.
+# Uses $hdrblob defined in build_server_tree.
+#
+# Remember to quote $ \ and ` in << blocks, or (in this case) to protect regexp
+# special chars, by having them appear only as result of parameter expansion.
+#
+cat <<- EOT > $rwplus.pre
+# This file was automatically created by build_server_tree.
+# It deals with more frequently occurring resolution cases that should
+# appear (via early "Include") before less frequently occurring cases.
+
+# NB: The "prg:" programs won't start up properly until the binders they
+#     open actually exist.  You cannot easily create them within a test
+#     script that starts by starting apache, so we create them beforehand.
+
+# Each of these programs needs a corresponding create_test_rmap call
+# AND a rewrite rule for when a specific single resolver is requested
+# (using ^/r/...) by a user/tester.
+
+RewriteRule ^/ark:/?13960.*\$      "_rslv_\${map_oca:%{REQUEST_URI}.resolve \${$hdrblob}}"
+
+RewriteRule ^/ark:/?99152.*\$      "_rslv_\${map_yamz:%{REQUEST_URI}.resolve \${$hdrblob}}"
+
+# xxx The handful of Exceptions below should be done via scheme/shoulder DB
+#
+## Exception: SNAC project (has own resolver)
+## Using 303 redirects to indicate surrogacy, per Linked Open Data demands.
+#RewriteRule ^/ark:/?(99166/w6.*)\$   http://socialarchive.iath.virginia.edu/ark:/\$1 [R=303,L,NC]
+
+# Exception: CrossRef project
+#RewriteRule ^/eoi:/?(.*)\$   "_rslv_\${map_xref:doi:\${uc:\$1}.get _t}"
+RewriteRule ^/eoi:/?.*\$ \\
+  "_rslv_\${map_xref:%{REQUEST_URI}.resolve \${$hdrblob}}" [NC]
+#
+# Exception: PURL.org project
+#RewriteRule ^/purl:/?.*\$ \\
+#  "_rslv_\${map_purl:%{REQUEST_URI}.resolve \${$hdrblob}}" [NC]
+#
+## Exception: BNF (has own resolver)
+#RewriteRule ^/ark:/?(12148.*)\$   http://ark.bnf.fr/ark:/\$1 [R=302,L,NC]
+##
+## Exception: UNT (has own resolver)
+#RewriteRule ^/ark:/?(67531.*)\$   http://digital.library.unt.edu/ark:/\$1 [R=302,L,NC]
+##
+## Exception: SPMC (has own resolver)
+#RewriteRule ^/ark:/?(76951.*)\$   http://ark.spmcpapers.com/ark:/\$1 [R=302,L,NC]
+
+# Redirect non-canonical hostnames to the canonical hostname (n2t.net).
+# XXX here's a special rule for arks.princeton.edu; it should be somewhere else!
+#     do we even need to mention arks.princeton.edu? shouldn't it work if
+#     we remain silent?
+#     TEST: try coming in via n2t.info after removing it
+#
+RewriteCond %{HTTP_HOST} ^(www\\.n2t\\.net|(www\\.)?n2t\\.(com|info|me|org))|arks\\.princeton\\.edu\$ [NC]
+RewriteRule ^/(.*) http://n2t.net/\$1 [L,R=permanent]
+
+# yyy Greg's rule; is it needed? what about localhost?
+## Forbid all other hostnames, IP addresses, etc., just in case.
+#RewriteCond %{HTTP_HOST} !^n2t\.net\$ [NC]
+#RewriteRule .* - [L,F]
+
+# # Special case: map_all is special as it is the default top-level resolver.
+# # This is the most common and important rule to put first (for speed).
+# #     
+# RewriteRule ^/(\w+:.*)\$ "_rslv_\${map_all:\$1.get _t}"
+#
+
+# xxx /i/inflect, where i=indirects (inflections, content neg, multi-redirects)
+# curl -D – -L -H   “Accept: application/rdf+xml”
+# curl -D – -L -H   “Accept: text/turtle”
+# curl -D – -L -H   “Accept: application/atom+xml”
+# "http://dx.doi.org/10.1126/science.1157784"
+
+# All the rest go to the EZID resolver, which is where, after
+# unsuccessful lookup, we expect non-N2T-hosted NAAN redirects to go
+# xxx not most graceful support for multiple resolvers and non-N2T-hosted NAANs
+# XXX add [L] flag to prevent extra redirect?
+#
+#RewriteRule ^/ark:/?(.*)\$   "_rslv_\${map_ezid:ark:/\$1.get _t}"
+
+#RewriteRule ^/ark:/?.*\$ \\
+#    "_rslv_\${map_ezid:ark:/\$1.resolve \${$hdrblob}}"
+# XXX should these rules consistently prepend "ark:/" to rewrite map?
+#     (currently, eg, this next rule strips it)
+
+# --- old mainstream
+#RewriteRule ^/ark:/*(.*)\$ \\
+#    "_rslv_\${map_ezid:ark:/\$1%{ENV:THUMPER}.resolve \${$hdrblob}}" [NC]
+## before cnflect() appeared, we took the "ark:/" out for resolution, and then
+## normalized it BACK INTO the id ; now we pass it in for lookup
+##   "_rslv_\${map_ezid:\$1%{ENV:THUMPER}.resolve \${$hdrblob}}" [NC]
+#
+## xxx after testing, this rule and previous rule should be combined?
+#RewriteRule ^/((urn:)?uuid:.*)\$ \\
+#    "_rslv_\${map_ezid:\$1%{ENV:THUMPER}.resolve \${$hdrblob}}" [NC]
+
+# Explicit resolver given by user (not so common)
+#RewriteRule ^/r/([^/]+)/+(.*)\$ "_rslv_\${map_\$1:\$2.get _t}"
+
+# xxx no rule for xref?
+RewriteRule ^/[tT]-ark:/?13960/?.*\$      "_rslv_\${map_oca_test:%{REQUEST_URI}.resolve \${$hdrblob}}" [NC]
+RewriteRule ^/[tT]-ark:/?99152/?.*\$      "_rslv_\${map_yamz_test:%{REQUEST_URI}.resolve \${$hdrblob}}" [NC]
+RewriteRule ^/[tT]-ark:/?.*\$             "_rslv_\${map_ezid_test:%{REQUEST_URI}.resolve \${$hdrblob}}" [NC]
+
+## xxx isn't this more generic, less specific to n2t?
+## This rule comes after the t-ark rules because it would otherwise match them.
+## It should match any of our prefixes, including those with provider codes
+## and weird prefixes (eg, inchi=) that end in '=' instead of ':'.
+##
+#RewriteRule ^/(\w[\w/.-]*[:=].*)\$ \\
+#    "_rslv_\${map_ezid:\${esc:\$1%{ENV:THUMPER}}.resolve \${$hdrblob}}" [NC]
+
+
+########### this rule is mainstream resolution ################
+
+# Anything left: arks, prefixes, file paths
+
+RewriteRule ^/(.*)\$ \\
+    "_rslv_\${map_ezid:\${esc:\$1%{ENV:THUMPER}}.resolve \${$hdrblob}}" [NC]
+
+
+
+## xxxxxx remove this soon
+## yyy this rule is insurance in case scheme/shoulder DB lookup fails
+#RewriteRule ^/pmid:(.*)\$ "http://www.ncbi.nlm.nih.gov/pubmed/\$1" [NC,R=302,L,NC]
+
+# XXX ?add rule to check if ^/ark: and empty result and for DSC or
+# escholarship arks, and do kludgy redirects to those systems?
+
+#XXX these next _rslv_ rules belong in main build_server_tree?
+#RewriteCond %{REQUEST_URI???} ^_rslv_redir
+# for efficiency, do these tests only if above condition is met
+RewriteRule "^_rslv_redir302 +(.+)"   \$1 [R=302,L,NE]
+RewriteRule "^_rslv_redir303 +(.+)"   \$1 [R=303,L,NE]
+# these next are to support PURLs
+RewriteRule "^_rslv_redir301 +(.+)"   \$1 [R=301,L,NE]
+RewriteRule "^_rslv_redir307 +(.+)"   \$1 [R=307,L,NE]
+# xxx do 404 and 410 redirects even make sense?
+RewriteRule "^_rslv_redir404 +(.+)"   \$1 [R=404,L,NE]
+RewriteRule "^_rslv_redir410 +(.+)"   \$1 [R=410,L,NE]
+# yyy error messages
+#RewriteRule "^_rslv_redir399 +(.+)"   http://n2t.example.com/\$1 [R=303,L,NE]
+RewriteRule "^_rslv_redir399 +(.+)"   \$1 [L,NE]
+# Egg code maps all unknown codes to 302 so don't need to check further here.
+#RewriteRule "^_rslv_redir\\S* +(.+)"   \$1 [R=302,L,NE]
+
+# XXX it seems bizarre that you cannot call a script with args, but have
+# to pass args in via a QUERY_STRING env variable -- is this really true?
+#
+RewriteRule "^_rslv_inflect +(.+)" \\
+  "$document_root/e/x/inflect? --api --ua %{QUERY_STRING} \$1" [L]
+#  "$document_root/e/x/inflect? --api $tlog --ua %{QUERY_STRING} \$1" [L]
+
+#RewriteRule "^_rslv_multi +(.+)" \\
+#  "$document_root/e/x/multi? --api $tlog --ua %{QUERY_STRING} \$1" [L]
+
+# # Next rule lets us resolve against test binders with "t-ark:", "t-doi:", etc.
+# RewriteRule ^/[tT]-(\w+:.*)\$ "_rslv_\${map_all_test:\$1.get _t}"
+
+# RewriteMap refuses to pass any env vars, so we call a wrapper script first.
+
+# # "all" is to test resolution across all binders: ezid, oca, yamz, etc.
+# RewriteMap map_all	prg:$rmap_root/all/rmap_all
+# RewriteMap map_all_test	prg:$rmap_root/all_test/rmap_all_test
+EOT
+
+echo Building out custom n2t server stuff.
+
+tr=$template_root
+cp -pr $tr/e/n2t_vision_files/ $buildout_root/htdocs/e
+
+# # ??? yyy Don't add naanders to these next two lists.
+# #
+# create_test_rmap all all:ezid:oca:yamz
+# create_test_rmap all_test all_test:ezid_test:oca_test:yamz_test
+#
+# xxx add README file in this directory to explain all these filesystem bits
+
+#snaps=( ~/shoulders/{naans/master_naans,master_shoulders.txt} )
+#echo "Creating Prefixes, part from NAAN registry and shoulder file snapshots."
+#ls -l ${snaps[*]} | sed 's/.* \([A-Z]\)/  \1/'
+
+# not any more
+#mkdir -p $binders_root/pfx		# prefix database goes here
+
+#if [[ ! "$PFX_REDIR" ]]		# xxx do we still need this?
+#then	# get variables we need to communicate between scripts and databases
+#	source $tr/prefixes/set_pfx_db_vars || echo \
+#		"error: can't find PFX_... environment variable settings" 1>&2
+#fi
+
+# xxx arrange for build hosts to have regular (scrubbed) copies of these files
+# xxx is $binders_root the right place for these files to live?
+#
+# Try to wget the most up-to-date copies of the prefixes files in
+# preparation for rebuilding the prefix db from scratch.  If not
+# connected to the internet, try to use cached copies instead.
+# xxx how is cache filled for the first time? (fail with note to use this
+# script...?)
+# 
+# snaps=( ~/shoulders/{naans/master_naans,master_shoulders.txt} )
+#
+# http://n2t.net/e/naan_registry.txt  (clean copy, doesn't need scrubbing)
+# http://n2t.net/e/lsregistry.yml
+#
+# Import from prefix sources.
+# XXX disabled until we have timeouts and prefix backup sources in place
+# xxx implement pfx test mode that doesn't import?
+# $tr/prefixes/pfx import
+
+# yyy in the "n2t rollout" routine, call "pfx rollout"?
+#  no IF using mongo for prefixes since the connection to new pfx
+#        database will be automatic when server restarts
+#  yes IF using in-memory hash for prefixes
+# same reasoning for calling "pfx rollback" from the "n2t rollback"
+
+# Dependency: yyy this depends on the system pfx script being up-do-date
+
+# XXX remove make_naanders_input script from repo soon
+
+# =for removal
+# echo Creating $binders_root/n2t.anvl
+# cp $tr/prefixes/n2t.anvl $binders_root/n2t.anvl
+# #$tr/make_naanders_input ${snaps[*]} > $binders_root/n2t.anvl
+#
+# =for removal
+# echo 'Creating N2T prefix database (with MongoDB) and binder.'
+# admegn mong start		# make sure mongo service is started
+# 
+# #env N2T_PREFIXFILE=../n2t.yaml.xxx perl - << 'EOT'
+# #env N2T_PREFIXFILE=$binders_root/n2t.yaml perl - << 'EOT'
+# env N2T_PREFIXFILE=$binders_root/prefixes.yaml perl - << 'EOT'
+# #==========
+# use 5.006;
+# use strict;
+# use warnings;
+# 
+# use MongoDB;
+# use YAML 'LoadFile';
+# #use YAML::Tiny 'LoadFile';
+# 
+# my $pfx_aref = LoadFile( $ENV{N2T_PREFIXFILE} );
+# my $client = MongoDB->connect( $ENV{PFX_CONNECT} );
+# my $db = $client->get_database( $ENV{PFX_DB} );
+# $db->drop;						# delete old prefix DB
+# my $collection = $client->ns( $ENV{PFX_TABLE} );	# get prefix "table"
+# 
+# my $result = $collection->insert_many( $pfx_aref );
+# my $data = $collection->find_one({ prefix => 'ark:/67531' });
+# print " ", $result->inserted_count, " records inserted, sample target: ",
+# 	$data->{ $ENV{PFX_REDIR} }, "\n";
+# #==========
+# EOT
+# 
+# echo "Calling anvl2egg $binders_root/n2t.anvl (deprecated)."
+# 
+# rm -fr $binders_root/n2t
+# #
+# # NB: anvl2egg calls "egg"
+# #
+# # We call with -Mblib since this script is often run _before_ any scripts
+# # have been installed yet, when the only way we can access our own code is
+# # by using what's in the source directory (only callable with -Mblib).
+# #
+# (cd $src_top; perl -Mblib anvl2egg $binders_root/n2t.anvl)
+# #rm $binders_root/n2t.anvl
+# #echo "(removing N2T binder for now to suppress error message)"
+# =cut
+
+echo Creating default YAMZ and OCA minters.
+# default YAMZ and OCA minters are different from usual default
+
+ppltr=n2t
+mtemplate=ddddd
+
+# We call with -Mblib since this script is often run _before_ any scripts
+# have been installed yet, when the only way we can access our own code is
+# by using what's in the source directory (only callable with -Mblib).
+#
+cmd='perl -Mblib nog'
+if [[ -d $minters_root/$ppltr/naans ]]
+then
+	echo Minter $ppltr/naans already exists.
+else
+	echo Creating $ppltr/naans minter from scratch.
+	(cd $src_top;
+		# These next lines are customized for minting NAANs.
+		#
+		# Note that although we could be filtering out leading
+		# zeroes with native nog (and --oklz 0), the original
+		# NAAN minter did produce leading zeroes, and so we
+		# continue that tradition and do post-nog filtering.
+		#
+		$cmd -d $minters_root/$ppltr/naans mkminter \
+			--type rand --atlast stop "" $mtemplate
+		echo "To start a NAANs minter from scratch:"
+		echo "    cp -pr $minters_root/$ppltr ~/minters"
+	)
+fi
+
+# This legacy minter, created 2013.02.12, minted 4,030,509 spings in two
+# big batches.
+# yyy On 2015.0.25 nog (on ec2) minted 4M spings in one run, taking 15 mins.
+ppltr=snac	# yyy not actually a populator, but it gets its own directory
+naanshdr=99166/w6
+mtemplate=eedeek
+# -Mblib again, since pre-installation code only callable from source tree.
+cmd='perl -Mblib nog'
+if [[ -d $minters_root/$ppltr/ark/$naanshdr ]]
+then
+	echo Minter $ppltr/ark/$naanshdr already exists.
+else
+	echo Creating $ppltr/ark/$naanshdr from scratch.
+	(cd $src_top;
+		# These next lines are customized for the SNAC project.
+		mkdir -p $minters_root/$ppltr/ark
+		$cmd -p $minters_root/$ppltr/ark mkminter \
+			--type rand --atlast add3 $naanshdr $mtemplate
+		echo "To start a SNAC minter from scratch:"
+		echo "    cp -pr $minters_root/$ppltr ~/minters"
+	)
+fi
+
+ppltr=yamz
+mtemplate=ddd
+# -Mblib again.
+cmd='perl -Mblib nog'
+for m in h fk2			# create a production and test minter
+do
+	#naanshdr=99152/h
+	naanshdr=99152/$m
+	if [[ -d $minters_root/$ppltr/ark/$naanshdr ]]
+	then
+		echo Minter $ppltr/ark/$naanshdr already exists.
+	else
+		echo Creating $ppltr/ark/$naanshdr minter from scratch.
+		(cd $src_top;
+			# These next lines are customized for YAMZ.
+			# "--oklz 0" is implied by "--type seq"
+			$cmd -p $minters_root/$ppltr/ark mkminter \
+				--type seq --atlast add1 $naanshdr $mtemplate
+			$cmd -d $minters_root/$ppltr/ark/$naanshdr mint 1001 \
+				> /dev/null
+		)
+	fi
+done
+
+ppltr=oca
+naanshdr=13960/t
+mtemplate=deedeedk
+# -Mblib again.
+cmd='perl -Mblib nog'
+if [[ -d $minters_root/$ppltr/ark/$naanshdr ]]
+then
+	echo Minter $ppltr/ark/$naanshdr already exists.
+else
+	echo Creating $ppltr/ark/$naanshdr from scratch.
+	(cd $src_top;
+		# These next lines are customized for OCA.
+		$cmd -p $minters_root/$ppltr/ark mkminter \
+			--type rand --atlast add3 $naanshdr $mtemplate
+	)
+fi
+
+# xxx Use n2t binder to help with the rewrite mappings?
+# (ark:/?13960.*) -> r/oca/
+#(cd $src_top; perl -Mblib egg -d $binders_root/n2t - << EOT
+#ark:/13960.fetch
+#ark:/99152.fetch
+#EOT
+#)

@@ -1,0 +1,2420 @@
+#!/usr/bin/env perl
+
+# XXXX remove make_ezacct from repo
+# XXXX remove certs from repo
+
+# XXX make sure rlog encodes newlines in the values
+# xxx ? :pifx  proceed if exists
+#     ? :sifx  stop if exists
+#     ? :bifx  bail if exists
+# XXX change "rm [n]" to accept an extra [d] arg (ignored) so that a tester
+#  can change a URL query string from "set n d" to "rm n d" and have it work
+#   without extra keyboarding
+# XXX authz needs top level auth to mkbinder and rmbinder
+# xxx &P could be in an element for macros, eg, :/macro|P -> string
+
+=for Greg
+- NEW binder name: ezid ??
+- NEW binder command: egg
+  "help readme" is currently the only documentation that's up-to-date;
+  command-line syntax same as QUERY_STRING syntax (but unlike noid,
+  '+' no longer stands in for space)
+- NEW key format:  Id|Elem instead of Id\tElem (later id|elem|subelem|...)
+- NEW name/password required
+- NEW please use Acting-For: header
+- NEW "exists" command to query if an id "exists" (current test is whether
+  an identifier has any elements bound, or if id|elem exists as a db key)
+- NEW internal command: "purge" to delete all elems under a given id, same
+  as "fetch id" to discover elems, then separate "rm id elem" commands
+  commands (saving one network roundtrip per bound element)
+- BEWARE of dups: "add" will create the first element of that name, or
+  another instance if it exists already; use "set" to first check and
+  remove any element dups before creating; BUT... "add" is cheaper/faster
+  than "set", eg, creating a new element or database from scratch
+- NEW commands "incr" and "decr" to do arithmetic on values without
+  roundtrips to fetch, modify, and re-store
+- NEW indirect tokens introduced by @... ,
+  allowing the special elements : and :- to be deprecated
+- NEW command modifier: ":hx id|elem.CMD value" which hex-decodes ^HH in line
+- [ bad idea; leave "version" for new versions of a record ] xxx deprecate new "version" command reports version of running process
+- NEW egg automatically adds two subelement: __mc and __mp
+- yyy please use &P/... for identities (anticipating storage costs)
+- NEW nog mask char 'f' = 'e' - digits, ie, filtered 'e' for alpha-only chars
+- NEW nog flag --oklz N (N=0|1) to permit leading zeroes; off by default
+  for type 'seq' minters; on by default for 'rand' minters
+=cut
+
+use 5.010;
+use strict;
+use warnings;
+
+# See lib/File/Cmdline.pm for old notes
+
+# Author:  John A. Kunze, jak@ucop.edu, California Digital Library
+#    Orginally created Nov. 2002 at UCSF Center for Knowledge Management
+# 
+# ---------
+# Copyright (c) 2002-2017 UC Regents
+# 
+# Permission to use, copy, modify, distribute, and sell this software and
+# its documentation for any purpose is hereby granted without fee, provided
+# that (i) the above copyright notices and this permission notice appear in
+# all copies of the software and related documentation, and (ii) the names
+# of the UC Regents and the University of California are not used in any
+# advertising or publicity relating to the software without the specific,
+# prior written permission of the University of California.
+# 
+# THE SOFTWARE IS PROVIDED "AS-IS" AND WITHOUT WARRANTY OF ANY KIND, 
+# EXPRESS, IMPLIED OR OTHERWISE, INCLUDING WITHOUT LIMITATION, ANY 
+# WARRANTY OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.  
+# 
+# IN NO EVENT SHALL THE UNIVERSITY OF CALIFORNIA BE LIABLE FOR ANY
+# SPECIAL, INCIDENTAL, INDIRECT OR CONSEQUENTIAL DAMAGES OF ANY KIND,
+# OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+# WHETHER OR NOT ADVISED OF THE POSSIBILITY OF DAMAGE, AND ON ANY
+# THEORY OF LIABILITY, ARISING OUT OF OR IN CONNECTION WITH THE USE
+# OR PERFORMANCE OF THIS SOFTWARE.
+# ---------
+
+use File::Spec::Functions;
+use Text::ParseWords;
+#use File::Path;
+use File::OM;
+#use DB_File;		# xxx needed? provides only O_RDWR?
+use BerkeleyDB;
+use constant DB_RDWR => 0;		# why BerkeleyDB doesn't define this?
+use Fcntl;
+use Config;
+#use File::Minder ':all';
+use File::Binder ':all';
+use File::Cmdline ':all';
+use File::Session;
+use File::Egg;
+use File::Value ":all";
+use Pod::Usage;
+#use File::RUU;
+use File::Rlog;
+use File::Resolver;
+
+# yyy alternative text
+# Egg is a binder. The egg command sets names in a database to arbitrary
+# data values, where a name can be by itself or a child of an identifier.
+# Certain reserved names support identifier resolution.  The acronym,
+# BIND (Bind Identifier to Named Data), echoes typical argument order:
+
+my $usage_text = << "EOF";
+
+ Usage: egg [ options ] i.command [ name [ data ] ]
+
+Egg is a binder. The egg command makes, manages, and resolves arbitrary data
+element bindings, each belonging to a parent identifier (even if empty). The
+acronym, BIND (Bind Identifier to Named Data) echoes typical argument order.
+Some commands:
+
+  help readme     describe the latest "egg" essentials
+  i.set n d       set element n to d under id i, overwriting prior dupes
+  i.let n d       like set, but fail if element n already exists
+  i.add n d       add an element under i (creating a dupe if n exists)
+  i.get [n]       return all dupes of n (of all elements if no n) under i
+  i.fetch [n]     like get, but using a labeled output format (default ANVL)
+  i.rm n          remove all dupes of element n under i
+  i.purge         remove id i by removing all dupes of all elements under i
+  i.exists [n]    return 1 if i (or n under i) exists, else return 0
+  i.resolve [hdr] return one-line _t value (influenced by HTTP hdr info)
+  i.norm          return resolver-normalized version of i
+  i.shadow        like norm but return i as shadow ARK if applicable
+  list m [k...]   list up to m (0=unlimited) ids (or ids under keys k)
+  next m x [k...] like list, but begin at next id not matching x (under k)
+  bmake [b [g [u]]] make binder named b (mint name if no b) (aka mkbinder)
+  bshow [g [u]]     list binders for group g, user u
+  brm b [g [u]]     remove binder named b (aka rmbinder)
+  brmgroup g [u]    remove external binder group g (just external binders now)
+  mstat           show various binder counts
+  -               do bulk (batch) commands from stdin or http request body
+  logmark string  write string to mark a place in the txnlog file
+  pr string ...   print strings to output
+ 
+Examples:
+  egg ark:/12345/x9876r.set who 'Smith, Laurie'
+  egg doi:10.5072/ACME.9876/STUDY1.XLSX.set title 'Stream data 15-94'
+  egg urn:uuid:B73ADC4B-03D1-42C0-B650-DA31D952A7A1.fetch
+
+Some options:
+  -d binder    relative or absolute path to a binder (default binder1)
+  -p path      search path to look up a binder (default ~/.eggnog)
+  -m format    an output format, one of ANVL, XML, JSON, Plain (default)
+  --ack        acknowledge changes with an oxum value (#octets.#elements)
+  --txnlog Log transaction log (default ~/.eggnog/logs/transaction_log.rlog)
+  --dbie=[ie]  database class: internal (i, default), external (e), both (ie)
+  --bgroup=G   external binder group, as in egg_<G>.<user>_s_<b>
+
+EOF
+
+my ($WeAreOnWeb, $WeAreResolver) = (0, 0);
+my ($contact, $template, $snaa, $total);
+
+# xxxxx new: let uproot (del .= ,= += -= : =. =,) (*= /= %= with bigint?)
+# verbs
+my @valid_commands = qw(
+
+	el elem ex expr bl blob fi file
+	bind dbinfo fetch get hello help man note usage version
+	pr logmark cullrlog resolve exists purge
+	mkbinder rmbinder delbinder
+	dbsave dbload
+	norm shadow
+	pause unpause
+	bshow brmgroup bmake brm
+	mstat
+	add another insert vinsert delete incr decr
+	set let uproot list next
+	testlock
+	mkid rm
+	freeze thaw
+	in find sort show as
+);
+
+my $default_command = "usage";
+my $do_command;			# prefixed subroutine name to execute command
+my $BulkCmdMode;
+
+my $WeAreBinder = 0;		# assume _not_ called as 'egg'
+my $cmdr_from_d_flag = 0;	# assume candidate minder _not_ from -d
+
+my %opt;			# global options hash
+my $mdr;			# global minder name
+my $cmdr;			# global candidate minder name
+my $dontsearch;			# global flag to not search minder path
+my $pname_mdr;			# global with minder in program name
+my $om;				# global output multiplexer choices
+my $cgih;			# global HTTP headers, if any
+
+my $sh;				# global session handler
+my $bh;				# global binder handler
+my $bindid = '';		# global identifier string to pass to bind
+my $bindelem = '';		# global element name string
+my $mods = undef;		# global command modifier hash to pass to Binder
+my $mtag = 'redir399';		# message tag NB: EGG EMITS THIS FAILURE CODE
+				#   yyy redo this so Resolver.pm does this!
+
+my ($m_evar, $m_cmd, $m_dbbase, $v1bdb);
+
+=for removal
+# XXXX shouldn't these routines also echo msgs to STDERR??
+#      eg, if (esp. if?) using 'plain'?
+sub err2 { err1(@_); return 2; }
+sub err1 { my( $msg )=@_;
+	# xxx feels like 'plain' wants to borrow 'anvl' for errors
+# XXXXXX inspect msg_name!! to find what Plain should do!
+	$om->isa('File::OM::Plain') and
+		$msg = 'error: ' . $msg;	# add helpful ANVL-like label
+	#$om->elem('error', $msg);
+	return 1;
+}
+=cut
+
+#    get static_execution_context (xfn, v1bdb)
+#    get dynamic_execution_context (env vars, options, web or shell)
+#    gather command parts, pre-process options
+#    get options (opt)
+#    set up output (om)
+#    --transfer calling options to module options
+#    set up minder object
+#    call cmdline on one or more commands
+# xxx outputs: contact, WeAreBinder, om, v1bdb
+# m_evar, m_cmd, m_dbbase
+# pname_mdr, mdr, cmdr, mh, format, 
+#	($xfn, $pname_mdr, $v1bdb) = def_execution_identity($WeAreBinder)
+# side effects: alters ARGV, may call exit
+
+my @getoptlist = (
+	'ack',			# acknowledge changes with oxum
+	'all',			# always fetch all elements (like :all always)
+				# xxx can't turn this off locally?
+	'api',			# we are using web api
+	'as=s',			# content type for output
+	'checksum=s',		# s=md5, sha1 (def) ack changes with
+					# checksum (not yet)
+	'dbie=s',		# internal (i), external (e), both (ie, ei)
+	'debug',		# flag
+	'directory|d=s',	# filesystem directory name
+	'echo|e',		# echo small elem values set (let)
+	'echoall|E',		# echo all elem values set (let)
+	'force|f',		# force create
+	'format|m=s',		# use om_*
+	'help|h|?',		# flag
+	'home=s',		# eggnog home directory (default: ~/.eggnog)
+			# best for web instance if you use a full pathname
+			# NB: basename used in constructed exdb name, ignoring
+			# path of binder name, eg, -d /a/b/c
+
+	'lock',			# lock db even on DB_RDONLY open
+	'long|l',		# flag (unused)
+	'man',			# flag
+	'minder=s',		# flag
+	'minderpath|p=s',	# minder path
+	#'mode=s',		# s=shell, u=url, r=resolver
+	'no_exec|n',		# no execute
+	'noop',			# marker ending synthetic options
+	'persistomax=n',	# max number of opens in persistent connection
+	'pfx_file=s',		# name of prefixes file/database (yyy obsolete?)
+	'qs=s',			# query string for testing http
+	'recurse|r',		# perform action recursively (unused)
+	'resolverlist=s',	# list of binders to try, in that order
+	'rrm',			# act like a rewritemap resolver
+					# (egg only)
+	'sif=s',		# succeed if elem exists/doesn't (egg)
+	'testlock=i',		# flag xxx test
+	'bgroup=s',		# token to distinguish external binders
+	'txnlog=s',		# per-server transaction log; use '' to disable
+	'ua',			# marker for start of user args in query string
+	'user=s',		# optional user name -- don't use except for
+				# testing dbname construction rules
+	'verbose',
+	'version|v|V',
+);
+
+# main
+{
+	# call from main to set globals
+	$WeAreBinder = 1;	# or? $WeAreBinder = ($xfn =~ m|egg[^/]*$|)
+
+	($m_evar, $m_cmd, $m_dbbase) = ("EGG", "egg", "egg");
+
+	# One part of our identity is whether we're running Berkeley DB V1.
+	#
+	my $v1bdb = get_dbversion($WeAreBinder);		# true if BDB V1
+
+	my $om_formal;
+	($pname_mdr, $WeAreOnWeb, $WeAreResolver,
+	 $om, $om_formal, $BulkCmdMode, $cgih) =
+	 	get_execution_context($m_cmd, $File::Egg::VERSION,
+			\@getoptlist, \%opt);
+
+	# Pass options from command line to the binder handler.
+	#
+	my $bh_opt = {};			# binder handler options
+	$bh_opt->{$_} = $opt{$_}		# options sharing same key
+		# xxx "all" option completely untested
+		for (qw(
+			ack all txnlog api as
+			dbie home pfx_file
+			minderpath
+			checksum debug echo force format lock
+			persistomax recurse rrm resolverlist
+			sif testlock bgroup user verbose
+		));
+		# yyy? a parsed resolverlist gets split into a resolverpath
+
+	# Options without one-to-one key/value to transfer.
+	#
+	$bh_opt->{om_formal} = $om_formal;	# yyy irritating exception
+# xxx drop this next line?
+	#$bh_opt->{version} = $File::Egg::VERSION;
+
+	# light session initialization on object creation, but the bulk
+	# of initialization happens much later during configuration
+
+	$sh = File::Session->new($WeAreOnWeb, $om, $om_formal, $bh_opt) or
+		outmsg("couldn't create session handler"),
+		exit 1;
+	# now we have home for $om in $sh; but haven't done configuration
+	#   (for that call config(), which defines ruu also)
+
+	# yyy this next should initialize a session if first arg undefined?
+	$bh = File::Binder->new($sh, File::Binder::ND_BINDER,
+			$WeAreOnWeb, $om, $bh_opt) or
+		outmsg("couldn't create binder handler"),
+		exit 1;
+
+	#print "xxx after binder->new, who=$bh->{sh}->{who}\n";
+
+	# NB!!!! $opt{minderpath} is STRING, $bh->{minderpath} is ARRAY ref
+	# xxx document RewriteMapResolver mode!
+	# xxxx confusing overload of {rrm} key from both
+	#      $bh->{rrm} and $bh->{opt}->{rrm}
+	$bh->{rrm} = $WeAreResolver;	# whether we're in resolver mode
+	$bh->{resolverlist} = $opt{resolverlist};	# recursion test
+
+	# xxx can we drop m_cmd, since 'cmdname' is key in $bh?
+	# xxx can we drop WeAreOnWeb, since it's now in $ruu?
+	exit launch_commands(
+		$bh, $BulkCmdMode, ($WeAreOnWeb && ! $WeAreResolver),
+		$m_cmd, \%opt, \&cmd_line,
+		undef,
+		#($WeAreResolver ? 3 : undef),
+	);
+}
+
+# the return value from cmd_line becomes process' exit code!
+# so 0 for success, non-0 for errors
+
+sub cmd_line {
+
+# try to determine the command and the minder (if any)
+# some commands don't need a minder (eg, gen, help)
+# some commands don't need to read a config file either (eg, help)
+# some commands need a minder that doesn't yet exist (mkminter)
+
+	# First arg is possibly new value for $BulkCmdMode (which we shift).
+	#
+	$BulkCmdMode = shift;
+
+	# Re-set error messages, global id, and global elem between commands.
+	#
+	$bindid = $bindelem = $mods = undef;
+	initmsg($bh);
+
+	# Any remaining args should form a noid/bind command.
+	# We put the $do_command (below) prefix in front of the
+	# user-supplied command in order to reduce chance of collision
+	# with imported subroutine names.
+	# Look at the command part (if any) now, and complain about
+	# a non-existent database unless the command is "dbcreate".
+	# xxx is that still true?
+	#
+
+	$opt{verbose} and	# xxx this is more of a debug
+		$om->elem("note", scalar(@_) . " cmd_line tokens");
+
+	$mods = extract_modifiers \@_;
+#	defined($mods->{all}) or		# if not overridden by local
+#		$mods->{all} = $opt{all};	# modifier, use global setting
+
+	$opt{verbose} and	# xxx this is more of a debug
+		$om->elem("note", "modifiers: " . join("|", %$mods) .
+				"; args: " . join("|", @_));
+
+	#my $command = lc(shift || "");		# first non-option argument
+	my $command = shift || "";		# first non-option argument
+	# xxx should check if someone did "nt" NOT in bulk mode
+	unless ($command) {
+		$opt{version}	and $command = "version";
+		$opt{help}	and $command = "help";
+		$opt{man}	and $command = "man";
+		$command ||= $default_command	# don't use if args are present
+			unless @_;		# eg, user screwup in bulk mode 
+	}
+
+	my $smdr = '';			# initialize searchable minder
+	if (grep(/^\Q$command\E$/, @valid_commands) != 1) {
+		# Command not found, but don't give up yet.
+		# Caller might have used a shortcut of either the
+		# OO form (minder.method) or omission of the -d, eg,
+		#  a.   noid xz.mint ...
+		#  b.   noid xz mint ...	# not doc'd XXX keep?
+		# for bind, OO form is id.method
+		#  c.   bind xz.set ...
+		#  d.   noid xz set ...		# not doc'd XXX keep?
+		#  e.   bind set ...		# use "" as id
+
+		#  f.   find <binder>xz.set ...
+		#
+		if ($command =~ s/^<([^>]*)>\.?//) {
+			$smdr = $1;
+			$bh->{remote} and
+				outmsg($bh, '<binder> prefix not allowed ' .
+					'from remote connections'),
+				return 1;
+		}
+
+		# xxx Is there enough here to generalize this to a
+		#     ServiceIdentifierMethod (SIM) parser?  fiso_sim()?
+		#
+		#my ($obj, $cmd) = $command =~ /^(.*)\.(.*)$/;
+		my ($obj, $cmd);
+		$command =~ /^(.*)\.(.*)$/ and		# greedy match for $1 !
+			($obj, $cmd) = ($1, $2);
+
+		# Notes for the ($obj, $cmd) tuple:
+		#   - greedy match above splits 'a.b.c' into 'a.b' and 'c'
+		#   - '.mint' becomes '' and 'mint'
+		#   - 'abc.' becomes 'abc' and ''
+		#   - 'abc' (no '.') becomes '' and ''    # XXXX ???
+		#
+		#$obj ||= $command;	# if not case a, then case b
+		defined($obj) or
+			$obj = $command;	# if not case a, then case b
+		#$cmd ||= lc(shift||"");		# if not case a, then case b
+		$cmd ||= shift || "";		# if not case a, then case b
+		if (grep(/^\Q$cmd\E$/, @valid_commands) != 1) {
+			# ok, still not found, so now give up
+			my $m = "unknown command: $command $cmd " .
+				join(" ", @_);
+			$BulkCmdMode and
+				outmsg($bh, $m),
+			1
+			or
+				usage($m)
+			;
+			return 1;
+		}
+		$command = $cmd;	# now we have a valid command
+
+		# XXX some of this parsing should be shared at the module
+		#     level, given the dependence on it from logging and
+		#     remote ops.
+		# User could have said either of
+		#   u.  id|elem.cmd value
+		#   v.  id.cmd elem value
+		# If case u, move the elem name into @_ as the first arg to
+		# most commands.  In some commands (eg, purge) this makes
+		# no sense, in which case we do a standard sanity check.
+		# XXX this splitting functionality is ONLY in script, not
+		#     in module (better to push it as low as possible)
+		#
+		$obj =~ m/^([^|]*)\|(.*)$/ and
+			($bindid, $bindelem) = ($1, $2),
+			unshift(@_, $bindelem),
+			#(defined($bindelem	and unshift @_, $bindelem),
+			#(defined($bindelem) and print("bindelem defined\n")),
+		1
+		or
+			$bindid = $obj
+		;
+		# note: this is where noid did this instead: ($smdr = $obj)
+	}
+	defined($bindid) or			# case e. above
+		$bindid = "";
+	($opt{verbose} and $om->elem("note",
+		"received command '$command', args <" . join(", ", @_) .
+		">, id '" . (defined($bindid)?$bindid:"undef") . "'" .
+		($smdr ? ", binder '$smdr'" : "")));
+
+	# If we get here, we have a valid command.  If we're in --rrm mode
+	# only permit the 'resolve' command, since that's the only one
+	# we've taken steps to assure will produce only one line of output.
+	# Use print() instead of $om->... for direct output control.
+	#
+	if ($opt{rrm} and $command ne 'resolve') {
+		print "Command \"$command\" not allowed.\n";
+		return 1;
+	}
+
+	# We may also have a modified idea of what minder to use.
+	#
+	$do_command = "bdx_$command";
+
+#my $xx = defined(&$do_command);
+#print "defined($do_command)=$xx\n";
+	if (! defined(&$do_command)) {
+		usage("no subroutine for command: $command " . join(" ", @_));
+		#err1 "no subroutine for command: $command " . join(" ", @_);
+		#print $usage_text;
+		return 2;
+	}
+	# If we emerge here, we have a command for which we have a
+	# corresponding subroutine.
+
+#	# Perform extra checks in $WeAreOnWeb case.
+#	# xxxxxxxx this check to go away
+#	if ($WeAreOnWeb && $command eq 'mkminter') {
+#		# xxx really?
+#		usage($om,
+#			qq@command "$command" not allowed in URL interface@,
+#			$usage_text);
+#		return 0;
+#	}
+
+	# Priority needs:
+	# A. easy to use as uuidgen for no-db-based ids: noid gen ->
+	#                b64-encoded uuid with checkchar
+	#  perl -MData::UUID -e '$ug    = new Data::UUID;
+	#         print $ug->create_b64(), "\n";'
+	#     uses / and + and two terminal '=='
+	# 
+	# B. easy to use for shorter locally unique ids,
+	#                zero-config: 'noid nab' -> d4...
+	# * bottom line: 'noid nab' always returns something (zero-config)
+	# C. implicit auto-create of nabber (not minter?) ie, create
+	#                (default template) on first use?
+	#      eg, if no xz shoulder, 'noid -d xz nab 1 ....' creates first
+	# D. oo-type shortcut: 'noid xz.nab 1'   and 'noid xz nab 1' 
+	#                where xz cannot conflict with cmd
+	# Differences:  nab               mint
+	#            auto-create          no auto-create
+	#            minter defaults      no default minter
+	#            no logging (dflt)    logging (dflt)
+	#            mint or nab          mint only, no nab
+	# E. is there such a thing as a default minter?  (no?)
+	# F. almost as easy for globally unique ids, offering to register
+	#     a generic shoulder, eg,
+	#   90130/1 ... 90130/b1 ... 90130/bb1    if not, a NAAN or a
+	#   NAAN-specific shoulder.
+	# * bottom line:  'noid mint' still requires db creation step
+	#
+	# (requiring explicit dbcreate -> noid mint
+	#    ... but how to make it globally unique unless you have a
+	#       relationship with a known
+	#    NAAN holder whose minter shoulder you get to use,
+	#        eg, <90130/1> hosted at n2t, or maybe
+	#    better, n2t maintains a shoulder minter and gives it out
+	#        to those who install Noid and
+	#    register with us, eg, 90130/1 goes to j.smith@fresno
+	# 3. easy ...
+	# Desired behaviors:  noid mint -> mint something, anything dammit
+	#        as long as harmless?
+	#   what's harmless?  just the default minter, not others of
+	#      user's minters?
+	# yyy harmless=default minter given by absolute path (or least harmful)
+	#
+	# Undesired behaviors:  don't mint what you're not supposed to mint
+
+	############
+	# fonano should be fiso_midname
+	# up_dir should be fiso_weename
+	# find_minder should be fiso_find (fiso_bigname?)
+	# upper name, downer name / airship, airship + landing gear / flag, pole
+	#     iceberg tip, iceberg whole / ship above water line, whole ship
+	#     ship, dock / tree, tree with roots / 
+	############
+
+	($cmdr, $cmdr_from_d_flag) =
+		def_cmdr($pname_mdr, $smdr, $m_dbbase, \%opt);
+
+	# It should now be safe to turn off strict 'refs' when we
+	# invoke a command via its subroutine name.
+	#
+	no strict 'refs';
+	return &$do_command(@_);
+
+	# xxx old? still true?
+	# When a command is processed, any -d option or pre-command
+	# minder name will have been detected and its existence checked.
+	# An empty $cmdr means there is no candidate minder.  An empty $mdr
+	# means, whether or not a candidate was given, the existence of an
+	# actual minder was not detected.  If $mdr is not empty, it should
+	# contain the full pathname of a found minder.
+}
+
+########################################################
+# --- begin almost alphabetic listing of functions --- #
+########################################################
+
+# xxx bug: try mkbinder with no args in bulk mode
+# xxx bug: ... then try it again
+sub bdx_mkbinder { bdx_bmake(@_) }
+sub bdx_bmake { my( $name, $bgroup, $user )=@_;
+
+	$bindid and
+		outmsg($sh, "why did you specify an identifier ($bindid)?"),
+		return 1;
+
+	$name ||= "";
+
+	# yyy deprecate this feature?: being able to do mkbinder without
+	#     a named binder that feature adds lots of complicated code
+
+	my $msg;
+	my $sh = $bh->{sh};
+	# yyy need to configure so we can test $sh->{exdb} below
+	if (! $sh->{cfgd} and $msg = File::Session::config($sh)) {
+		outmsg($sh, $msg);      # failed to configure
+		return 1;
+	}
+
+	# yyy this next clause should be pushed into lower library routine
+	my $err = 0;
+	if ($sh->{exdb}) {	# need to be configured before testing {exdb}
+		$cmdr = catfile($name, 'dummy');
+		$cmdr_from_d_flag = 0;
+	}
+	elsif ($name and $sh->{indb}) {
+		($mdr, $cmdr, $cmdr_from_d_flag, $err) =
+			File::Cmdline::def_mdr($bh, $name, 0);
+		$err and
+			outmsg($bh),
+			return 1;
+	}
+
+	my $minderhome = $cmdr_from_d_flag ?	# if user specified -d
+		"." :			# use current context, not minderhome
+		"" ;			# else use $sh->{minderhome}
+	File::Binder::mkbinder($sh, $mods, fiso_uname($cmdr), $bgroup, $user,
+			"user-initiated (with mkbinder)", $minderhome) or
+		outmsg($sh), return 1;
+
+	return 0;
+}
+
+sub bdx_rmbinder { bdx_brm( @_ ) }
+sub bdx_brm { my( $name, $bgroup, $user )=@_;
+
+	$bindid and
+		outmsg($sh, "why did you specify an identifier ($bindid)?"),
+		return 1;
+
+	$name ||= "";
+	my $msg;
+	# yyy need to configure so we can test $sh->{exdb} below
+	if (! $sh->{cfgd} and $msg = File::Session::config($sh)) {
+		outmsg($sh, $msg);      # failed to configure
+		return 1;
+	}
+
+	# yyy this next clause should be pushed into lower library routine
+	my $err = 0;
+	if ($sh->{exdb}) {	# need to be configured before testing {exdb}
+		$cmdr = catfile($name, 'dummy');	# yyy
+		$cmdr_from_d_flag = 0;
+	}
+	elsif ($name and $sh->{indb}) {
+		($mdr, $cmdr, $cmdr_from_d_flag, $err) =
+			File::Cmdline::def_mdr($bh, $name, 1);	# yyy $sh?
+		$err and
+			outmsg($bh),	# yyy $sh?
+			return 1;
+	}
+
+	my $minderpath = $cmdr_from_d_flag ?	# if user specified -d
+		"" :			# ignore minderpath setting
+		$sh->{minderpath};	# else use $sh->{minderpath}
+	# yyy these File::Egg::* routines should take a name that is either a
+	#     fiso_dname or fiso_uname (which is easier on the caller/user)
+	# xxxx this minderpath is really a Perl array not a string!
+
+	File::Binder::rmbinder($sh, $mods, fiso_uname($cmdr), $bgroup, $user,
+			$minderpath) or
+		outmsg($sh),
+		return 1;
+	return 0;
+}
+
+# Context and Stats (show minders, minder stats, minder ping)
+#   pt show       "pairtree show known minders"
+# bind show       "egg show known minders"
+# noid show       "minder show known minders"
+#   pt mstat mdr   "pairtree show stats for minder 'mdr'"
+# bind mstat mdr   "egg show stats for minder 'mdr'"
+# noid mstat mdr   "minder show stats for minder 'mdr'"
+#   pt mping mdr   "pairtree ping minder 'mdr'"
+# bind mping mdr   "egg ping minder 'mdr'"
+# noid mping mdr   "minder ping minder 'mdr'"
+# XXX implement!!
+
+#sub bdx_mshow { dx_mshow( @_ ) }
+# show known binders (was mshow)
+sub bdx_bshow { my( $bgroup, $user, $ubname )=@_;
+
+	File::Binder::bshow($sh, $mods, $sh->{om}, $bgroup, $user, $ubname) or
+		outmsg($sh), return 1;
+	return 0;
+}
+
+sub bdx_brmgroup { my( $bgroup, $user )=@_;
+
+	File::Binder::brmgroup($sh, $mods, $bgroup, $user) or
+		outmsg($sh), return 1;
+	return 0;
+}
+
+# show stats of minder
+# show stats of minder
+# return pulse check
+sub bdx_mping { }
+
+# yyy merge mstat and show?
+# yyy make show list of all binders, flagging the default binder?
+sub bdx_mstat { my( $level )=@_;
+
+	$level ||= "brief";
+
+	my $minderpath = $cmdr_from_d_flag ?
+		"" : $bh->{minderpath};		# search unless -d used
+	bopen($bh, $cmdr, DB_RDONLY, $minderpath) or
+		outmsg($bh), return 1;
+
+	File::Egg::mstat($bh, $mods, $bh->{om_formal}, $cmdr, $level) or
+		outmsg($bh), return 1;
+	return 0;
+}
+
+# list at most $max ids that are matching ("in") @inkeys (all by default)
+# if $nextkey set, start listing with first next key NON-matching key
+sub bdx_next { my( $max, $nextkey )=( shift, shift );
+	defined($nextkey) or
+		outmsg($bh, "must specify next key"),
+		return 1;
+	bdx_next_list( $max, $nextkey, @_ );
+}
+sub bdx_list { my( $max )=( shift );
+	defined($max) or
+		outmsg($bh, "must specify maximum number of ids"),
+		return 1;
+	bdx_next_list( $max, undef, @_ );
+}
+sub bdx_next_list { my( $max, $nextkey, @inkeys )=@_;
+
+	my $minderpath = $cmdr_from_d_flag ?
+		"" : $bh->{minderpath};		# search unless -d used
+	bopen($bh, $cmdr, DB_RDONLY, $minderpath) or
+		outmsg($bh), return 1;
+
+	$bh->{om}->elem('summary',
+		" listing for binder $bh->{minder_file_name}, max $max"
+		. (defined($nextkey) ? ", from $nextkey" : ''), '1#');
+	my ($num_ids, $num_bindings) =
+		File::Egg::next_list($bh, $mods, $max, $nextkey, @inkeys);
+	defined($num_ids) or
+		outmsg($bh), return 1;
+
+	my $summary = " produced $num_ids ids with an average of "
+			. ($num_ids ? ($num_bindings / $num_ids) : 0)
+			. " bindings per id";
+	$bh->{om}->elem('summary', $summary, '1#');
+	return 0;
+}
+
+#use YAML::Tiny;
+use Try::Tiny;			# to use try/catch as safer than eval
+use Safe::Isa;
+
+# This is a very special command used primarily by Apache RewriteMap that
+# must always outputs exactly one line (empty line means nothing found).
+# It uses simple "print()", ignoring any output format specified.
+#
+sub bdx_resolve {	# any args are optional headers, passed to Egg::resolve
+
+	my $minderpath = $cmdr_from_d_flag ?
+		"" : $bh->{minderpath};		# search unless -d used
+	bopen($bh, $cmdr, DB_RDONLY, $minderpath) or
+		print("could not open binder $cmdr\n"), return 1;
+		#outmsg($bh), return 1;
+
+	# On the web, spaces in ids are percent-encoded by browsers (most
+	# users won't know how to quote them anyway, and we assume that a
+	# well-behaved server will preserve them.  But now that our initial
+	# parse is done, it's the time to make them, if any, appear again.
+	#
+	# XXXXXX this test should work (see Cmdline.pm --rrm test)
+	#$WeAreOnWeb and		# percent(%)-decode any %HH sequences
+	#	$bindid =~ s/%([[:xdigit:]]{2})/chr hex $1/eg;
+	# Kludge
+	$bindid =~ s/%([[:xdigit:]]{2})/chr hex $1/eg;
+
+	my @header_args = @_;	# because @_ isn't available inside "try" block
+	my $ok = try {
+		File::Resolver::resolve($bh, $mods, $bindid, @header_args) or
+			print("$mtag failed on $bindid (mh=$bh)\n"), return 1;
+			# yyy should do this with $ur_origid or callback
+			#     egg should NOT have this special knowledge
+	}
+	catch {
+		print("$mtag exception in ",
+			"Resolve::resolve($bh, $mods, $bindid), possibly $_;");
+			#"possibly $_;",
+			#($msg ? " prefix hash error: $msg" : ''),
+			#"\n");
+		return undef;	# returns from "catch", NOT from routine
+	};
+	! $ok and
+		return 1;
+	return 0;
+}
+
+# XXX this should not require any minder to be specified!
+sub bdx_norm {
+	#my $nid = File::Resolver::id_normalize($bh->{pfxdb}, $bindid);
+	my $idx = File::Resolver::id_decompose($bh->{pfxs}, $bindid);
+	defined($idx) or
+		return 1;
+	return $bh->{om}->elem('id', $idx->{full_id});
+}
+
+# XXX this should not require any minder to be specified!
+sub bdx_shadow {
+	my $idx = File::Resolver::id_decompose($bh->{pfxs}, $bindid);
+	defined($idx) or
+		return 1;
+	my $nid = File::Resolver::id2shadow($idx->{full_id});
+	#my $nid = File::Resolver::id2shadow(
+		#File::Resolver::id_normalize($bh->{pfxdb}, $bindid));
+	defined($nid) or
+		return 1;
+	$bh->{om}->elem('id', $nid);
+	return 0;
+}
+
+#use DB_File;
+sub corrected_status { my( $status )=@_;
+
+	$status or
+		return ('', DB_RDONLY);
+		#return ('', O_RDONLY);
+	'enabled' =~ /^$status/i and
+		$status = 'e'
+	or
+	'disabled' =~ /^$status/i and
+		$status = 'd'
+	or
+	'readonly' =~ /^$status/i and
+		$status = 'r'
+	or
+	'shoulderonly' =~ /^$status/i and
+		$status = 's'
+	or
+		return ("unknown minter status: $status", 0)
+	;
+	return ($status, DB_RDWR);
+	#return ($status, O_RDWR);
+}
+
+# set or get minder status
+# xxx rename mstat to something else
+# call with ... mstatus [paused|readonly
+sub bdx_mstatus { my( $status )=@_;
+
+	my $flag;
+	#  one of enabled, disabled, readonly, or shoulderonly
+	($status, $flag) = corrected_status($status);
+	$status =~ /^unknown/ and
+		outmsg($bh, $status), return 1;
+	my $minderpath = $cmdr_from_d_flag ?
+		"" : $bh->{minderpath};		# search unless -d used
+	bopen($bh, $cmdr, $flag, $minderpath) or
+		outmsg($bh), return 1;
+
+	$om->elem('status', File::Binder::mstatus($bh, $mods, $status));
+	return 0;
+}
+
+sub bdx_dbinfo { my( $level )=@_;
+
+	$bindid and
+		outmsg($bh, "why did you specify an identifier ($bindid)?"),
+		return 1;
+
+	$level ||= "brief";
+	my $minderpath = $cmdr_from_d_flag ?
+		"" : $bh->{minderpath};		# search unless -d used
+	bopen($bh, $cmdr, DB_RDONLY, $minderpath) or
+		outmsg($bh), return 1;
+
+	File::Egg::dbinfo($bh, $mods, $level);
+	return 0;
+}
+
+# usage: egg testlock SECONDS ex|sh
+#  ex=exclusive, sh=shared
+sub bdx_testlock { my( $secs, $locktype )=@_;
+	defined($secs) or
+		outmsg($bh, "need to specify number of seconds to hold lock"),
+		return 1;
+	$locktype or
+		outmsg($bh, "need to specify lock type ('ex' or 'sh')"),
+		return 1;
+	$secs =~ /^\d+$/ or
+		outmsg($bh, "number of seconds must be an integer"),
+		return 1;
+	my $mode =
+		($locktype eq 'ex' ? DB_RDWR :
+		($locktype eq 'sh' ? DB_RDONLY : undef));
+	defined($mode) or
+		outmsg($bh, "locktype must be 'ex' or 'sh'"),
+		return 1;
+
+	my $minderpath = $cmdr_from_d_flag ?
+		"" : $bh->{minderpath};		# search unless -d used
+	File::Binder::bopen($bh, $cmdr, $mode, $minderpath) or
+		outmsg($bh), return 1;
+	sleep $secs;
+	outmsg("held $locktype lock for $secs seconds");
+}
+
+# xxx dbsave and dbload built for the old DB_File.pm environment
+# xxx should probably be updated for BerkeleyDB.pm and MongoDB.pm
+sub bdx_dbsave { my( $destfile )=@_;	# arg may name a directory
+
+	$bindid and
+		outmsg($bh, "why did you specify an identifier ($bindid)?"),
+		return 1;
+
+	my $minderpath = $cmdr_from_d_flag ?
+		"" : $bh->{minderpath};		# search unless -d used
+	# Note: the DB_RDWR is only used to obtain an exclusive lock while
+	# we copy out the database; we absolutely don't want to alter it.
+	# Because the file to copy out can exceed our default timeout,
+	# we pass in a new timeout value via $bh.
+	# XXX there's probably a better way to pause the dbfile
+	# 
+	$bh->{timeout} = 300;	# wait up to 5 minutes to copy out the file
+	bopen($bh, $cmdr, DB_RDWR, $minderpath) or
+		outmsg($bh), return 1;
+
+	#File::Egg::logmark($bh, undef, "before dbsave") or
+	#	outmsg($bh), return 1;
+	#my $msg;
+	#$msg = $bh->{rlog}->out("C: $id.$lcmd") and
+	#	addmsg($bh, $msg),
+	#	return undef;
+	File::Egg::dbsave($bh, $mods, $destfile) or
+		outmsg($bh), return 1;
+	return 0;
+}
+
+# xxx dbsave and dbload built for the old DB_File.pm environment
+# xxx should probably be updated for BerkeleyDB.pm and MongoDB.pm
+sub bdx_dbload { my( $srcfile )=@_;	# arg may name a directory
+
+	$bindid and
+		outmsg($bh, "why did you specify an identifier ($bindid)?"),
+		return 1;
+
+	my $minderpath = $cmdr_from_d_flag ?
+		"" : $bh->{minderpath};		# search unless -d used
+	# Note: the DB_RDWR is only used to obtain an exclusive lock while
+	# we swap out the current database for the database in $srcfile;
+	# we don't alter it directly, but just swap it out (fast).
+	# 
+	$bh->{timeout} = 300;	# wait up to 5 minutes to move file, unlikely
+				# unless $srcfile is on another filesystem
+	bopen($bh, $cmdr, DB_RDWR, $minderpath) or
+		outmsg($bh), return 1;
+
+	File::Egg::dbload($bh, $mods, $srcfile) or
+		outmsg($bh), return 1;
+	return 0;
+}
+
+sub bdx_cullrlog { my( $destfile )=@_;	# arg is optional
+
+	$bindid and
+		outmsg($bh, "why did you specify an identifier ($bindid)?"),
+		return 1;
+
+	my $minderpath = $cmdr_from_d_flag ?
+		"" : $bh->{minderpath};		# search unless -d used
+	# Note: the DB_RDWR is only used to obtain an exclusive lock while
+	# we move the current rlog to a place from which it will be shipped.
+	#
+	# We obtain a lock on the binder for this operation so that any bulk
+	# operation before us on an id's elements has a chance to complete
+	# along with its logging.  I'm not 100% certain this is necessary
+	# because the bulk operation should hold the logging file descriptor
+	# open and follow it even if the file is moved while still open, but
+	# it won't follow the file across the net if an "scp" starts up right
+	# away (unless it delays the scp somehow); either way, this is safer.
+	# 
+	bopen($bh, $cmdr, DB_RDWR, $minderpath) or
+		outmsg($bh), return 1;
+
+	File::Egg::cullrlog($bh, $mods) or
+		outmsg($bh), return 1;
+	# xxx how to tell if there is or isn't a message to output?
+	outmsg($bh);
+	return 0;
+}
+
+sub bdx_set	{ bdx_assign( "set", 1, 0, File::Egg::HOW_SET, @_ ) }
+sub bdx_let	{ bdx_assign( "let", 1, 1, File::Egg::HOW_SET, @_ ) }
+sub bdx_add	{ bdx_assign( "add", 0, 0, File::Egg::HOW_ADD, @_ ) }
+sub bdx_another	{ bdx_assign( "another", 0, 1, File::Egg::HOW_ADD, @_ ) }	# xxx needed?
+sub bdx_insert	{ bdx_assign( "insert", 0, 0, File::Egg::HOW_INSERT, @_ ) }
+sub bdx_vinsert	{ bdx_assign( "vinsert", 0, 1, File::Egg::HOW_INSERT, @_ ) }
+sub bdx_incr	{ bdx_assign( "incr", 1, 0, File::Egg::HOW_INCR, @_ ) }
+sub bdx_decr	{ bdx_assign( "decr", 1, 0, File::Egg::HOW_DECR, @_ ) }
+# xxx replace shifts by more usual way of copying args
+sub bdx_assign { my( $lcmd, $delete, $polite, $how )=( shift, shift, shift, shift );
+
+	my $minderpath = $cmdr_from_d_flag ?
+		"" : $bh->{minderpath};		# search unless -d used
+
+	bopen($bh, $cmdr, DB_RDWR, $minderpath) or
+		outmsg($bh), return 1;
+
+	File::Egg::egg_set($bh, $mods, $lcmd, $delete, $polite, $how,
+			$bindid, @_) or
+		outmsg($bh), return 1;
+
+	return 0;
+}
+
+sub bdx_get	{ bdx_getfetch(0, @_) }
+sub bdx_fetch	{ bdx_getfetch(1, @_) }
+sub bdx_getfetch { my( $formal, @elems )=@_;
+
+	my $om = $formal ? $bh->{om_formal} : $bh->{om};
+
+	my $minderpath = $cmdr_from_d_flag ?
+		"" : $bh->{minderpath};		# search unless -d used
+	bopen($bh, $cmdr, DB_RDONLY, $minderpath) or
+		outmsg($bh), return 1;
+
+	# in rrm mode, apache config file arranges for some extra args to
+	# be inserted before ...
+	# $rrm and set $bh->{rrmcontact} = current contact info
+	#File::Egg::mfetch($bh, $om, undef, $bindid, @elems) or
+	#
+	File::Egg::egg_fetch($bh, $mods, $om, undef, undef, $bindid, @elems) or
+		outmsg($bh), return 1;
+
+	return 0;
+}
+
+sub bdx_show { my( @elemsets )=@_;	# acts on ELEMENTS, eg, "show :brief"
+
+	my $minderpath = $cmdr_from_d_flag ?
+		"" : $bh->{minderpath};		# search unless -d used
+	bopen($bh, $cmdr, DB_RDONLY, $minderpath) or
+		outmsg($bh), return 1;
+
+	File::Egg::show($bh, $mods, $bindid, @elemsets) or
+		outmsg($bh), return 1;
+
+	return 0;
+}
+
+sub bdx_exists {	# might have an element name argument
+	
+	my $minderpath = $cmdr_from_d_flag ?
+		"" : $bh->{minderpath};		# search unless -d used
+	bopen($bh, $cmdr, DB_RDONLY, $minderpath) or
+		outmsg($bh), return 1;
+
+	File::Egg::egg_exists($bh, $mods, $bindid, @_) or
+		outmsg($bh), return 1;
+
+	return 0;
+}
+
+
+sub bdx_rm	{ bdx_del("rm", 0, @_) }
+sub bdx_delete	{ bdx_del("delete", 1, @_) }
+sub bdx_del { my( $lcmd, $formal )=( shift, shift );
+	
+	my $minderpath = $cmdr_from_d_flag ?
+		"" : $bh->{minderpath};		# search unless -d used
+	bopen($bh, $cmdr, DB_RDWR, $minderpath) or
+		outmsg($bh), return 1;
+
+	File::Egg::egg_del($bh, $mods, $lcmd, $formal, $bindid, @_) or
+		outmsg($bh), return 1;
+
+	return 0;
+}
+
+# XXX currently no way to use this $formal
+sub bdx_purge { my( $formal )=shift;
+
+	$bindelem and
+		outmsg($bh, "why did you specify an element ($bindelem)?"),
+		return 1;
+	my $minderpath = $cmdr_from_d_flag ?
+		"" : $bh->{minderpath};		# search unless -d used
+	bopen($bh, $cmdr, DB_RDWR, $minderpath) or
+		outmsg($bh), return 1;
+
+	File::Egg::egg_purge($bh, $mods, "purge", $formal, $bindid) or
+		outmsg($bh), return 1;
+
+	return 0;
+}
+
+sub bdx_hello {
+	$om->elem("hello", "Hello");
+	return 0;
+}
+
+# yyy very stupid
+sub untaint { my( $s )=@_;
+	($s) = $s =~ /(.*)/;
+	return $s;
+}
+
+sub bdx_man { pod2use($cgih, -exitstatus => 0, -verbose => 2) }
+
+sub bdx_help { my( $topic ) = ( shift );
+
+	use File::Help;
+
+	# xxx We're not properly able to use $om here, because we don't
+	#     know how to capture pod2usage as a string instead of printing
+	#     it.  This has the consequence that we have to put out CGI
+	#     headers (if need be) ourselves, and also to quell headers
+	#     (yyy) output by $om if object is destroyed without output.
+	#     
+	my $t = $topic || "";
+	$t and "usage" =~ /^$t/i and
+		usage(undef),
+		#usage($om, undef, $usage_text),
+		return 0;
+	$WeAreOnWeb and $cgih and	# (yyy) by hand CGI headers
+		print ($cgih->take);
+	File::Help::help(undef, $topic, @_);
+	#$om->{cgih}->take;		# (yyy) quell any headers 
+
+	return 0;	# xxx return error if not found?
+}
+
+sub usage { my $errmsg = shift;
+
+	# xxx We're not properly able to use $om here, because we don't
+	#     know how to capture pod2usage as a string instead of printing
+	#     it.  This has the consequence that we have to put out CGI
+	#     headers (if need be) ourselves, and also to quell headers
+	#     (yyy) output by $om if object is destroyed without output.
+	#     
+	$WeAreOnWeb and $cgih and	# (yyy) by hand CGI headers
+		print ($cgih->take);
+	$errmsg and
+		outmsg($errmsg);
+	print $usage_text;
+	#$om->{cgih}->take;		# (yyy) quell any headers 
+
+	return 0;	# xxx return error if not found?
+}
+
+sub bdx_logmark { my( $string )=@_;
+
+	if (! defined($string)) {
+		outmsg($bh, "You must supply a string");
+		#usage(1, 1, "logmark");
+		return 0;
+	}
+	File::Egg::logmark($bh, $mods, $string) or
+		outmsg($bh), return 1;
+	return 0;
+}
+
+sub bdx_pr {		# pass @_ on through
+
+	File::Egg::egg_pr($bh, $mods, @_) or
+		outmsg($bh), return 1;
+	return 0;
+}
+
+# yyy what about a "winnow" routine that is either started
+#     from cron or is started when an exiting noid call notices
+#     that there's some harvesting/garbage collecting to do and
+#     schedules it for, say, 10 minutes hence (by not exiting,
+#     but sleeping for 10 minutes and then harvesting)?
+
+sub bdx_note { my( $key, $value )=@_;
+
+	if (! defined($key) || ! defined($value)) {
+		outmsg($bh, "You must supply a key and a value");
+		#usage(1, 1, "note");
+		return 0;
+	}
+	my $minderpath = $cmdr_from_d_flag ?
+		"" : $bh->{minderpath};		# search unless -d used
+	bopen($bh, $cmdr, DB_RDWR, $minderpath) or
+	#Noid::dbopen($bh, $mdr, DB_RDWR) or
+		outmsg($bh), return 1;
+
+	File::Egg::note($bh, $mods, $key, $value) or
+		outmsg($bh), return 1;
+	#Noid::dbclose($bh);
+	return 0;
+}
+
+# Called as the default command when no args were given
+#
+sub bdx_usage { my( $errmsg )=@_;
+
+	# yyy for now this is where help with no topic goes
+	usage($errmsg);
+	return 0;
+}
+
+# XXX bug "egg ljsdoiwe version" works fine!?
+sub ndx_version { bdx_version(@_) }
+sub bdx_version {
+
+	# We take our version number from the module version.
+	#
+	my ($v1bdb, $dbfile, $built, $running, $mongo) = get_dbversion();
+
+##my $x = $bh->{ruu}->{client_software};
+#my $x = $ENV{HTTP_USER_AGENT};
+#my $onbof = '';
+#$x =~ s/\s*OnBehalfOf\s*\(([^)]+)\)// and
+#	$onbof = $1;
+
+	$om->elem("version",
+		qq@This is "$m_cmd" version $File::Egg::VERSION, @ .
+#"USER_AGENT=$ENV{HTTP_USER_AGENT}, modif=$x, onbof=$onbof, " .
+			"with Berkeley DB version $running" .
+			" and MongoDB.pm $mongo");
+
+	return 0			# normal return
+		unless $opt{verbose};
+
+	## XXX bug: should use $om, but how to get it nicely formatted?
+	## If verbose, go on a bit after fetching version info.  We can
+	## use this detail to get test if the command line and in-Apache
+	## environments are set to give us the same Perl, BerkeleyDB, etc.
+	##
+	#printf "  Running under Perl version v%vd\n", $^V;
+	#print  "  Using DB_File version $dbfile\n";
+	#print  "    Built with Berkeley DB version $built\n";
+	#print  "    Running with Berkeley DB version $running\n";
+	## yyy move this to a place where it can be shared with nog?
+	## XXX output as subelement of version? use $om?
+
+	#if ($WeAreOnWeb and $opt{verbose}) {	# xxx kludge to see environment
+	#	my ($var, $val);
+	#	foreach $var (sort(keys(%ENV))) {
+	#		$val = $ENV{$var};
+	#		$val =~ s|\n|\\n|g;
+	#		$val =~ s|"|\\"|g;
+	#		print "${var}=\"${val}\"\n";
+	#	}
+	#}
+
+	return 0;
+}
+
+# yyy Possible for 'c' mask char:
+#	ASCII 33 to 126 (no SPACE, no DEL)  --> 94 (not prime)
+#	MINUS the 5 chars:  / \ - % "       --> 89 (prime)
+#    or MINUS the 5 chars:  / \ - % .       --> 89 (prime)
+#    or MINUS the 5 chars:  / \ - % SPACE   --> 89 (prime)
+#
+# Note: current (1/2004) restrictions on ARKs are alphanums plus
+#	= @ $ _ * + #
+# with the following reserved for special purposes
+#	/ . - %
+
+# yyy noid example:  shuffle play (as in random song list)
+# yyy bind is pair-wise or triple-wise?  (how to explain consistently)
+
+# yyy add java class to distro
+# yyy add pdf of doc to distro
+
+__END__
+
+=pod
+
+=for roff
+.nr PS 12p
+.nr VS 14.4p
+
+=head1 NAME
+
+egg - Bind an Identifier to Named Data
+
+=head1 SYNOPSIS
+
+B<egg> [ I<options> ] I<i.op> [ I<elem> [ I<val> ] ]
+
+=head1 DESCRIPTION
+
+The B<egg> binds identifier strings to named data elements.  Properly
+managed and sufficiently opaque (see B<noid>), these strings and their
+bindings can be used to support long term durable information object
+references within naming schemes such as ARK, PURL, URN, DOI, and LSID.
+Alternatively, they can also support short-lived names for transaction
+identifiers, compact web server session keys, and other ephemera.
+
+A "binder" is a lightweight database designed for efficiently binding
+arbitrary element names and element values that are either stored or
+produced upon retrieval from rule-based transformations of requested
+identifiers, the latter having application in identifier resolution.
+Binders are very fast, scalable, easy to create and tear down, and have a
+relatively small footprint.  They use BerkeleyDB as the underlying
+database.
+
+=head1 README FOR THE NEW EGG
+
+=for help Other README - ESSENTIALS OF THE NEW BINDER
+
+Usage:
+ 
+    egg [ options ] i.command [ name [ data ] ]
+
+Egg is a binder. The egg command makes, manages, and resolves arbitrary
+data element bindings, each belonging to a parent identifier (which may
+be empty).  Each element name is bound as a child of an identifier, i,
+which comes into existence when its first element is bound.  Any number
+of elements may be bound under i.  An element may have 0, 1, or more
+instances ("dupes", short for duplicates).
+
+Commands tend to look like object method calls, with the parent identifier
+as the object.  Use just the method name ("set" and not, eg, "y.set") to
+reference the empty string identifier ("").  Strings representing i, an
+element name, n, and a data value, d, must be less than 4gb in length and
+must not start with a literal ':', '&', or '@' unless it is encoded.
+Other literals that must be encoded are any of the characters in
+"|;()[]=:" anywhere in the strings i and n, and any '<' at the start of i.
+
+Encoding can be done with the :hx modifier (below) or avoided entirely
+with indirect tokens.  If any of i, n, or d begins with a literal '@',
+it specifies an indirect token to be taken from elsewhere, as follows:
+
+  @       from stdin up to end of line
+  @-      from stdin up to a blank line (two newlines in a row)
+  @--     from stdin up to end-of-file
+  @-N     from stdin up to N+6 octets, the last 6 being "\n#eot\n"
+  @-XYZ   from stdin up to "\nXYZ\n" (string XYZ bounded by newlines)
+  @XYZ    from the entire contents of a file named XYZ
+
+Sometimes a binder's name, b, may usefully be given in the form <b>, in
+front of a command (eg, "<b>i.set").  The acronym, BIND (Bind Identifier
+to Named Data), may help to recall argument order.  Any extra arguments
+are silently ignored.
+
+  i.set n d       set element n to d under id i, overwriting prior dupes
+  i.let n d       set element n to d, but only if no prior dupes exist
+  i.add n d       add an element under i (creating a dupe if n exists)
+  i.get [n]       return all dupes of n (or of all elements if no n) under i
+  i.fetch [n]     like get, but using a labeled output format (default ANVL)
+  i.rm n          remove all dupes of element n under i
+  i.delete n      like rm, but more verbose
+  i.purge         remove id i (removes all dupes of all elements under i)
+  i.exists [n]    return "1" if i (or n under i) exists, else return "0"
+  i.incr n [j]    increment element n by integer j (j defaults to 1)
+  i.decr n [j]    decrement element n by integer j (j defaults to 1)
+  i.resolve [hdr] return one-line _t value (influenced by HTTP hdr info)
+  i.norm          return resolver-normalized version of i
+  i.shadow        like norm but return i as shadow ARK if applicable
+  list m [k...]   list up to m (0=unlimited) ids (or ids under keys k)
+  next m x [k...] like list, but begin at next id not matching x (under k)
+  bmake [b [g [u]]] make binder named b (mint name if no b) (aka mkbinder)
+  bshow [g [u]]     list binders for group g, user u
+  brm b [g [u]]     remove binder named b (aka rmbinder)
+  brmgroup g [u]    remove external binder group g (just external binders now)
+  mstat           show various binder counts
+  dbinfo [all]    show binder database information
+  -               do bulk (batch) commands on stdin or http request body
+  logmark string  write string to mark a place in the txnlog file
+  pr string ...   print strings to output
+
+Modifiers may appear in front of commands.  To enter arbitrary data for any
+token, use the :hx modifier to decode hex digit pairs before operating.
+
+  :hx   hex-decode ^hh sequences in the command line, eg, ^0a for newline
+  :hxC  hex-decode, but using the character C instead of '^'
+  :all  get/fetch all elements, including administrative elements
+
+The :all modifier applies only to the "get" and "fetch" commands.
+Any command of the form "i.CMD n [d]" may be given as "i|n.CMD [d]", eg,
+
+  :hx myid|myname.set line_one^0aline_two^0aline_three^0a
+
+This latter form will be needed to access sub-elements (eg,
+i|n|subelem|subsubelem....)
+
+=head2 Bulk commands:
+
+Bulk commands are read one line at a time from standard input.  Lines that
+are blank or begin with '#' are skipped.  Lines read as commands (ie, not
+lines read as parts of "@" tokens) are processed as follows:  each line is
+tokenized, any line ending with a newline immediately preceded by '\'
+continues on the next line, and the usual shell quote characters ("'\)
+can be used to construct arguments.
+
+=head2 The list and next commands:
+
+Two commands -- list and next -- produce output that may be segmented into
+batches, which can be useful dealing with large binders over the Web API.
+
+  list m [k...]   list up to m (0=unlimited) ids (or ids under keys k)
+  next m x [k...] like list, but begin at next id not matching x (under k)
+
+They output a maximum of m ids, where m is a non-negative integer.  If keys
+k are given, each k represents one or more ids for which it is an initial
+substring.  For example, k could be an ARK id (representing just one id),
+or the id truncated back to the shoulder (all ids on that shoulder), or the
+id truncated back to the NAAN (all ids on that NAAN).  Ids for "list" will
+be output by listing all ids under the first key k in lexical order, then
+doing the same for the next key given, and so forth.
+
+Ids for "next" will be be output by listing ids starting with the first id
+that is "after" x (that doesn't have x as an initial substring).  If keys k
+are given, output is not done except for ids "after" x that contain one of
+the k as an initial substring.  After the first qualifying id is output,
+"next" behaves just like "list" for the remaining keys.  Since keys k are
+processed in the order given, it is best if (a) they are given in lexically
+ascending order and (b) no key overlaps with another key.
+
+If m is given as "-" for either "list" or "next", a default maximum will be
+selected.  If m is given as "0" (zero), no limit will be in effect -- be
+careful with this setting.  For example, to progressively build up all arks
+from scratch, you could retrieve batches of 100,000 ids at a time with this:
+
+  1. batch = "egg list 100000"         # initialization step
+  2. append batch >> List              # save batch in growing List
+  3. if length(batch) < 100000, exit   # done -- everything will be in List
+  4. K = batch[100000]                 # set K to last id in batch
+  5. batch = "egg next 100000 K"       # return starts at first id after K
+  6. go to step 2                      # and repeat until done
+
+=head2 Web API:
+
+The binder can be invoked via URL, with command arguments assumed to
+arrive URL-encoded in a URL's query string.  The API output format is by
+default "ANVL" ("plain" for non-API), which includes an "egg-version"
+line in the HTTP response headers.  In addition, the response body will
+include a final "egg-status" line with the process return status as value.
+
+An egg client authenticates with https (SSL) and Basic Authentication.
+If acting on behalf of a local user, the client should include the header,
+Acting-For, with a value that is a globally unique identifier for that
+user, for example,
+
+  Acting-For: http://n2t.net/ark:/99166/...
+
+If the user's identifier starts with "http://n2t.net/ark:/99166", that
+part of the string will be compressed and stored internally as "&P"
+(currently a psuedo-macro).  For example, http://n2t.net/ark:/99166/123
+compresses to &P/123.
+
+Invoked via CGI, the query string, '-', can efficiently run a batch of
+commands in the HTTP request body. (Note that unlike "noid", "egg" does
+not map '+' to SPACE in query strings.)
+
+=head2 Some options specify:
+
+  -d binder   relative or absolute path to a binder (default binder1)
+  -p path     search path to look up a binder (default ~/.eggnog)
+  -m format   an output format, one of ANVL, XML, JSON, Plain (default)
+  --ack       acknowledge changes with an oxum value (#octets.#elements)
+  --all       get/fetch all elements by default (use :allnot to override)
+  --api       enable API mode
+  --txnlog=L  transaction log file (default ~/.eggnog/logs/transaction_log.rlog)
+  --dbie=[ie] database class: internal (i, default), external (e), both (ie)
+  --bgroup=G  external binder group, as in egg_<G>.<user>_s_<b>
+
+=head2 Data representation:
+
+The database is undergoing transition from BerkeleyDB to MongoDB. Both
+will be supported.
+
+Currently the primary database is a BerkeleyDB "btree" (BDB file), with
+keys of the form "identifier|element".  Eventually, subelements such as
+"id|elem|subelem|subsubelem|..." will be supported.  In stored keys (and
+their id, elem, subelem, etc. parts) the characters '|' and '^' will be
+"flex-encoded" as '^' (circumflex) followed by two hexadecimal digits.
+
+The BDB file is complemented by a plain text playback log recording every
+delta, which is useful in database replication and conversion.  Eventually,
+a version of the database is envisioned in plain text (ANVL) stored at the
+leaves of a pairtree, with the BDB file possibly as a secondary database.
+
+=head2 Reserved element names:
+
+There is an important element name reserved for egg resolution:
+
+   _t redirection target URL
+
+The target element contains one or two tokens.  If there is one token it
+should be the location URL of the target, which will be redirected with
+HTTP status 302.  To obtain a different status code, the last token should
+be the location URL and the first token should be the 3-digits of the
+desired HTTP status code, for example,
+
+   egg ark:/12345/678.set _t "303 http://www.example.com/foo/bar"
+
+While only the one- and two-token cases are defined, other tokens may
+defined in the future, for example, to support multiple redirection.
+
+xxx
+All names beginning "__m" are reserved.  These names are under
+consideration but not yet supported:
+XXX bad idea to use two underscores, as hard to tell from one underscore
+    better to use ._m or _.e or .e_ or _e.?
+xxx time to retire 'm' for minder, and commit to e for egg? examples
+
+All element names beginning "_.e" are reserved...
+
+   _.eT target (eg, a URL to redirect resolution requests)
+   _.eTm.ContentType    key to use for the content negotiation (CN)
+         target for a given ContentType
+   _.eTm.    key to use for default CN target if given ContentType has
+         no corresponding key
+   _.eTi.Inflection    key to use for target for given Inflection
+   _.eTi.    key to use for default target if given Inflection has
+         no corresponding key
+   _.ep a list of permission-agentid pairs (see Permissions below)
+   _.ec time created
+   _.eu time updated
+   _.eT<string> various targets, eg,
+   _.eTlp target when landing page is requested
+   _.eTim target when immersion is requested
+   _.eTch target when change history is requested
+   _.er holds record header value (eg, :: 13030)
+   _.ek kind: s=shoulder, n=naan, c=scheme, i=identifier, with all
+           sub-elemement kinds detectable by presence of '|' delimiter
+   _.em metadata profile (erc, datacite, dc) for inflection support?
+   _.es id status (public, reserved, unavailable)
+   _.e<N> for any integer N, references positional (sub-)elements
+   _.eA<string> for any string, for elements mapped from XML attributes
+   _.eo owner?
+   _.eg owner group?
+   _.eh co-owners list?
+
+=head2 Permissions:
+
+This section is under consideration.  Co-ownership is not yet supported
+by the egg binder.
+
+A permissions list is a set of newline-terminated p_strings.  Stored in
+the element "__mp" under any key, it defines permissions for that key.
+Here, a key may be an identifier, but may also be a NAAN (or DOI prefix),
+a shoulder (including NAAN), or an element under an identifier.  As a
+special case, the id ":" defines permissions for the entire binder (it's
+key is ":|__mp").  In the absence of a __mp element at a given level, a
+key inherits permissions from its the level above it.  Note: currently
+only ":|__mp" (binder-level) permissions are supported.
+
+The file "egg.conf" is read whenever the 'config' command is run from
+the shell. Here is an example egg.conf file that grants read-only
+access to all but the admin user, who can do anything.
+
+     p:&P/2|public|40
+     p:&P/1|admin|77
+
+To reduce storage, &P is a pseudo-macro representing a frequently-used
+constant string, 'http://n2t.net/ark:/99166', that appears in front of a
+certain class of globally unique agent identifiers.  Permissions for two
+well-known agents (with their human-readable labels) are given above.
+A p_string looks like this:
+
+     p: agent_id | [ human_label ] | KL 
+
+where agent_id is the true unique agent identifier (eg, person or group),
+human_label is optional, and KL is two octal digits representing up to
+six separate kinds of permission on the item associated with a key:
+
+    40  r - reading the item
+    20  w - writing (updating) the item
+    10  x - extending (appending to) the value of an item
+    04  t - taking (eg, minting, popping) from the item (destructive read)
+    02  c - creating a new item under the item
+    01  d - deleting the item (admin only?)
+            (xxx normally can't delete what you didn't create)
+
+Summing all digits gives octal 77, represented symbolically by "rwxtcd";
+only the octal representation is currently supported.  The apparent lack
+of symmetry between creating and deleting is due to a model in which one
+can create by "adding" under the parent, but can only delete that which
+one (and not someone else) created.  A permissions class mechanism is
+envisioned to reduce duplicative storage.
+
+=head1 TUTORIAL INTRODUCTION
+
+=for help Other tutorial - introduction to noid
+
+Once the noid utility is installed, the command,
+
+    noid dbcreate s.zd
+
+will create a minter for an unlimited number of identifiers.
+It produces a generator for medium term identifiers (the default) with
+the Template, C<s.zd>, governing the order, number, and form of minted
+identifier strings.  These identifiers will begin with the constant part
+C<s> and end in a digit (the final C<d>), all within an unbounded sequential
+(C<z>) namespace.  The TEMPLATES section gives a full explanation.
+This generator will mint the identifiers, in order,
+
+    s0, s1, s2, ..., s9, s10, ..., s99, s100, ...
+
+and never run out.  To mint the first ten identifiers,
+
+    noid mint 10
+
+When you're done, on a UNIX platform you can remove that minter with
+
+    rm -fr dbnoid
+
+Now let's create a more complex minter.
+
+    noid dbcreate f5.reedeedk long 13030 cdlib.org oac/cmp
+
+This produces a generator for long term identifiers that begin with the
+constant part C<13030/f5>.  Exactly 70,728,100 identifiers will be minted
+before running out.
+
+The 13030 parameter is the registered Name Assigning Authority Number
+(NAAN) for the assigning authority known as "cdlib.org", and "oac/cmp"
+is a string chosen by the person setting up this minter to identify the
+project that will be operating it.  This particular minter generates
+identifiers that start with the prefix C<f5> in the 13030 namespace.
+If long term information retention is within the mission of your
+organization (this includes national and university libraries and archives),
+you may register for a globally unique NAAN by sending email to ark at
+cdlib dot org.
+
+Identifiers will emerge in "quasi-random" order, each consisting of six
+characters matching up one-for-one with the letters C<eedeed>.
+
+  noid mint 1
+
+The first identifier should be C<13030/f54x54g11>, with the namespace
+ranging from a low of C<13030/f5000000s> to a high of C<13030/f5zz9zz94>.
+You can create a "locations" element under a noid and bind three URLs
+to it with the command,
+
+  noid bind set 13030/f54x54g11 locations \
+    'http://a.b.org/foo|http://c.d.org/bar|http://e.f.org/zaf'
+
+The template's final C<k> causes a computed check character to be added
+to the end of every generated identifier.  It also accounts for why the
+lowest and highest noids look a little odd on the end.  The final check
+character allows detection of the most common transcription errors,
+namely, incorrect entry of one character and the transposition of two
+characters.  The next command takes three identifiers that someone
+might ask you about and determines that, despite appearances, only the
+first is in the namespace of this minter.
+
+  noid validate - 13030/f54x54g11 13030/f54y54g11 \
+    13030/f54x45g11
+
+To make way for creation of another minter, you can move the entire
+minter into a subdirectory with the command,
+
+  mkdir f57 ; mv dbnoid f57
+
+A minter may be set up on a web server, allowing the NAA organization
+easily to distribute name assigment to trusted parties operating from
+remote locations.  The URL INTERFACE section describes the procedure in
+detail.  Once set up, you could mint one identifier by entering a URL such
+as the following into your web browser:
+
+  http://foo.ucop.edu/nd/noidu_f57?mint+1 
+
+Using a different procedure, you can also make your identifier bindings
+(e.g., location information) visible to the Internet via a few web server
+configuration directives.  The NAME RESOLUTION section explains this further.
+
+=head1 IDENTIFIER - AN ASSOCIATION SUPPORTED BY BINDINGS
+
+=for help Other identifier - an association between a string and thing
+
+An identifier is not a string of character data -- an identifier is an
+association between a string of data and an object.  This abstraction
+is necessary because without it a string is just data.  It's
+nonsense to talk about a string's breaking, or about its being strong,
+maintained, and authentic.  But as a representative of an association,
+a string can do, metaphorically, the things that we expect of it.
+
+Without regard to whether an object is physical, digital, or conceptual,
+to identify it is to claim an association between it and a representative
+string, such as "Jane" or "ISBN 0596000278".  What gives your claim
+credibility is a set of verifiable assertions, or metadata, about the
+object, such as age, height, title, or number of pages.  Verifiability is
+outside the scope of the noid utility, but you can use a minter to record
+assertions supporting an association by binding arbitrary named elements
+and values to the identifier.  Noid database elements can be up to 4
+gigabytes in length, and one noid minter is capable of recording billions
+of identifiers.
+
+You don't have to use the noid binding features at all if you prefer to
+keep track of your metadata elsewhere, such as in a separate database
+management system (DBMS) or on a sheet of paper.  In any case, for each
+noid generated, the minter automatically stores its own lightweight
+"circulation" record asserting who generated it and when.  If most of
+your metadata is maintained in a separate database, the minter's own
+records play a back up role, providing a small amount of redundancy that
+may be useful in reconstructing database bindings that have become damaged.
+
+An arbitrary database system can complement a noid minter without any
+awareness or dependency on noids.  On computers, identifier bindings are
+typically managed using methods that at some point map identifier strings
+to database records and/or to filesystem entries (effectively using the
+filesystem as a DBMS).  The structures and logistics for bindings
+maintenance may reside entirely with the minter database, entirely outside
+the minter database, or anywhere in between.  An individual organization
+defines whatever maintenance configuration suits it.
+
+=head1 PERSISTENCE
+
+=for help Other persistence - a property of a service
+
+A persistent identifier is an identifier that an organization commits to
+retain in perpetuity.  Associations, the I<sine qua non> of identifiers,
+last only as long as they (in particular, their bindings) are maintained.
+Often maintaining identifiers goes hand in hand with controlling the
+objects to which they are bound.  No technology exists that automatically
+manages objects and associations; persistence is a matter of service
+commitment, tools that support that commitment, and information that
+allows users receiving identifiers to make the best judgment regarding
+an organization's ability and intention to maintain them.
+
+It will be normal for organizations to maintain their own assertions
+about identifiers that you issue, and vice versa.  In general there is
+nothing to prevent discrepancies among sets of assertions.  Effectively,
+the association -- the identifier -- is in the eye of the beholder.  As a
+simple example, authors create bibliography entries for cited works, and
+in that process they make their claims, often with small errors, about
+such things as the author and title of the identified thing.  It is common
+for a provider of an identifier-driven service such as digital object
+retrieval to allow users to review its own, typically better-maintained
+sets of identifier assertions (i.e., metadata), even if it minted none
+of the identifiers
+that it services.  We call such an organization a Name Mapping Authority
+(NMA) because it "maps" identifiers to services.  It is possible for an
+NMA to service identifiers even if it neither hosts nor controls any
+objects.
+
+It will also be normal for archiving organizations to maintain their own
+peculiar ideas about what persistence means.  Different flavors will
+exist even within one organization, where, for example, it may be
+appropriate to apply corrections to persistent objects of one category,
+to never change objects of another, and to remove objects of a third
+category with a promise never to re-assign those objects' identifiers.
+One institution will guarantee persistence for certain
+things, while the strongest commitment made by some
+prominent archives will be "reasonable effort".  Given the range of
+possibilities, a memory organization will need to record not only the
+identities but also the support policies for objects in its care.
+Any database, including a noid minter, can be used for this purpose.
+
+For persistence across decades or centuries, opinions regarding an
+object's identity and commitments made to various copies of it will
+tend naturally to become more diverse.  An object may have been inherited
+through a chain of stewardship, subtle identity changes, and peaks of
+renewed interest
+stretching back to a completely unrelated and now defunct organization
+that created and named it.  For its original identifier to have persisted
+across the intervening years, it must look the same as when first minted.
+At that particular time, global uniqueness required the minted identifier
+to bear the imprint of the issuing organization (the NAA, or Name
+Assigning Authority), which long ago ceased to have any responsibility
+for its persistence.  There is thus no conflict in a mapping authority
+(NMA) servicing identifiers that originate in many different assigning
+authorities.
+
+These notions of flavors of persistence and separation of name authority
+function are built into the ARK (Archival Resource Key) identifier scheme
+that the B<noid> utility was partly created to support.  By design, noid
+minters also work within other schemes in recognition that persistence
+has nothing to do with identifier syntax.  Opaque identifiers can be used
+by any application needing to reduce the liability created when identifier
+strings contain linguistic fragments that, however appropriate or even
+meaningless they are today, may one day create confusion, give offense,
+or infringe on a trademark as the semantic environment around us and our
+communities evolves.  If employed for persistence, noid minters ease the
+unavoidable costs of long term maintenance by having a small technical
+footprint and by being implemented completely as open source software.
+For more information on ARKs, please see L<http://ark.cdlib.org/> .
+
+=head1 COMMANDS AND MODES
+
+=for help Other commands - overview
+
+Once again, the overall utility summary is
+
+=over 5
+
+B<noid> [ B<-f> I<Dbdir> ] [ B<-vh> ] I<Command> I<Arguments>
+
+=back
+
+In all invocations, output is intended to be both human- and
+machine-readable.  Batch operations are possible, allowing multiple
+minting and binding commands within one invocation.  In particular,
+if I<Command> is given as a "-" argument, then actual I<Commands>
+are read in bulk from the standard input.
+
+The string, I<Dbdir>, specifies the directory where the database resides.
+To protect database coherence, it should not be located on a filesystem
+such as NFS or AFS that doesn't support POSIX file locking semantics.
+I<Dbdir> may be given with the B<NOID>
+environment variable, overridable with the B<-f> option.  If those strings
+are empty, the name or link name of the B<noid> executable (argv[0] for C
+programmers) is checked to see if it reveals I<Dbdir>.  If that check
+(described next) fails, I<Dbdir> is taken to be the current directory.
+
+To check the name of the executable for I<Dbdir>, the final pathname
+component (tail) is examined and split at the first "_" encountered.  If none,
+the check fails.  Otherwise, the check is considered successful and the
+latter half is taken as naming I<Dbdir> relative to the current directory.
+This mechanism is designed for cases when it is inconvenient to specify
+I<Dbdir> (such as in the URL interface) or when you are running several
+minters at once.  As an example, F</usr/bin/noid_fk9> specifies a
+I<Dbdir> of F<fk9>.
+
+All files associated with a minter will be organized in a subdirectory,
+F<dbnoid>, of I<Dbdir>; this has the consequence that there can be at most
+one minter in a directory.  To allow B<noid> to create a new minter in
+a directory already containing a F<dbnoid> subdirectory, remove or rename
+the entire F<dbnoid> subdirectory.
+
+The B<noid> utility may be run as a URL-driven web server application,
+such as in a CGI that allows name assignment via remote operator.
+If the executable begins B<noidu...>, the noid URL mode is in effect.
+Input parameters, separated by a "+" sign, are expected to arrive
+embedded in the query part of a URL, and output will be formatted
+for display on an ordinary web browser.  An executable of B<noidu_xk4>,
+for example, would turn on URL mode and set I<Dbdir> to F<xk4>.
+This is further described under URL INTERFACE.
+
+The B<noid> utility may be run as a name resolver running behind a web
+server.  If the executable begins B<noidr...>, the noid resolver mode is
+in effect, which means that commands will be read from the standard input
+(as if only the "-" argument had been given) and the script output will
+be unbuffered.  This mode is designed for machine interaction and is
+intended to be operated by rewriting rules listed in a web server
+configuration file as described later under NAME RESOLUTION AND
+REDIRECTION INTERFACE.
+
+At minter creation time, a report summarizing its properties is produced
+and stored in the file, F<dbnoid/minter.README>.  This report may be useful
+to the organization articulating the operating policy of the minter.  In
+a formal context, such as the creation of a minter for long term
+identifiers, that organization is the Name Assigning Authority.
+
+The B<-v> option prints the current version of the B<noid> utility and
+B<-h> prints a help message.
+
+In the I<Command> list below, capitalized symbols indicate values to be
+replaced by the caller.
+Optional arguments are in [brackets] and (A|B|C) means one of A or B or C.
+
+=head2 noid dbcreate [ I<Template> [ I<Term> [ I<NAAN NAA SubZ<>NAA> ] ] ]
+
+=for help OldCommands dbcreate [ Template [ Term [ NAAN NAA SubNAA ] ] ]
+
+=over 4
+
+Create a database that will mint (generate) identifiers according to the
+given Template and Term.  As a side-effect this causes the creation of
+a directory, F<dbnoid>, within I<Dbdir>.  If you have several generators,
+it may be convenient to operate each from within a I<Dbdir> that uniquely
+identifies each Template; for example, you might change to a directory
+that you named F<fk6> after the Template C<fk.rdeedde> ("fk" followed by
+6 variable characters) of the minter that resides there.
+
+The Term declares whether the identifiers are intended to be "long",
+"medium" (the default), or "short".  A short term identifier minter is
+the only one that will re-mint identifiers after the namespace is
+exhausted, simply returning the oldest previously minted identifier.
+As mentioned earlier, however, some namespaces are unbounded and never
+run out of identifiers.
+
+If Term is "long", the arguments NAAN, NAA, and SubZ<>NAA are required,
+and all minted identifiers will be returned with the NAAN and a "/"
+prepended to them.  The NAAN is a namespace identifier and should be a
+globally unique Name Assigning Authority (NAA) number.  Apply for one
+by email to ark@cdlib.org, or for testing purposes, use "00000" as a
+non-unique NAAN.
+
+The NAA argument is the character string equivalent for the NAAN; for
+example, 13960 corresponds to the NAA, "archive.org".  The SubNAA argument
+is also a character string, but is a locally determined and possibly
+structured subauthority string (e.g., "oac", "ucb/dpg", "practice_area")
+that is not globally registered.
+
+If Template is not supplied, the minter freely binds any identifier that
+you submit without validating it first.  In this case it also mints
+medium term identifiers under the default Template, C<.zd>.
+
+=back
+
+=head2 bind I<How Id Element Value>
+
+=for help OldCommands set|append|prepend|... Id Element Value
+
+=over 4
+
+For the given Id, bind the Element to Value according to How.  The
+Element and Value may be arbitrary strings.  There are two reserved
+Element names allowing Values to be entered that are too large or
+syntactically inconvenient (depending on the calling environment's
+quoting restrictions) to pass in as command-line tokens.
+
+If the Element is ":" and no Value is present, lines are read
+from the standard input up to a blank line; they will contain
+Element-colon-Value pairs in essentially email header format,
+with long values continued on indented lines.  If the Element is ":-"
+and no Value is present, lines are read from the standard input up
+to end-of-file; the first non-comment, non-blank line must have an
+Element-colon to specify an Element name, and all the remaining input
+(up to EOF) is taken as its corresponding Value.  Lines beginning
+with "#" are considered "comment" lines and are skipped.
+
+=for later XXX test the "and no Value is present" in the both cases above
+
+The I<How> argument specifies one of the following kinds of binding.
+Of these, the B<set>, B<add>, B<insert>, and B<purge> kinds "don't care"
+if there is no current binding.
+
+=head3 new
+
+=over 4
+
+Only if Element does not exist, create a new binding.
+
+=back
+
+=head3 replace
+
+=over 4
+
+Only if Element exists, undo any old bindings and create a new binding.
+
+=back
+
+=head3 set
+
+=over 4
+
+Means B<new> or, failing that, B<replace>.
+
+=back
+
+=head3 append
+
+=over 4
+
+Only if Element exists, place Value at the end of the old binding.
+
+=back
+
+=head3 add
+
+=over 4
+
+Means B<new> or, failing that, B<append>.
+
+=back
+
+=head3 prepend
+
+=over 4
+
+Only if Element exists, place Value at the beginning of the old binding.
+
+=back
+
+=head3 insert
+
+=over 4
+
+Means B<new> or, failing that, B<prepend>.
+
+=back
+
+=head3 delete
+
+=over 4
+
+Remove any trace of Element, returning an error if it did not exist to
+begin with.
+
+=back
+
+=head3 purge
+
+=over 4
+
+Remove any trace of Element, returning success whether or not it existed
+to begin with.
+
+=back
+
+=head3 mint
+
+=over 4
+
+Means B<new>, but ignore the Id argument (actually, confirm that it
+was given as B<new>) and mint a new Id first.
+
+=back
+
+=head3 peppermint
+
+=over 4
+
+[This kind of binding is not implemented yet.]
+Means B<new>, but ignore the Id argument (B<new>)
+and peppermint a new Id first.
+
+=back
+
+The RULEZ<>-Z<>BASED MAPPING section explains how to set up retrieval
+using non-stored values.
+
+=back
+
+=head2 bind fetch I<Id> [ I<Element> ... ]
+
+=for help OldCommands fetch Id [ Element ... ]
+
+=over 4
+
+For the noid, Id, print with labels all bindings for the given
+Elements.  If no Element is given, find and print all bindings for the
+given Id.  This is the verbose version of the B<get> command, in that it
+prints headers and labels for everything it finds.
+
+=back
+
+=head2 bind get I<Id> [ I<Element> ... ]
+
+=for help OldCommands get Id [ Element ... ]
+
+=over 4
+
+For the noid, Id, print without labels all bindings for the given
+Elements.  If no Element is given, find and print all bindings for the
+given Id.  This is the quiet version of the B<fetch> command, in that it
+suppresses all headers and labels.  Between each Element requested,
+the output will be separated by a blank line.
+
+=back
+
+=head1 RULEZ<>-Z<>BASED MAPPING
+
+=for help Other rule - rule-based mapping
+
+Any Element may be bound to a class of Ids such that retrieval
+against that Element for any Id in the class returns a computed value when
+no stored value exists.  The class of Ids is specified via a regular
+expression (Perl-style) that will be checked for a match against Ids
+submitted via a retrieval operation (B<get> or B<fetch>) that names any
+Element bound in this manner.  If the match succeeds, the element Value
+that was bound with the Id class is used as the right-hand side of a Perl
+substitution, and the resulting transformation is returned.  We call this
+rule-based mapping, and it is probably best explained by working through
+the examples below.
+
+To set up rule-based mapping for an Id class, construct a B<bind> operation
+with an Id of the form C<:idmap/>I<Idpattern>, where I<Idpattern> is a Perl
+regular expression.  Then choose an Element name that you wish to have
+trigger the pattern match check whenever that Element is requested via a
+retrieval operation and a stored value does NOT exist; any Element will
+work as long as you use it for both binding and retrieving.  Finally,
+specify a Value to be used as replacement text that transforms matching
+Ids into computed values via a Perl s/// substitution.  As a simple example,
+
+    noid bind set :idmap/^ft redirect g7h
+
+would cause any subsequent retrieval request against the Element named
+"redirect" to try pattern matching when no stored value is found.
+If the Id begins with "ft", it would then try to replace the "ft" with
+"g7h" and return the result as if it were a stored value.  So if the Id
+were C<ft89xr2t>, the command
+
+   noid get ft89xr2t redirect
+
+would return C<g7h89xr2t>.  Fancier substitutions are possible, including
+replacement patterns that reference subexpressions in the original
+matching I<Idpattern>.  For example, the second command below,
+
+   noid bind set ':idmap/^ft([^x]+)x(.*)' my_elem '$2/g7h/$1'
+   noid get ft89xr2t my_elem
+
+would return C<r2t/g7h/89>.  For ease of implementation, internally this kind
+of binding is stored and reported (which can be confusing) as the special
+noid, C<:idmap/>I<Element>, under element name I<Idpattern>.
+
+=head1 URL INTERFACE
+
+=for help Other url - interface for operating behind a web server
+
+Any number of minters can be operated behind a web server from a browser
+or any tool that activates URLs.  This section describes a one-time set up
+procedure to make your server aware of minters, followed by another set up
+procedure for each minter.  The one-time procedure involves creating a
+directory in your web server document tree where you will place one or
+more noid minter databases.  In this example, the directory is F<htdocs/nd>
+and we'll assume the B<noid> script was originally installed in
+F</usr/local/bin>.
+
+        mkdir htdocs/nd
+        cp -p /usr/local/bin/noid htdocs/nd/
+
+The second command above creates an executable copy of the noid script
+that will be linked to for each minter you intend to expose to the web.
+To make your server recognize such links, include the line
+
+ ScriptAliasMatch ^/nd/noidu(.*) "/srv/www/htdocs/nd/noidu$1"
+
+in your server configuration file and restart the server before trying the
+commands that follow.  If you did not install the supporting F<Noid.pm>
+module normally, you may also have to store a copy of it next to the script.
+This completes the one-time server set up.
+
+Thereafter, for each minter that you wish to expose, it must first be
+allowed to write to its own database when invoked via the web server.
+Because it will be running under a special user at that time, before you
+create it, first become the user that your server runs under.  In this
+example that user is "wwwrun".
+
+        cd htdocs/nd
+        su wwwrun
+        noid dbcreate kt.reeded
+        mkdir kt5
+        mv dbnoid kt5/
+        ln noid noidu_kt5
+
+The third command above creates a minter for noids beginning with
+C<kt> followed by 5 characters.  The minter is then moved into its own
+directory within F<htdocs/nd>.  Finally, the last command makes a hard
+link (not a soft link) to the noid script, which for this minter will
+be invoked under the name B<noidu_kt5>.
+
+The URL interface is similar to the command line interface, but
+I<Commands> are passed in via the query string of a URL where by
+convention a plus sign ("+") is used instead of spaces to separate
+arguments.  You will likely want to set up access restrictions (e.g.,
+with an F<.htaccess> file) so that only the parties you designate
+can generate identifiers.  There is also no B<dbcreate> command
+available from the URL interface.
+
+To mint one identifier, you could enter the following URL into your
+web browser, but replace "foo.ucop.edu" with your server's name:
+
+    http://foo.ucop.edu/nd/noidu_kt5?mint+1 
+
+Reload to mint again. If you change the 1 to 20, you get twenty new and
+different noids.
+
+    http://foo.ucop.edu/nd/noidu_kt5?mint+20 
+
+To bind some data to an element called "myGoto" under one of the noids
+already minted, 
+
+    http://foo.ucop.edu/nd/noidu_kt5?
+        bind+set+13030/kt639k9+myGoto+http://foo.ucsd.edu/ 
+
+In this case we stored a URL in "myGoto".  This kind of convention can
+underly a redirection mechanism that is part of an organization's overall
+identifier resolution strategy.  To retrieve that stored data, 
+
+  http://foo.ucop.edu/nd/noidu_kt5?get+13030/kt639k9+myGoto 
+
+Bulk operations can be performed over the web by invoking the URL with a
+query string of just "-", which will cause the minter to look for noid
+commands, one per line, in the POST data part of the HTTP request.  If
+you put noid commands in a file F<myCommands> and run the Unix utility
+
+  curl --data-binary @myCommands \
+    'http://foo.ucop.edu/nd/noidu_kt5?-'
+
+you could, for example, change the "myGoto" bindings for 500 noids
+in that one shell command.  The output from each command in the file
+will be separated from the next (on the standard output) by a blank line.
+
+=head1 NAME RESOLUTION AND REDIRECTION INTERFACE
+
+=for help Other resolution - name resolution and redirection interface
+
+In a URI context, I<name resolution> is a computation, sometimes
+multi-stage, that translates a name into associated information of a
+particular type, often another name or an address.  A I<resolver> is
+a system that can perform one or more stages of a resolution.  Noid
+minters can be set up as resolvers.
+
+In our case, we're interested in automatically translating access
+requests for each of a number of identifiers into requests for another
+kind of identifier.  This is one tool in the persistent access strategy
+for naming schemes such as URL, ARK, PURL, Handle, DOI, and URN.  You
+can use a noid minter to bind a second name to each identifier, even
+to identifiers that the minter did not generate.  In principle, this
+will work with names from any scheme.
+
+With web browsers, a central mechanism for name resolution is known as the
+server redirect, and mainstream web servers can easily be configured to
+redirect a half million different names without suffering in performance.
+You might choose not to use native web server redirects if you require
+resolution of several million names, or if you require software and
+infrastructure for non-URL-based names.  Whatever your choice, maintaining
+a table that maps the first name to the second is an unavoidable burden.
+
+As with the URL interface, any number of resolvers (minters underneath)
+can be operated behind a web server from a browser or a tool that
+activates URLs.  This section describes a one-time set up procedure to
+make your server aware of resolvers, followed by another set up procedure
+for each resolver.  The one-time procedure involves creating a directory
+in your web server document tree where you will place one or more noid
+resolver databases.  In this example (and in the previous example),
+we use F<htdocs/nd>:
+
+        mkdir htdocs/nd
+        cp -p /usr/local/bin/noid htdocs/nd/
+
+The second command above creates an executable copy of the noid script
+that will be linked to for each resolver you intend to expose.  To make
+your server recognize such links, include the line (this is slightly
+different from the similar line in the previous section),
+
+ ScriptAliasMatch ^/nd/noidr(.*) "/srv/www/htdocs/nd/noidr$1"
+
+in your server configuration file.  If you did not install the supporting
+F<Noid.pm> module normally, you may also have to store a copy of it next
+to the script.  Then include the following lines in the configuration file;
+they form the start of a rewriting rule section that you will add to later
+for each resolver that you set up.
+
+        RewriteEngine on
+        # These next two files and their containing
+        # directory should be owned by "wwwrun".
+        RewriteLock   /var/log/rewrite/lock
+        RewriteLog    /var/log/rewrite/log
+        ## RewriteLogLevel 9
+
+The non-comment lines above initialize the rewriting system, identify the
+lock file used to synchronize access to the resolver, and identify the log
+file which can help in finalizing the exact rewrite rules that you use;
+disable logging with the default RewriteLogLevel value of 0, or set it as
+high as 9, with higher numbers producing more detailed information.
+This completes the one-time server set up for resolvers.
+
+Thereafter, for each resolver that you wish to run, you need to set up
+a noid database and create a link of the form B<noidr...> so that the
+noid script can be invoked in resolution mode.  Unlike the URL interface,
+the resolution interface does not itself mint from the underlying minter.
+A separate URL interface may still be set up to mint and bind identifiers
+in the resolver database, or minting and binding can take place off the net.
+
+In what follows, we will assume that you have set up a noid database with
+the same location and template as in the previous section.  As before, the
+server is assumed to run under the user "wwwrun" and the database resides
+in F<htdocs/nd/kt5>.  As if our intentions included persistent identification,
+the minter in this example is for generating long term identifiers.
+
+        cd htdocs/nd
+        noid dbcreate kt.reeded long 13030 cdlib.org dpg
+        mkdir kt5
+        mv dbnoid kt5/
+        ln noid noidr_kt5
+
+The last command makes a new hard link (not a soft link) to the noid
+script, which for this resolver will be invoked under the name B<noidr_kt5>.
+The resolution interface is not called by a URL directly, but is invoked
+once upon server startup, where the B<noidr...> prefix tells it to run in
+resolution mode.  In this mode it loops, waiting for and responding to
+individual resolution attempts from the server itself.
+
+To set up an individual resolver, define a Rewrite Map followed by a set
+of Rewrite Rules.  This is done using server configuration file lines as
+shown in the next example.  As with any change to the file, you will need
+to restart the server before it will have the desired effect.
+
+ # External resolution; start program once on server start
+ RewriteMap  rslv           prg:/srv/www/htdocs/nd/noidr_kt5
+ # Main lookup; add artificial prefix for subsequent testing
+ RewriteRule ^/ark:/(13030/.*)$ "_rslv_${rslv:get $1 myGoto}"
+
+ # Test: redirect [R] if it looks like a redirect
+ RewriteRule ^_rslv_([^:]*://.*)$    $1 [R]
+ # Test: strip prefix; pass through [PT] if intended for us
+ RewriteRule ^_rslv_(/.*)$           $1 [PT]
+ # Test: restore value if lookup failed; let come what may
+ RewriteRule ^_rslv_$                %{REQUEST_URI}
+ # Alternative: redirect failed lookup to a global resolver
+
+When a request received by the server matches a Rewrite Rule, an attempt
+to resolve it via the running B<noidr...> script is made.  In this example,
+we will need to have bound a string representing a URL to the value for
+the fixed element name "myGoto" under each identifier that we wish to be
+resolvable.  Building on the example from the previous section, assume the
+element "myGoto" holds the same URL as before for the noid C<13030/kt639k9>.
+A browser retrieval request made by entering or clicking on
+
+        http://foo.ucop.edu/ark:/13030/kt639k9
+
+would then result in a server redirect to
+
+        http://foo.ucsd.edu/ 
+
+The resolution result for an identifier is whatever the B<get> returns,
+which could as easily have retrieved a stored value as a rule-based
+value (allowing you to redirect many similar identifiers with one rule).
+
+This approach to resolution does not address resolver discovery.
+An identifier found in the wild need not easily reveal whether it is
+actionable or resolvable, let alone which system or resolver to ask.
+The usual strategy for contemporary (web era) identifier schemes relies
+on well-known, scheme-dependent resolvers and web proxying of identifiers
+embedded in URLs.  For example, global resolution for a non-proxied URN
+or Handle uses an undisclosed internet address, hard-coded into the
+resolver program, from which to start the resolution process.  An ARK,
+PURL, or proxied Handle or URN tend to rely on a disclosed starting point.
+Whatever method is used for discovery, a noid resolver can in principle
+be used to resolve identifiers from any scheme.
+
+=head1 TO DO
+
+Add features that are documented but not implemented yet:  Element-Value
+binding upon minting; the B<peppermint> command.  The B<append> and
+B<prepend> kinds of binding currently have string-level semantics
+(new data is added as characters to an existing element); should there
+also be list-level semantics (new data added as an extra subelement)?
+
+Add extra options for B<dbcreate>.  An option to specify one or more
+identifier labels to strip from requests, and one canonical label to
+add upon minting and reporting.  An option to set the initial seed for
+quasi-random ordering.  Utilize the granular BerkeleyDB transaction and
+locking protection mechanisms.
+
+Extend the Template Mask to allow for other character repertoires with
+prime numbers of elements.  These would trade a some eye-friendliness
+for much more compact identifiers (cf. UUID/GUID), possibly also a way
+of asking that the last character of the repertoire only appear in the
+check character (e.g., for i and x below).
+
+ { 0-9 x }			 cardinality 11, mask char i
+ { 0-9 a-f _ }			 cardinality 17, mask char x
+ { 0-9 a-z _ }			 cardinality 37, mask char v
+ { 1-9 b-z B-Z } - {l, vowels}	 cardinality 47, mask char E
+ { 0-9 a-z A-Z # * + @ _ }	 cardinality 67, mask char w
+ Visible ASCII - { % - . / \ } 	 cardinality 89, mask char c
+
+Add support for simple file management associated with identifiers.
+For example, minting (and reminting) the noid C<xv8t984> could result in
+the creation (and re-creation) of a corresponding canonical directory
+C<xv/8t/98/4/>.
+
+=head1 BETA SOFTWARE
+
+This utility is in the beta phase of development.  It is open source
+software written in the Perl scripting language with strictest type,
+value, and security checking enabled.  While its readiness for
+long term application is still being evaluated, it comes with a
+growing suite of regression tests (currently about 250).
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright 2002-2017 UC Regents.  BSD-type open source license.
+
+=head1 BUGS
+
+Not yet platform-independent.
+
+Please report bugs to jak at ucop dot edu.
+
+=head1 FILES
+
+=over 17
+
+=item F<dbnoid>
+
+directory containing all database files related to a minter
+
+=item F<dbnoid/minter.bdb>
+
+the BerkeleyDB database file at the heart of a minter
+
+=item F<dbnoid/minter.README>
+
+the creation record containing minter analysis details
+
+=back
+
+=head1 SEE ALSO
+
+L<dbopen(3)>, L<perl(1)>, L<uuidgen(1)>, L<http://www.cdlib.org/inside/diglib/ark/>
+
+=head1 AUTHOR
+
+John A. Kunze, with thanks to Michael A. Russell and Rasan Rasch.
+
+=head1 PREREQUISITES
+
+Perl Modules: L<Noid>, L<Text::ParseWords>,
+L<Getopt::Long>, L<Fcntl>, L<Sys::Hostname>
+
+Script Categories:
+
+=pod SCRIPT CATEGORIES
+
+CGI
+UNIX : System_administration
+Web
+
+=cut

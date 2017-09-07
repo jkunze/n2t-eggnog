@@ -1,0 +1,256 @@
+# This bash script subfile is meant to be source'd by a caller that
+# defines any variable settings that may be needed.
+
+# DON'T call exit from in here or you will stop server building in its tracks!
+
+cat << 'EOT' > htdocs/index.html
+
+<!DOCTYPE html>
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+  <!-- Basic Page Needs
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+  
+  <title>Name-to-Thing (N2T) Identifier Resolver</title>
+  <meta name="description" content="">
+  <meta name="author" content="">
+
+  <!-- Mobile Specific Metas
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- CSS
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+  <link rel="stylesheet" href="/e/css/flexboxgrid-6.3.1-min.css">
+  <link rel="stylesheet" href="/e/css/styles.css">
+  <link rel="shortcut icon" type="image/png" href="/e/images/favicon.ico?v=2">
+  <link rel="icon" sizes="16x16 32x32" href="/e/images/favicon.ico?v=2">
+
+</head>
+<body data-feedly-mini="yes">
+
+  <!-- Primary Page Content
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+<header class="header row center-xs">
+  <div class="col-xs-10 col-sm-6">
+    <div class="row middle-xs header">
+      <h1 class="col-xs header-logo-left center-horiz">
+        N2T
+      </h1>
+      <picture class="col-xs header-logo-right center-horiz">
+        <source srcset="/e/images/LogoRight_178x56.png" media="(min-width: 32em)">
+        <img src="/e/images/LogoRight_140x40.png" alt="Resolving Names Into Things">
+      </picture>
+    </div>
+  </div>
+</header>
+
+<div class="container-narrowest">
+  <div class="row around-xs middle-xs">
+    <div class="col-xs-10 col-sm-5 center-horiz">
+      <div class="box-fixed box-big-text">Keeps names (identifiers) persistent, forwarding (resolving) them to the best known web addresses</div>
+    </div>
+    <div class="col-xs-10 col-sm-5 center-horiz">
+      <div class="box-fixed box-big-text">
+        <section>
+          <span>In partnership with:</span>
+          <ul class="list">
+            <li><a href="http://ezid.cdlib.org/">EZID.cdlib.org</a></li>
+            <li><a href="http://identifiers.org/">Identifiers.org</a></li>
+            <li><a href="http://archive.org/">Internet Archive</a></li>
+            <li><a href="http://yamz.net/">YAMZ Metadictionary</a></li>
+          </ul>
+        </section>
+      </div>
+    </div>
+  </div>
+  <div class="row around-xs middle-xs">
+    <div class="col-xs-10 col-sm-5 center-horiz">
+      <div class="box-fixed box-big-text">Any kind of name &ndash; ARK, DOI, URN, Handle, PMID, PDB, Taxon, GRID, arxiv, ISSN, ...</div>
+    </div>
+    <div class="col-xs-10 col-sm-5 center-horiz">
+      <div class="box-fixed box-big-text">Any kind of thing &ndash; web pages, data, physical specimens, vocabulary terms, living beings, groups, ...</div>
+    </div>
+  </div>
+
+  <!-- Spacer 
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+  <div class="row center-xs">
+    &nbsp;
+  </div>
+  <div class="row center-xs">
+    <div class="col-xs-8">
+      <div class="box"><h2 class="header2">N2T is also a global ARK resolver</h2></div>
+    </div>
+  </div>
+</div>
+
+<div class="container-widest">
+  <div class="row around-xs middle-xs">
+    <div class="col-xs-6 col-sm-4 center-horiz">
+     <a href="https://confluence.ucop.edu/display/Curation/ARK">
+      <button type="button" class="box box-linked" aria-pressed="false" onclick="btnHref(&#39;https://confluence.ucop.edu/display/Curation/ARK&#39;)" aria-label="More about Archival Resource Key Identifiers (ARKs)">
+        <span class="box-linked-text">About ARK Identifiers</span>
+      </button>
+     </a>
+    </div>
+    <div class="col-xs-6 col-sm-4 center-horiz">
+     <a href="https://n2t.net/e/naan_request">
+      <button type="button" class="box box-linked" aria-pressed="false" onclick="btnHref(&#39;https://n2t.net/e/naan_request&#39;)" aria-label="Register your organization&#39;s interest in assigning ARK identifiers">
+        <span class="box-linked-text">Register to assign ARKs (it&#39;s free)</span>
+      </button>
+     </a>
+    </div>
+    <div class="col-xs-6 col-sm-4 center-horiz">
+     <a href="https://groups.google.com/forum/?hl=en#!forum/arks-forum">
+      <button type="button" class="box box-linked" aria-pressed="false" onclick="btnHref(&#39;https://groups.google.com/forum/?hl=en#!forum/arks-forum&#39;)" aria-label="ARKs Forum">
+        <span class="box-linked-text">ARKs discussion forum</span>
+      </button>
+     </a>
+    </div>
+  </div>
+</div>
+
+  <!-- Spacer 
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+<div class="row center-xs">
+  &nbsp;<br>
+</div>
+
+<div class="container-narrowest">
+  <div class="row center-xs">
+    <div class="box col-xs-8">
+      <h2 class="header2">N2T works with <a href="http://identifiers.org/">Identifiers.org</a> to resolve over 500 prefixed identifier classes. You can add yours too.</h2>
+      <button type="button" class="box box-linked" aria-pressed="false" onclick="btnHref(&#39;http://n2t.net/e/prefix_request&#39;)" aria-label="Request a Prefix">
+        <span class="box-linked-text">Register a Prefix</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+  <!-- Spacer 
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+<div class="row center-xs">
+  &nbsp;<br>&nbsp;<br>
+</div>
+
+  <!-- Footer
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+<div class="row footer">
+  <div class="col-xs-12 container-widest">
+    <div class="row">
+      <div class="col-xs-12 col-sm-12">
+        <p class="text-sm">N2T is a service of the <a href="http://www.cdlib.org/">California Digital Library</a>, a division of the <a href="http://www.universityofcalifornia.edu/">University of California Office of the President</a></p>
+        <p class="text-sm">© 2017 The Regents of the University of California</p>
+
+      </div>
+      <!-- div class="col-xs-12 col-sm-4">
+        <ul>
+          <li>Lorem Ipsum</li>
+          <li>Lorem Ipsum</li>
+          <li>Lorem Ipsum</li>
+        </ul>
+      </div>
+      <div class="col-xs-12 col-sm-4">
+        <ul>
+          <li>Lorem Ipsum</li>
+          <li>Lorem Ipsum</li>
+          <li>Lorem Ipsum</li>
+        </ul>
+      </div>
+      <div class="col-xs-12 col-sm-4 first-sm">N2T is ...</div -->
+    </div>
+  </div>
+</div>
+
+  <!-- Function for button links 
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+  <script type="text/javascript">
+    function btnHref(url) {
+      window.location = url;
+    };
+  </script>
+
+  <!-- End Document
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+
+<div id="feedly-mini" title="feedly Mini tookit"></div></body></html>
+
+EOT
+
+# ================ old homepage follows
+
+# cat << 'EOT' > htdocs/index.html
+# 
+# <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+# <html xmlns="http://www.w3.org/1999/xhtml"><head>
+# 
+# <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+# <title>Name-to-Thing (N2T) Identifier Resolver Home Page</title>
+# <style type="text/css">/*<![CDATA[*/
+# body { text-align: center; font-family: Helvetica, sans-serif }
+# img { width: auto; max-height: 100%; }
+# #footer { position: fixed; top: auto; bottom: 0; left: 0; right: 0;
+#   padding-top: .25em; padding-bottom: .25em; font-size: 50% }
+# /*]]>*/</style>
+# 
+# </head><body>
+# 
+# <h2>The Name-to-Thing (N2T) Resolver</h2>
+# 
+# <p>&nbsp;</p>
+# 
+# <p>The N2T resolver keeps names (identifiers) of things <i>persistent</i> by forwarding them to their current web addresses.
+# </p>
+# 
+# <p>You can also use N2T to look up descriptions (metadata) of named things.
+# </p>
+# 
+# <p>It doesn't matter if the thing is a document, dataset, book, statue,
+# museum specimen, vocabulary term, symphony orchestra, etc.
+# </p>
+# 
+# <p>N2T can work with any kind of internet name:
+# URL, ARK, DOI, URN, Handle, LSID, etc.
+# </p>
+# 
+# <p>&nbsp;</p>
+# 
+# <p>The <a href="http://ezid.cdlib.org">EZID</a> service is currently the main
+# way to add to N2T's database of names, descriptions, and forwarding addresses.
+# </p>
+# 
+# <p>
+# <a href="http://www.cdlib.org/cdlinfo/2012/09/04/announcing-ezid-uk/">
+# Resolver replication</a> for N2T is underway.
+# </p>
+# 
+# <p>&nbsp;</p>
+# <p>&nbsp;</p>
+# 
+# <img src="/e/images/n2tnet_logo.png" height="80"
+# 	alt="N2T" title="Name-to-Thing Resolver">
+# 
+# <div id="footer">
+# <table align="center">
+# <tr>
+# <td>
+# <a href="http://www.cdlib.org/">
+# <img src="http://www.cdlib.org/images/logos/cdl_logo_eye.gif"
+# 	alt="California Digital Library" title="California Digital Library"/>
+# </a>
+# </td>
+# <td>
+# N2T is a service of the
+# <a href="http://www.cdlib.org/">California Digital Library</a>
+# • <a href="http://www.cdlib.org/about/privacy.html">Privacy policy</a>
+# <br/>
+# Copyright © 2006-2017 The Regents of the University of California
+# </td>
+# </tr>
+# </table>
+# </div>
+# 
+# </body></html>
+# 
+# EOT
