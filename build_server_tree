@@ -2,9 +2,6 @@
 
 # xxx change from filval to File::Slurp ?
 
-# xxx fix autoresponder for support-cdl-l
-#   - drop spaces
-#   - add mnemonic link to redirect form to yucky google name
 # xxx add SNAC account? (to deal with this thing once and for all, since
 #     EZID's batch interface probably won't ever support bulk minting
 
