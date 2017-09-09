@@ -23,7 +23,6 @@ t/apachebase.t
 t/bind.t
 t/blade.t
 t/bulkegg.t
-t/bulkelems.t
 t/gen.t
 t/hold.t
 t/incr.t
