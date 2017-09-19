@@ -501,68 +501,12 @@ done
 	exit 1
 }
 
-echo "Checking for need to rebuild prefixes (NAANs, shoulders, EBI XML, etc)."
 #export LC_ALL=C				# to deal with unicode errors
 
-# xxx to do: add prefixes to "n2t backup"
-
-pfx_base=pfx_base.yaml
-prefixes_need_rebuilding=		# no, by default
-
-function assemble_prefixes {			# define it
-
-	# Typical edit/test loop: caller changes things per-service-version in
-	#   t/n2t/pfx_base.yaml or a file in the pfx_work/import directory
-	# then assemble (cp -p to preserve mod times).
-	# (in principle, -d not needed below because we export the env var)
-
-	pfx -d $buildout_root prebuild ||	# import from import area
-		return 1
-
-	pfx -d $buildout_root base prebuild \
-		$src_top/t/$cfgdir/$pfx_base	# update with latest base file
-	return
-}
-
-# xxx bug somewhere: remove prebuild area and test fresh?
-#     or do I really need -d?
-# xxx bottom line: need SURE way to update prefixes on running prd system
-#     as not even n2t rollout will catch latest updates
-assemble_prefixes ||				# now call it (first time)
-	exit
-
-pfx -d $buildout_root updates_ready_in prebuild && {
-	prefixes_need_rebuilding=1		# important test step
-}
-
-# to call later if needed
-function rebuild_prefixes {
-	# Assume all relevant component files assembled in prebuild area
-	echo "Rebuilding prefixes."
-	pfx -d $buildout_root validate	# validate prefix sources
-	pfx -d $buildout_root build ||	# create combined prefixes file
-		echo "Error: failed to build prefixes" 2>&1
-}
-
-#pubpx=cdl_ebi_prefixes.yaml
-#pfxs=prefixes.yaml
-#pfx_build=pfx_build
-#
-#(pfx import || [[ ! -e $buildout_root/$pfxs ]]) && {
-#	echo "Rebuilding prefixes."
-#	pfx validate	# validate prefix sources
-#	pfx build	# create combined prefixes file
-#}
-#
-## xxx use pfx rollout instead? (after full build and test, then do a
-## separate pfx build...rollout and "n2t --force test"
-#if [[ $pfx_build/$pfxs -nt $buildout_root/$pfxs ]]
-#then
-#	echo Copying $pfxs and $pubpx to $buildout_root.
-#	cp $pfx_build/$pfxs $pfx_build/$pubpx $buildout_root/
-#fi
-
 out_of_date_msg=$( is_build_out_of_date $buildout_root )
+
+prefixes_need_rebuilding=$( pfx onboard )	# list of changed files
+# xxx to do: add prefixes to "n2t backup"
 
 # If it wasn't found out of date on the first test, do a second test.
 #
@@ -576,9 +520,9 @@ then
 	then
 		out_of_date_msg="Server needs to be rebuilt, as one "
 		out_of_date_msg+="or more checkfiles have changed: $chkr"
-	elif [[ "$prefixes_need_rebuilding" ]]
-	then
-		echo "Prefixes file, not server itself, needs rebuilding."
+	#elif [[ "$prefixes_need_rebuilding" ]]
+	#then
+	#	echo "Prefixes file, not server itself, needs rebuilding."
 	else
 		echo "Server does not need to be rebuilt." \
 			"yyy maybe minters don't need it too"
@@ -703,14 +647,20 @@ function make_minders {
 	echo ""
 }
 
-# If "make" sub-command and the server is up-to-date, all we need to do
-# is to rebuild the minters and binders, which each maintain state that
-# is altered by testing, to keep the next round of tests clean.
+# If we got the "make" sub-command while the server is up-to-date, all we
+# need to do is to possibly rebuild prefixes, and then rebuild minters,
+# binders (which each maintain state that is altered by testing) to keep
+# the next round of tests clean.
 #
 [[ $cmd == make && ! $out_of_date_msg ]] && {
 
 	[[ "$prefixes_need_rebuilding" ]] && {
-		rebuild_prefixes	# recall components already assembled
+		echo Prefix rebuild triggered by: \
+			"${prefixes_need_rebuilding[@]}"
+		pfx build || {
+			echo "Could not rebuild prefixes" 1>&2
+			exit 1
+		}
 	}
 	# We would normally leave now that we know the server isn't out
 	# of date, but first we have to re-set a few things.
@@ -761,8 +711,13 @@ msg=$( mkdir -p 2>&1 $buildout_root \
 	# yyy is this useful?
 }
 
-assemble_prefixes
-rebuild_prefixes
+# xxx bug somewhere: remove prebuild area and test fresh?
+#     or do I really need -d?
+# xxx bottom line: need SURE way to update prefixes on running prd system
+#     as not even n2t rollout will catch latest updates
+
+pfx onboard || exit
+pfx build || exit
 
 # The next two items help reduce useless noise in error_log.
 #

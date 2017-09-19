@@ -1,5 +1,10 @@
 #!/usr/bin/perl
 
+# NB: this filename starts with 'z' so that it's more likely the last
+#     test suite to use the td_egnapa directory when "make test" is run,
+#     and that means that a subsequent "n2t rollout" or "pfx rollout"
+#     will find that directory's "tested_ok" flag file intact (so you
+#     don't have to run "pfx test" an extra time just to set it).
 # NB: this part of the eggnog source DEPENDS on pfx,
 #     defined in another source code repo (n2t_create)
 
