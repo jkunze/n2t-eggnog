@@ -301,6 +301,9 @@ $x = apachectl('graceful-stop')	and print("$x\n");
 if (Test::More->builder->is_passing) {
 	system 'pfx tested_ok';
 }
+else {
+	diag 'at least one prefix test failed';	# from Test::More
+}
 
 remove_td($td);
 remove_td($td2);
