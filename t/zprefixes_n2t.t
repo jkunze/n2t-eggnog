@@ -298,6 +298,10 @@ isnt index($x, '302 https://goo.gl/forms/'), -1,
 
 $x = apachectl('graceful-stop')	and print("$x\n");
 
+if (Test::More->builder->is_passing) {
+	system 'pfx tested_ok';
+}
+
 remove_td($td);
 remove_td($td2);
 }
