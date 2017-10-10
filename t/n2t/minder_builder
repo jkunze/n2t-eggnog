@@ -181,8 +181,11 @@ EOT
 
 echo Building out custom n2t server stuff.
 
+# NB: Mac Unix doesn't (a) document cp -r and (b) create an
+#     n2t_vision_files subdir under htdocs/e IF you append a / !!
+
 tr=$template_root
-cp -pr $tr/e/n2t_vision_files/ $buildout_root/htdocs/e
+cp -pr $tr/e/n2t_vision_files $buildout_root/htdocs/e
 
 # # ??? yyy Don't add naanders to these next two lists.
 # #
