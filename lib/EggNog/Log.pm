@@ -59,7 +59,7 @@ sub get_tlogger { my( $sh )=@_;
 	# If there's no $tlogname, that means turn logging off, and that's
 	# effectively done by setting the $min_level logging higher than
 	# 'info', eg, to 'error', which squelches mere 'info' messages.
-	# xxx not really
+	# yyy not really
 
 	my $msg;
 	my $min_level = $tlogname ?	# no $tlogname sets minimum logging
@@ -75,26 +75,24 @@ sub get_tlogger { my( $sh )=@_;
 			return undef;	# returns from "catch", NOT from routine
 		};
 		$ok // return $msg;	# test for undefined since zero is ok
-# xxx use undefined test for all try/catches
 
-# xxx drop this next bit after testing
-		my $ruu = $sh->{ruu};
-		$sh->{xxxtxnlog} = File::Rlog->new(
-			$tlogname, {
-				preamble => "$ruu->{who} $ruu->{where}",
-				extra_func => \&File::Temper::uetemper,
-				# XXX egg below should be nog sometimes, right?
-				header => "H: egg $sh->{version} "
-					. localtime(),
-				# xxx localtime() call only really necessary
-				# on log creation -- this is not optimal
-			}
-		);
-# xxx drop this above bit after testing
+	# xxx drop this next bit after testing
+		#$sh->{xxxtxnlog} = File::Rlog->new(
+		#	$tlogname, {
+		#		preamble => "$ruu->{who} $ruu->{where}",
+		#		extra_func => \&File::Temper::uetemper,
+		#		# XXX egg below should be nog sometimes, right?
+		#		header => "H: egg $sh->{version} "
+		#			. localtime(),
+		#		# xxx localtime() call only really necessary
+		#		# on log creation -- this is not optimal
+		#	}
+		#);
+	# xxx drop this above bit after testing
 
 		#my $weekly = 'yyyy-MM-dd-HH-MM';	# every minute to test
-		my $weekly = 'yyyy-MM-dd';		# every day to test
-		#my $weekly = 'yyyy-ww';		# every week
+		#my $weekly = 'yyyy-MM-dd';		# every day to test
+		my $weekly = 'yyyy-ww';			# every week
 
 		my $tlogger;
 		$ok = try {
@@ -112,6 +110,7 @@ sub get_tlogger { my( $sh )=@_;
 			return "couldn't create a transaction UUID generator";
 		# yyy document this uuid_generator param in of $sh
 
+		my $ruu = $sh->{ruu};
 		$sh->{tlogger_preamble} = "$ruu->{who} $ruu->{where}";
 		$sh->{tlogger} = $tlogger;
 	}

@@ -316,7 +316,7 @@ sub ebclose { my( $bh )=@_;
 			"exdbname=$exdb->{exdbname}";
 		return undef;	# returns from "catch", NOT from routine
 	};
-	! $ok and
+	! defined($ok) and
 		addmsg($bh, $msg),
 		return undef;
 	return;
@@ -1250,7 +1250,7 @@ sub ebopen { my( $bh, $exbrname, $flags )=@_;
 			"exdbname=$exbrname";
 		return undef;	# returns from "catch", NOT from routine
 	};
-	! $ok and
+	! defined($ok) and
 		addmsg($bh, $msg),
 		return undef;
 	$exdb->{exdbname} = $exbrname;
@@ -1706,7 +1706,7 @@ sub createbinder { my( $bh, $dirname, $minderdir )=@_;
 			$msg = "couldn't create $dirname: $!";
 			return undef;
 		};
-	! $ok and
+	! defined($ok) and
 		addmsg($bh, $msg),
 		return '';
 	-d $dirname or		# error very unlikely here
@@ -1896,7 +1896,7 @@ sub rmebinder { my( $sh, $mods, $exbrname, $bgroup, $user )=@_;
 			"exdbname=$exbrname";
 		return undef;	# returns from "catch", NOT from routine
 	};
-	! $ok and
+	! defined($ok) and
 		addmsg($sh, $msg),
 		return undef;
 	return 1;
@@ -1961,7 +1961,7 @@ sub rmibinder { my( $sh, $mods, $mdr, $bgroup, $user, $minderpath )=@_;
 			$msg = "couldn't remove $mdrdir tree: $_";
 			return undef;	# returns from "catch", NOT from routine
 		};
-		! $ok and
+		! defined($ok) and
 			addmsg($sh, $msg),
 			return undef;
 		$ret == 0 and
@@ -1994,7 +1994,7 @@ sub rmibinder { my( $sh, $mods, $mdr, $bgroup, $user, $minderpath )=@_;
 			$msg = "couldn't create trash ($mdrparent): $_";
 			return undef;	# returns from "catch", NOT from routine
 		};
-		! $ok and
+		! defined($ok) and
 			addmsg($sh, $msg),
 			return undef;
 		$ret == 0 and
@@ -2168,7 +2168,7 @@ sub ebshow { my( $sh, $mods, $om, $bgroup, $user, $ubname )=@_;
 		$msg = "list external binders failed: $_";
 		return undef;	# returns from "catch", NOT from routine
 	};
-	! $ok and
+	! defined($ok) and
 		addmsg($sh, $msg),
 		return (undef);
 	$om //= $sh->{om};

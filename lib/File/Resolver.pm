@@ -977,7 +977,7 @@ sub load_prefix_hash { my( $sh, $pfx_file, $msgR )=@_;
 		$$msgR .= "YAML::Tiny::LoadFile failed on $pfx_file";
 		return undef;	# returns from "catch", NOT from routine
 	};
-	#! $ok and
+	#! defined($ok) and
 	#	return...
 	return tidy_prefix_hash( $sh, $pfxs, $msgR ); # yyy never returns undef?
 }
