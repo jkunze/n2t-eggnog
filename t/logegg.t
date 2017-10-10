@@ -129,7 +129,8 @@ $y = file_value("< $td/foo/egg.rlog", $x);
 like $x, qr/mline.*%0athis.*%0athis/s,
 	'multi-line bind correctly encoded in logfile (for EDINA replication)';
 
-$y = file_value("< $txnlog.rlog", $x);
+#$y = file_value("< $txnlog.rlog", $x);
+$y = file_value("< $txnlog", $x);
 like $y, qr/^$/, 'read txnlog file';
 
 like $x, qr/(?:BEGIN[^\n]*set .*END SUCCESS[^\n]*set .*){3}/s,
@@ -321,6 +322,26 @@ i.fetch a
 $x = run_cmds_on_stdin($cmdblock);
 like $x, qr/^a: jklkkkkkkkkk kkkkkkkkkkk eeeeeeeeeeee rrrrrrrrrrrrrrrr tttttttttttt uuuuuuu ddddddddd wwwwwwwwwww ddddddddddddd$/m,
 	"on fetch, long value doesn't text wrap";
+
+remove_td($td);
+}
+
+# null txnlog checker
+{
+remake_td($td);
+$ENV{EGG} = "$egg_home -d $td/foo --txnlog ''";
+my ($x, $y);
+
+$x = `$cmd --verbose mkbinder`;
+like $x, qr/created.*foo/, 'make another binder named foo';
+
+$x = `$cmd k.set a boggle`;		# overwrites 4 bindings
+$x = `$cmd k.get a`;
+like $x, qr/^boggle\n/, 'value bound';
+
+$x = (! -e $txnlog ? 'nope' : 'exists');
+
+is $x, 'nope', 'txnlog file not created when logging is turned off';
 
 remove_td($td);
 }

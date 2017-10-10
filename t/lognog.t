@@ -66,7 +66,8 @@ like $x, qr/(C: mint.*){3}/s, 'mint reflected in minter log file';
 
 ## xxxxxxxx make better log message
 
-$y = file_value("< $td/txnlog.rlog", $x);
+#$y = file_value("< $td/txnlog.rlog", $x);
+$y = file_value("< $td/txnlog", $x);
 like $y, qr/^$/, 'read txnlog file';
 
 like $x, qr/(?:BEGIN[^\n]*mint.*END SUCCESS[^\n]*mint: .*){3}/s,

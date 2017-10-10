@@ -1,9 +1,28 @@
 
 			EGGNOG INSTALLATION INSTRUCTIONS
 
-EGGNOG OVERVIEW
+INSTALLATION
 
-HISTORICAL ARTIFACTS
+If not already unpacked, unpack with
+
+   tar xzf ...
+
+after adjusting the version number as needed.
+
+To install the modules and scripts locally, type the following
+
+   mkperl
+   make
+   make test
+   make install
+
+where "mkperl" is an alias for something similar to
+
+   perl Makefile.PL INSTALL_BASE=~/local
+
+that works for N2T.
+
+EGGNOG QUIRKS -- HISTORICAL ARTIFACTS
 
 This code is a direct descendant from the NOID package available from
 CPAN. It splits the binding (egg) away from the minting (nog), and is
@@ -105,22 +124,6 @@ ends) as well as an entire assignment statements (so Perl knows where the
 RHS ends). If you don't do this, the commas terminating the boolean
 statements have a tendency to get swallowed up by Perl functions
 preceding them.
-
-INSTALLATION
-
-If not already unpacked, unpack with
-
-   tar xzf ...
-
-after adjusting the version number as needed.
-
-To install the module and script locally, type the following (adjust the
-"~/local" to wherever you put your local bin and man directories):
-
-   perl Makefile.PL INSTALL_BASE=~/local
-   make
-   make test
-   make install
 
 ACKNOWLEDGEMENTS
 

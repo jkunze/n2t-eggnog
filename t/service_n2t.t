@@ -235,7 +235,7 @@ $x = `$webcl "$srvbase_u/$q1"`;
 like $x, qr{Location:.*http://q.example.com}i,
 	'deliberately assigned inflection target trumps actual inflection';
 
-$y = file_value("< $buildout_root/logs/transaction_log.rlog", $x);
+$y = file_value("< $buildout_root/logs/transaction_log", $x);
 like $y, qr/^$/, 'read transaction_log file';
 
 like $x, qr/(?:BEGIN[^\n]*resolve.*END SUCCESS[^\n]*redir30\d )/s,

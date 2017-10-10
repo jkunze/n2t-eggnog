@@ -175,7 +175,7 @@ $x = `$webcl "$ssvbase_u/a/pest/b? i.set moo cow"`;
 like $x, qr{HTTP/\S+\s+200\s+OK.*egg-status: 0}si,
 	'open populator "pest" sets an element without a login/password';
 
-$y = flvl("< $buildout_root/logs/transaction_log.rlog", $x);
+$y = flvl("< $buildout_root/logs/transaction_log", $x);
 $y and print "error: $y\n";
 like $x, qr{BEGIN.*END SUCCESS}s,
 	'transaction log working';

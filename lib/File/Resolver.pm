@@ -13,7 +13,7 @@ our @ISA = qw(Exporter);
 our @EXPORT = qw();
 our @EXPORT_OK = qw(
 	expand_blobs id2shadow
-	gen_txnid resolve
+	resolve
 	special_elem suffix_pass
 	id_decompose id_normalize uuid_normalize
 	print_hash empty_hash
@@ -25,6 +25,8 @@ our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
 use File::Value ":all";
 use File::Binder ':all';	# xxx be more restricitve
 use File::Egg ':all';
+use EggNog::Log qw(tlogger);
+#use File::Session qw(tlogger);
 
 use constant TSUBEL	=> File::Binder::TRGT_MAIN_SUBELEM;	# shorthand
 
@@ -366,6 +368,8 @@ my $n2thash = {
 
 use MongoDB;
 
+=for removal
+
 use Data::UUID;
 sub gen_txnid { my( $bh )=@_;
 
@@ -394,6 +398,8 @@ sub get_txnid { my( $bh )=@_;
 	addmsg($bh, "couldn't generate transaction id");
 	return undef;
 }
+
+=cut
 
 # dummy (for now) authorization check
 sub authz_ok { my( $bh, $id, $op ) =@_;
@@ -1117,7 +1123,7 @@ sub load_prefixes { my( $sh )=@_;
 
 	if (! $pfx_file) {		# create a default prefixes file
 		$pfx_file = $sh->{pfx_file_default};
-		try {
+		my $ok = try {
 			use File::Path 'mkpath';
 			$msg = mkpath($sh->{home});	# $msg unused here yyy
 		}
@@ -1125,7 +1131,9 @@ sub load_prefixes { my( $sh )=@_;
 			push(@msgs,
 			  "Couldn't create directory \"$sh->{home}\": $@");
 			$msg = '';
+			return undef;	# returns from "catch", NOT from routine
 		};
+		# not bothering to check status of $ok
 
 		$msg = flvl("> $sh->{pfx_file_default}", $default_pfc);
 		$msg and
@@ -1169,15 +1177,11 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 	my $tag;			# for tracing calls to cnflect()
 	my $sh = $bh->{sh};
 
-	# yyy txnlogging will be so common, just call a function that
-	#     either does it or returns without having done it; code
-	#     simplicity is worth the extra subroutine call in the
-	#     non-mainstream cases.
-	my $txnlog = $bh->{txnlog};	# yyy needs both $txnlog and $txnid?
-	my $txnid = get_txnid($bh);	# transaction id (yyy thread safe?)
-	! defined($txnid) and
-		return undef;
-	# xxx so why do we keep checking (below) if ! $txnid?
+	#my $xxxtxnlog = $bh->{xxxtxnlog};	# yyy needs both $xxxtxnlog and $txnid?
+	#my $xxxtxnid = get_xxxtxnid($bh);	# transaction id (yyy thread safe?)
+	#! defined($xxxtxnid) and
+	#	return undef;
+	## xxx so why do we keep checking (below) if ! $xxxtxnid?
 
 	! authz_ok($bh, $id, OP_READ) and
 		return undef;
@@ -1190,6 +1194,8 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 	#	($hdrinfo, $accept, $proto) =
 	#		get_headers(join ' ', @headers);
 
+	my $xxxnid;		# undefined until first call to tlogger
+
 	# Load the prefixes hash (once) if it's not yet defined.
 	#
 	my $msg;
@@ -1200,17 +1206,22 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 		$msg =~ s/\n/%0a/g;
 		if (! $sh->{pfxs}) {		# if truly unable to function
 				# we only get here if all avenues exhausted
-			$txnid and $txnlog->out(
-				"$txnid resolve FATAL ERROR: $msg");
+			#$xxxtxnid and $xxxtxnlog->out(
+			#	"$xxxtxnid resolve FATAL ERROR: $msg");
+			tlogger $sh, $xxxnid, "resolve FATAL ERROR: $msg";
 			return undef;
 		}
 		if ($msg) {	# we have some prefixes and a non-fatal error
 			addmsg($bh, $msg);		# for return
-			$txnid and $txnlog->out(
-				"$txnid resolve NON-FATAL: $msg");
+			#$xxxtxnid and $xxxtxnlog->out(
+			#	"$xxxtxnid resolve NON-FATAL: $msg");
+			$xxxnid = tlogger $sh, $xxxnid,
+				"resolve NON-FATAL: $msg";
 		}
-		$txnid and $txnlog->out("$txnid resolve " .
-			"LOADED prefixes from $sh->{pfx_file_actual}");
+		#$xxxtxnid and $xxxtxnlog->out("$xxxtxnid resolve " .
+		#	"LOADED prefixes from $sh->{pfx_file_actual}");
+		$xxxnid = tlogger $sh, $xxxnid,
+			"LOADED prefixes from $sh->{pfx_file_actual}";
 	#print "xxx doi: $sh->{pfxs}->{doi}\n";
 	#print "xxx doi: $sh->{pfxs}->{doi}->{redirect}\n";
 	#use Data::Dumper "Dumper"; print Dumper $sh->{pfxs}->{doi};
@@ -1221,11 +1232,12 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 	# and at the end we log the altered id (normalized, shadow, etc).
 	#
 	my $ur_origid = $id;	# save original $id before transforming it
-	$txnid and $txnlog->out(	# log ur-original id
-		"$txnid BEGIN $lcmd $ur_origid $hdrinfo");
+	#$xxxtxnid and $xxxtxnlog->out(	# log ur-original id
+	#	"$xxxtxnid BEGIN $lcmd $ur_origid $hdrinfo");
 		# yyy we're starting a bit late in the routine (so timing may
 		#     look a little faster) but we'll get less noise from each
 		#     recursive call when resolverlist support gets added.
+	$xxxnid = tlogger $sh, $xxxnid, "BEGIN $lcmd $ur_origid $hdrinfo";
 
 	my $db = $bh->{db};
 	my $rpinfo = undef;	# redirect prefix info
@@ -1247,7 +1259,8 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 	my $idx = id_decompose($sh->{pfxs}, $id);
 	if (! $idx or $idx->{errmsg}) {
 		$msg = $idx ? $idx->{errmsg} : '';
-		$txnid and $txnlog->out("$txnid id_decompose ERROR $msg");
+		#$xxxtxnid and $xxxtxnlog->out("$xxxtxnid id_decompose ERROR $msg");
+		#$xxxnid = tlogger $sh, $xxxnid, "id_decompose ERROR $msg";
 		return undef;
 	}
 	$idx->{ ur_origid } = $ur_origid;
@@ -1269,10 +1282,10 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 		$target and
 			$dups[0] = $target;
 		scalar(@dups) and
-			return cnflect( $txnid, $txnlog, $db, $rpinfo, $accept,
+			return cnflect( $sh, $xxxnid, $db, $rpinfo, $accept,
 				$id, \@dups, $idx, "aftereaster" );
 		#$msg = "don't know what to do with $ur_origid";
-		#$txnid and $txnlog->out("$txnid resolve ERROR $msg");
+		#$xxxtxnid and $xxxtxnlog->out("$xxxtxnid resolve ERROR $msg");
 		#return undef;
 	}
 	# if ($sh->{conf_post_redirs}) { yyy no post-binder-lookup yet }
@@ -1293,7 +1306,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 	#$tag = "aftereaster id=$id, origid=$origid";	# debug
 
 	scalar(@dups) and
-		return cnflect( $txnid, $txnlog, $db, $rpinfo, $accept,
+		return cnflect( $sh, $xxxnid, $db, $rpinfo, $accept,
 			$id, \@dups, $idx, "aftereaster" );
 
 	# if not found...
@@ -1321,7 +1334,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 
 	@dups = File::Egg::get_dup($db, $id . TSUBEL);		# usual case
 	scalar(@dups) and
-		return cnflect( $txnid, $txnlog, $db, $rpinfo, $accept,
+		return cnflect( $sh, $xxxnid, $db, $rpinfo, $accept,
 			$id, \@dups, $idx );
 
 	# if still not found...
@@ -1332,7 +1345,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 		defined($shadow) and @dups =
 			File::Egg::get_dup($db, $shadow . TSUBEL);
 		scalar(@dups) and
-			return cnflect( $txnid, $txnlog, $db, $rpinfo, $accept,
+			return cnflect( $sh, $xxxnid, $db, $rpinfo, $accept,
 				$shadow, \@dups, $idx );
 	}
 
@@ -1416,7 +1429,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 # #print "xxx after re=$redirect\n";
 # 		$redirect =~ m|https?://| or	# if proto not specified by rule
 # 			$redirect =~ s|^|$proto://|;	# go with user's choice
-# 		return cnflect( $txnid, $txnlog, $db, $rpinfo, $accept,
+# 		return cnflect( $sh, $xxxnid, $db, $rpinfo, $accept,
 # 			$id, [ $redirect ], $idx );
 # 	}
 # 	elsif ($rpinfo and $rpinfo eq 'SAI') {		# xxx drop this kludge!
@@ -1487,7 +1500,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 		$rid = substr($id, 0, - length($suffix));
 		($idx->{suffix}, $idx->{rid}) = ($suffix, $rid);
 		scalar(@dups) and
-			return cnflect( $txnid, $txnlog, $db, $rpinfo, $accept,
+			return cnflect( $sh, $xxxnid, $db, $rpinfo, $accept,
 				$id, \@dups, $idx );
 		#@suffixable and grep(/^\Q$elem\E$/, @suffixable) and
 	}
@@ -1497,7 +1510,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 	# still nothing, so try rule-based mapping
 	@dups = File::Egg::id2elemval($bh, $db, $id, File::Binder::TRGT_MAIN);
 	scalar(@dups) and
-		return cnflect( $txnid, $txnlog, $db, $rpinfo, $accept,
+		return cnflect( $sh, $xxxnid, $db, $rpinfo, $accept,
 			$id, \@dups, $idx );
 
 	# Get redirection prefix info for the first, most-specific
@@ -1541,7 +1554,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 # XXX proto preservation should work for ALL targets, not just rule-based
 		$redirect =~ m|https?://| or	# if proto not specified by rule
 			$redirect =~ s|^|$proto://|;	# go with user's choice
-		return cnflect( $txnid, $txnlog, $db, $rpinfo, $accept,
+		return cnflect( $sh, $xxxnid, $db, $rpinfo, $accept,
 			$id, [ $redirect ], $idx );
 	}
 
@@ -1549,7 +1562,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 	@dups = ('');		# setting @dups to a single empty string,
 				# which satisfies the rrm protocol
 
-	return cnflect( $txnid, $txnlog, $db, $rpinfo, $accept,
+	return cnflect( $sh, $xxxnid, $db, $rpinfo, $accept,
 		$id, \@dups, $idx );
 		#\@dups, $idx, $tag . " lastcall" ...
 }
@@ -1583,7 +1596,7 @@ sub prep_script_args {
 
 # Content Negotiation/Inflection
 
-sub cnflect { my( $txnid, $txnlog, $db, $rpinfo, $accept, $id, 
+sub cnflect { my( $sh, $xxxnid, $db, $rpinfo, $accept, $id, 
 				$dupsR, $idx, $tag )=@_;
 
 	my $fail = $idx->{fail};
@@ -1706,8 +1719,12 @@ sub cnflect { my( $txnid, $txnlog, $db, $rpinfo, $accept, $id,
 	#$returnline or			# if $returnline not already set
 	#	$returnline = "redir302 $dupsR->[0]";
 
-	$returnline =~ tr |\n||d and $txnlog and $txnlog->out(
-		"$txnid INFO $id returnline had a newline inside!");
+	#$returnline =~ tr |\n||d and $xxxtxnlog and (
+	#	$xxxtxnlog->out(
+	#		"$xxxtxnid INFO $id returnline had a newline inside!"),
+	$returnline =~ tr |\n||d and
+		$xxxnid = tlogger($sh, $xxxnid,
+			"INFO $id returnline had a newline inside!");
 
 	#$st = print( $returnline, $tag, "\n" );	# EXACTLY ONE newliine
 	$st = print( $returnline, "\n" );	# EXACTLY ONE newliine
@@ -1719,7 +1736,7 @@ sub cnflect { my( $txnid, $txnlog, $db, $rpinfo, $accept, $id,
 	#	# yyy little weird assigning a scalar to
 	#	#     overwrite all array elements with just one element
 
-	if ($txnid) {
+	if ($xxxnid) {
 		my $msg = 'END '
 			. ($fail || ! $st ? 'FAIL' : 'SUCCESS');
 		$msg .= " $ur_origid ($id)";
@@ -1727,7 +1744,8 @@ sub cnflect { my( $txnid, $txnlog, $db, $rpinfo, $accept, $id,
 			$msg .= " PFX $rpinfo->{key}";
 		$msg .= " -> $returnline";
 		#$msg .= " resolve $id to $dups[0]";
-		$txnlog->out("$txnid $msg");
+		#$xxxtxnlog->out("$xxxtxnid $msg");
+		$xxxnid = tlogger $sh, $xxxnid, $msg;
 	}
 	return $st;	# return code rarely correlates with failed lookup
 }

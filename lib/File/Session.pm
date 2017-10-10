@@ -12,7 +12,7 @@ our @ISA = qw(Exporter);
 
 our @EXPORT = qw();
 our @EXPORT_OK = qw(
-	config 
+	config tlogger
 );
 our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
 
@@ -21,10 +21,13 @@ use File::Path 'mkpath';
 use File::Basename;
 use File::RUU;
 use File::Value 'flvl';
+use EggNog::Log qw(get_tlogger);
 use Try::Tiny;			# to use try/catch as safer than eval
 use Safe::Isa;
 use YAML::Tiny 'LoadFile';
 use Config;
+
+use constant TIMEZONE		=> 'US/Pacific';
 
 # External database constants.
 use constant EXDB_CONNECT	=> 'mongodb://localhost';  # xxx replicasets?
@@ -33,6 +36,7 @@ use constant EXDB_UBDELIM	=> '_s_';	# populator's binder delimiter
 						# mnemonic: possessive "s"
 
 # External database record attributes.
+# yyy EXDB_ID unused
 use constant EXDB_ID		=> '_id';	# MongoDB's reserved builtin,
 						# which enforce uniqueness
 use constant EXDB_CTGT	 	=> '_t';	# content target element
@@ -143,9 +147,9 @@ redirects:
 
 sub config { my( $sh )=@_;
 
-# xxx {home} should be where binders and minters go too
-# xxx drop this and drop per-binder config (for now) soon
-# xxx should open rlog file(s) here too
+# yyy {home} should be where binders and minters go too
+# yyy drop this and drop per-binder config (for now) soon
+# yyy should open rlog file(s) here too
 
 	my $msg;
 	my $conf_file =
@@ -156,14 +160,18 @@ sub config { my( $sh )=@_;
 	if (! $conf_file) {		# create a default configuration file
 		$conf_file = $sh->{conf_file_default};
 		my $dir = dirname $conf_file;
-		try {
+		my $msg;
+		my $ok = try {
 			$msg = mkpath( $dir );
 			#$msg = mkpath($sh->{home});
 		}
 		catch {
-			return "Couldn't create config directory \"$dir\": $@";
+			$msg = "Couldn't create config directory \"$dir\": $@";
+			return undef;
+			#return "Couldn't create config directory \"$dir\": $@";
 			#return "Couldn't create directory \"$sh->{home}\": $@";
 		};
+		$ok // return $msg;	# test for undefined since zero is ok
 
 		$msg = flvl("> $sh->{conf_file_default}", $default_cfc);
 		$msg and	# if there's a message, then there's a problem
@@ -286,17 +294,15 @@ sub config { my( $sh )=@_;
 		lc( $sh->{conf_db}->{exdb_class} ) ne 'mongodb' and
 			return 'Unknown external database class: ' .
 				$sh->{conf_db}->{exdb_class};
-		my $msg;
 		my $ok = try {
 			$sh->{exdb}->{client} =		# soft "connect"
 				MongoDB->connect($sh->{exdb}->{connect_string});
 		}
 		catch {
 			$msg = "mongodb connect error: $_->{message}";
-			return undef;
+			return undef;	# returns from "catch", NOT from routine
 		};
-		! $ok and
-			return $msg;
+		$ok // return $msg;	# test for undefined since zero is ok
 
 		( $sh->{exdb}->{database_name},
 		  $sh->{exdb}->{binder_root_name},
@@ -324,64 +330,11 @@ sub config { my( $sh )=@_;
 	# aim to be able to test using $mh->{sh}->{indb} and $mh->{sh}->{exdb}
 	# xxx test scripts should use $buildout_root for dbpath/log files
 
-	# By default, set up unified, per-server (as opposed to per-binder)
-	# transaction log ("txnlog") to record both the start and end
-	# times of each operation, as well as request and response info.
-	# User can specify an alternate filename, or can specify an empty
-	# filename to disable this logging.
-	# xxx this should replace the older rlog, probably with log4perl
-	#
-	my $txnlog =
-		  # if user flag not defined, use default
-		(! defined($sh->{opt}->{txnlog}) ? $sh->{txnlog_file_default} :
+	$msg = get_tlogger($sh) and
+		return $msg;
 
-		  # if user flag defined and non-empty, use it
-		($sh->{opt}->{txnlog}		 ? $sh->{opt}->{txnlog} :
-
-		  # else flag is defined but empty, so disable (don't log)
-		(undef)));
-
-	if ($txnlog) {
-		my $dir = dirname $txnlog;
-		try {
-			$msg = mkpath( $dir );
-		}
-		catch {
-			return "Couldn't create txnlog directory \"$dir\": $@";
-		};
-
-		$sh->{txnlog} = File::Rlog->new(
-			$txnlog, {
-				preamble => "$ruu->{who} $ruu->{where}",
-				extra_func => \&File::Temper::uetemper,
-				header => "H: egg $sh->{version} "
-					. localtime(),
-				# xxx localtime() call only really necessary
-				# on log creation -- this is not optimal
-			}
-		);
-		$sh->{txnlog} or addmsg($sh, "failed to open txnlog $txnlog"),
-			return undef;
-	}
 	$sh->{cfgd} = 1;	# boolean to see if session is "configured"
 	return '';
-
-#	if ($sh->{opt}->{txnlog}) {
-#		$sh->{txnlog} = File::Rlog->new(
-#			$sh->{opt}->{txnlog}, {
-#				preamble => "$ruu->{who} $ruu->{where}",
-#				extra_func => \&File::Temper::uetemper,
-#				header => "H: $mh->{cmdname} $sh->{version} "
-#???cmdname???
-#					. localtime(),
-#				# xxx localtime() call only really necessary
-#				# on log creation -- this is not optimal
-#			}
-#		);
-#		$sh->{txnlog} or addmsg($sh,
-#			    "failed to open txnlog for $sh->{opt}->{txnlog}"),
-#			return undef;
-#	}
 }
 
 # $sh required, optional args: $bgroup, $who, $ubname

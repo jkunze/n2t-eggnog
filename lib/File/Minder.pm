@@ -1205,6 +1205,12 @@ What if no server running when client starts:  startup server on demand?
 			return undef;
 	}
 
+	use EggNog::Log qw(get_tlogger);
+	$msg = get_tlogger($mh) and
+		# yyy should really call on a $sh (session handler) -- oh well
+		addmsg($mh, $msg),
+		return undef;
+
 	#
 	# Other
 	#

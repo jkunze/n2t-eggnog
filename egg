@@ -106,9 +106,10 @@ my $usage_text = << "EOF";
 
  Usage: egg [ options ] i.command [ name [ data ] ]
 
-Egg is a binder. The egg command makes, manages, and resolves arbitrary data
-element bindings, each belonging to a parent identifier (even if empty). The
-acronym, BIND (Bind Identifier to Named Data) echoes typical argument order.
+Egg is a binder. The egg command makes and manages arbitrary non-volatile data
+element bindings in which each element belongs to a parent identifier (even if
+empty). Identifiers can be made "resolvable" to particular element values. The
+acronym, BIND (Bind Identifier to Named Data), echoes typical argument order.
 Some commands:
 
   help readme     describe the latest "egg" essentials

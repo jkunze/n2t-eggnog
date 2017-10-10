@@ -7,6 +7,7 @@ use ExtUtils::MakeMaker;
 # the contents of the Makefile that is written.
 
 my $pm = {
+    	'lib/EggNog/Log.pm' => 'blib/lib/EggNog/Log.pm',
     	'lib/File/Egg.pm' => 'blib/lib/File/Egg.pm',
     	'lib/File/Nog.pm' => 'blib/lib/File/Nog.pm',
     	'lib/File/Binder.pm' => 'blib/lib/File/Binder.pm',
@@ -15,18 +16,16 @@ my $pm = {
     	'lib/File/Session.pm' => 'blib/lib/File/Session.pm',
     	'lib/File/Help.pm' => 'blib/lib/File/Help.pm',
     	'lib/File/Temper.pm' => 'blib/lib/File/Temper.pm',
-    	'lib/File/RUU.pm' => 'blib/lib/File/RUU.pm',
+    	'lib/File/Resolver.pm' => 'blib/lib/File/Resolver.pm',
     	'lib/File/Rlog.pm' => 'blib/lib/File/Rlog.pm',
+    	'lib/File/RUU.pm' => 'blib/lib/File/RUU.pm',
     	'lib/File/ApacheTester.pm' => 'blib/lib/File/ApacheTester.pm',
     	'lib/File/ValueTester.pm' => 'blib/lib/File/ValueTester.pm',
-    	'lib/File/StubResolver.pm' => 'blib/lib/File/StubResolver.pm',
 };
--e 'lib/File/Resolver.pm' and
-	$pm->{'lib/File/Resolver.pm'} = 'blib/lib/File/Resolver.pm';
 
 WriteMakefile(
     EXE_FILES	   => [ 'egg', 'nog', 'anvl2egg', 'orlogs' ],
-    NAME	   => 'File::EggNog',
+    NAME	   => 'File::EggNog',	# XXX 'EggNog'
     AUTHOR	   => 'John A. Kunze <jak@ucop.edu>',
     VERSION_FROM   => 'VERSION',
     ABSTRACT	   => 'commands and routines to make and resolve identifiers',
@@ -37,7 +36,8 @@ WriteMakefile(
     PREREQ_PM		=> {
 	'Fcntl'			=> '0',
 	'BerkeleyDB'		=> '0',
-	'DB_File'		=> '0',
+	'MongoDB'		=> '0',
+	'DB_File'		=> '0',		# xxx drop
 	'Data::UUID'		=> '0',
 	'File::OM'		=> '1.00',
 	'File::Find'		=> '0',

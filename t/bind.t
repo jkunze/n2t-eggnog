@@ -57,10 +57,10 @@ $x = `$cmd -d $td/foo -m plain FOO.fetch`;
 like $x, qr/bar:\s*cow\n/s,
 	'id strings are case sensitive';
 
+#exit;
+
 $x = `$cmd -d $td/foo foo.let eel cow`;
 like $x, qr/^$/s, "simple let binding";
-
-exit;
 
 $x = `$cmd -d $td/foo foo.fetch`;
 shellst_is 0, $x, "fetch status ok, no elems requested";

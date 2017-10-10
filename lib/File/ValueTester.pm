@@ -93,12 +93,14 @@ sub remove_td { my( $td, $bgroup )=@_;
 	# remove $td but make sure $td isn't set to "."
 	# yyy maybe one day $td is optional
 	! $td || $td eq "."	and say STDERR "bad dirname \$td=$td";
-	try {
+	my $ok = try {
 		rmtree($td);
 	}
 	catch {
 		say STDERR "$td: couldn't remove: $@";
+		return undef;	# returns from "catch", NOT from routine
 	};
+	# not bothering to check status of $ok
 	my $msg;
 	if ($bgroup) {
 		my $msg = File::Binder::brmgroup_standalone($bgroup);

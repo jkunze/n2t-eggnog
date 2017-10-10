@@ -112,7 +112,7 @@ sub out { my( $self ) =
 	$self->{extra_func} and @extras =	# if defined, add any extras
 		&{ $self->{extra_func} }();	# from your preferred function
 
-	# XXXX warn callers that they must encode their join_string
+	# yyy warn callers that they must encode their join_string
 	#      chars or else!  (because we don't do it for them)
 	my $message = join(			# join the message with each
 		$self->{join_string},		# supplied extra and user arg
@@ -126,14 +126,32 @@ sub out { my( $self ) =
 	$self->{fhandle} and
 		print($fh $message, "\n") and
 			return '';
+	# If we get here, the first output attempt failed.
+# If we're going to a pipe ...
+# Do popen to process with rotatelogs-type args, that
+#      rotatelogs="$aptop/bin/rotatelogs -l"
+#      let monthly=(604800 * 4)		# actually, just 4 weeks
+#  0.    interval_rotatelogs $srvref_root/logs/error_log.%Y.%m.%d $monthly"
+#      usage: interval_rotatelogs -l IntervalMins \
+#                      .../transaction_log.%Y.%m.%d $monthly
+# ErrorLog "|$rotatelogs $srvref_root/logs/error_log.%Y.%m.%d $monthly"
+#  1. itself does popen on a rotatelogs process R and
+#  2. also opens socket L to Librato API
+#  3. for every line read from stdin
+#   - writes line to R
+#   - collects counts (hashes) for N-minute intervals (N=3?),
+#   - at the end of every N minutes, writes stats to L
+#       ... and clears collected stats (hashes)
 
-	# This will re-create log file if it's no longer there.
-	# First test to see if we will try to re-create it.
+# ** make it robust in re-opening any pipe/socket found closed
+
+	# This will re-create a log file if it's no longer there.
+	# First test to see if it existed (and if we will try to re-create it).
 	#
 	my $log_existed = -e $self->{logname};
-
 	open($fh, ">> $self->{logname}") or
 		return "log open failed: $!";
+	# If we get here, that should have opened (and maybe created) it.
 
 	select((select($fh), $| = 1)[0]);	# unbuffer $fh filehandle
 	$self->{fhandle} = $fh;
