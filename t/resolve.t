@@ -207,17 +207,19 @@ like $x, qr|^inflect "/" |, "script called for / inflection";
 $x =~ s/^.*\n//;				# remove top line
 like $x, qr|^inflect "\./" |, "script called for ./ inflection";
 
-my $rp = File::Binder::RSRVD_PFIX;	# reserved sub-element prefix
+my $Rp = File::Binder::RSRVD_PFIX;	# reserved sub-element prefix
+my $Tm = File::Binder::TRGT_METADATA;	# actually content negotiation
+my $Ti = File::Binder::TRGT_INFLECTION;	# target for inflection
 
-$x = `$cmd -d $td/fon $url.set ${rp}Ti. newt`;
+$x = `$cmd -d $td/fon $url.set ${Rp}${Ti} newt`;
 $x = resolve_stdin("-d $td/fon", "$url\?");
 like $x, qr|^redir302 newt\n|, "default target redirect for ? inflection";
 
-$x = `$cmd -d $td/fon $url.set "${rp}Ti.?" nowt`;
+$x = `$cmd -d $td/fon $url.set "${Rp}${Ti}?" nowt`;
 $x = resolve_stdin("-d $td/fon", "$url\?");
 like $x, qr|^redir302 nowt\n|, "specific target redirect for ? inflection";
 
-$x = `$cmd -d $td/fon $url.set "${rp}Ti.??" nought`;
+$x = `$cmd -d $td/fon $url.set "${Rp}${Ti}??" nought`;
 $x = resolve_stdin("-d $td/fon", "$url\?\?");
 like $x, qr|^redir302 nought\n|, "specific target redirect for ?? inflection";
 
@@ -225,11 +227,13 @@ $x = resolve_stdin_hdr("-d $td/fon", $url, "!!!ac=text/turtle!!!");
 like $x, qr|^inflect "cn.text/turtle" |,
 	"script called for content negotiation";
 
-$x = `$cmd -d $td/fon $url.set ${rp}Tm. newt`;
+$x = `$cmd -d $td/fon $url.set $Rp${Tm} newt`;
+#$x = `$cmd -d $td/fon $url.set ${Rp}Tm. newt`;
 $x = resolve_stdin_hdr("-d $td/fon", "$url", "!!!ac=text/turtle!!!");
 like $x, qr|^redir303 newt\n|, "default target redirect for text/turtle CN";
 
-$x = `$cmd -d $td/fon $url.set ${rp}Tm.application/rdf+xml newt`;
+$x = `$cmd -d $td/fon $url.set $Rp${Tm}application/rdf+xml newt`;
+#$x = `$cmd -d $td/fon $url.set ${Rp}Tm.application/rdf+xml newt`;
 $x = resolve_stdin_hdr("-d $td/fon", "$url", "!!!ac=application/rdf+xml!!!");
 like $x, qr|^redir303 newt\n|,
 	"specific target redirect for application/rdf+xml CN";

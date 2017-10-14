@@ -412,11 +412,12 @@ like $x, qr/^Location: \Q$eoi_tgt/m, "bound EOI target value resolved";
 #	"xxx default EOI CN target resolution triggered by Accept header";
 
 my $rp = File::Binder::RSRVD_PFIX;
+my $Tm = File::Binder::TRGT_METADATA;	# actually content negotiation
 
 #$x = `wegn loc\@xref\@xref $eoi.set __mTm. $eoi_tgt/mdata`;
 #$x = `wegn loc\@xref\@xref $eoi.fetch __mTm.`;
-$x = `wegn loc\@xref\@\@xref $eoi.set ${rp}Tm. $eoi_tgt/mdata`;
-$x = `wegn loc\@xref\@\@xref $eoi.fetch ${rp}Tm.`;
+$x = `wegn loc\@xref\@\@xref $eoi.set $rp$Tm $eoi_tgt/mdata`;
+$x = `wegn loc\@xref\@\@xref $eoi.fetch $rp$Tm`;
 like $x, qr|^${rp}Tm.: \Q$eoi_tgt/mdata|m,
 	"new bound EOI default content negotiation (CN) target value fetched";
 

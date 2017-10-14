@@ -1589,6 +1589,13 @@ sub prep_script_args {
 	return $argline;
 }
 
+# Some globals to set once and use below, which are really constants. yyy
+my $Rs = File::Binder::SUBELEM_SC	# reserved sub-element
+	. File::Binder::RSRVD_PFIX;
+my $Tm = File::Binder::TRGT_METADATA;   # actually content negotiation
+my $Ti = File::Binder::TRGT_INFLECTION; # target for inflection
+
+
 # NB: $id may be different (eg, shadow) from what's in $idx->{full_id} yyy
 # ($tag is debugging tool to tell who called us)
 # $rpinfo normally undefined; if defined, it is a hash for a prefix info
@@ -1628,11 +1635,11 @@ sub cnflect { my( $sh, $xxxnid, $db, $rpinfo, $accept, $id,
 	#	#qq@"$rid" "$scheme" "$naan" "$shoulder" "$shoblade" "$suffix"@;
 	#	# XXXXX make sure no quote marks or newlines in any of these!?
 
-	#_.eTm.ContentType content negotiation target for ContentType
-	#_.eTm.   default content negotiation target if no _.eTm.ContentType
+	#_,eTm,ContentType content negotiation target for ContentType
+	#_,eTm,   default content negotiation target if no _.eTm.ContentType
 	#         exists
-	#_.eTi.Inflection    key to use for target for given Inflection
-	#_.eTi.    key to use for default target if given Inflection has
+	#_,eTi,Inflection    key to use for target for given Inflection
+	#_,eTi,    key to use for default target if given Inflection has
 	#      no corresponding key
 
 	# Now check for inflections, which may redirect or call a script.
@@ -1643,13 +1650,11 @@ sub cnflect { my( $sh, $xxxnid, $db, $rpinfo, $accept, $id,
 	#
 	my $returnline = '';
 	my $target = '';
-	# sub-element intro string
-	# yyy (since it's a constant is there a better way to do this?)
-	my $ss = File::Binder::SUBELEM_SC . File::Binder::RSRVD_PFIX;
+
 	if (! $fail and $suffix and $suffix !~ /\w/) {	# now check root id
 
-		$db->db_get("$rid${ss}Ti.$suffix", $target) and	# unless found
-			$db->db_get("$rid${ss}Ti.", $target) and # unless found
+		$db->db_get("$rid$Rs$Ti$suffix", $target) and	# unless found
+			$db->db_get("$rid$Rs$Ti", $target) and # unless found
 				$target = '';			# not found
 
 		$target and		# if $target found, redirect to it
@@ -1673,8 +1678,8 @@ sub cnflect { my( $sh, $xxxnid, $db, $rpinfo, $accept, $id,
 
 		# yyy old xref binder element names use _mT* not ._eT*
 
-		$db->db_get("$id${ss}Tm.$accept", $target) and	# unless found
-			$db->db_get("$id${ss}Tm.", $target) and	# unless found
+		$db->db_get("$id$Rs$Tm$accept", $target) and	# unless found
+			$db->db_get("$id$Rs$Tm", $target) and	# unless found
 				$target = '';
 		$target and		# if $target found, redirect to it
 			$returnline = "redir303 $target",	# http range-14!

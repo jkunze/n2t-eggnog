@@ -377,6 +377,8 @@ use constant PERMS_ELEM		=> '|_,ep';
 use constant CTIME_ELEM		=> '|_,ec';
 use constant PERMS_EL_EX	=> '_,ep';
 use constant CTIME_EL_EX	=> '_,ec';
+use constant TRGT_METADATA	=> 'Tm,';
+use constant TRGT_INFLECTION	=> 'Ti,';
 
 #use constant RSRVD_PFIX	=> '_.e';
 #use constant PERMS_ELEM	=> '|_.ep';

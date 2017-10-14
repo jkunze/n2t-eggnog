@@ -233,6 +233,7 @@ EOT
 		die "could not add layout to log4perl appender\n";
 	$logger->add_appender($file_appender) or
 		die "could not add appender to log4perl logger\n";
+	#use Data::Dumper "Dumper"; $Data::Dumper::Sortkeys = 1; print Dumper $file_appender;
 	return $logger;
 }
 
