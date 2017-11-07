@@ -635,24 +635,27 @@ sub id_decompose { my( $pfxs, $id )=@_;
 	# Shorthand for parts that we will return.  All have names
 	# corresponding to the $idx hash keys.
 	#
-	my $scheme;
+	my ($scheme_raw, $scheme);
 
 # yyy add crutch to make grid:x.y become grid:grid.x.y (when x ne "grid")
 # yyy add url: as scheme?
 
 	if ($id =~ /^urn:([^:]+):(.*)/i) {	# yyy kludgy special case
+		my $nid_raw = $1;
 		my $nid = lc $1;
 		if ($nid eq 'nbn' || $nid eq 'issn' || $nid eq 'isbn' ||
 				$nid eq 'lsid') {
 			$scheme = $nid;
+			$scheme_raw = $nid_raw;
 			$id = $2 || '';
 		}
 		else {
-			$scheme = 'urn';
+			$scheme = $scheme_raw = 'urn';
 			$id = $1 . ':' . ($2 || '');
 		}
 	}
 	elsif ($id =~ m|^([^:]+):/*\s*(.*)|) {	# grab scheme name and id
+		$scheme_raw = $1;
 		$scheme = lc $1;	# $scheme defined and lowercase
 		$id = $2 || '';		# after removing scheme, initial spaces
 	}
@@ -679,10 +682,14 @@ sub id_decompose { my( $pfxs, $id )=@_;
 		else {
 			$scheme = $UNKNOWN_SCHEME;
 		}
+		$scheme_raw = $scheme;
 	}
 	else {
-		$scheme = $UNKNOWN_SCHEME;
+		$scheme = $scheme_raw = $UNKNOWN_SCHEME;
 	}
+
+# xxx now that we have $scheme_raw (Tom Gillespie case), what do we do
+# with it?
 
 	###### Now initialize various identifier parts.
 

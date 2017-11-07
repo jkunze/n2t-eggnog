@@ -211,8 +211,10 @@ EOT
 		TZ		=> TIMEZONE,
 		DatePattern	=> $rotation_schedule,
 		filename	=> $file_base,
-		max		=> 7,	# should only need 1, since post_rotate
-		# this next snippet from doc at http://search.cpan.org/~mschout/
+		max		=> 10000,	# should only need 1, because
+		# of post_rotate, but that's not working in some versions and
+		# giving a very high max makes us less likely to lose data.
+		# This next snippet from doc at http://search.cpan.org/~mschout/
 		# ...Log-Dispatch-FileRotate-1.34/lib/Log/Dispatch/FileRotate.pm
 		post_rotate	=> sub {
 
