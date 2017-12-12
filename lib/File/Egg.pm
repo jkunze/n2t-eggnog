@@ -62,8 +62,6 @@ use File::Copy;
 use File::Find;
 use File::Temper ':all';
 use File::Binder ':all';	# xxx be more restricitve
-#use File::Resolver 'gen_txnid';		# xxx drop this
-#use File::Session qw(tlogger);
 use EggNog::Log qw(tlogger);
 use Try::Tiny;			# to use try/catch as safer than eval
 use Safe::Isa;
@@ -335,21 +333,9 @@ sub egg_purge { my( $bh, $mods, $lcmd, $formal, $id )=@_;
 	my $sh = $bh->{sh};
 	my @elems = ();
 	my $om = $bh->{om};
-	#my $txnid;			# transaction id (yyy thread safe?)
-	#my $txnlog = $bh->{txnlog};
-	#$txnlog and
-	#	(($txnid = gen_txnid($bh)) or
-	#		addmsg($bh, "couldn't generate transaction id"),
-	#		return undef)
-	#;
-	## now $txnid is defined
 
-	# XXX need to issue END before every error return below
-
-	#$txnlog and $txnlog->out(
-	#	"$txnid BEGIN $id.$lcmd");
-	my $xxxnid;		# undefined until first call to tlogger
-	$xxxnid = tlogger $sh, $xxxnid, "BEGIN $id.$lcmd";
+	my $txnid;		# undefined until first call to tlogger
+	$txnid = tlogger $sh, $txnid, "BEGIN $id.$lcmd";
 
 	# A possibility of redundancy since we also check authz in egg_del,
 	# but purge has special sweeping powers and it's only one extra check.
@@ -402,9 +388,7 @@ sub egg_purge { my( $bh, $mods, $lcmd, $formal, $id )=@_;
 	}
 	if (! $sh->{indb}) {
 		# xxx leave now
-		#$txnlog and $txnlog->out(
-		#	"$txnid END SUCCESS $id.$lcmd");
-		tlogger $sh, $xxxnid, "END SUCCESS $id.$lcmd";
+		tlogger $sh, $txnid, "END SUCCESS $id.$lcmd";
 		return $ret;
 	}
 	my $id_key = flex_enc_indb($id);		# we want side-effect
@@ -430,9 +414,7 @@ sub egg_purge { my( $bh, $mods, $lcmd, $formal, $id )=@_;
 		#" admin + unique elements found to purge under " .
 		#($id ne '' ? $id : '""') . ": " . scalar(@elems), "1#"));
 
-	#$txnlog and $txnlog->out(	# yyy premature? haven't done it yet
-	#	"$txnid END SUCCESS $id.$lcmd");
-	tlogger $sh, $xxxnid, "END SUCCESS $id.$lcmd";
+	tlogger $sh, $txnid, "END SUCCESS $id.$lcmd";
 	my $msg;
 	$msg = $bh->{rlog}->out("C: $id.$lcmd") and
 		addmsg($bh, $msg),
@@ -520,9 +502,15 @@ sub egg_get_dup { my( $bh, $id, $elem )=@_;
 		@exdups = exdb_get_dup($bh, $id, $elem);
 		# yyy if error?
 		#use Data::Dumper "Dumper"; print Dumper $ret;
-		$sh->{ietest} and $exdups[0] ne $indups[0] and $sh->{txnlog} and
-			$sh->{txnlog}->out("ERROR: difference alert " .
-				"for id \"$id\", element \"$elem\"");
+
+		#$sh->{ietest} and $exdups[0] ne $indups[0] and $sh->{txnlog} and
+		#	$sh->{txnlog}->out("ERROR: difference alert " .
+		#		"for id \"$id\", element \"$elem\"");
+
+		# it is not an error to call tlogger with $txnid of ''
+		$sh->{ietest} and $exdups[0] ne $indups[0] and tlogger($sh, '',
+			"ERROR: difference alert for id \"$id\", " .
+			"element \"$elem\"");
 			# yyy only checking first dupe in ietest
 			# yyy no $txnid -- ok?
 	}
@@ -623,21 +611,10 @@ sub egg_del { my( $bh, $mods, $lcmd, $formal, $id, $elem )=@_;
 	! egg_authz_ok($bh, $id, OP_DELETE) and
 		return undef;
 
-	#my $txnid;			# transaction id (yyy thread safe?)
-	#my $txnlog = $bh->{txnlog};
-	#$txnlog and
-	#	(($txnid = gen_txnid($bh)) or
-	#		addmsg($bh, "couldn't generate transaction id"),
-	#		return undef)
-	#;
-	## now $txnid is defined
-
 	# an empty $lcmd means we were called by purge -- don't log
-	#$lcmd and $txnlog and $txnlog->out(
-	#	"$txnid BEGIN $id.$lcmd $elem");
-	my $xxxnid;		# undefined until first call to tlogger
+	my $txnid;		# undefined until first call to tlogger
 	$lcmd and
-		$xxxnid = tlogger $sh, $xxxnid, "BEGIN $id.$lcmd $elem";
+		$txnid = tlogger $sh, $txnid, "BEGIN $id.$lcmd $elem";
 
 	my $key;
 	! $mods->{did_rawidtree} and
@@ -738,10 +715,8 @@ sub egg_del { my( $bh, $mods, $lcmd, $formal, $id, $elem )=@_;
 	# yyy no need for this log line if $status == 0 above
 
 	# an empty $lcmd means we were called by purge -- don't log
-	#$lcmd and $txnlog and $txnlog->out(
-	#	"$txnid END SUCCESS $id.$lcmd $elem");
 	$lcmd and
-		tlogger $sh, $xxxnid, "END SUCCESS $id.$lcmd $elem";
+		tlogger $sh, $txnid, "END SUCCESS $id.$lcmd $elem";
 
 	# xxx find replacement or stop calling this,
 	#     as it only works for indb case
@@ -1352,18 +1327,6 @@ sub egg_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 	my $om = $bh->{om};
 	# yyy what if om is undefined?  || ... default to what?
 
-	## yyy make txnlog into a no-op function by default so code isn't
-	## always checking $txnlog
-	#my $txnid;			# transaction id (yyy thread safe?)
-	#my $txnlog = $bh->{txnlog};
-	## yyy should also log WHO: $bh->{sh}->{ruu}->{http_acting_for}
-	#$txnlog and
-	#	(($txnid = gen_txnid($bh)) or
-	#		addmsg($bh, "couldn't generate transaction id"),
-	#		return undef)
-	#;
-	## now $txnid is defined
-
 	# yyy do bulk defs for $value
 	# yyy document default values for element and value
 
@@ -1404,11 +1367,9 @@ sub egg_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 
 	# Not yet a real transaction in the usual sense, but
 	# more of something that has a start and an end time.
-	#$txnlog and $txnlog->out(
-	#	"$txnid BEGIN $id|$elem.$lcmd $slvalue");
 
-	my $xxxnid;		# undefined until first call to tlogger
-	$xxxnid = tlogger $sh, $xxxnid, "BEGIN $id|$elem.$lcmd $slvalue";
+	my $txnid;		# undefined until first call to tlogger
+	$txnid = tlogger $sh, $txnid, "BEGIN $id|$elem.$lcmd $slvalue";
 
 	#my $oldvalcnt = egg_get_dup($bh, $key);
 	my $oldvalcnt = egg_get_dup($bh, $id, $elem);
@@ -1522,9 +1483,7 @@ sub egg_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 		# XXX NOT setting doing this for external db. DROP for indb?
 		$bh->{sh}->{indb} and
 			$msg = $bh->{rlog}->out("C: $id|$elem.$lcmd $slvalue");
-		#$txnlog and $txnlog->out(
-		#	"$txnid END SUCCESS $id|$elem.$lcmd ...");
-		tlogger $sh, $xxxnid, "END SUCCESS $id|$elem.$lcmd ...";
+		tlogger $sh, $txnid, "END SUCCESS $id|$elem.$lcmd ...";
 		$msg and
 			addmsg($bh, $msg),
 			return undef;
@@ -2054,19 +2013,8 @@ sub logmark { my( $bh, $mods, $string )=@_;
 	}
 	#=== end boilerplate
 
-	#my $txnid;			# transaction id (yyy thread safe?)
-	## yyy this txnid isn't needed, right?
-	#my $txnlog = $sh->{txnlog};
-	#$txnlog and
-	#	(($txnid = gen_txnid($bh)) or
-	#		addmsg($bh, "couldn't generate transaction id"),
-	#		return undef)
-	#;
-	## now $txnid is defined
-	#$txnlog and $txnlog->out(
-	#	"$txnid MARK $string");
-	my $xxxnid;		# undefined until first call to tlogger
-	$xxxnid = tlogger $sh, $xxxnid, "MARK $string";
+	my $txnid;		# undefined until first call to tlogger
+	$txnid = tlogger $sh, $txnid, "MARK $string";
 	return 1;
 }
 
@@ -2273,14 +2221,6 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 	my $s = '';                     # output strings are returned to $s
 	my $st = $p ? 1 : '';           # returns (stati or strings) accumulate
 	my $sh = $bh->{sh};
-	#my $txnid;			# transaction id (yyy thread safe?)
-	#my $txnlog = $bh->{txnlog};
-	#$txnlog and
-	#	(($txnid = gen_txnid($bh)) or
-	#		addmsg($bh, "couldn't generate transaction id"),
-	#		return undef)
-	#;
-	## now $txnid is defined
 
 	my $rrm = $bh->{rrm};
 	my $lcmd = $rrm ? 'resolve' : 'fetch';
@@ -2359,8 +2299,6 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 		#	$bh->{rrmlog}->out("P: no match for $id");
 		# xxx right now there's no use of resolverlist,
 		#  so we don't do txnlog
-		#$txnlog and $txnlog->out(
-		#	"$txnid END FAIL no match for $id");
 
 		my $elem = '_t';	# xxx need a 'resolve' operation
 		my @ss = map		# save strings or status after mapping
@@ -2399,12 +2337,11 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 	$elemsR and		# Now (re)initialize $elemsR if supplied so
 		@$elemsR = ();	# that we'll be able to push values onto it.
 
-	my $xxxnid;		# undefined until first call to tlogger
+	my $txnid;		# undefined until first call to tlogger
 	if ($#elems < 0 and $om) {	# no elems specified, so find them
 					# and don't bother if no ($om) output
 
-		#$txnlog and $txnlog->out("$txnid BEGIN $lcmd $id");
-		$xxxnid = tlogger $sh, $xxxnid, "BEGIN $lcmd $id";
+		$txnid = tlogger $sh, $txnid, "BEGIN $lcmd $id";
 
 		if ($bh->{sh}->{exdb}) {
 			my $result;
@@ -2472,10 +2409,7 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 				$elemsR, $valsR, $id);
 		}
 
-		#$txnlog and $txnlog->out("$txnid END "
-		#	. ($st ? 'SUCCESS' : 'FAIL')
-		#	. " $lcmd $id");
-		tlogger $sh, $xxxnid, "END " . ($st ? 'SUCCESS' : 'FAIL')
+		tlogger $sh, $txnid, "END " . ($st ? 'SUCCESS' : 'FAIL')
 				. " $lcmd $id";
 		return $st;
 	}
@@ -2483,9 +2417,7 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 	# XXX need to issue END before every error return below
 	# xxx we're starting a bit late (so timing may look a little faster)
 	#     but we get less noise from each recursive call
-	#$txnlog and $txnlog->out(
-	#	"$txnid BEGIN $lcmd $id " . join('|', @elems));
-	$xxxnid = tlogger $sh, $xxxnid, "BEGIN $lcmd $id " . join('|', @elems);
+	$txnid = tlogger $sh, $txnid, "BEGIN $lcmd $id " . join('|', @elems);
 
 	# If we get here, elements or element sets to fetch were specified.
 	# %khash is a kludge hash to hold elements emerging from blobs.
@@ -2672,10 +2604,8 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 			. $bh->{sh}->{ruu}->{http_user_agent}
 			. ')'
 		: " $lcmd $id " . join('|', @elems));
-	tlogger $sh, $xxxnid, $msg;
+	tlogger $sh, $txnid, $msg;
 
-	#$txnlog->out("$txnid $msg");
-	#}
 	return $st;
 }
 # end of fetch routine

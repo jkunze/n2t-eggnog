@@ -1645,20 +1645,8 @@ sub mint { my( $mh, $mods, $lcmd, $pepper )=@_;
 	my $om = $mh->{om};
 	$lcmd ||= 'mint';
 
-	#my $txnid;			# transaction id (yyy thread safe?)
-	#my $txnlog = $mh->{txnlog};
-	## xxx should also log WHO: $mh->{ruu}->{http_acting_for}
-	#$txnlog and
-	#	(($txnid = gen_txnid($mh)) or
-	#		addmsg($mh, "couldn't generate transaction id"),
-	#		return undef)
-	#;
-	## now $txnid is defined
-
-	#$txnlog and $txnlog->out(	# which minter?
-	#	"$txnid BEGIN $mh->{minder_file_name}: $lcmd");
-	my $xxxnid;		# undefined until first call to tlogger
-	$xxxnid = tlogger $mh, $xxxnid, "BEGIN $mh->{minder_file_name}: $lcmd";
+	my $txnid;		# undefined until first call to tlogger
+	$txnid = tlogger $mh, $txnid, "BEGIN $mh->{minder_file_name}: $lcmd";
 	# yyy should really call this with a session handler ($sh) -- oh well
 
 	# Check if the head of the queue is ripe.  See comments under queue()
@@ -1776,9 +1764,7 @@ sub mint { my( $mh, $mods, $lcmd, $pepper )=@_;
 		$mh->{rlog}->out("N: $m");
 		$om->elem(SPING, $id);
 
-		#$txnlog and $txnlog->out(
-		#	"$txnid END SUCCESS $lcmd: $id");
-		tlogger $mh, $xxxnid, "END SUCCESS $lcmd: $id";
+		tlogger $mh, $txnid, "END SUCCESS $lcmd: $id";
 
 		return $id;		# yyy an array of 1?
 
@@ -1867,9 +1853,7 @@ sub mint { my( $mh, $mods, $lcmd, $pepper )=@_;
 			$$nog{"$A/maskskipcount"} += $maskskipped;
 		$om->elem(SPING, $id);
 
-		#$txnlog and $txnlog->out(
-		#	"$txnid END SUCCESS $lcmd: $id");
-		tlogger $mh, $xxxnid, "END SUCCESS $lcmd: $id";
+		tlogger $mh, $txnid, "END SUCCESS $lcmd: $id";
 
 		return ($id, $atlast, $tnum);
 	}

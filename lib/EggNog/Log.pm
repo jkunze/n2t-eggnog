@@ -12,7 +12,7 @@ our @ISA = qw(Exporter);
 
 our @EXPORT = qw();
 our @EXPORT_OK = qw(
-	get_tlogger tlogger
+	get_tlogger tlogger gentxnid
 );
 our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
 
@@ -76,23 +76,9 @@ sub get_tlogger { my( $sh )=@_;
 		};
 		$ok // return $msg;	# test for undefined since zero is ok
 
-	# xxx drop this next bit after testing
-		#$sh->{xxxtxnlog} = File::Rlog->new(
-		#	$tlogname, {
-		#		preamble => "$ruu->{who} $ruu->{where}",
-		#		extra_func => \&File::Temper::uetemper,
-		#		# XXX egg below should be nog sometimes, right?
-		#		header => "H: egg $sh->{version} "
-		#			. localtime(),
-		#		# xxx localtime() call only really necessary
-		#		# on log creation -- this is not optimal
-		#	}
-		#);
-	# xxx drop this above bit after testing
-
-		#my $weekly = 'yyyy-MM-dd-HH-MM';	# every minute to test
+		my $weekly = 'yyyy-MM-dd-HH-MM';	# every minute to test
 		#my $weekly = 'yyyy-MM-dd';		# every day to test
-		my $weekly = 'yyyy-ww';			# every week
+		#my $weekly = 'yyyy-ww';			# every week
 
 		my $tlogger;
 		$ok = try {
@@ -211,22 +197,25 @@ EOT
 		TZ		=> TIMEZONE,
 		DatePattern	=> $rotation_schedule,
 		filename	=> $file_base,
-		max		=> 10000,	# should only need 1, because
+		max		=> 10000,
+		# For max we should only need 1, because
 		# of post_rotate, but that's not working in some versions and
 		# giving a very high max makes us less likely to lose data.
 		# This next snippet from doc at http://search.cpan.org/~mschout/
 		# ...Log-Dispatch-FileRotate-1.34/lib/Log/Dispatch/FileRotate.pm
-		post_rotate	=> sub {
 
-			my ($filename, $idx, $fileRotate) = @_;
-			$idx != 1 and
-				return;
-			use POSIX qw(strftime);
-			my $basename = $fileRotate->filename();
-			my $newfilename = "$basename."
-				. strftime $file_date_suffix, localtime();
-			rename($filename, $newfilename);
-		},
+		# Comment out post_rotate because we cannot easily get a
+		# version (eg, 1.46) of Log::Log4perl that supports it on AWS.
+		#post_rotate	=> sub {
+		#	my ($filename, $idx, $fileRotate) = @_;
+		#	$idx != 1 and
+		#		return;
+		#	use POSIX qw(strftime);
+		#	my $basename = $fileRotate->filename();
+		#	my $newfilename = "$basename."
+		#		. strftime $file_date_suffix, localtime();
+		#	rename($filename, $newfilename);
+		#},
 	);
 
 	my $logger = Log::Log4perl->get_logger('txnlog');

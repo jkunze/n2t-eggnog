@@ -1,49 +1,5 @@
 #!/usr/bin/env perl
 
-# XXXX remove make_ezacct from repo
-# XXXX remove certs from repo
-
-# XXX make sure rlog encodes newlines in the values
-# xxx ? :pifx  proceed if exists
-#     ? :sifx  stop if exists
-#     ? :bifx  bail if exists
-# XXX change "rm [n]" to accept an extra [d] arg (ignored) so that a tester
-#  can change a URL query string from "set n d" to "rm n d" and have it work
-#   without extra keyboarding
-# XXX authz needs top level auth to mkbinder and rmbinder
-# xxx &P could be in an element for macros, eg, :/macro|P -> string
-
-=for Greg
-- NEW binder name: ezid ??
-- NEW binder command: egg
-  "help readme" is currently the only documentation that's up-to-date;
-  command-line syntax same as QUERY_STRING syntax (but unlike noid,
-  '+' no longer stands in for space)
-- NEW key format:  Id|Elem instead of Id\tElem (later id|elem|subelem|...)
-- NEW name/password required
-- NEW please use Acting-For: header
-- NEW "exists" command to query if an id "exists" (current test is whether
-  an identifier has any elements bound, or if id|elem exists as a db key)
-- NEW internal command: "purge" to delete all elems under a given id, same
-  as "fetch id" to discover elems, then separate "rm id elem" commands
-  commands (saving one network roundtrip per bound element)
-- BEWARE of dups: "add" will create the first element of that name, or
-  another instance if it exists already; use "set" to first check and
-  remove any element dups before creating; BUT... "add" is cheaper/faster
-  than "set", eg, creating a new element or database from scratch
-- NEW commands "incr" and "decr" to do arithmetic on values without
-  roundtrips to fetch, modify, and re-store
-- NEW indirect tokens introduced by @... ,
-  allowing the special elements : and :- to be deprecated
-- NEW command modifier: ":hx id|elem.CMD value" which hex-decodes ^HH in line
-- [ bad idea; leave "version" for new versions of a record ] xxx deprecate new "version" command reports version of running process
-- NEW egg automatically adds two subelement: __mc and __mp
-- yyy please use &P/... for identities (anticipating storage costs)
-- NEW nog mask char 'f' = 'e' - digits, ie, filtered 'e' for alpha-only chars
-- NEW nog flag --oklz N (N=0|1) to permit leading zeroes; off by default
-  for type 'seq' minters; on by default for 'rand' minters
-=cut
-
 use 5.010;
 use strict;
 use warnings;
@@ -148,6 +104,8 @@ Some options:
   --txnlog Log transaction log (default ~/.eggnog/logs/transaction_log.rlog)
   --dbie=[ie]  database class: internal (i, default), external (e), both (ie)
   --bgroup=G   external binder group, as in egg_<G>.<user>_s_<b>
+  --home=Dir   eggnog home directory (~/.eggnog), containing configuration,
+               logs, binders, minters, prefixes, etc.
 
 EOF
 
@@ -1476,6 +1434,8 @@ not map '+' to SPACE in query strings.)
   --txnlog=L  transaction log file (default ~/.eggnog/logs/transaction_log.rlog)
   --dbie=[ie] database class: internal (i, default), external (e), both (ie)
   --bgroup=G  external binder group, as in egg_<G>.<user>_s_<b>
+  --home=Dir  eggnog home directory (~/.eggnog), containing configuration,
+              logs, binders, minters, prefixes, etc.
 
 =head2 Data representation:
 
