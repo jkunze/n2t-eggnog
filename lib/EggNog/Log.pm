@@ -12,7 +12,7 @@ our @ISA = qw(Exporter);
 
 our @EXPORT = qw();
 our @EXPORT_OK = qw(
-	get_tlogger tlogger gentxnid
+	init_tlogger tlogger gentxnid
 );
 our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
 
@@ -37,7 +37,7 @@ use constant TIMEZONE		=> 'US/Pacific';
 #$sh->{tlogger_preamble}
 #$sh->{tlogger}
 
-sub get_tlogger { my( $sh )=@_;
+sub init_tlogger { my( $sh )=@_;
 
 	# By default, set up unified, per-server (as opposed to per-binder)
 	# transaction log ("txnlog") to record both the start and end
@@ -76,9 +76,9 @@ sub get_tlogger { my( $sh )=@_;
 		};
 		$ok // return $msg;	# test for undefined since zero is ok
 
-		my $weekly = 'yyyy-MM-dd-HH-MM';	# every minute to test
+		my $weekly = 'yyyy-ww';			# rotate log every week
+		#my $weekly = 'yyyy-MM-dd-HH-MM';	# every minute to test
 		#my $weekly = 'yyyy-MM-dd';		# every day to test
-		#my $weekly = 'yyyy-ww';			# every week
 
 		my $tlogger;
 		$ok = try {

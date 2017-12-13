@@ -21,7 +21,7 @@ use File::Path 'mkpath';
 use File::Basename;
 use File::RUU;
 use File::Value 'flvl';
-use EggNog::Log qw(get_tlogger);
+use EggNog::Log qw(init_tlogger);
 use Try::Tiny;			# to use try/catch as safer than eval
 use Safe::Isa;
 use YAML::Tiny 'LoadFile';
@@ -330,7 +330,7 @@ sub config { my( $sh )=@_;
 	# aim to be able to test using $mh->{sh}->{indb} and $mh->{sh}->{exdb}
 	# xxx test scripts should use $buildout_root for dbpath/log files
 
-	$msg = get_tlogger($sh) and
+	$msg = init_tlogger($sh) and
 		return $msg;
 
 	$sh->{cfgd} = 1;	# boolean to see if session is "configured"

@@ -60,9 +60,11 @@ sub uqtemper {			# "micro quick"
 sub etemper { temper($_[0], 'even') }
 sub uetemper {			# "micro even"
 	use Time::HiRes 'gettimeofday';
-	my ($secs, $fraction) = gettimeofday();
+	my ($secs, $microsecs) = gettimeofday();
 	return
-		join('.', etemper($secs), $fraction);
+		join('.', etemper($secs), sprintf("%06d", $microsecs));
+		# pad microseconds or fractional part will be wrong
+		# for values less than 100000
 }
 
 sub htemper { temper($_[0], 'shortish') }
