@@ -7,7 +7,8 @@ use warnings;
 use File::ValueTester ':all';
 use File::Value ':all';
 
-my ($td, $cmd) = script_tester "nog";
+my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "nog";
+$ENV{NOG} = $hgbase;		# initialize basic --home and --bgroup values
 
 {
 remake_td($td);
@@ -76,7 +77,7 @@ remove_td($td);
 {
 remake_td($td);		# rand stop with bad start
 
-$ENV{NOG} = "-p $td";
+$ENV{NOG} = "$hgbase -p $td";
 my ($x, $y);
 
 # yyy --start option removed from nog; easier for user to implement
@@ -189,7 +190,7 @@ shellst_is 0, $x, "2nd mint with minderpath";
 
 unlike $x, qr/implicit/, "no new minter created";
 
-$ENV{NOG} = "-p /tmp --verbose";
+$ENV{NOG} = "$hgbase -p /tmp --verbose";
 $x = `$cmd -p $td mint 1`;
 shellst_is 0, $x, "3rd mint with args from env";
 
@@ -198,7 +199,7 @@ like $x, qr/minter set to.*$td/,
 
 #like $x, qr/$td/, "but -p was overridden by command args";
 
-$ENV{NOG} = "";
+$ENV{NOG} = $hgbase;
 $ENV{MINDERPATH} = "/tmp:$td:/usr";
 $x = `$cmd mint 1`;
 shellst_is 0, $x, "mint with MINDERPATH env var";

@@ -7,7 +7,8 @@ use warnings;
 use File::ValueTester ':all';
 use File::Value ':all';
 
-my ($td, $cmd) = script_tester "nog";
+my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "nog";
+$ENV{NOG} = $hgbase;		# initialize basic --home and --bgroup values
 
 {
 remake_td($td);
@@ -65,7 +66,7 @@ $x = `$cmd mkminter fz`;
 like $x, qr|error:.*$td/fz/nog_README/fz|, "bad MINDERPATH from env";
 
 remake_td($td);
-$ENV{NOG} = "-p $td -d $td/bar";	# -p $td puts most minters below in $td
+$ENV{NOG} = "$hgbase -p $td -d $td/bar";	# -p $td puts most minters below in $td
 $x = `$cmd mkminter`;
 $y = flvl("< $td/bar/nog_README", $x);
 like $x, qr|Creation record|,
@@ -112,7 +113,7 @@ like $x, qr|Creation record|,
 
 {			# tests for when minder is missing
 remake_td($td);
-$ENV{NOG} = "";
+$ENV{NOG} = $hgbase;
 $ENV{MINDERPATH} = $td;		# switch to just env variable influence
 my $x;
 
@@ -167,13 +168,13 @@ $x = `$cmd mkminter -d $td/d/bar`;
 $y = flvl("< $td/d/bar/nog_README", $x);
 like $x, qr|Creation record|, "created minder in subdir d";
 
-$ENV{NOG} = "-p $td/a:$td/b:$td/c";
+$ENV{NOG} = "$hgbase -p $td/a:$td/b:$td/c";
 
 $x = `$cmd mkminter foo dde`;
 like $x, qr|error:.*clobber|s, "complaint about clobbering existing minder";
 
 my $minderhome = "$td/d";
-$ENV{NOG} = "-p $minderhome:$td/a:$td/b:$td/c";
+$ENV{NOG} = "$hgbase -p $minderhome:$td/a:$td/b:$td/c";
 
 $x = `$cmd mkminter foo dde`;
 like $x, qr|error:.*3 instance|, "complaint about occluding existing minders";

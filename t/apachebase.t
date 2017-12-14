@@ -8,10 +8,6 @@ use File::ValueTester ':all';
 use File::Value ':all';
 use File::ApacheTester ':all';
 
-#my ($td, $cmd) = script_tester "egg";
-#my ($td2, $cmd2) = script_tester "nog";
-
-# This set of tests runs off of a configuration directory that defines
 # the web server, creates binders and minters (see make_populator), etc.
 #
 #my $cfgdir = "t/web";		# this is a generic web server test
@@ -49,13 +45,19 @@ my $binders_root = $ENV{EGNAPA_BINDERS_ROOT};
 my $minters_root = $ENV{EGNAPA_MINTERS_ROOT};
 my ($ntd, $ntd2) = ($binders_root, $minters_root);
 
-my ($td, $cmd) = script_tester "egg";		# yyy needed?
-my ($td2, $cmd2) = script_tester "nog";		# yyy needed?
+my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "egg";
+my ($td2, $cmd2);
+($td2, $cmd2, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "nog";
+# This script calls egg, and we want the latest -Mblib and cleanest, eg,
+$hgbase = "--home $buildout_root";	# and we know better in this case
+$bgroup and
+	$hgbase .= " --bgroup $bgroup";
+$ENV{EGG} = $hgbase;		# initialize basic --home and --bgroup values
+#$ENV{EGG} = "--home $buildout_root";	# wrt default config and prefixes
+
 remake_td($td);
 remake_td($td2);
 
-# This script calls egg, and we want the latest -Mblib and cleanest, eg,
-$ENV{EGG} = "--home $buildout_root";	# wrt default config and prefixes
 
 #sub catch_int {
 #	local $SIG{INT} = 'IGNORE';

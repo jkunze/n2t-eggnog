@@ -36,9 +36,6 @@ use constant EXDB_UBDELIM	=> '_s_';	# populator's binder delimiter
 						# mnemonic: possessive "s"
 
 # External database record attributes.
-# yyy EXDB_ID unused
-use constant EXDB_ID		=> '_id';	# MongoDB's reserved builtin,
-						# which enforce uniqueness
 use constant EXDB_CTGT	 	=> '_t';	# content target element
 use constant EXDB_ITGT_PX 	=> '_,eTi,';	# inflection target prefix
 use constant EXDB_MTGT_PX 	=> '_,eTm,';	# metadata tgt. prefix (conneg)

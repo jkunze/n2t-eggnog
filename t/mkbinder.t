@@ -7,9 +7,8 @@ use warnings;
 use File::ValueTester ':all';
 use File::Value ':all';
 
-my ($td, $cmd) = script_tester "egg";
-my $egg_home = "--home $td";
-$ENV{EGG} = $egg_home;
+my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "egg";
+$ENV{EGG} = $hgbase;		# initialize basic --home and --bgroup values
 
 use File::Egg;
 {
@@ -99,7 +98,7 @@ like $x, qr|error:.*$td/foo/egg_README/foo|, "bad MINDERPATH from env";
 
 remake_td($td);
 # -p $td puts most binders below in $td
-$ENV{EGG} = "$egg_home -p $td -d $td/bar";
+$ENV{EGG} = "$hgbase -p $td -d $td/bar";
 
 $x = `$cmd --verbose mkbinder`;
 like $x, qr|created.*bar|,
@@ -138,7 +137,7 @@ is +(-f "$td/oof/egg.bdb"), 1,
 
 {			# tests for when binder is missing
 remake_td($td);
-$ENV{EGG} = $egg_home;
+$ENV{EGG} = $hgbase;
 $ENV{MINDERPATH} = $td;		# switch to just env variable influence
 my $x;
 
@@ -186,13 +185,13 @@ like $x, qr|created.*foo|, "created binder in subdir c";
 $x = `$cmd --verbose mkbinder -d $td/d/bar`;
 like $x, qr|created.*bar|, "created binder in subdir d";
 
-$ENV{EGG} = "$egg_home -p $td/a:$td/b:$td/c";
+$ENV{EGG} = "$hgbase -p $td/a:$td/b:$td/c";
 
 $x = `$cmd mkbinder foo`;
 like $x, qr|error:.*clobber|s, "complaint about clobbering existing binder";
 
 my $minderhome = "$td/d";
-$ENV{EGG} = "$egg_home -p $minderhome:$td/a:$td/b:$td/c";
+$ENV{EGG} = "$hgbase -p $minderhome:$td/a:$td/b:$td/c";
 
 $x = `$cmd mkbinder foo`;
 like $x, qr|error:.*3 instance|, "complaint about occluding existing binders";

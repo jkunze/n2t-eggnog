@@ -16,9 +16,8 @@ use File::ValueTester ':all';
 use File::Value ':all';
 use File::Binder ':all';
 
-my ($td, $cmd) = script_tester "egg";
-my $egg_home = "--home $td";
-$ENV{EGG} = $egg_home;
+my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "egg";
+$ENV{EGG} = $hgbase;		# initialize basic --home and --bgroup values
 
 # Tests for resolver mode look a little convoluted because we have
 # to get the actual command onto STDIN in order to test resolver mode.
@@ -54,7 +53,7 @@ sub resolve_stdin_hdr {
 {		# some simple ? and ?? tests
 remake_td($td);
 
-$ENV{EGG} = "$egg_home -p $td -m anvl";
+$ENV{EGG} = "$hgbase -p $td -m anvl";
 my $x;
 
 #my $ark = 'bar';
@@ -75,7 +74,7 @@ like $x, qr/Smith.*Victory.*1998.*Calif.*support-what:.*cdlib.org/s,
 $x = `$cmd -m anvl $ark.show :brief`;
 like $x, qr/,\s*"Victory.*:\s*Victory/s, 'citation support';
 
-$ENV{EGG} = $egg_home;
+$ENV{EGG} = $hgbase;
 }
 #=cut
 
@@ -251,7 +250,7 @@ print "XXX disabled resolverlist test2 for now\n";
 #like $x, qr/^zaf\n$/,
 #	"after removing 1st value, resolverlist gets 2nd value again";
 
-$ENV{EGG} = "$egg_home -d $td/foo";
+$ENV{EGG} = "$hgbase -d $td/foo";
 
 use File::Resolver;
 my $urn = "urn:uuid:430c5f08-017e-11e1-858f-0025bce7cc84";
@@ -428,6 +427,6 @@ else {
   like $x, qr/inflect multi "zaf" "paf"/, "multiple targets without spt";
 }
 
-$ENV{EGG} = $egg_home;
+$ENV{EGG} = $hgbase;
 remove_td($td);
 }

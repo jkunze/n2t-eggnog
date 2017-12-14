@@ -7,9 +7,8 @@ use warnings;
 use File::ValueTester ':all';
 use File::Value ':all';
 
-my ($td, $cmd) = script_tester "egg";
-my $egg_home = "--home $td";
-$ENV{EGG} = $egg_home;
+my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "egg";
+$ENV{EGG} = $hgbase;		# initialize basic --home and --bgroup values
 
 # Use this subroutine to get actual commands onto STDIN (eg, bulkcmd).
 #
@@ -44,7 +43,7 @@ like $x, qr|xxx creating.*binder1|, "multiple mkbinders in one stream";
 {
 remake_td($td);
 my $x;
-$ENV{EGG} = "$egg_home -d $td/foo";
+$ENV{EGG} = "$hgbase -d $td/foo";
 
 $x = `$cmd --version`;
 my $v1bdb = ($x =~ /DB version 1/);
@@ -126,7 +125,7 @@ myid.fetch
 # should force a re-open in rdwr mode.  Ultimately two closes should
 # be required: once after i.fetch and again at handler teardown.
 
-$ENV{EGG} = "$egg_home --verbose -d $td/foo";
+$ENV{EGG} = "$hgbase --verbose -d $td/foo";
 $x = run_cmds_on_stdin($cmdblock);
 like $x, qr/aaa: ccc\n.*bar: zaf\ncat: dog\n/s,
 	"four bulk commands exercising both readonly and rdwr modes";
@@ -148,7 +147,7 @@ $x = run_cmds_on_stdin($cmdblock);
 like $x, qr/(?:closing.*handler.*){2}beetle.*$n/s,
 	"$n bulk reads on persistent mopen, with two close/re-opens";
 
-$ENV{EGG} = "$egg_home -d $td/foo";
+$ENV{EGG} = "$hgbase -d $td/foo";
 $cmdblock = q{j.set   "an elem  name" of\ shellwords\ \"for'   you'
 j.fetch};
 

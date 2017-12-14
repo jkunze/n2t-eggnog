@@ -1,42 +1,9 @@
-# to do Sep 2012:
-#     pass purge label from egg, stop before bnd_del
-#     add an 'exists' command
-# XXX Sep 2012 :
-#     for resolver replication, tested rlog of bindings
-#     - list ids by criteria (OM loop to read raw anvl)
-# XXX change snag_dir snag_file to allow version capture by default, eg,
-#     snag foo/    shouldn't fail by default, but return "foo1/", while
-#     snag --noversion foo/    can fail
-# xxx change snag_version to look for rightmost digit string not followed
-#     by alphas (x2y->x2y.1 but x2->x3 and x-2y->x-2y1)
-#     and finding none, insert digits to the left of rightmost '.'
-# xxx can caster easily be shared on one system across all users or,
-#   better, shared on a host across one organization?
-# xxx should om->new have a default format??
-# XXX must implement {a} template for first digit convention!
-# XXX should user bindings be cordoned off from other things, eg,
-#     shoulders? pick-lists for known values of a field?
-# XXX what about bulkcmds that keep re-opening $bh? (w.o. closing)
-#     XXX can we take advantage of its being open already and not re-open?
-# XXX test with CSV format
-# XXX catch signals
-#  sub catch_zap {
-#      my $signame = shift;
-#      $shucks++;
-#	$dblocked or die();
-#      die "Somebody sent me a SIG$signame";
-#  }
-#  sub dblock {
-#	$dblocked = 1
-#  }
-#  sub dbunlock {
-#       $shucks and die();
-#	$dblocked = 0;
-#  }
-#  $SIG{INT} = 'catch_zap';  # could fail in modules
-#  $SIG{INT} = \&catch_zap;  # best strategy
-
 package File::Egg;
+
+# Author:  John A. Kunze, jak@ucop.edu, California Digital Library
+#		Originally created, UCSF/CKM, November 2002
+# 
+# Copyright 2008-2012 UC Regents.  Open source BSD license.
 
 use 5.010;
 use strict;
@@ -68,37 +35,6 @@ use Safe::Isa;
 
 our @suffixable = ('_t');	# elems for which we call suffix_pass
 
-#our $resolver_plus;		# boolean true if we have an advanced resolver
-# # XXXX change so this conditional isn't visible
-# #
-# # This run-time block is designed to conditionally include the advanced
-# # features in File::Resolver _if the module is present_, and to proceed
-# # with limited stub functionality if the module is not present, eg, in a
-# # partial source code release.
-# #
-# try {
-# 	require File::Resolver;
-# 	File::Resolver->import(':all');
-# 
-# 	$resolver_plus = 1;		# enable advanced resolution
-# 	@suffixable = ('_t');
-# }
-# catch {				# if the eval block failed, then
-# 	#no warnings 'redefine';	# should not need if eval failed
-# 	require File::StubResolver;	# enable only stub resolution
-# 	File::StubResolver->import(':all');
-# 					# xxx stubbed code is untested
-# 	$resolver_plus = 0;
-# 	@suffixable = ();
-# };
-
-# Binder - bind identifiers to named data (Perl module)
-# 
-# Author:  John A. Kunze, jak@ucop.edu, California Digital Library
-#		Originally created, UCSF/CKM, November 2002
-# 
-# Copyright 2008-2012 UC Regents.  Open source BSD license.
-
 use constant HOW_SET		=>  1;
 use constant HOW_ADD		=>  2;
 use constant HOW_INSERT		=>  3;
@@ -108,7 +44,8 @@ use constant HOW_DECR		=>  6;
 
 use constant NEXT_LIST_CMD_MAX	=>  1000;	# enough? too many?
 
-use constant PKEY		=>  '_id';	# exdb primary key
+use constant PKEY		=>  '_id';	# exdb primary key, which
+	# happens to be a MongoDB reserved key that enforces uniqueness
 
 # xxx test bulk commands at scale -- 2011.04.24 Greg sez it bombed
 #     out with a 1000 commands at a time; maybe lock timed out?
@@ -362,7 +299,7 @@ sub egg_purge { my( $bh, $mods, $lcmd, $formal, $id )=@_;
 
 
 	my $ret;
-	if ($sh->{exdb}) {
+	if ($sh->{exdb}) {				# egg_purge
 		# xxx flex_enc_exdb $id
 		my $msg;
 		my $ok = try {
@@ -441,7 +378,7 @@ sub exdb_get_dup { my( $bh, $id, $elem )=@_;
 
 	# yyy not error checking the args
 	my ($result, $msg);
-	my $ok = try {
+	my $ok = try {				# exdb_get_dup
 		my $coll = $bh->{sh}->{exdb}->{binder};	# collection
 # xxx make sure del and purge are done for exdb
 # xxx change to take over _id, and use find_id not find_one
@@ -503,7 +440,7 @@ sub egg_get_dup { my( $bh, $id, $elem )=@_;
 		# yyy if error?
 		#use Data::Dumper "Dumper"; print Dumper $ret;
 
-		#$sh->{ietest} and $exdups[0] ne $indups[0] and $sh->{txnlog} and
+	       #$sh->{ietest} and $exdups[0] ne $indups[0] and $sh->{txnlog} and
 		#	$sh->{txnlog}->out("ERROR: difference alert " .
 		#		"for id \"$id\", element \"$elem\"");
 
@@ -1513,8 +1450,8 @@ sub egg_init_id { my( $bh, $id, $optime )=@_;
 	}
 	if ($sh->{exdb}) {
 		@pkey = exdb_get_dup($bh, $id, PERMS_EL_EX);
-		scalar(@pkey) and
-			return 1;		# ok, nothing to do
+		scalar(@pkey) and		# it exists,
+			return 1;		# so nothing to do
 		# XXX NOT setting arith_with_dups numbers in external db
 		# xxx do I need to normalize elem name & value?
 		! exdb_set($bh, $id, PERMS_EL_EX, $id_value, $optime) and
@@ -2343,7 +2280,7 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 
 		$txnid = tlogger $sh, $txnid, "BEGIN $lcmd $id";
 
-		if ($bh->{sh}->{exdb}) {
+		if ($bh->{sh}->{exdb}) {		# egg_fetch
 			my $result;
 # XXX binder belongs in $bh, NOT to $sh!
 			my $coll = $bh->{sh}->{exdb}->{binder};	# collection

@@ -7,7 +7,8 @@ use warnings;
 use File::ValueTester ':all';
 use File::Value ':all';
 
-my ($td, $cmd) = script_tester "nog";
+my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "nog";
+$ENV{NOG} = $hgbase;		# initialize basic --home and --bgroup values
 
 {	# check mstat command
 remake_td($td);
@@ -48,7 +49,7 @@ remove_td($td);
 {	# stub log checker
 remake_td($td);
 #$ENV{MINDERPATH} = $td;
-$ENV{NOG} = "-p $td --txnlog $td/txnlog";
+$ENV{NOG} = "$hgbase -p $td --txnlog $td/txnlog";
 my ($x, $y);
 
 $x = `$cmd mkminter -t seq --atlast stop fk ddeek`;

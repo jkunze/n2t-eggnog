@@ -7,7 +7,8 @@ use warnings;
 use File::ValueTester ':all';
 use File::Value ':all';
 
-my ($td, $cmd) = script_tester "nog";
+my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "nog";
+$ENV{NOG} = $hgbase;		# initialize basic --home and --bgroup values
 
 {
 remake_td($td);

@@ -7,9 +7,8 @@ use warnings;
 use File::ValueTester ':all';
 use File::Value ':all';
 
-my ($td, $cmd) = script_tester "egg";
-my $egg_home = "--home $td";
-$ENV{EGG} = $egg_home;
+my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "egg";
+$ENV{EGG} = $hgbase;		# initialize basic --home and --bgroup values
 
 {
 remake_td($td);
@@ -18,7 +17,7 @@ my $x;
 $x = `$cmd --version`;
 my $v1bdb = ($x =~ /DB version 1/);
 
-$ENV{EGG} = "$egg_home -d $td/bindy";
+$ENV{EGG} = "$hgbase -d $td/bindy";
 $x = `$cmd mkbinder`;
 shellst_is 0, $x, "make binder named bindy";
 

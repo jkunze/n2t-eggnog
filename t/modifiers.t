@@ -8,9 +8,8 @@ use warnings;
 use File::ValueTester ':all';
 use File::Value ':all';
 
-my ($td, $cmd) = script_tester "egg";
-my $egg_home = "--home $td";
-$ENV{EGG} = $egg_home;
+my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "egg";
+$ENV{EGG} = $hgbase;		# initialize basic --home and --bgroup values
 
 {
 remake_td($td);
@@ -96,7 +95,7 @@ sub run_cmds_on_stdin { my( $cmdblock, $flags )=@_;
 
 {
 remake_td($td);
-$ENV{EGG} = "$egg_home -p $td -d $td/bar";
+$ENV{EGG} = "$hgbase -p $td -d $td/bar";
 my ($cmdblock, $x, $y);
 
 $x = `$cmd --verbose mkbinder bar`;

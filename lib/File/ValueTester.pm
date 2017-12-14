@@ -62,7 +62,10 @@ sub script_tester { my( $script )=@_;
 		$exdb = 1;
 		$indb = index($ENV{EGG_DBIE}, 'i') >= 0;	# not default
 	}
-	return ($td, $cmd, $homedir, $bgroup, $indb, $exdb);
+	my $hgbase = "--home $homedir";		# home-binder-group base string
+	$bgroup and				# empty unless EGG_DBIE is set
+		$hgbase .= " --bgroup $bgroup";
+	return ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb);
 }
 
 sub shellst_is { my( $expected, $output, $label )=@_;

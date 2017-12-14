@@ -7,11 +7,12 @@ use warnings;
 use File::ValueTester ':all';
 use File::Value ':all';
 
-my ($td, $cmd) = script_tester "nog";
+my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "nog";
+$ENV{NOG} = $hgbase;		# initialize basic --home and --bgroup values
 
 {	# do --type and --atlast combinations
 
-$ENV{NOG} = "-p $td";
+$ENV{NOG} = "$hgbase -p $td";
 my ($x, $y);
 
 remake_td($td);		# seq stop

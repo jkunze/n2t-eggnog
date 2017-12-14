@@ -8,12 +8,10 @@ use warnings;
 use File::ValueTester ':all';
 use File::Value ':all';
 
-my ($td, $cmd, $homedir, $bgroup, $indb, $exdb) = script_tester "egg";
-$ENV{EGG} = "--home $homedir";
-$bgroup and
-	$ENV{EGG} .= " --bgroup $bgroup";
-# xxx propagate above 4 lines to all t/*.t files
-# XXXXXXXX major change for all t/*.t -- adjust $ENV{EGG} like this
+# Do "export EGG_DBIE=e" (=ie) to test exdb (both) paths,
+
+my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "egg";
+$ENV{EGG} = $hgbase;		# initialize basic --home and --bgroup values
 
 {
 remake_td($td, $bgroup);

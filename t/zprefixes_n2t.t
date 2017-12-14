@@ -18,10 +18,13 @@ use File::ValueTester ':all';
 use File::Value ':all';
 use File::ApacheTester ':all';
 
-my ($td, $cmd) = script_tester "egg";
-my ($td2, $cmd2) = script_tester "nog";
-my $egg_home = "--home $td";
-$ENV{EGG} = $egg_home;
+#my ($td, $cmd) = script_tester "egg";		# yyy needed?
+#my ($td2, $cmd2) = script_tester "nog";		# yyy needed?
+
+my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "egg";
+my ($td2, $cmd2);
+($td2, $cmd2, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "nog";
+$ENV{EGG} = $hgbase;		# initialize basic --home and --bgroup values
 
 # Tests for resolver mode look a little convoluted because we have to get
 # the actual command onto STDIN in order to test resolver mode.  This
@@ -94,8 +97,6 @@ my $binders_root = $ENV{EGNAPA_BINDERS_ROOT};
 my $minters_root = $ENV{EGNAPA_MINTERS_ROOT};
 my ($ntd, $ntd2) = ($binders_root, $minters_root);
 
-my ($td, $cmd) = script_tester "egg";		# yyy needed?
-my ($td2, $cmd2) = script_tester "nog";		# yyy needed?
 remake_td($td);
 remake_td($td2);
 
