@@ -1152,6 +1152,16 @@ RequestHeader unset Request-Range
     Allow from all
 </Directory>
 
+
+# Turn on Server Side Includes for HTML pages served from htdocs/e.
+#
+AddType text/html .html
+AddOutputFilter INCLUDES .html
+
+<Directory "$srvref_root/htdocs/e">
+	Options +Includes 
+</Directory>
+
 # This <Directory> directive makes things in htdocs/e/x/ executable.
 # This is instead of opening up cgi-bin/.
 #

@@ -1369,7 +1369,8 @@ sub egg_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 			$db->db_del($key) and
 				addmsg($bh, "del failed"),
 				return undef;
-			# XXX NOT setting arith_with_dups numbers in external db
+# XXX NOT setting arith_with_dups numbers in exdb
+# maybe we won't support bindings count in exdb (first pass)
 			arith_with_dups($dbh, "$A/bindings_count", -$oldvalcnt);
 			#$dbh->{"$A/bindings_count"} < 0 and addmsg($bh,
 			#	"bindings count went negative on $key"),
@@ -1379,18 +1380,6 @@ sub egg_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 # XXX do we need to delete dupes or just overwrite in the Mongo document?
 		}
 	}
-
-	# yyy ?? document "add" vs "another" (like "add" but with echo)
-	# yyy stop worrying about whether "insert" can be meaningful in DB_File?
-	my ($found, $flags) = (0, 0);			# defaults
-	$how eq HOW_INSERT and
-		($found = nth_dup($db, $key, 0)),	# 0 = first
-		# yyy drop $found -- don't need
-		($flags = ($v1bdb || ! $found) ? 0 : DB_BEFORE),
-		#($flags = ($v1bdb || ! $found) ? 0 : R_IBEFORE),
-	;
-	# yyy maybe for HOW_ADD ($found = nth_dup($db, $key, -1)),  # -1 = last
-
 
 	# The main event.
 
@@ -1458,52 +1447,6 @@ sub egg_init_id { my( $bh, $id, $optime )=@_;
 			return undef;
 	}
 	return 1;
-}
-
-# Move cursor to $n-th dup of key and return its value.
-# Return undef on error or if not found (xxx is undef a possible value?).
-#
-sub nth_dup { my( $db, $key, $n )=@_;
-
-	$n ||= 0;			# which dup? default is first dup
-	$n =~ /^-?\d+$/		or return undef;	# error (not integer)
-	my ($origkey, $orign, $value) = ($key, $n, 0, 0);
-	my $dup_count;
-	$n < 0 and
-		($dup_count = get_dup($db, $key)),	# scalar context
-		($n = $dup_count + $n),			# count back from end
-		($n < 0		and return undef)	# range error
-	;
-	#$status = $db->seq($key, $value, R_CURSOR);
-	my $cursor = $db->db_cursor();
-	my $status = $cursor->c_get($key, $value, DB_SET_RANGE);
-	#
-	# $status is 0 on success, -1 on error, 1 on not found
-	# yyy ignore errors, and assume non-zero means 1 ("not found")
-	# Caller may want to check and make sure cursor is defined,
-	#   eg, via seq... R_LAST
-	#
-	$status			and return undef;	# not found
-	$key eq $origkey	or return undef;	# key not found
-
-	# If we get here, $n should now be non-negative.
-	while ($n-- > 0) {
-		#$status = $db->seq($key, $value, R_NEXT);
-		$status = $cursor->c_get($key, $value, DB_NEXT);
-		# yyy no error check, assume non-zero == DB_NOTFOUND
-		$status and
-			$cursor->c_close(),
-			undef($cursor),
-			return undef;	# error
-			# xxx fell off end unexpectedly
-		#xxx $key eq $origkey	or return undef;	# key not found
-	}
-#xxx $status = $db->put($key, "putafter val=$value", DB_AFTER|R_SETCURSOR)
-#	if ($dup_count == 2);
-#$status and print "status=$status: $!\n";
-	$cursor->c_close();
-	undef($cursor);
-	return $value;		# xxx ?? is undef a valid value of $value?
 }
 
 sub get_id_record { my( $db ) = shift;
@@ -2780,7 +2723,9 @@ sub expand_blobs { my( $db, $id, $msg, $khashR )=
 	# expand them, constitute a hash from blobs we find in $id.
 	# XXX currently only look for erc blobs; don't do xml blobs yet
 	#
-	my @dups = get_dup($db, "$id|erc");
+#XXX; no $bh;
+	my @dups = egg_get_dup($bh, $id,  $erc);
+	#my @dups = get_dup($db, "$id|erc");
 	my @elems;
 	for my $erc (@dups) {
 		$erc =~ s{		# undo (decode) any %-encoding

@@ -1,5 +1,6 @@
 use 5.010;
-use Test::More qw( no_plan );
+#use Test::More qw( no_plan );
+use Test::More;
 
 use strict;
 use warnings;
@@ -22,7 +23,12 @@ sub run_cmds_on_stdin { my( $cmdblock, $flags )=@_;
 
 # yyy? check mstat command ?
 
-{
+$exdb and plan skip_all =>
+	"why: list/next functions not implemented for dbie=e case";
+
+plan 'no_plan';		# how we usually roll -- freedom to test whatever
+
+SKIP: {
 remake_td($td);
 $ENV{EGG} = "$hgbase -p $td -d $td/bar";
 my ($cmdblock, $x, $y, $ark);
