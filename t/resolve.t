@@ -190,6 +190,9 @@ $x = resolve_stdin_hdr("-d $td/fon",
 like $x, qr|^inflect "cn.text/turtle" |,
 	"script called for content negotiation";
 
+exit;
+say "xxx x=$x"; exit; ##################
+
 # xxx test when id set actually includes(overrides) inflection
 $x =~ s/^.*\n//;				# remove top line
 like $x, qr|^inflect "\?" |, "script called for ? inflection";

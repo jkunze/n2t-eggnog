@@ -17,7 +17,7 @@ our @ISA = qw(Exporter);
 
 our @EXPORT = qw();
 our @EXPORT_OK = qw(
-	get_dup id2elemval
+	get_dup id2elemval egg_inflect
 	PERMS_ELEM OP_READ
 );
 our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
@@ -46,6 +46,13 @@ use constant NEXT_LIST_CMD_MAX	=>  1000;	# enough? too many?
 
 use constant PKEY		=>  '_id';	# exdb primary key, which
 	# happens to be a MongoDB reserved key that enforces uniqueness
+
+our %md_kernel_map;
+our %md_type_map;
+our $unav = '(:unav)';
+our $reserved = 'reserved';		# yyy ezid; yyy global
+our $separator = '; ';			# yyy anvl separator
+our $SL = length $separator;
 
 # xxx test bulk commands at scale -- 2011.04.24 Greg sez it bombed
 #     out with a 1000 commands at a time; maybe lock timed out?
@@ -153,14 +160,9 @@ sub egg_exists { my( $bh, $mods, $id, $elem ) = (shift,shift,shift,shift);
 	# xxxx need policy on protocol-breaking deletions, eg, to permkey
 	}
 
-#pod =head 2
-#pod
-#pod     my $xxxz;
-#pod
-#pod =cut
-
 	my $st = $om->elem("exists", $exists);
 	# XXX this om return status is being ignored
+
 	return 1;
 
 =for removal
@@ -2032,6 +2034,192 @@ sub show { my( $bh, $mods, $id, @elems )=@_;
 	return 1;
 }
 
+# delete first key found in $h from $keylist and
+# return corresponding key and value as 2-element list
+
+sub pop_meta { my ($h )=(shift);	# remaining args are keys
+	my ($val, $key);
+	foreach $key (@_) {
+		say "xxx pop $key";
+		! $h->{ $key } and
+			next;
+		$val = $h->{ $key };	# found a value to save
+		delete $h->{ $key };	# and delete
+		return ($key, $val);
+		# yyy not deleting possible other
+		# yyy not dealing with duplicates
+	}
+	return ($key, $unav);
+}
+
+sub format_metablob { my($rawblob, $h, $om, $profile, $target)=@_;
+
+	# yyy ignoring $profile, assume $rawblob is ANVL lines
+	my ($key, $val);
+	my @blobkeyvals = ();			# string blob to return
+	push @blobkeyvals, pop_meta($h, $unav,
+			qw(who erc.who dc.creator datacite.creator));
+	push @blobkeyvals, pop_meta($h, $unav,
+			qw(what erc.what dc.title datacite.title));
+	push @blobkeyvals, pop_meta($h, $unav,
+			qw(when erc.when dc.date datacite.publicationyear));
+#say "xxx blob=$blob";
+	#$om->elem("xxxy $k", $v);
+
+	#while (($k, $v) = each %$h) {
+	#	#say "xxxz $k -> $v";
+	#	say "om=", $om->elem("xxxy $k", $v);
+	#}
+	return $rawblob;
+}
+
+sub md_map_init {
+	# hash in pairs
+	%md_kernel_map = ( qw(
+  who who  erc.who who  dc.creator who  datacite.creator who
+  what what  erc.what what  dc.title what  datacite.title what
+  when when  erc.when when  dc.date when  datacite.publicationyear when
+  where where  erc.where where  dc.identifier where  datacite.identifier where
+  how how  erc.how how  dc.type how  datacite.resourcetype how
+	) );
+# ERC how (metadata types): text, image, audio, video, data, code, service, term, agent, project, event; (oba? thing?) (oba/ols)
+#  optionally append one or more "/<subtype>" to any, "+" to combine, exactly one final " set" qualifier
+# I I push how types into yamz
+# I I add reserved term top level "thing" for other (or use "oba"?)
+# I I reserved subtype "offstill"? (offline still = physical thing that at the
+#        moment has no online surrogate) "nosy"=no online surrogate yet
+
+# DataCite resourceTypeGeneral: Audiovisual Collection Dataset Event Image InteractiveResource Model PhysicalObject Service Software Sound Text Workflow Other
+#     <resourceType resourceTypeGeneral="Text">Project</resourceType>
+#   normalize to lowercase for mapping, eg, Text/Project->text/project->project
+# Dublin Core types: Collection Dataset Event Image InteractiveResource MovingImage PhysicalObject Service Software Sound StillImage Text 
+	# pairs map foreign types to ERC types
+	%md_type_map = ( qw(
+	) );
+	return 1;
+}
+
+# Called by resolver (and CLI for testing)
+
+sub egg_inflect { my ($bh, $mods, $om, $id)=@_;
+
+	defined($id) or
+		addmsg($bh, "no identifier specified to inflect"),
+		return undef;
+
+	# $st holds accumlated strings/statuses returns from $om calls, if any
+	my $p = $om ? $om->{outhandle} : 0;  # whether 'print' status or small
+	my $s = '';                     # output strings are returned to $s
+	my $st = $p ? 1 : '';           # returns (stati or strings) accumulate
+
+	! egg_authz_ok($bh, $id, OP_READ) and
+		return undef;
+
+	# yyy should we record inflect call in txnlog?
+	my ($elemsR, $valsR) = ([], []);
+
+	# * $id below might be best like a $rid (root id (no suffix))
+	# 3rd arg below (OM) is undefined because, unlike egg_fetch,
+	# we only want the results in $elemsR and $valsR for now
+
+	my $rawblob = get_rawidtree($bh, $mods, undef,	# undefined OM
+			$elemsR, $valsR, $id) or
+		return '';
+
+# sort elems and values for output
+# erc =? electronic resource communication
+# prepend: who, what, when, where (currently), how
+#    text+image set; agent set; event set; data set
+#    --> and delete from rest if present
+
+	my ($profile, $idstatus);	# _p, _s
+	my ($key, $val);
+	my $target = '';		# _t
+	my @pairs = ();
+	#qw(who erc.who dc.creator datacite.creator));
+	# make into hash keys, with values of who, what, when, where, how
+	# look up each element;
+	#   if found, append to kernel output element and delete if not
+	#       dc.... or datacte....
+	foreach $key (@$elemsR) {		# for each element name ($key)
+
+		$val = shift @$valsR;		# corresponding value
+		if ('_' eq substr $key, 0, 1) {		# if $key starts with _
+			$key eq '_t' and
+				$target .= $separator.$val,
+				next;
+			$key eq '_s' and $val eq $reserved and
+				return 'Reserved';
+			$key eq '_s' and $key = 'status';
+			# yyy make other internal elems human readable
+			push @pairs, $key, $val;
+			next;
+		}
+
+		# split up erc blobs like this one
+		# erc: who: Proust, Marcel%0Awhat: Remembrance of Things Past
+		# yyy to do: split up xml blobs
+
+		if ($key eq 'erc') {
+			my @erc = split /%0A/i, $val;	# can make empty elems
+			push @pairs, map		# only grab non-empties
+				{ /:/ and split /\s*:\s*/ }	# add subelems
+					@erc;
+			next;				# don't push erc blob
+		}
+		if ($key eq 'datacite') {
+			push @pairs, $key, $val;	# don't push xml blob
+			next;				# yyy after exploding it
+		}
+		push @pairs, $key, $val;
+	}
+
+	# Now that blobs have been expanded, reprocess from the top,
+	# extracting kernel elements to put in front of the rest.
+	# Use md_kernel_map to determine whether an element belongs
+	# in one of 5 categories: who, what, when, where, how
+	# NB: we use $separator in front of each value to support multiple
+	# values, so we always strip it later (and add it when needed).
+
+	my %kernel = ();
+	! %md_kernel_map and		# if not already done,
+		md_map_init();		# initialize metadata crosswalk hashes
+
+	$kernel{ where } = $separator.$id;	# initialize 'where' element
+						# with $separator we later drop
+	$target and
+		$target = substr($target, $SL),	# to drop $separator
+		$kernel{ where } .= " (currently $target)";
+
+	my $mk;					# mapped key
+	my @newpairs;				# resulting pairs
+	while ($key = shift @pairs) {		# eg, key=dc.title, key=format
+		$val = shift @pairs;
+		#say "xxx k/v $key, $val";
+		if ($mk = $md_kernel_map{$key}) {	# eg, dc.title -> what
+			$kernel{$mk} .=	$separator.$val;    # eg, $kernel{what}
+			#say "xxx --- mk=$mk, kmk=$kernel{$mk}";
+			# if it was originally a kernel element, drop it
+			$mk eq $key || $mk eq "erc.$key" and
+				next;		# skip element copy at bottom
+		}
+		push @newpairs, $key, $val;
+		#say "xxx newpairs $key, $val";
+	}
+	for $mk (qw( who what when where how )) {
+		$kernel{$mk} and $kernel{$mk} =		# trim first few chars
+			substr $kernel{$mk}, $SL;	# to drop $separator
+		($s .= $om->elem($mk, ($kernel{$mk} || $unav))); # see comments
+		($p && (($st &&= $s), 1) || ($st .= $s));  # elsewhere on this
+	}
+	while ($key = shift @newpairs) {	# eg, key=dc.title, key=format
+		$val = shift @newpairs;
+		($s .= $om->elem($key, $val));	# see get_rawidtree comments
+		($p && (($st &&= $s), 1) || ($st .= $s));  # elsewhere on this
+	}
+	return $p ? $st : $s;
+}
+
 # ? get/fetch [-r] ... gets values?
 # ? getm/fetchm [-r] ... gets names minus values?
 # ? getm/fetchm [-r] ... gets metadata elements (not files)?
@@ -2102,7 +2290,7 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 	my $st = $p ? 1 : '';           # returns (stati or strings) accumulate
 	my $sh = $bh->{sh};
 
-	my $rrm = $bh->{rrm};
+	my $rrm = $bh->{rrm};		# yyy pretty sure $rrm not used here
 	my $lcmd = $rrm ? 'resolve' : 'fetch';
 
 	# If in resolver mode and there is an array of subresolvers
@@ -2284,7 +2472,6 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 			# Unlike the call from within egg_purge(), this call to
 			# get_rawidtree() does our work itself by outputing as
 			# a SIDE-EFFECT, instead of returning a list to process.
-
 			$st = get_rawidtree($bh, $mods, $om,	# $om defined
 				$elemsR, $valsR, $id);
 		}
@@ -2675,331 +2862,6 @@ sub get_rawidtree { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id )=
 	return $om ? $st : 1;		# $valsR, if set, return values
 	#return $st;
 }
-
-=for moving
-
-############### newer resolver code ################
-
-# Special code :id puts the id as the final "where".  Kludge.
-# Special code :policy creates a fixed policy statement.  Kludge.
-#
-sub eset_brief {
-	return qw(who what when where :id);
-}
-
-sub eset_support {
-	#return (eset_brief(), ':policy');
-	return (eset_brief(),
-		':s-who', ':s-what', ':s-when', ':s-where', ':s-how');
-}
-
-#### Blob support
-
-# If any of the elements or sets were requested and blobs are bound to the
-# id, we'll first open up the blobs to make their elements accessible.
-#
-our %deblobify = (
-	':brief' => \&eset_brief, ':support' => \&eset_support,
-	'who' => 1, 'what' => 1, 'when' => 1, 'where' => 1,
-);
-
-# Returns list of any new elements to add and updates $khashR
-#
-sub expand_blobs { my( $db, $id, $msg, $khashR )=
-		(shift,shift,shift,shift);	# rest of arg list is elements
-
-	$msg = '';
-	#my @triggers = grep $deblobify{$_}, @_;
-	my @triggers = ();
-	map { $deblobify{$_} and push @triggers, $deblobify{$_} } @_;
-#print "triggers=@triggers\n";
-	scalar(@triggers) or	# if no trigger elements, return empty list
-		return ();
-
-	# If we get here, @triggers contains those elements requested
-	# that trigger blob expansion.  Some of those "elements" actually
-	# name sets of elements that the user requests, and we also need
-	# to add those elements to the array of elements requested.  To
-	# expand them, constitute a hash from blobs we find in $id.
-	# XXX currently only look for erc blobs; don't do xml blobs yet
-	#
-#XXX; no $bh;
-	my @dups = egg_get_dup($bh, $id,  $erc);
-	#my @dups = get_dup($db, "$id|erc");
-	my @elems;
-	for my $erc (@dups) {
-		$erc =~ s{		# undo (decode) any %-encoding
-			%([0-9a-fA-F]{2})
-		}{
-			chr(hex("0x"."$1"))
-		}xeg;
-# XXXXX this pass ref for $msg doesn't work, does it?
-		$msg = anvl_recarray("erc:\n" . $erc, \@elems) and
-			return ();
-		$msg = anvl_arrayhash(\@elems, $khashR) and
-			return ();
-	}
-
-	# Now to add new elements from any named element sets, for which
-	# the trigger is actually a reference to code.
-	#
-	return map { ref($_) eq "CODE" and &$_ } @triggers;
-}
-
-sub html_head { my( $title )=@_;
-	
-	return
-qq@<!DOCTYPE HTML PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
-	"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
-<head>
-<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-<title>$title</title>
-<link rel="shortcut icon" href="http://n2t.net/d/doc/favicon.ico">
-<link rel="stylesheet" type="text/css" href="http://n2t.net/d/doc/style.css">
-<script type="text/javascript" src="http://n2t.net/d/doc/jquery.js"></script>
-<script type="text/javascript" src="http://n2t.net/d/doc/base.js"></script>
-
-<script type="text/javascript">/*<![CDATA[*/
-areMessages = false;
-
-/*]]>*/</script>
-
-<head>
-<title
-</head>
-<body>
-<center>
-<h2>$title</h2>
-@;
-}
-
-sub html_erc { my( $erc )=@_;
-	
-	return
-qq@<!-- Electronic Resource Citation (http://dublincore.org/groups/kernel/)
-
-erc:
-$erc
--->
-@;
-}
-
-sub html_tail {
-	
-	return
-qq@
-</center>
-</body>
-</html>
-@;
-}
-
-# Returns first matching initial substring of $id or the empty string.
-# yyy currently we only check first dup for a match
-# The match is successful when $id has $element bound to $value under it.
-# If $value is undefined, match the first $id for which $element exists
-# (bound to anything or nothing).  If no $element is given either, match
-# the first $id that exists in the database.  Note that matching occurs
-# only by examination of the first dup.
-#
-# Chopping occurs at word boundaries, where words are strings of letters,
-# digits, underscores, and '~' ('~' included for "gen_c64" ids).
-#
-# Example: given this $id
-#   http://foo.example.com/ark:/12345/xt2rv8b/chap3/sect5//para4.txt?a=b&c=d/
-#
-# chop from back into shorter $id's, looking up each, in this order:
-#   http://n2t.net/ark:/12345/xt2rv8b/chap3/sect5//para4.txt?a=b&c=d/
-#   http://n2t.net/ark:/12345/xt2rv8b/chap3/sect5//para4.txt?a=b&c=d
-#   http://n2t.net/ark:/12345/xt2rv8b/chap3/sect5//para4.txt?a=b
-#   http://n2t.net/ark:/12345/xt2rv8b/chap3/sect5//para4.txt
-#   http://n2t.net/ark:/12345/xt2rv8b/chap3/sect5//para4
-#   http://n2t.net/ark:/12345/xt2rv8b/chap3/sect5
-#   http://n2t.net/ark:/12345/xt2rv8b/chap3
-#   http://n2t.net/ark:/12345/xt2rv8b
-#   http://n2t.net/ark:/12345
-#   http://n2t.net/ark
-#   http://n2t.net
-#   http://n2t
-#   http
-#
-# Note that the value check is a "not equals": chop until you find a value
-# different from the given value (eg, non-empty, or different from "").
-#
-# Loop logic
-#
-# The main loop is a classic Perl complex Boolean test (for speed) against
-# an id that keeps getting its tail chopped off.  The loop's premise,
-#   "Keep going until either the key is found OR we ran out of id"
-# can be expressed as
-#   "Keep going until either
-#      (the key exists && we're not value-checking ||
-#        the key exists && the key's lookup value ne $value)
-#    OR we ran out of id"
-# which is the same as
-#   "Keep going until either
-#      (the key exists && (we're not value-checking ||
-#        the key's lookup value ne $value))
-#    OR we ran out of id"
-#
-# What's encoded below is the result of turning the "until" into a
-# "while" by negating the test to get:
-#   "Keep going _while_ either
-#      (the key doesn't exist || (we are value-checking &&
-#        the key's lookup value eq $value))
-#    AND we haven't run out of id"
-#
-sub chopback { my( $bh, $verbose, $id, $stopchop, $element, $value )=@_;
-
-	my $dbh = $bh->{tied_hash_ref};
-
-	define($id) or
-		$id = "";
-	$stopchop ||= 0;
-	my $tail = "";
-	defined($element) and
-		$tail .= "|$element";
-	my $key = $id . $tail;
-	my $valcheck = defined($value);
-	# yyy what if $value defined but $element undefined?
-	#$element ||= "";		# yyy edge case avoiding undef error
-
-# xxx allow opt to define its own chopback algorithm,
-# xxx allow opt to carry verbose and debug flags
-
-	# Note that qr/\w_~/ matches c64 identifiers
-# XXXXX maybe chopback should pause at _ to look for an ancestor?
-#       or would that violate containment? ie, structure recognized
-#       by chopback for purpose of inheritance but not by ARK?
-	$id =~ s/[^\w_~]*$//;		# trim any terminal non-word chars
-	# See loop logic comments above.
-	1 while (					# continue while
-		! exists($dbh->{$key}) ||		# key doesn't exist or
-			($valcheck 			# we're checking values
-				&&			# and
-	# xxx document: not checking for dups
-			$dbh->{$key} eq $value)		# it's the wrong value
-		and					# and if,
-		($verbose and print("id=$id\n")),	# (optional chatter)
-		($id =~ s/[^\w_~]*[\w_~]+$//),		# after we chop tail
-		($key = $id . $tail),			# and update our key,
-		length($id) > $stopchop			# something's left
-	);
-	# If we get here, we either ran out of $id or we found something.
-
-	return length($id) > $stopchop ? $id : "";
-}
-
-# Discussion of Suffix Pass-Through
-#
-# xxx see PURL partial redirect flavors at
-#     http://purl.org/docs/help.html#purladvcreate
-# (all caps below indicate arbitrary path)
-# 1. Partial  (register A -> X, submit A/B and go to X/B)
-# 2. Partial-append-extension (reg A->X, submit A/foo/B?C -> X/B.foo?C)
-# 3. Partial-ignore-extension (reg A->X, submit A/B.html -> X/B)
-# 4. Partial-replace-extension (reg A->X, submit A/htm/B.html->X/B.htm)
-# XXX find out what use case they had for 2, 3, and 4; perhaps these?
-# ?for 2, stuff moved and extensions were added too
-# ?for 3, stuff moved and extensions were removed too
-# ?for 4, stuff moved and extensions were replaced too
-
-# xxx looks like Noid has had this forever, but on a per resolver basis...
-# xxx compare Handle "templates", quoting from "Handle Technical Manual"
-#     server prefix 1234 could be configured with
-#<namespace> <template delimiter="@">
-# <foreach>
-#  <if value="type" test="equals" expression="URL">
-#   <if value="extension" test="matches"
-#     expression="box\(([^,]*),([^,]*),([^,]*),([^,]*)\)" parameter="x">
-#    <value data=
-#        "${data}?wh=${x[4]}&amp;ww=${x[3]}&amp;wy=${x[2]}&amp;wx=${x[1]}" />
-#   </if>
-#   <else>
-#    <value data="${data}?${x}" />
-#   </else>
-#  </if>
-#  <else>
-#   <value />
-#  </else>
-# </foreach>
-#</template> </namespace>
-#
-# For example, suppose we have the above namespace value in 0.NA/1234,
-# and 1234/abc contains two handle values:
-#   1	URL	http://example.org/data/abc
-#   2	EMAIL	contact@example.org
-# Then 1234/abc@box(10,20,30,40) resolves with two handle values:
-#   1	URL	http://example.org/data/abc?wh=40&ww=30&wy=20&wx=10
-#   2	EMAIL	contact@example.org
-
-# TBD: this would be a generalization of suffix_pass that returns
-# metadata (where not prohibited) for a registered ancestor of an
-# extended id that's not registered
-sub meta_inherit { my( $noid, $verbose, $id, $element, $value )=@_;
-}
-
-# xxx dups!
-# xxx stop chopping at after a certain point, eg, after base object
-#     name reached and before backing into NAAN, "ark:/"
-#     (means manually asking for something like n2t.net/ark:/13030? )
-
-# xxx don't call this routine except for ARKs (initially, to illustrate)
-#     maybe later call it for other schemes
-
-# returns array of values
-# !!! assumes $valsR has been initialized to {}
-sub suffix_pass { my( $bh, $id, $element )= (shift,shift,shift);
-
-	my $origid = $id;
-	my $origlen = length($origid);
-
-	my $db = $bh->{db};
-	my $opt = $bh->{opt};
-
-	my $verbose = $opt->{verbose};
-
-	$verbose and print "chopping $id\n";
-	#my $element = "_t";	# element to give to chopback()
-	my $value = "";			# because we want a non-empty value
-
-	# Don't chopback beyond object identifier into scheme, host, etc.
-	#
-	my $stop = $origid;		# figure out what we'll ignore
-	$stop =~ s,^\w+://[^/]*/*,,;		# urls: http, ftp, then
-	$stop =~ s,^urn:[^:]+:+,,	or		# urn or
-		$stop =~ s,^\w+:/*[\d.]+/+,,;		# ark, doi, hdl
-	my $stopchop = $origlen - length($stop);
-	$verbose and
-		print "aim to stop before $stopchop chars (before $stop)\n";
-
-	my $newid = chopback($bh, $verbose, $id, $stopchop, $element, $value);
-	#length($newid) <= $stopchop or
-	$newid or
-		($verbose and print "chopback found nothing\n"),
-		return ();
-
-	# Found something.  Extract suffix by presenting the original
-	# id and a negative offset to substr().
-	#
-	# xxx this $verbose is more like $debug
-	$verbose and print "chopped back to $newid\n";
-	my $suffix = substr $origid, length($newid) - $origlen;
-
-	my @dups = map $_ . $suffix, get_dup($db, "$newid|$element");
-
-	$verbose	and print "suffix_pass->(", join(",", @dups), ")\n";
-
-	# yyy if we had a "no passthru" flag check, it would go here.
-	#exists($dbh->{"$newid|$nospt"}) and
-	#	($verbose and print "passthru prevented by $nospt flag\n"),
-	#	return ();
-
-	return @dups;
-}
-
-=cut
 
 # XXXXX feature from EZID UI redesign: list ids, eg, by user
 # XXXXX feature from EZID UI redesign: sort, eg, by creation date

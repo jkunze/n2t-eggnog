@@ -1273,7 +1273,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 		$target and
 			$dups[0] = $target;
 		scalar(@dups) and
-			return cnflect( $sh, $txnid, $db, $rpinfo, $accept,
+			return cnflect( $bh, $txnid, $db, $rpinfo, $accept,
 				$id, \@dups, $idx, "aftereaster" );
 		#$msg = "don't know what to do with $ur_origid";
 		#return undef;
@@ -1296,7 +1296,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 	#$tag = "aftereaster id=$id, origid=$origid";	# debug
 
 	scalar(@dups) and
-		return cnflect( $sh, $txnid, $db, $rpinfo, $accept,
+		return cnflect( $bh, $txnid, $db, $rpinfo, $accept,
 			$id, \@dups, $idx, "aftereaster" );
 
 	# if not found...
@@ -1324,7 +1324,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 
 	@dups = File::Egg::get_dup($db, $id . TSUBEL);		# usual case
 	scalar(@dups) and
-		return cnflect( $sh, $txnid, $db, $rpinfo, $accept,
+		return cnflect( $bh, $txnid, $db, $rpinfo, $accept,
 			$id, \@dups, $idx );
 
 	# if still not found...
@@ -1335,7 +1335,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 		defined($shadow) and @dups =
 			File::Egg::get_dup($db, $shadow . TSUBEL);
 		scalar(@dups) and
-			return cnflect( $sh, $txnid, $db, $rpinfo, $accept,
+			return cnflect( $bh, $txnid, $db, $rpinfo, $accept,
 				$shadow, \@dups, $idx );
 	}
 
@@ -1419,7 +1419,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 # #print "xxx after re=$redirect\n";
 # 		$redirect =~ m|https?://| or	# if proto not specified by rule
 # 			$redirect =~ s|^|$proto://|;	# go with user's choice
-# 		return cnflect( $sh, $txnid, $db, $rpinfo, $accept,
+# 		return cnflect( $bh, $txnid, $db, $rpinfo, $accept,
 # 			$id, [ $redirect ], $idx );
 # 	}
 # 	elsif ($rpinfo and $rpinfo eq 'SAI') {		# xxx drop this kludge!
@@ -1490,7 +1490,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 		$rid = substr($id, 0, - length($suffix));
 		($idx->{suffix}, $idx->{rid}) = ($suffix, $rid);
 		scalar(@dups) and
-			return cnflect( $sh, $txnid, $db, $rpinfo, $accept,
+			return cnflect( $bh, $txnid, $db, $rpinfo, $accept,
 				$id, \@dups, $idx );
 		#@suffixable and grep(/^\Q$elem\E$/, @suffixable) and
 	}
@@ -1500,7 +1500,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 	# still nothing, so try rule-based mapping
 	@dups = File::Egg::id2elemval($bh, $db, $id, File::Binder::TRGT_MAIN);
 	scalar(@dups) and
-		return cnflect( $sh, $txnid, $db, $rpinfo, $accept,
+		return cnflect( $bh, $txnid, $db, $rpinfo, $accept,
 			$id, \@dups, $idx );
 
 	# Get redirection prefix info for the first, most-specific
@@ -1544,7 +1544,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 # XXX proto preservation should work for ALL targets, not just rule-based
 		$redirect =~ m|https?://| or	# if proto not specified by rule
 			$redirect =~ s|^|$proto://|;	# go with user's choice
-		return cnflect( $sh, $txnid, $db, $rpinfo, $accept,
+		return cnflect( $bh, $txnid, $db, $rpinfo, $accept,
 			$id, [ $redirect ], $idx );
 	}
 
@@ -1552,7 +1552,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 	@dups = ('');		# setting @dups to a single empty string,
 				# which satisfies the rrm protocol
 
-	return cnflect( $sh, $txnid, $db, $rpinfo, $accept,
+	return cnflect( $bh, $txnid, $db, $rpinfo, $accept,
 		$id, \@dups, $idx );
 		#\@dups, $idx, $tag . " lastcall" ...
 }
@@ -1568,7 +1568,27 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 	#        a.b.c/xyzzRzzxxy  ->  a.b.c/xyzzBzzxxy
 	#
 
-sub prep_script_args {
+# add a metadata blob arg and escape all args to make safe to pass to script
+
+sub prep_script_args { my ($bh, $id) = (shift, shift);	# remaining args
+
+	# xxx $mods and $om undefined
+	# xxx $mods should probably be "all"
+	# xxx what should $om be? $bh->{om_formal} ?
+	#my $mods = { all => 1 };
+	#my $om = $bh->{om_formal};
+
+	# ($s = $om->elem($out_elem, $value)),
+	# ($p && (($st &&= $s), 1) || ($st .= $s))
+
+my $format;
+# xxx call this once?
+my $om = File::OM->new($format || 'anvl',
+	{ outhandle => 0 });	# return strings
+
+	my $metablob = egg_inflect($bh,
+		{ all => 1 }, $om, $id) // '';
+	unshift @_, 'inflect', $id, $metablob;
 	my $argline = '';
 	for my $arg (@_) {
 		$arg ||= '';
@@ -1593,11 +1613,12 @@ my $Ti = File::Binder::TRGT_INFLECTION; # target for inflection
 
 # Content Negotiation/Inflection
 
-sub cnflect { my( $sh, $txnid, $db, $rpinfo, $accept, $id, 
+sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id, 
 				$dupsR, $idx, $tag )=@_;
 
+	my $sh = $bh->{sh};
 	my $fail = $idx->{fail};
-	my $rid = $idx->{rid};
+	my $rid = $idx->{rid};			# root id (no suffix)
 	my $suffix = $idx->{suffix};
 	my $ur_origid = $idx->{ur_origid} || '';
 	my $st;
@@ -1615,10 +1636,11 @@ sub cnflect { my( $sh, $txnid, $db, $rpinfo, $accept, $id,
 	# Now we start defining script arguments that we might be using.
 
 	# $scriptargs give context for the "inflect" script we may call
-	my $scriptargs = prep_script_args(
-		$rid, $idx->{scheme}, $idx->{naan},
-		$idx->{shoulder}, $idx->{shoshoblade}, $suffix,
-	);
+	my $scriptargs;
+	#my $scriptargs = prep_script_args($bh, $rid, "dummy",
+	#	$idx->{scheme}, $idx->{naan},
+	#	$idx->{shoulder}, $idx->{shoshoblade}, $suffix,
+	#);
 	#my $scriptargs =
 	#	qq@"$rid" "$idx->{scheme}" "$idx->{naan}" @ .
 	#	qq@"$idx->{shoulder}" "$idx->{shoshoblade}" "$suffix"@;
@@ -1644,7 +1666,7 @@ sub cnflect { my( $sh, $txnid, $db, $rpinfo, $accept, $id,
 	if (! $fail and $suffix and $suffix !~ /\w/) {	# now check root id
 
 		$db->db_get("$rid$Rs$Ti$suffix", $target) and	# unless found
-			$db->db_get("$rid$Rs$Ti", $target) and # unless found
+			$db->db_get("$rid$Rs$Ti", $target) and	# unless found
 				$target = '';			# not found
 
 		$target and		# if $target found, redirect to it
@@ -1653,11 +1675,14 @@ sub cnflect { my( $sh, $txnid, $db, $rpinfo, $accept, $id,
 			$returnline = "redir302 $target",
 		1 or		# else check if "inflect" script handles it
 		$suffix eq '?'   || $suffix eq '??'  ||
-			$suffix eq '/'   || $suffix eq './'  ||
-			$suffix eq '/?'  || $suffix eq '/??' ||
-			$suffix eq './?' || $suffix eq './??'
-			and		# script may know what to do with it
-				$returnline = qq@inflect "$suffix" $scriptargs@
+				$suffix eq '/'   || $suffix eq './'  ||
+				$suffix eq '/?'  || $suffix eq '/??' ||
+				$suffix eq './?' || $suffix eq './??'
+				and	# script may know what to do with it
+			$returnline = prep_script_args($bh, $rid,
+					"suffix=$suffix", $idx->{scheme},
+					$idx->{naan}, $idx->{shoulder},
+					$idx->{shoshoblade}, $suffix)
 		;
 	}
 
@@ -1674,17 +1699,26 @@ sub cnflect { my( $sh, $txnid, $db, $rpinfo, $accept, $id,
 		$target and		# if $target found, redirect to it
 			$returnline = "redir303 $target",	# http range-14!
 		1 or		# else check if "inflect" script handles it
-			$returnline = qq@inflect "cn.$accept" $scriptargs@
+			$returnline = prep_script_args($bh, $rid,
+					"cn.$accept", $idx->{scheme},
+					$idx->{naan}, $idx->{shoulder},
+					$idx->{shoshoblade}, $suffix)
+			#$returnline = qq@inflect "cn.$accept" $scriptargs@
 		;
 	}
 
 	# Check for multiple redirection if $returnline is still empty
 	# (ie, id was found but no inflection or content negotation).
 	#
+# xxx $scriptargs not initialized
 	! $returnline and scalar(@$dupsR) > 1 and
 		# double quote each target and end list of targets with --
-		$returnline = 'inflect multi "'
-			. join('" "', @$dupsR) . '" -- ' . $scriptargs;
+		$returnline = prep_script_args($bh, $rid,
+			'multi "' . join('" "', @$dupsR) . '" -- ' .
+			$idx->{scheme}, $idx->{naan}, $idx->{shoulder},
+			$idx->{shoshoblade}, $suffix);
+		#$returnline = 'inflect multi "'
+		#	. join('" "', @$dupsR) . '" -- ' . $scriptargs;
 
 	# Mainstream case.
 	# At this point $returnline will still be empty if we're doing
@@ -1714,9 +1748,6 @@ sub cnflect { my( $sh, $txnid, $db, $rpinfo, $accept, $id,
 	#$returnline or			# if $returnline not already set
 	#	$returnline = "redir302 $dupsR->[0]";
 
-	#$returnline =~ tr |\n||d and $xxxtxnlog and (
-	#	$xxxtxnlog->out(
-	#		"$xxxtxnid INFO $id returnline had a newline inside!"),
 	$returnline =~ tr |\n||d and
 		$txnid = tlogger($sh, $txnid,
 			"INFO $id returnline had a newline inside!");
@@ -1739,7 +1770,6 @@ sub cnflect { my( $sh, $txnid, $db, $rpinfo, $accept, $id,
 			$msg .= " PFX $rpinfo->{key}";
 		$msg .= " -> $returnline";
 		#$msg .= " resolve $id to $dups[0]";
-		#$xxxtxnlog->out("$xxxtxnid $msg");
 		$txnid = tlogger $sh, $txnid, $msg;
 	}
 	return $st;	# return code rarely correlates with failed lookup

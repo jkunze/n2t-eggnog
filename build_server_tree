@@ -781,12 +781,15 @@ inflect=$buildout_root/htdocs/e/x/inflect
 	exec perl <<- 'EOS'
 
 	#!/usr/bin/env perl
-	##
-	##  printenv -- demo CGI program which just prints its environment
-	##
 
-	print "Content-type: text/plain; charset=iso-8859-1\n\n";
+	use 5.010;
+	use strict;
+	use warnings;
+
+	print "Content-type: text/plain; charset=utf-8\n\n";
 	print "inflections: not yet implemented\n";
+	say "args: \$@";
+	say "qs: \$ENV{QUERY_STRING}";
 	#foreach $var (sort(keys(%ENV))) {
 	#    $val = $ENV{$var};
 	#    $val =~ s|\n|\\n|g;

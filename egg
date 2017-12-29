@@ -78,6 +78,7 @@ Some commands:
   i.purge         remove id i by removing all dupes of all elements under i
   i.exists [n]    return 1 if i (or n under i) exists, else return 0
   i.resolve [hdr] return one-line _t value (influenced by HTTP hdr info)
+  i.inflect       return resolution metadata (to test inflections)
   i.norm          return resolver-normalized version of i
   i.shadow        like norm but return i as shadow ARK if applicable
   list m [k...]   list up to m (0=unlimited) ids (or ids under keys k)
@@ -117,7 +118,8 @@ my ($contact, $template, $snaa, $total);
 my @valid_commands = qw(
 
 	el elem ex expr bl blob fi file
-	bind dbinfo fetch get hello help man note usage version
+	bind dbinfo fetch get hello help inflect
+	man note usage version
 	pr logmark cullrlog resolve exists purge
 	mkbinder rmbinder delbinder
 	dbsave dbload
@@ -999,12 +1001,24 @@ sub bdx_getfetch { my( $formal, @elems )=@_;
 	bopen($bh, $cmdr, DB_RDONLY, $minderpath) or
 		outmsg($bh), return 1;
 
-	# in rrm mode, apache config file arranges for some extra args to
-	# be inserted before ...
-	# $rrm and set $bh->{rrmcontact} = current contact info
-	#File::Egg::mfetch($bh, $om, undef, $bindid, @elems) or
-	#
 	File::Egg::egg_fetch($bh, $mods, $om, undef, undef, $bindid, @elems) or
+		outmsg($bh), return 1;
+
+	return 0;
+}
+
+# mostly to make it easier to test resolution under inflections
+
+sub bdx_inflect { my( @elems )=@_;
+
+	my $om = $bh->{om_formal};
+
+	my $minderpath = $cmdr_from_d_flag ?
+		"" : $bh->{minderpath};		# search unless -d used
+	bopen($bh, $cmdr, DB_RDONLY, $minderpath) or
+		outmsg($bh), return 1;
+
+	File::Egg::egg_inflect($bh, $mods, $om, $bindid) or
 		outmsg($bh), return 1;
 
 	return 0;

@@ -849,6 +849,7 @@ our $default_regexp = qr/\^([0-9a-fA-F]{2})/o;
 # Modifies arguments 2, 3, etc, returning 1 on success, undef on error.
 # DON'T call this routine with identifiers and element names that are
 # output by get_rawidtree(). xxx document
+# $hexchar arg can be undef ?
 # 
 sub instantiate { my( $mh, $hexchar ) = ( shift, shift );
 
