@@ -809,7 +809,8 @@ inflect=$buildout_root/htdocs/e/x/inflect
 		say "\$h{briefblob}";
 	\$h{suffix} eq '??' and
 		say "\$h{metablob}";
-	say "\n# inflections reference https://n2t.net/e/n2t_apidoc.html";
+	say "# reference https://n2t.net/e/n2t_apidoc.html";
+	say "# inflections under construction";
 
 	#say "args: \$@";
 	#foreach $var (sort(keys(%ENV))) {

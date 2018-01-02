@@ -195,6 +195,23 @@ like $x, qr/^Location: \Q$cdl_tgt$cdl_ext/m,
 # xxx what's this next for?
 $x = `wegn locate "$cdl_ark"`;
 
+$x = `wegn resolve "$cdl_ark??"`;
+like $x, qr|erc:.*who: CDL.*what: CDL Services.*persistence:|s,
+	"?? inflection produces kernel plus persistence elements";
+
+#$x = `wegn locate "$srch_ark$srch_ext"`;
+#wegn resolve 'ark:/12345/fk1234??'
+#  minter|binder=99999/fk4|ezid  user=ezid  host=localhost:18443
+#  erc:
+#  who: CDL
+#  what: CDL Services Landing Page
+#  when: 2014
+#  where: ark:/12345/fk1234 (currently http://www.cdlib.org/services)
+#  how: (:unav)
+#  id created: 2017.05.21_21:25:03
+#  id updated: 2014.05.29_17:48:06
+#  persistence: (:unav)
+
 my $wkp_ark = 'ark:/12345/fk1235';
 my $wkp_tgt = 'http://en.wikipedia.org/wiki';
 my $wkp_ext = '/Persistent_identifier';

@@ -177,7 +177,7 @@ like $x, qr|^redir302 nersc\n$|, "now have different _t value from fon binder";
 
 $x = `$cmd -d $td/fon $url.add _t skink`;
 $x = resolve_stdin("-d $td/fon", $url);
-like $x, qr|^inflect multi "nersc" "skink"|,
+like $x, qr|"op=multi".*"target=nersc".*"target=skink"|,
 	"multiple _t values passed to inflect";
 
 $x = resolve_stdin_hdr("-d $td/fon",
@@ -187,27 +187,24 @@ $x = resolve_stdin_hdr("-d $td/fon",
 	"$url/", '',
 	"$url./", '',
 );
-like $x, qr|^inflect "cn.text/turtle" |,
+like $x, qr|^inflect.*op=cn.text/turtle|,
 	"script called for content negotiation";
 
-exit;
-say "xxx x=$x"; exit; ##################
+#exit;
+#say "xxx x=$x"; exit; ##################
 
 # xxx test when id set actually includes(overrides) inflection
 $x =~ s/^.*\n//;				# remove top line
-like $x, qr|^inflect "\?" |, "script called for ? inflection";
+like $x, qr|^inflect.*suffix=%3f|, "script called for ? inflection";
 
 $x =~ s/^.*\n//;				# remove top line
-like $x, qr|^inflect "\?\?" |, "script called for ?? inflection";
+like $x, qr|^inflect.*suffix=%3f%3f|, "script called for ?? inflection";
 
 $x =~ s/^.*\n//;				# remove top line
-like $x, qr|^inflect "/" |, "script called for / inflection";
-
-#print "premature end.  url=$url + \?\n";
-#exit; ##############
+like $x, qr|^inflect.*suffix=/|, "script called for / inflection";
 
 $x =~ s/^.*\n//;				# remove top line
-like $x, qr|^inflect "\./" |, "script called for ./ inflection";
+like $x, qr|^inflect.*suffix=\./|, "script called for ./ inflection";
 
 my $Rp = File::Binder::RSRVD_PFIX;	# reserved sub-element prefix
 my $Tm = File::Binder::TRGT_METADATA;	# actually content negotiation
@@ -226,7 +223,7 @@ $x = resolve_stdin("-d $td/fon", "$url\?\?");
 like $x, qr|^redir302 nought\n|, "specific target redirect for ?? inflection";
 
 $x = resolve_stdin_hdr("-d $td/fon", $url, "!!!ac=text/turtle!!!");
-like $x, qr|^inflect "cn.text/turtle" |,
+like $x, qr|^inflect.*op=cn.text/turtle|,
 	"script called for content negotiation";
 
 $x = `$cmd -d $td/fon $url.set $Rp${Tm} newt`;
@@ -427,7 +424,7 @@ if ($v1bdb) {
   	"multiple targets without spt";
 }
 else {
-  like $x, qr/inflect multi "zaf" "paf"/, "multiple targets without spt";
+  like $x, qr/inflect.*op=multi.*target=zaf.*target=paf/, "multiple targets without spt";
 }
 
 $ENV{EGG} = $hgbase;
