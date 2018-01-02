@@ -189,8 +189,8 @@ my $cdl_ext = '/uc3/ezid/';
 $x = `wegn $cdl_ark.set _t $cdl_tgt`;
 like $x, qr/^egg-status: 0/m, "egg sets target for $cdl_ark";
 
-$x = `wegn $cdl_ark.set who CDL`;
-$x = `wegn $cdl_ark.set when 2014`;
+$x = `wegn $cdl_ark.set erc.who CDL`;
+$x = `wegn $cdl_ark.set erc.when 2014`;
 like $x, qr/^egg-status: 0/m, "egg sets title $cdl_ark";
 
 $x = `wegn locate "$cdl_ark$cdl_ext"`;
@@ -492,6 +492,4 @@ like $x, qr{HTTP/\S+\s+302\s.*Location:\s*$tgtOCA}si,
 #===
 
 }
-
-
 
