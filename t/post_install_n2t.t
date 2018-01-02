@@ -190,7 +190,7 @@ $x = `wegn $cdl_ark.set _t $cdl_tgt`;
 like $x, qr/^egg-status: 0/m, "egg sets target for $cdl_ark";
 
 $x = `wegn $cdl_ark.set who CDL`;
-$x = `wegn $cdl_ark.set what "CDL Services Landing Page"`;
+$x = `wegn $cdl_ark.set when 2014`;
 like $x, qr/^egg-status: 0/m, "egg sets title $cdl_ark";
 
 $x = `wegn locate "$cdl_ark$cdl_ext"`;
@@ -200,7 +200,7 @@ like $x, qr/^Location: \Q$cdl_tgt$cdl_ext/m,
 $x = `wegn locate "$cdl_ark"`;
 
 $x = `wegn resolve "$cdl_ark??"`;
-like $x, qr|erc:.*who: CDL.*what: CDL Services.*persistence:|s,
+like $x, qr|erc:.*who: CDL.*when: 2014.*persistence:|s,
 	"?? inflection produces kernel plus persistence elements";
 
 #$x = `wegn locate "$srch_ark$srch_ext"`;
