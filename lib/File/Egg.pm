@@ -2184,7 +2184,7 @@ sub egg_inflect { my ($bh, $mods, $om, $id)=@_;
 		# yyy to do: split up xml blobs
 
 		if ($key eq 'erc') {
-			my @erc = split /%0A/i, $val;	# can make empty elems
+			my @erc = split /(?:%0A|\n)/i, $val;	# can be empty
 			push @pairs, map		# only grab non-empties
 				{ m/^([^:]+?)\s*:\s*(.*)/ }	# add subelems
 				#{ /:/ and split /\s*:\s*/ }	# add subelems
