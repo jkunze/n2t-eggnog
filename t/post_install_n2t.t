@@ -189,6 +189,10 @@ my $cdl_ext = '/uc3/ezid/';
 $x = `wegn $cdl_ark.set _t $cdl_tgt`;
 like $x, qr/^egg-status: 0/m, "egg sets target for $cdl_ark";
 
+$x = `wegn $cdl_ark.set who CDL`;
+$x = `wegn $cdl_ark.set what "CDL Services Landing Page"`;
+like $x, qr/^egg-status: 0/m, "egg sets title $cdl_ark";
+
 $x = `wegn locate "$cdl_ark$cdl_ext"`;
 like $x, qr/^Location: \Q$cdl_tgt$cdl_ext/m,
 	"documented suffix passthrough works for cdl_ark $cdl_ark";
