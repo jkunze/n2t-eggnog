@@ -2186,7 +2186,8 @@ sub egg_inflect { my ($bh, $mods, $om, $id)=@_;
 		if ($key eq 'erc') {
 			my @erc = split /%0A/i, $val;	# can make empty elems
 			push @pairs, map		# only grab non-empties
-				{ /:/ and split /\s*:\s*/ }	# add subelems
+				{ m/^([^:]+?)\s*:\s*(.*)/ }	# add subelems
+				#{ /:/ and split /\s*:\s*/ }	# add subelems
 					@erc;
 			next;				# don't push erc blob
 		}
