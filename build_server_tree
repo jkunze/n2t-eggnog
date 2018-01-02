@@ -771,14 +771,16 @@ feedback=$buildout_root/htdocs/e/x/feedback.pl
 #
 inflect=$buildout_root/htdocs/e/x/inflect
 [[ -e $inflect ]] || {
-	cat > $inflect <<- EOT
-	#!/bin/sh
+
+	# Remember to quote normal $ \ and ` in << blocks.
+	cat > $inflect << EOT
+#!/bin/sh
 
 	PERL5LIB=$PERL5LIB
 	PATH=$egpath
 	export PERL5LIB PATH
 
-	exec perl <<- 'EOS'
+	exec perl << 'EOS'
 
 	#!/usr/bin/env perl
 
@@ -787,18 +789,38 @@ inflect=$buildout_root/htdocs/e/x/inflect
 	use warnings;
 
 	print "Content-type: text/plain; charset=utf-8\n\n";
-	print "inflections: not yet implemented\n";
-	say "args: \$@";
-	say "qs: \$ENV{QUERY_STRING}";
+
+	use Text::ParseWords;
+
+	#say "qs: \$ENV{QUERY_STRING}";
+	# QUERY_STRING contains pseudo command arguments
+	my @args = shellwords( \$ENV{QUERY_STRING} );
+	my (%h, \$key, \$val);
+	for (@args) {
+		/^-/ and		# skip flag args starting with '-'
+			next;
+		! /^([^=]+)=(.*)/ and	# split at first "=" and skip line
+			next;		# if it doesn't look like key=...
+		(\$key, \$val) = (\$1, \$2);
+		\$val =~ s/%([[:xdigit:]]{2})/chr hex \$1/eg;	# hex decode
+		\$h{\$key} = \$val;
+	}
+	\$h{suffix} eq '?' and
+		say "\$h{briefblob}";
+	\$h{suffix} eq '??' and
+		say "\$h{metablob}";
+	say "\n# inflections reference https://n2t.net/e/n2t_apidoc.html";
+
+	#say "args: \$@";
 	#foreach $var (sort(keys(%ENV))) {
 	#    $val = $ENV{$var};
 	#    $val =~ s|\n|\\n|g;
 	#    $val =~ s|"|\\"|g;
 	#    print "${var}=\"${val}\"\n";
 	#}
-	EOS
+EOS
 
-	EOT
+EOT
 
 	chmod 755 $inflect
 }

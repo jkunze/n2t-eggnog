@@ -591,7 +591,7 @@ sub idx_init { my( $idx )=@_;
 		$idx->{scheme_i} = {};
 	$idx->{errmsg} =
 		$idx->{fail} =
-		$idx->{suffix} = undef;
+		$idx->{suffix} = undef;		# important state info
 	return $idx;
 }
 
@@ -635,7 +635,7 @@ sub id_decompose { my( $pfxs, $id )=@_;
 	# Shorthand for parts that we will return.  All have names
 	# corresponding to the $idx hash keys.
 	#
-	my ($scheme_raw, $scheme);
+	my ($scheme_raw, $scheme, $rid);
 
 # yyy add crutch to make grid:x.y become grid:grid.x.y (when x ne "grid")
 # yyy add url: as scheme?
@@ -687,6 +687,7 @@ sub id_decompose { my( $pfxs, $id )=@_;
 	else {
 		$scheme = $scheme_raw = $UNKNOWN_SCHEME;
 	}
+	$rid = $id;	# init default root id, modified if we detect a suffix
 
 # xxx now that we have $scheme_raw (Tom Gillespie case), what do we do
 # with it?
@@ -705,6 +706,7 @@ sub id_decompose { my( $pfxs, $id )=@_;
 	if ($scheme eq $UNKNOWN_SCHEME) {	# prune this case and return
 		idx_init( $idx );
 		$idx->{scheme} = $scheme;
+		$idx->{rid} = $rid;
 		! $id and
 			$idx->{partial} = PARTIAL_SO;
 		$idx->{full_id} = $sid;
@@ -735,6 +737,7 @@ sub id_decompose { my( $pfxs, $id )=@_;
 		idx_init( $idx );
 		! $id and
 			$idx->{partial} = PARTIAL_SO;
+		$idx->{rid} = $rid;
 		$idx->{full_id} = $u->as_string;
 		$idx->{scheme} = $u->scheme;
 		$idx->{naan} = $u->host;
@@ -753,6 +756,7 @@ sub id_decompose { my( $pfxs, $id )=@_;
 	$idx->{query} = '';
 	$id =~ s/(\?.*)// and
 		$idx->{query} = $1;
+	$rid = $id;			# update default root id
 
 	# The Scheme Local ID (SLID) is the id mean to be unique _within_
 	# the scheme, which is a fancy way of saying everything between
@@ -815,6 +819,7 @@ sub id_decompose { my( $pfxs, $id )=@_;
 		$idx->{naan_sep} = '';		# $naan, hence no separator
 		$idx->{naan} = '';		# no $naan
 	}
+	$rid = $id;			# update default root id
 	# By the time we get here, $idx->{naan} and $idx->{naan_sep} will
 	# be defined.
 
@@ -883,6 +888,7 @@ sub id_decompose { my( $pfxs, $id )=@_;
 	$idx->{shdr_i}->{key} = $fqshoulder;
 	$idx->{naan_i}->{key} = $fqnaan;
 	$idx->{scheme_i}->{key} = $scheme;
+	$idx->{rid} = $rid;
 
 	# Because of $empty_hash, from now on we can confidently use
 	# $idx->{ *_i } as pointers without throwing an exception.
@@ -1568,33 +1574,48 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 	#        a.b.c/xyzzRzzxxy  ->  a.b.c/xyzzBzzxxy
 	#
 
-# add a metadata blob arg and escape all args to make safe to pass to script
+# returns list consisting of inflection command plus args
+# $idx->{rid} is the $id/$rid
+sub inflect_cmd { my(   $bh, $eset, $format,  $idx )=
+		     ( shift, shift,   shift, shift );	# plus other params
 
-sub prep_script_args { my ($bh, $id) = (shift, shift);	# remaining args
+	$eset ||= 'brief';	# yyy may be input by user; check for validity 
+				#     unused for the moment
+	$format ||= 'anvl';	# yyy may be input by user; check for validity
 
-	# xxx $mods and $om undefined
-	# xxx $mods should probably be "all"
-	# xxx what should $om be? $bh->{om_formal} ?
-	#my $mods = { all => 1 };
-	#my $om = $bh->{om_formal};
+	my $om = File::OM->new($format,		# output, released on return
+		{ outhandle => 0 });		# output to a string
 
-	# ($s = $om->elem($out_elem, $value)),
-	# ($p && (($st &&= $s), 1) || ($st .= $s))
+	my ($metablob, $briefblob) =		# args we manufacture
+		egg_inflect(
+			$bh, { all => 1 },		# $mods->{all} = 1
+			$om, $idx->{rid} );
 
-my $format;
-# xxx call this once?
-my $om = File::OM->new($format || 'anvl',
-	{ outhandle => 0 });	# return strings
+	my @args = ( 'inflect',
+			"id=$idx->{rid}",
+			"eset=$eset",
+			"format=$format",
+			"metablob=$metablob",
+			"briefblob=$briefblob",
+			"scheme=$idx->{scheme}",
+			"naan=$idx->{naan}",
+			"shoulder=$idx->{shoulder}",
+			"shoshoblade=$idx->{shoshoblade}",
+			"suffix=" . ($idx->{suffix} || ""),
+	);
+	push @args, @_;			# append any extra params from caller
+	return @args;
+}
 
-	my $metablob = egg_inflect($bh,
-		{ all => 1 }, $om, $id) // '';
-	unshift @_, 'inflect', $id, $metablob;
-	my $argline = '';
-	for my $arg (@_) {
-		$arg ||= '';
-		$arg =~ s{ ["\n] }	# hex encode quotes and newlines
+sub quote_args {			# quote args
+	my $argline = shift;		# but not 1st command word
+	for my $arg (@_) {		# for all args but first
+		$arg ||= '';		# shouldn't happen, but minimize errors
+		# NB: must quote '?' lest Apache rewrite's "uri split"
+		#     thinks it's found a query string to isolate
+		$arg =~ s{ [ ?	"\n] }	# hex encode space, ?, tab, ", \n
 			 { sprintf("%%%02x", ord($&))  }xeg;
-		$argline .= qq@ "$arg"@;
+		$argline .= qq@ "$arg"@;	# this is for bash
 	}
 	return $argline;
 }
@@ -1635,18 +1656,6 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 	# From here on, scalar(@$dupsR) > 0 and $fail says if we failed.
 	# Now we start defining script arguments that we might be using.
 
-	# $scriptargs give context for the "inflect" script we may call
-	my $scriptargs;
-	#my $scriptargs = prep_script_args($bh, $rid, "dummy",
-	#	$idx->{scheme}, $idx->{naan},
-	#	$idx->{shoulder}, $idx->{shoshoblade}, $suffix,
-	#);
-	#my $scriptargs =
-	#	qq@"$rid" "$idx->{scheme}" "$idx->{naan}" @ .
-	#	qq@"$idx->{shoulder}" "$idx->{shoshoblade}" "$suffix"@;
-	#	#qq@"$rid" "$scheme" "$naan" "$shoulder" "$shoblade" "$suffix"@;
-	#	# XXXXX make sure no quote marks or newlines in any of these!?
-
 	#_,eTm,ContentType content negotiation target for ContentType
 	#_,eTm,   default content negotiation target if no _.eTm.ContentType
 	#         exists
@@ -1662,6 +1671,8 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 	#
 	my $returnline = '';
 	my $target = '';
+	my $eset = 'brief';
+	my $format = 'anvl';
 
 	if (! $fail and $suffix and $suffix !~ /\w/) {	# now check root id
 
@@ -1679,10 +1690,9 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 				$suffix eq '/?'  || $suffix eq '/??' ||
 				$suffix eq './?' || $suffix eq './??'
 				and	# script may know what to do with it
-			$returnline = prep_script_args($bh, $rid,
-					"suffix=$suffix", $idx->{scheme},
-					$idx->{naan}, $idx->{shoulder},
-					$idx->{shoshoblade}, $suffix)
+			$returnline = quote_args(
+				inflect_cmd( $bh, $eset, $format, $idx,
+					"op=arkinflect"))	# mainstream
 		;
 	}
 
@@ -1699,26 +1709,21 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 		$target and		# if $target found, redirect to it
 			$returnline = "redir303 $target",	# http range-14!
 		1 or		# else check if "inflect" script handles it
-			$returnline = prep_script_args($bh, $rid,
-					"cn.$accept", $idx->{scheme},
-					$idx->{naan}, $idx->{shoulder},
-					$idx->{shoshoblade}, $suffix)
-			#$returnline = qq@inflect "cn.$accept" $scriptargs@
+			$returnline = quote_args(
+				inflect_cmd( $bh, $eset, $format, $idx,
+					"op=cn.$accept"))
 		;
 	}
 
 	# Check for multiple redirection if $returnline is still empty
 	# (ie, id was found but no inflection or content negotation).
 	#
-# xxx $scriptargs not initialized
 	! $returnline and scalar(@$dupsR) > 1 and
 		# double quote each target and end list of targets with --
-		$returnline = prep_script_args($bh, $rid,
-			'multi "' . join('" "', @$dupsR) . '" -- ' .
-			$idx->{scheme}, $idx->{naan}, $idx->{shoulder},
-			$idx->{shoshoblade}, $suffix);
-		#$returnline = 'inflect multi "'
-		#	. join('" "', @$dupsR) . '" -- ' . $scriptargs;
+		$returnline = quote_args(
+			inflect_cmd( $bh, $eset, $format, $idx,
+				"op=multi", map("target=$_", @$dupsR)))
+	;
 
 	# Mainstream case.
 	# At this point $returnline will still be empty if we're doing

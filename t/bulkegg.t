@@ -92,8 +92,8 @@ j.purge
 j.fetch
 ";
 $x = run_cmds_on_stdin($cmdblock);
-like $x, qr/under j: 5.*unique.*under j: 5.*under j: 0/s,
-	"purge all elements at once, reporting only unique elements";
+like $x, qr/under j: 5.*user.*under j: 7.*under j: 0/s,
+	"purge all elements at once, reporting only user elements";
 
 # note use of 'quotes' to hide array variable interpolation of @
 $cmdblock = '
@@ -112,7 +112,7 @@ j.purge
 j.fetch
 ';
 $x = run_cmds_on_stdin($cmdblock);
-like $x, qr/a:   b  .*under j: 5.*under j: 4.*unique.*under j: 4.*under j: 0/s,
+like $x, qr/a:   b  .*under j: 5.*under j: 4.*user.*under j: 6.*under j: 0/s,
 	"add, rm, and purge plus modifier";
 
 $cmdblock = "

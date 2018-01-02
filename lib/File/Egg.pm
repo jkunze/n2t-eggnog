@@ -348,7 +348,7 @@ sub egg_purge { my( $bh, $mods, $lcmd, $formal, $id )=@_;
 		s/\^([[:xdigit:]]{2})/chr hex $1/eg;
 	my $retval;
 	$om and ($retval = $om->elem('elems',		# print comment
-		" admin + unique elements found to purge under $out_id: " .
+		" admin + user elements found to purge under $out_id: " .
 			scalar(@elems), "1#"));
 		#" admin + unique elements found to purge under " .
 		#($id ne '' ? $id : '""') . ": " . scalar(@elems), "1#"));
@@ -364,12 +364,21 @@ sub egg_purge { my( $bh, $mods, $lcmd, $formal, $id )=@_;
 	#
 	my $delst;
 
-	# begin loop: control (by statement modifier) at the bottom
+	my $prev_elem = "";	# initialize to something unlikely
+	for my $elem (@elems) {
+		$elem eq $prev_elem and	# prior egg_del call deleted all dupes
+			next;		# so skip another call to avoid error
 		$retval &&= (
-			$delst = egg_del($bh, $mods, '', $formal, $id, $_), 
+			$delst = egg_del($bh, $mods, '', $formal, $id, $elem), 
 			($delst or outmsg($bh)),
-		$delst ? 1 : 0)
-	for (@elems);
+		$delst ? 1 : 0);
+	}
+	## begin loop: control (by statement modifier) at the bottom
+	#	$retval &&= (
+	#		$delst = egg_del($bh, $mods, '', $formal, $id, $_), 
+	#		($delst or outmsg($bh)),
+	#	$delst ? 1 : 0)
+	#for (@elems);
 
 	return $retval;
 }
@@ -2082,12 +2091,10 @@ sub md_map_init {
   where where  erc.where where  dc.identifier where  datacite.identifier where
   how how  erc.how how  dc.type how  datacite.resourcetype how
 	) );
+
+#      erc =? electronic resource communication
 # ERC how (metadata types): text, image, audio, video, data, code, service, term, agent, project, event; (oba? thing?) (oba/ols)
-#  optionally append one or more "/<subtype>" to any, "+" to combine, exactly one final " set" qualifier
 # I I push how types into yamz
-# I I add reserved term top level "thing" for other (or use "oba"?)
-# I I reserved subtype "offstill"? (offline still = physical thing that at the
-#        moment has no online surrogate) "nosy"=no online surrogate yet
 
 # DataCite resourceTypeGeneral: Audiovisual Collection Dataset Event Image InteractiveResource Model PhysicalObject Service Software Sound Text Workflow Other
 #     <resourceType resourceTypeGeneral="Text">Project</resourceType>
@@ -2100,6 +2107,10 @@ sub md_map_init {
 }
 
 # Called by resolver (and CLI for testing)
+# Returns arguments we'll pass to bash script to return resolution results.
+# If $om->{outhandle} is defined, just use it for output, otherwise
+# return a list of two strings with (a) formatted kernel elements and
+# (b) formatted and sorted non-kernel elements.
 
 sub egg_inflect { my ($bh, $mods, $om, $id)=@_;
 
@@ -2126,32 +2137,44 @@ sub egg_inflect { my ($bh, $mods, $om, $id)=@_;
 			$elemsR, $valsR, $id) or
 		return '';
 
-# sort elems and values for output
-# erc =? electronic resource communication
-# prepend: who, what, when, where (currently), how
-#    text+image set; agent set; event set; data set
-#    --> and delete from rest if present
-
 	my ($profile, $idstatus);	# _p, _s
 	my ($key, $val);
 	my $target = '';		# _t
 	my @pairs = ();
-	#qw(who erc.who dc.creator datacite.creator));
-	# make into hash keys, with values of who, what, when, where, how
-	# look up each element;
-	#   if found, append to kernel output element and delete if not
-	#       dc.... or datacte....
-	foreach $key (@$elemsR) {		# for each element name ($key)
 
+	foreach (@$elemsR) {		# for each element name ($_)
+
+		$key = $_;	# want to modify $key w.o. modifying alias
 		$val = shift @$valsR;		# corresponding value
-		if ('_' eq substr $key, 0, 1) {		# if $key starts with _
-			$key eq '_t' and
-				$target .= $separator.$val,
-				next;
-			$key eq '_s' and $val eq $reserved and
-				return 'Reserved';
-			$key eq '_s' and $key = 'status';
-			# yyy make other internal elems human readable
+		if ('_' eq substr $_, 0, 1) {		# if $_ starts with _
+
+			if ($_ eq '_t') {
+				$target and
+					$target .= $separator.$val,
+				1 or
+					$target .= $val,
+				;
+				next;			# don't push
+			}
+			elsif ($_ eq File::Binder::RSRVD_PFIX.'c') {
+				# n2t internal creation date
+				$key = 'id created';
+				$val = etemper( $val );
+			}
+			elsif ($_ eq '_u') {		# ezid internal
+				$key = 'id updated';
+				$val = etemper( $val );
+			}
+			elsif ($_ eq '_s' and $val eq $reserved) {
+				return 'Reserved';	# don't push
+			}
+			elsif ($_ eq '_s') {
+				$key = 'status';
+			}
+			else {
+				next;			# skip other internals
+				# yyy make other internal elems human readable
+			}
 			push @pairs, $key, $val;
 			next;
 		}
@@ -2178,46 +2201,56 @@ sub egg_inflect { my ($bh, $mods, $om, $id)=@_;
 	# extracting kernel elements to put in front of the rest.
 	# Use md_kernel_map to determine whether an element belongs
 	# in one of 5 categories: who, what, when, where, how
-	# NB: we use $separator in front of each value to support multiple
-	# values, so we always strip it later (and add it when needed).
+	# NB: we use $separator between values when there are multiple values.
 
 	my %kernel = ();
 	! %md_kernel_map and		# if not already done,
 		md_map_init();		# initialize metadata crosswalk hashes
 
-	$kernel{ where } = $separator.$id;	# initialize 'where' element
-						# with $separator we later drop
+	$kernel{where} = $id;		# initialize 'where' element
 	$target and
-		$target = substr($target, $SL),	# to drop $separator
-		$kernel{ where } .= " (currently $target)";
+		$kernel{where} .= " (currently $target)";
 
 	my $mk;					# mapped key
-	my @newpairs;				# resulting pairs
+	my %nonkernel;
 	while ($key = shift @pairs) {		# eg, key=dc.title, key=format
 		$val = shift @pairs;
-		#say "xxx k/v $key, $val";
-		if ($mk = $md_kernel_map{$key}) {	# eg, dc.title -> what
-			$kernel{$mk} .=	$separator.$val;    # eg, $kernel{what}
-			#say "xxx --- mk=$mk, kmk=$kernel{$mk}";
+		# if it maps to the kernel, eg, dc.title -> what
+		if ($mk = $md_kernel_map{$key}) {
+			$kernel{$mk} and		# eg, $kernel{what}
+				$kernel{$mk} .= $separator.$val,
+			1 or
+				$kernel{$mk} = $val,
+			;
 			# if it was originally a kernel element, drop it
-			$mk eq $key || $mk eq "erc.$key" and
+			#$mk eq $key || $mk eq "erc.$key" and
+			$mk eq $key || $key eq "erc.$mk" and
 				next;		# skip element copy at bottom
 		}
-		push @newpairs, $key, $val;
-		#say "xxx newpairs $key, $val";
+		$nonkernel{$key} and
+			$nonkernel{$key} .= $separator.$val,
+		1 or
+			$nonkernel{$key} = $val,
+		;
 	}
-	for $mk (qw( who what when where how )) {
-		$kernel{$mk} and $kernel{$mk} =		# trim first few chars
-			substr $kernel{$mk}, $SL;	# to drop $separator
+	$nonkernel{persistence} ||= $unav;
+
+	# yyy kludge to get "erc:" record header by adding fake 'erc' element
+	$kernel{erc} = ' ';		# use space so empty value test fails
+	for $mk (qw( erc who what when where how )) {	# order-preserving list
 		($s .= $om->elem($mk, ($kernel{$mk} || $unav))); # see comments
 		($p && (($st &&= $s), 1) || ($st .= $s));  # elsewhere on this
 	}
-	while ($key = shift @newpairs) {	# eg, key=dc.title, key=format
-		$val = shift @newpairs;
-		($s .= $om->elem($key, $val));	# see get_rawidtree comments
-		($p && (($st &&= $s), 1) || ($st .= $s));  # elsewhere on this
+	my $briefblob = $s;			# what's constructed so far
+
+	$om->elem('NB', ' non-kernel elements',	# send note not to string $s
+		"1#");				# but to output as a comment
+	for $key (sort keys %nonkernel) {
+		# see get_rawidtree comments elsewhere on this
+		($s .= $om->elem($key, $nonkernel{$key}));
+		($p && (($st &&= $s), 1) || ($st .= $s));
 	}
-	return $p ? $st : $s;
+	return $p ? $st : ($s, $briefblob);
 }
 
 # ? get/fetch [-r] ... gets values?
@@ -2787,7 +2820,7 @@ sub get_rawidtree { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id )=
 		#" id: " . ($id ne '' ? $id : '""'), "1#"));
 	($p && (($st &&= $s), 1) || ($st .= $s));
  
-	my ($nelems, $prev_elem) = (0, "");
+	my $nelems = 0;
 	# kludge for a very unlikely element ("" is too likely)
 	# xxx evaluate security implications of kludge
 	while (! $done) {
@@ -2819,10 +2852,7 @@ sub get_rawidtree { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id )=
 			# on the outhandle setting.  It makes several
 			# appearances in this routine.
 
-			$elemsR and $elem ne $prev_elem and	# we only want
-				push(@$elemsR, $elem),		# to save
-				$prev_elem = $elem;		# unique names
-
+			$elemsR and push(@$elemsR, $elem);
 			$valsR and push(@$valsR, $value);
 
 			#$retval .= ($verbose ?

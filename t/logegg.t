@@ -177,8 +177,8 @@ j.purge
 j.fetch
 ";
 $x = run_cmds_on_stdin($cmdblock);
-like $x, qr/under j: 5.*unique.*under j: 5.*under j: 0/s,
-	"purge all elements at once, report admin (2) and unique elements (3)";
+like $x, qr/under j: 5.*user.*under j: 7.*under j: 0/s,
+	"purge all elements at once, report admin (2) and user elements (3)";
 
 $cmdblock = "
 0.purge
@@ -230,7 +230,7 @@ j.purge
 j.fetch
 ";
 $x = run_cmds_on_stdin($cmdblock);
-like $x, qr/a:   b  .*under j: 5.*under j: 4.*unique.*under j: 4.*under j: 0/s,
+like $x, qr/a:   b  .*under j: 5.*under j: 4.*user.*under j: 6.*under j: 0/s,
 	"add, rm, and purge using modifiers";
 
 $cmdblock = "
@@ -264,7 +264,7 @@ is $x, "a^b|c%25d: x
 # id: i^j|k%l
 a^b|c%25d: x
 # elements bound under i^j|k%l: 1
-# admin + unique elements found to purge under i^j|k%l: 3\n\n\n",
+# admin + user elements found to purge under i^j|k%l: 3\n\n\n",
 	"tokens displaying with mix of % and ^ encodings";
 
 $cmdblock = "
