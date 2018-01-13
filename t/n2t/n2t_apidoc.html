@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<!--#include virtual="prelim.html" -->
+<body>
+<!--#include virtual="header.html" -->
+<!--#include virtual="breadcrumb_n2t_apidoc.html" -->
+<div class="container-narrowest"><div class="section" id="overview">
+<h1>Overview</h1>
+<p>The Name-to-Thing (N2T) service provides public resolution of identifiers
+– ARKs, DOIs, etc.  Identifiers used by the public look like an acronym,
+a colon, and a string (eg, ark:/12345/fk1234), all appended to a URL
+based at n2t.net, for example</p>
+<blockquote>
+<p><a class="reference external" href="https://n2t.net/ark:/12345/fk1234">https://n2t.net/ark:/12345/fk1234</a></p>
+<p><a class="reference external" href="http://n2t.net/doi:10.12345/FK4321">http://n2t.net/doi:10.12345/FK4321</a></p>
+</blockquote>
+<p>When an identifier is presented to N2T for resolution, the web server is
+configured to do a database lookup and ask that the target (URL) <em>bound
+under</em> the identifier be returned in the form of an HTTP redirect.
+Arbitrary name/value pairs may be bound under an identifier.</p>
+<p>Targets are bound under the reserved metadata element name, &quot;_t&quot;.  If a
+target URL is found, the server redirects the client to it.  Other
+metadata elements support inflections and content negotiation.</p>
+<p>Identifiers and metadata are created and maintained via the N2T API,
+which is the subject of this document.  The API supports</p>
+<ul class="simple">
+<li>minting – generating randomized strings that can be used in creating
+identifiers, and</li>
+<li>binding – associating metadata name/value pairs with identifier strings
+meant to be published as URLs.</li>
+</ul>
+<p>Under the hood, N2T uses the EggNog software, with egg binders and nog
+minters behind an Apache HTTP server.  Minting and binding require HTTP
+Basic authentication over SSL.  The base <em>test</em> server URL for operating
+the API is <a class="reference external" href="https://n2t-stg.n2t.net">https://n2t-stg.n2t.net</a>, abbreviated as $b below. You'll need
+an N2T user name (known as a <em>populator</em>, &quot;sam&quot; below) and a password
+(&quot;xyzzy&quot;, not a real password).  The following shell definitions are used
+to shorten examples in this document.</p>
+<pre class="literal-block">
+b=https://n2t-stg.n2t.net
+alias wg='wget -q -O - --no-check-certificate --user=sam --password=xyzzy'
+</pre>
+<p>For example, with proper credentials this shell command displays more API
+functionality (for the egg part of Eggnog) than is described here.</p>
+<pre class="literal-block">
+wg &quot;$b/a/sam/b?help readme&quot;
+</pre>
+</div>
+<div class="section" id="minting">
+<h1>Minting</h1>
+<p>Minting is optional, and is generally used if you wish to generate
+randomized strings when you don't already have specific identifier
+strings in mind. N2T minters are set up in advance (not using the API)
+and are exclusively associated with particular N2T credentials. The
+randomized strings they generate are called <em>spings</em>.  A <em>sping</em> (semi-opaque
+string) is meant to be used as all or part of an identifier string.</p>
+<p>Each minter is associated with a <em>shoulder</em>, usually a short string, such
+as &quot;fk4&quot;, that extends an identifier base, such as &quot;99999&quot; (see
+<a class="reference external" href="https://ezid.cdlib.org/learn/id_basics">Identifier Basics</a> and <a class="reference external" href="https://ezid.cdlib.org/learn/id_concepts">Identifier Conventions</a>
+for details).  The examples
+that follow all use test spings beginning with 99999/fk4, as that
+designates a test shoulder shared across all N2T credentials.</p>
+<p>Anyone with a password can liberally mint <em>spings</em> from the test shoulder
+and use them to create test identifiers. Test identifiers behave the same
+as real identifiers except that they normally expire in a few weeks. To
+mint a test sping, do</p>
+<pre class="literal-block">
+wg &quot;$b/a/sam/m/ark/99999/fk4?mint 1&quot;
+</pre>
+<p>which returns something like</p>
+<pre class="literal-block">
+s: 99999/fk4f30n
+</pre>
+<p>Note that most <em>spings</em> are auto-expanding in the sense that, as you keep
+minting, at the moment the unique spings of a given length run out, the
+next run of spings will be longer by 3 characters (at each next expansion
+time). Auto-expansion allows you to enjoy shorter spings to start with
+while not having to worry about running out of unique spings. So in
+general it is best not to rely on spings being of a fixed length.</p>
+</div>
+<div class="section" id="binding">
+<h1>Binding</h1>
+<p>N2T users have one or more binders (databases) for their exclusive use.
+Roughly, an identifier is created when you bind a string (whether a
+minted sping or not) to a thing. Underneath a given identifier string,
+you can bind any element, such as the redirection target URL (&quot;_t&quot;).</p>
+<pre class="literal-block">
+wg &quot;$b/a/sam/b?ark:/99999/fk4f30n.set _t https://archive.org/details/AllAboutBooks&quot;
+</pre>
+<p>The identifier comes into being when the first element is bound under it.
+To verify what you just bound, you can fetch all current bindings or a
+specific binding.</p>
+<pre class="literal-block">
+wg &quot;$b/a/sam/b?ark:/99999/fk4f30n.fetch _t&quot;
+</pre>
+<p>You can change an element at any time using another &quot;set&quot; command with a
+different value. Again, the identifier string you bind to doesn't have to
+have been created using an N2T minter; you may bind any identifier string
+of your choice. Also, you may bind any number of elements, of any name
+you choose, under any identifier.</p>
+</div>
+<div class="section" id="deleting">
+<h1>Deleting</h1>
+<p>To delete an element entirely, use &quot;rm&quot; or, to delete all elements under
+an identifier (effectively deleting the identifier itself), &quot;purge&quot;.</p>
+<pre class="literal-block">
+wg &quot;$b/a/sam/b?ark:/99999/fk4f30n.rm _t&quot;
+wg &quot;$b/a/sam/b?ark:/99999/fk4f30n.purge&quot;
+</pre>
+<p>You can also check if an identifier exists.</p>
+<pre class="literal-block">
+wg &quot;$b/a/sam/b?ark:/99999/fk4f30n.exists&quot;
+</pre>
+</div>
+<div class="section" id="special-characters">
+<h1>Special characters</h1>
+<p>Some characters you may want to include are significant to the command
+syntax, and there are a couple ways to deal with them. One way is to hex
+encode them as &quot;^hh&quot; and insert a &quot;:hx&quot; modifier in front of the whole
+command. For example, this command allows a newline to be used in the
+identifier and the value:</p>
+<pre class="literal-block">
+wg &quot;$b/a/sam/b?:hx ark:/99999/fk4^0af30n.set _.eTm. http://example.com/content-negotiate/99999/fk4^0af30n&quot;
+</pre>
+<!-- xxx need smaller font to not wrap -->
+<p>Strings representing the identifier <em>i</em>, an element name <em>n</em>, and a data
+value <em>d</em> must be less than 4GB in length and must not start with a literal
+':', '&amp;', or '&#64;' unless it is encoded. Other literals that must be
+encoded are any of the characters in &quot;|;()[]=:&quot; anywhere in the strings i
+and n, and any '&lt;' at the start of i.</p>
+<p>The &quot;set&quot; command takes two arguments, so names or values that contain
+spaces should be quoted. Normal shell-like quoting conventions work
+(single or double quotes, plus backslash), so &quot;a b&quot; c&quot; would specify the
+value: a b&quot; c.</p>
+</div>
+<div class="section" id="bulk-operations">
+<h1>Bulk operations</h1>
+<p>You can submit lots of commands (thousands) as a batch inside the HTTP
+Request body. N2T looks for a batch of commands when the query string
+consists of just &quot;-&quot; (a hyphen). For example, you can set descriptive
+metadata along with a target URL.</p>
+<pre class="literal-block">
+wg &quot;$b/a/sam/b?-&quot; --post-data='
+ ark:/13960/t6m042969.set _t http://www.archive.org/details/wonderfulwizardo00baumiala
+ ark:/13960/t6m042969.set how text
+ ark:/13960/t6m042969.set who &quot;Baum, L. Frank (Lyman Frank), 1856-1919; Denslow, W. W. (William Wallace), 1856-1915&quot;
+ ark:/13960/t6m042969.set what &quot;The wonderful wizard of Oz&quot;
+ ark:/13960/t6m042969.set when &quot;1900, c1899&quot;
+'
+</pre>
+<!-- xxx need smaller font to not wrap -->
+</div>
+<div class="section" id="identifier-metadata">
+<h1>Identifier metadata</h1>
+<p>While some metadata elements are optional, the four elements above (who,
+what, when, how) are <strong>required</strong> to support basic metadata resolution,
+which is done via inflections and content negotiation. The element
+definitions follow.</p>
+<table border="1" class="leftheaders docutils">
+<colgroup>
+<col width="27%" />
+<col width="10%" />
+<col width="62%" />
+</colgroup>
+<thead valign="bottom">
+<tr><th class="head">Element Name</th>
+<th class="head">Required</th>
+<th class="head">Definition</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr><td>who</td>
+<td>yes</td>
+<td>a responsible person or party</td>
+</tr>
+<tr><td>what</td>
+<td>yes</td>
+<td>a name or other human-oriented identifier</td>
+</tr>
+<tr><td>when</td>
+<td>yes</td>
+<td>a date important in the object's lifecycle</td>
+</tr>
+<tr><td>where</td>
+<td>yes</td>
+<td>a machine-oriented identifier; NB: <em>no need to</em>
+<em>supply, as it is implied by the identifier</em>
+<em>string itself and any target information</em></td>
+</tr>
+<tr><td>how</td>
+<td>yes</td>
+<td>a <em>metatype</em> constructed from the following
+base terms (further described below)
+<tt class="docutils literal">: text, image, audio, video, data, code, term,
+service, agent, human, project, event, oba</tt></td>
+</tr>
+<tr><td>_t</td>
+<td>yes</td>
+<td>a target URL for redirecting content requests</td>
+</tr>
+<tr><td>_,eTm,<em>contype</em></td>
+<td>no</td>
+<td>(optional) a target URL for redirecting metadata
+requests for a given ContentType contype</td>
+</tr>
+<tr><td>_,eTi,<em>inflection</em></td>
+<td>no</td>
+<td>(optional) a target URL for redirecting
+inflection requests for a given inflection</td>
+</tr>
+<tr><td>language</td>
+<td>no</td>
+<td>(optional) a language used in the content</td>
+</tr>
+<tr><td>peek</td>
+<td>no</td>
+<td>(optional) a glimpse of the content as a
+thumbnail, clip, or abstract; for non-text
+values, use <tt class="docutils literal">(:at)</tt> <em>URL_to_non-text_value</em></td>
+</tr>
+</tbody>
+</table>
+<p>If you cannot enter an actual value for a <strong>required element</strong>, enter one
+of these special reserved flavors for &quot;missing value&quot;.</p>
+<table border="1" class="leftheaders docutils">
+<colgroup>
+<col width="12%" />
+<col width="88%" />
+</colgroup>
+<thead valign="bottom">
+<tr><th class="head">Literal</th>
+<th class="head">Definitions for missing values</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr><td>(:unac)</td>
+<td>temporarily inaccessible</td>
+</tr>
+<tr><td>(:unal)</td>
+<td>unallowed, suppressed intentionally</td>
+</tr>
+<tr><td>(:unap)</td>
+<td>not applicable, makes no sense</td>
+</tr>
+<tr><td>(:unas)</td>
+<td>value unassigned (e.g., Untitled)</td>
+</tr>
+<tr><td>(:unav)</td>
+<td>value unavailable, possibly unknown</td>
+</tr>
+<tr><td>(:unkn)</td>
+<td>known to be unknown (e.g., Anonymous, Inconnue)</td>
+</tr>
+<tr><td>(:none)</td>
+<td>never had a value, never will</td>
+</tr>
+<tr><td>(:null)</td>
+<td>explicitly and meaningfully empty</td>
+</tr>
+<tr><td>(:tba)</td>
+<td>to be assigned or announced later</td>
+</tr>
+</tbody>
+</table>
+<p>You may optionally follow a reserved value with free text meant for human
+interpretation. For example,</p>
+<pre class="literal-block">
+who: (:unkn) Anonymous
+what: (:tba) Work in progress
+</pre>
+</div>
+<div class="section" id="metatypes">
+<h1>Metatypes</h1>
+<p>A &quot;resource type&quot; tells people that the identified object is of a certain
+kind. Often the resource type seems to suggest things about the
+surrounding metadata, for example, a resource of type book usually has
+an author and publisher, but a geosample might not. It can also be seen
+to suggest mappings to core concepts, such as, that the person
+responsible the collector (geosample) or author (book).</p>
+<p>A <em>metatype</em> (text, data, video, etc.) looks similar to a resource type,
+but instead of describing the object it describes the surrounding
+metadata. Why? To separate and clarify these two roles.  Metadata
+curators often lack object access or disciplinary expertise to review
+resource type assignments (eg, tissue sample? specimen?), but still want
+to convey which type-specific elements and semantics should be present.
+Without having to rely on a received resource type or risk making up
+their own, they can with confidence apply a metatype that correctly
+describes their finished metadata. Finally, metatypes also assert enough
+information to permit basic mapping (crosswalking) between metadata sets.</p>
+<p>Thus a metataype of &quot;text&quot; asserts only that the surrounding metadata
+should include other elements that normally accompany text-like objects.
+This is <em>not</em> an assertion that the object itself is of type &quot;text&quot; (it
+is possible, for example, for an assigned metatype to differ from a
+received resource type). Exactly which elements are implied by a given
+metatype, along with core mappings to common metadata element sets, is
+defined with the metatype term itself.</p>
+<p>Metatypes consist of a machine-readable part followed by an optional free
+text part. For example,</p>
+<pre class="literal-block">
+how: (:metatype text) dissertation
+how: (:metatype data) financial spreadsheet
+how: (:metatype data+code set) time series analysis database
+how: (:metatype data+code) visualization and simulation
+how: (:metatype agent) fruit fly
+how: (:metatype agent set) orchestra
+</pre>
+<p>The machine-readable part must be preceded by &quot;(:metatype &quot; and followed
+by &quot;)&quot;, and may itself be composite. In general, this composite is</p>
+<ol class="arabic simple">
+<li>a sequence of one or more <em>base</em> metatypes separated by &quot;+&quot;, and</li>
+<li>is optionally followed by &quot; set&quot; (a space and the word &quot;set&quot;) to
+indicate a group, collection, or aggregation</li>
+</ol>
+<!-- xxx add links to definitions (see ongoing-notes) -->
+<p class="leftheaders">The base metatypes are controlled values defined below.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<thead valign="bottom">
+<tr><th class="head">Literal</th>
+<th class="head">Definitions for base metatypes</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr><td>text</td>
+<td>words meant for reading</td>
+</tr>
+<tr><td>image</td>
+<td>still visual information other than text</td>
+</tr>
+<tr><td>audio</td>
+<td>information rendered as sounds</td>
+</tr>
+<tr><td>video</td>
+<td>visual information made of moving images, often with sound</td>
+</tr>
+<tr><td>data</td>
+<td>structured information meant for study and analysis</td>
+</tr>
+<tr><td>code</td>
+<td>retrievable computer program in source or compiled form</td>
+</tr>
+<tr><td>term</td>
+<td>word or phrase</td>
+</tr>
+<tr><td>service</td>
+<td>destination or automaton with which interaction is possible</td>
+</tr>
+<tr><td>agent</td>
+<td>person, organization, or automaton that can act</td>
+</tr>
+<tr><td>human</td>
+<td>specific kind of agent, namely, a person</td>
+</tr>
+<tr><td>event</td>
+<td>non-persistent, time-based occurrence</td>
+</tr>
+<tr><td>oba</td>
+<td>none of the above (meaning &quot;other&quot; in Tagolog)</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="optional-descriptive-metadata">
+<h1>Optional descriptive metadata</h1>
+<p>To enable richer descriptions, supplement the required elements with any
+other named metadata elements that you wish to make publicly viewable,
+and don't worry if some of the values already appear among the required
+elements (eg, &quot;who&quot; and &quot;author&quot;, &quot;when&quot; and &quot;published&quot;). Note use of
+the &quot;add&quot; command to add an extra &quot;who&quot; element instead of the &quot;set&quot;
+command, which overwrites all pre-existing &quot;who&quot; elements.</p>
+<pre class="literal-block">
+wg &quot;$b/a/sam/b?-&quot; --post-data='
+ ark:/13960/t6m042969.set _t http://www.archive.org/details/wonderfulwizardo00baumiala
+ ark:/13960/t6m042969.set how text
+ ark:/13960/t6m042969.set who &quot;Baum, L. Frank (Lyman Frank), 1856-1919&quot;
+ ark:/13960/t6m042969.add who &quot;Denslow, W. W. (William Wallace), 1856-1915&quot;
+ ark:/13960/t6m042969.set what &quot;The wonderful wizard of Oz&quot;
+ ark:/13960/t6m042969.set when &quot;1900, c1899&quot;
+ ark:/13960/t6m042969.set language English
+ ark:/13960/t6m042969.set peek &quot;(:at) https://archive.org/services/img/wonderfulwizardo00baumiala&quot;
+ ark:/13960/t6m042969.set author &quot;Baum, L. Frank (Lyman Frank), 1856-1919; Denslow, W. W. (William Wallace), 1856-1915&quot;
+ ark:/13960/t6m042969.set title &quot;The wonderful wizard of Oz&quot;
+ ark:/13960/t6m042969.set published &quot;1900, c1899&quot;
+ ark:/13960/t6m042969.set topics &quot;Adventure and adventurers | Wizards&quot;
+ ark:/13960/t6m042969.set pages 216
+ ark:/13960/t6m042969.set &quot;possible copyright status&quot; NOT_IN_COPYRIGHT
+'
+</pre>
+</div>
+<div class="section" id="users-and-api-paths">
+<h1>Users and API paths</h1>
+<p>A <em>populator</em> is an N2T user (eg, &quot;ezid&quot;). Each populator has its own
+password and a set of binders and minters for its exclusive use.
+Components for the API are all laid out under n2t.net/a/... as follows,
+in this case, for the &quot;ezid&quot; populator/user:</p>
+<pre class="literal-block">
+n2t.net/a/ezid/b                 # main ezid binder
+n2t.net/a/ezid_test/b            # test ezid binder
+n2t.net/a/ezid/m/ark/99999/fk4   # to mint spings for fake/test ARKs
+n2t.net/a/ezid/m/ark/b5072/fk2   # to mint spings for fake/test DOIs
+n2t.net/a/ezid/m/ark/.../...     # all other ezid minters
+</pre>
+<p>You can try these paths in the browser (requiring authentication). For
+the base path, some helpful information is printed. See, for example, the
+information printed for both of these URLs:</p>
+<pre class="literal-block">
+https://n2t-stg.n2t.net/a/ezid/b
+https://n2t-stg.n2t.net/a/ezid/b?help%20readme
+</pre>
+</div>
+<div class="section" id="resolution">
+<h1>Resolution</h1>
+<p>N2T resolution requires a fully qualified identifier, which essentially means that the identifier that is stored, such as,</p>
+<blockquote>
+<tt class="docutils literal"><span class="pre">ark:/12345/fk3</span></tt></blockquote>
+<p>is in the same form as what is presented to n2t.net:</p>
+<blockquote>
+<tt class="docutils literal"><span class="pre">http://n2t.net/ark:/12345/fk3</span></tt></blockquote>
+<p>More generally,</p>
+<blockquote>
+<tt class="docutils literal"><span class="pre">n2t.net/&lt;scheme&gt;:[/]&lt;naan&gt;/&lt;blade&gt;</span></tt></blockquote>
+</div>
+<!--#include virtual="footer.html" -->
+</div>
+</body>
+</html>

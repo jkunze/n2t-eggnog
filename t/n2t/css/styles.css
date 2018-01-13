@@ -1,6 +1,6 @@
 /* Uncomment these 3 lines to see borders around everything */
 // * {
-//  border: 1px solid red;
+// border: 1px solid red;
 // }
 @font-face {
   font-family: 'KievitWeb';
@@ -10,27 +10,27 @@
 }
 body {
   font-family: KievitWeb;
-  font-size: 18px;
-}
-html { 
-  /* Big Background Image */
-  /* background: url(../images/UCSD_day2-79_1920x1129.jpg) no-repeat center center fixed; */
-  background: url(../images/shore.jpg) no-repeat center center fixed;
-  -webkit-background-size: cover;
-  -moz-background-size: cover;
-  -o-background-size: cover;
-  background-size: cover;
-  /* End CSS for Big Background Image */
+  font-size: 15px;
 }
 a,a:visited, a:active {
   color: #00778a;
-  text-decoration: none;
+  text-decoration: underline;
 }
 a:hover {
   color: #FFC857;
 }
 h2 {
   margin: 10px 0px;
+}
+
+.background-home { 
+  /* Big Background Image */
+   background: url(../images/shore.jpg) no-repeat center center fixed; 
+  -webkit-background-size: cover;
+  -moz-background-size: cover;
+  -o-background-size: cover;
+  background-size: cover;
+  /* End CSS for Big Background Image */
 }
 
 .box {
@@ -40,6 +40,7 @@ h2 {
   padding: 20px;
   margin: 10px 0px 0px;
 }
+
 .box-big-text {
   font-size: 18px;
 }
@@ -48,6 +49,7 @@ h2 {
     font-size: 20px;
   }
 }
+
 .box-fixed {
   border-radius: 5px;
   /* Background Color on un-linked boxes */
@@ -68,13 +70,11 @@ h2 {
   align-items: center;
   height: 6.3em;
   width: 100%;
-  padding: 0px 26px 0px 8px;
   font-size: inherit;
   font-family: inherit;
+  text-decoration: underline;
   /* Background Color on linked boxes */
   background-color:  #C0D6DF;
-  /* External Link Image */
-  /* background-image: url("../images/ext-link.png"); */
   background-repeat: no-repeat;
   background-position: right center;
 }
@@ -94,8 +94,36 @@ h2 {
   display: inline-block;
   max-width: 200px;
 }
+
+.breadcrumb ul {
+  padding: 12px 0 8px 0;
+  margin: 0;
+}
+.breadcrumb ul > li {
+  list-style: none;
+  display: inline-block;
+  margin-bottom: 5px;
+}
+.breadcrumb ul > li:after {
+  padding-left: 1.5em;
+  background: url('../images/icon_angle-right-black.svg') no-repeat center / contain;
+  content: '';
+}
+.breadcrumb ul > li:last-child:after {
+  background: none;
+}
+.breadcrumb--active {
+  font-weight: bold;
+}
+
 .center-horiz {
   text-align: center;
+}
+.container-breadcrumb {
+  margin: 0 -8px 10px -8px;
+  border-style: double;
+  border-color: #C0D6DF white white white;
+  background-color: #FFFFFF; 
 }
 .container-narrowest {
   margin: 0 auto;
@@ -116,11 +144,11 @@ h2 {
 }
 .footer {
   background-color: #C0D6DF; 
-  min-height: 6.8em;
+  min-height: 5em;
 }
 .header {
   margin-top: -8px;
-  padding-top: 8px;
+  padding: 8px 0 6px 0;
   background-color: #FFFFFF; 
 }
 .header-logo-left {
@@ -149,11 +177,14 @@ h2 {
   font-size: 1.3em;
   font-weight: 600;
 }
+
 .list {
   list-style-type: none;
   margin: 0;
   padding: 0;
 }
+.list > li {
+  padding-bottom: 0.2em;
 }
 .text-sm {
   font-size: 0.8em;

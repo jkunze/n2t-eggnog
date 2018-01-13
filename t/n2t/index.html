@@ -6,44 +6,48 @@
 cat << 'EOT' > htdocs/index.html
 
 <!DOCTYPE html>
-<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-
-  <!-- Basic Page Needs
-  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
-  
+<html lang="en">
+<head>
+<!-- Basic Page Needs -->
+  <meta charset="utf-8">
   <title>Name-to-Thing (N2T) Identifier Resolver</title>
   <meta name="description" content="">
   <meta name="author" content="">
 
-  <!-- Mobile Specific Metas
-  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+  <!-- Mobile Specific Metas -->
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- CSS
-  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+  <!-- CSS -->
   <link rel="stylesheet" href="/e/css/flexboxgrid-6.3.1-min.css">
   <link rel="stylesheet" href="/e/css/styles.css">
-  <link rel="shortcut icon" type="image/png" href="/e/images/favicon.ico?v=2">
+  <link rel="stylesheet" href="/e/css/styles_rst.css">
+  <link rel="shortcut icon" type="image/png" href="/e/images/favicon.ico?v=2"/>
   <link rel="icon" sizes="16x16 32x32" href="/e/images/favicon.ico?v=2">
-
 </head>
-<body data-feedly-mini="yes">
 
-  <!-- Primary Page Content
-  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+<body class="background-home">
 <header class="header row center-xs">
   <div class="col-xs-10 col-sm-6">
     <div class="row middle-xs header">
       <h1 class="col-xs header-logo-left center-horiz">
-        N2T
+      N2T
       </h1>
       <picture class="col-xs header-logo-right center-horiz">
-        <source srcset="/e/images/LogoRight_178x56.png" media="(min-width: 32em)">
-        <img src="/e/images/LogoRight_140x40.png" alt="Resolving Names Into Things">
+        <source srcSet="/e/images/LogoRight_178x56.png" media="(min-width: 32em)"/>
+        <img src="/e/images/LogoRight_140x40.png" alt="Resolving Names Into Things"/>
       </picture>
     </div>
   </div>
 </header>
+<div class="container-breadcrumb">
+  <div class="container-widest">
+    <nav class="col-xs-12 breadcrumb">
+      <ul>
+        <li><a href="/e/about.html">About N2T</a></li>
+      </ul>
+    </nav>
+  </div>
+</div>
 
 <div class="container-narrowest">
   <div class="row around-xs middle-xs">
@@ -55,10 +59,10 @@ cat << 'EOT' > htdocs/index.html
         <section>
           <span>In partnership with:</span>
           <ul class="list">
-            <li><a href="http://ezid.cdlib.org/">EZID.cdlib.org</a></li>
-            <li><a href="http://identifiers.org/">Identifiers.org</a></li>
-            <li><a href="http://archive.org/">Internet Archive</a></li>
-            <li><a href="http://yamz.net/">YAMZ Metadictionary</a></li>
+            <li><a href="https://ezid.cdlib.org">EZID.cdlib.org</a></li>
+            <li><a href="https://identifiers.org">Identifiers.org</a></li>
+            <li><a href="https://www.archive.org">Internet Archive</a></li>
+            <li><a href="https://www.yamz.net">YAMZ Metadictionary</a></li>
           </ul>
         </section>
       </div>
@@ -66,13 +70,12 @@ cat << 'EOT' > htdocs/index.html
   </div>
   <div class="row around-xs middle-xs">
     <div class="col-xs-10 col-sm-5 center-horiz">
-      <div class="box-fixed box-big-text">Any kind of name &ndash; ARK, DOI, URN, Handle, PMID, PDB, Taxon, GRID, arxiv, ISSN, ...</div>
+      <div class="box-fixed box-big-text">Any kind of name – ARK, DOI, URN, Handle, PMID, PDB, Taxon, GRID, arxiv, ISSN, ...</div>
     </div>
     <div class="col-xs-10 col-sm-5 center-horiz">
-      <div class="box-fixed box-big-text">Any kind of thing &ndash; web pages, data, physical specimens, vocabulary terms, living beings, groups, ...</div>
+      <div class="box-fixed box-big-text">Any kind of thing – web pages, data, physical specimens, vocabulary terms, living beings, groups, ...</div>
     </div>
   </div>
-
   <!-- Spacer 
   –––––––––––––––––––––––––––––––––––––––––––––––––– -->
   <div class="row center-xs">
@@ -88,25 +91,19 @@ cat << 'EOT' > htdocs/index.html
 <div class="container-widest">
   <div class="row around-xs middle-xs">
     <div class="col-xs-6 col-sm-4 center-horiz">
-     <a href="https://confluence.ucop.edu/display/Curation/ARK">
-      <button type="button" class="box box-linked" aria-pressed="false" onclick="btnHref(&#39;https://confluence.ucop.edu/display/Curation/ARK&#39;)" aria-label="More about Archival Resource Key Identifiers (ARKs)">
+      <button type="button" class="box box-linked" aria-pressed="false" onclick="btnHref('https://confluence.ucop.edu/display/Curation/ARK')" aria-label="More about Archival Resource Key Identifiers (ARKs)">
         <span class="box-linked-text">About ARK Identifiers</span>
       </button>
-     </a>
     </div>
     <div class="col-xs-6 col-sm-4 center-horiz">
-     <a href="https://n2t.net/e/naan_request">
-      <button type="button" class="box box-linked" aria-pressed="false" onclick="btnHref(&#39;https://n2t.net/e/naan_request&#39;)" aria-label="Register your organization&#39;s interest in assigning ARK identifiers">
-        <span class="box-linked-text">Register to assign ARKs (it&#39;s free)</span>
+      <button type="button" class="box box-linked" aria-pressed="false" onclick="btnHref('https://goo.gl/forms/bmckLSPpbzpZ5dix1')" aria-label="Register your organization's interest in assigning ARK identifiers">
+        <span class="box-linked-text">Register to assign ARKs (it's free)</span>
       </button>
-     </a>
     </div>
     <div class="col-xs-6 col-sm-4 center-horiz">
-     <a href="https://groups.google.com/forum/?hl=en#!forum/arks-forum">
-      <button type="button" class="box box-linked" aria-pressed="false" onclick="btnHref(&#39;https://groups.google.com/forum/?hl=en#!forum/arks-forum&#39;)" aria-label="ARKs Forum">
+      <button type="button" class="box box-linked" aria-pressed="false" onclick="btnHref('https://groups.google.com/forum/?hl=en#!forum/arks-forum')" aria-label="ARKs Forum">
         <span class="box-linked-text">ARKs discussion forum</span>
       </button>
-     </a>
     </div>
   </div>
 </div>
@@ -114,43 +111,40 @@ cat << 'EOT' > htdocs/index.html
   <!-- Spacer 
   –––––––––––––––––––––––––––––––––––––––––––––––––– -->
 <div class="row center-xs">
-  &nbsp;<br>
+  &nbsp;<br/>
 </div>
 
 <div class="container-narrowest">
   <div class="row center-xs">
     <div class="box col-xs-8">
-      <h2 class="header2">N2T works with <a href="http://identifiers.org/">Identifiers.org</a> to resolve over 500 prefixed identifier classes. You can add yours too.</h2>
-      <button type="button" class="box box-linked" aria-pressed="false" onclick="btnHref(&#39;http://n2t.net/e/prefix_request&#39;)" aria-label="Request a Prefix">
+      <h2 class="header2">N2T works with <a href="https://identifiers.org">Identifiers.org</a> to resolve over 600 prefixed identifier classes. You can add yours too.</h2>
+      <button type="button" class="box box-linked" aria-pressed="false" onclick="btnHref('https://www.n2t.net/e/prefix_request')" aria-label="Register a Prefix">
         <span class="box-linked-text">Register a Prefix</span>
       </button>
     </div>
   </div>
 </div>
 
-  <!-- Spacer 
-  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
-<div class="row center-xs">
-  &nbsp;<br>&nbsp;<br>
-</div>
+  <!-- Spacer -->
+  <div class="row center-xs">
+    &nbsp;<br/>
+  </div>
 
-  <!-- Footer
-  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
-<div class="row footer">
-  <div class="col-xs-12 container-widest">
-    <div class="row">
-      <div class="col-xs-12 col-sm-12">
-        <p class="text-sm">N2T is a service of the <a href="http://www.cdlib.org/">California Digital Library</a>, a division of the <a href="http://www.universityofcalifornia.edu/">University of California Office of the President</a></p>
-        <p class="text-sm">© 2017 The Regents of the University of California</p>
-
-      </div>
-      <!-- div class="col-xs-12 col-sm-4">
-        <ul>
-          <li>Lorem Ipsum</li>
-          <li>Lorem Ipsum</li>
-          <li>Lorem Ipsum</li>
-        </ul>
-      </div>
+  <!-- Footer -->
+  <div class="row footer">
+    <div class="col-xs-12 container-widest">
+      <div class="row">
+        <div class="col-xs-12 col-sm-12">
+          <p class="text-sm">N2T is a service of the <a href="https://www.cdlib.org/">California Digital Library</a>, a division of the <a href="https://www.universityofcalifornia.edu/">University of California Office of the President</a></p>
+          <p class="text-sm">&copy; 2017 The Regents of the University of California</p>
+        </div>
+        <!-- div class="col-xs-12 col-sm-4">
+          <ul>
+            <li>Lorem Ipsum</li>
+            <li>Lorem Ipsum</li>
+            <li>Lorem Ipsum</li>
+          </ul>
+        </div>
       <div class="col-xs-12 col-sm-4">
         <ul>
           <li>Lorem Ipsum</li>
@@ -158,23 +152,20 @@ cat << 'EOT' > htdocs/index.html
           <li>Lorem Ipsum</li>
         </ul>
       </div>
-      <div class="col-xs-12 col-sm-4 first-sm">N2T is ...</div -->
+      <div class="col-xs-12 col-sm-4 first-sm">N2T is ...</div --> </div>
     </div>
   </div>
-</div>
 
-  <!-- Function for button links 
-  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+  <!-- Function for button links -->
   <script type="text/javascript">
     function btnHref(url) {
       window.location = url;
     };
   </script>
 
-  <!-- End Document
-  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
-
-<div id="feedly-mini" title="feedly Mini tookit"></div></body></html>
+  <!-- End Document -->
+</body>
+</html>
 
 EOT
 
