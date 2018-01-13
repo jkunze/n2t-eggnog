@@ -1262,7 +1262,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 	}
 	$idx->{ ur_origid } = $ur_origid;
 
-	#### Step 0 Redirects to look for _before_ binder lookup
+	#### Step 0 Redirect directives to look for _before_ binder lookup
 	#  yyy as Last Step look up $UNKNOWN_SCHEME ids post-binder-lookup
 	# Also check flag $idx{ partial } to detect cases such as
 	# PART_SO scheme only

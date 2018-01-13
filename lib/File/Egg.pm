@@ -2072,13 +2072,6 @@ sub format_metablob { my($rawblob, $h, $om, $profile, $target)=@_;
 			qw(what erc.what dc.title datacite.title));
 	push @blobkeyvals, pop_meta($h, $unav,
 			qw(when erc.when dc.date datacite.publicationyear));
-#say "xxx blob=$blob";
-	#$om->elem("xxxy $k", $v);
-
-	#while (($k, $v) = each %$h) {
-	#	#say "xxxz $k -> $v";
-	#	say "om=", $om->elem("xxxy $k", $v);
-	#}
 	return $rawblob;
 }
 
@@ -2092,10 +2085,7 @@ sub md_map_init {
   how how  erc.how how  dc.type how  datacite.resourcetype how
 	) );
 
-#      erc =? electronic resource communication
-# ERC how (metadata types): text, image, audio, video, data, code, service, term, agent, project, event; (oba? thing?) (oba/ols)
-# I I push how types into yamz
-
+# yyy  erc =? electronic resource communication
 # DataCite resourceTypeGeneral: Audiovisual Collection Dataset Event Image InteractiveResource Model PhysicalObject Service Software Sound Text Workflow Other
 #     <resourceType resourceTypeGeneral="Text">Project</resourceType>
 #   normalize to lowercase for mapping, eg, Text/Project->text/project->project

@@ -32,9 +32,15 @@ cat <<- EOT > $rwplus.pre
 # AND a rewrite rule for when a specific single resolver is requested
 # (using ^/r/...) by a user/tester.
 
-RewriteRule ^/ark:/?13960.*\$      "_rslv_\${map_oca:%{REQUEST_URI}.resolve \${$hdrblob}}"
+#RewriteRule ^/ark:/?13960.*\$      "_rslv_\${map_oca:%{REQUEST_URI}.resolve \${$hdrblob}}"
 
-RewriteRule ^/ark:/?99152.*\$      "_rslv_\${map_yamz:%{REQUEST_URI}.resolve \${$hdrblob}}"
+RewriteRule ^/(ark:/?13960.*)\$ \\
+    "_rslv_\${map_oca:\${esc:\$1%{ENV:THUMPER}}.resolve \${$hdrblob}}" [NC]
+
+#RewriteRule ^/ark:/?99152.*\$      "_rslv_\${map_yamz:%{REQUEST_URI}.resolve \${$hdrblob}}"
+
+RewriteRule ^/(ark:/?99152.*)\$ \\
+    "_rslv_\${map_yamz:\${esc:\$1%{ENV:THUMPER}}.resolve \${$hdrblob}}" [NC]
 
 # xxx The handful of Exceptions below should be done via scheme/shoulder DB
 #
@@ -113,9 +119,16 @@ RewriteRule ^/(.*) http://n2t.net/\$1 [L,R=permanent]
 #RewriteRule ^/r/([^/]+)/+(.*)\$ "_rslv_\${map_\$1:\$2.get _t}"
 
 # xxx no rule for xref?
-RewriteRule ^/[tT]-ark:/?13960/?.*\$      "_rslv_\${map_oca_test:%{REQUEST_URI}.resolve \${$hdrblob}}" [NC]
-RewriteRule ^/[tT]-ark:/?99152/?.*\$      "_rslv_\${map_yamz_test:%{REQUEST_URI}.resolve \${$hdrblob}}" [NC]
-RewriteRule ^/[tT]-ark:/?.*\$             "_rslv_\${map_ezid_test:%{REQUEST_URI}.resolve \${$hdrblob}}" [NC]
+#RewriteRule ^/[tT]-ark:/?13960/?.*\$      "_rslv_\${map_oca_test:%{REQUEST_URI}.resolve \${$hdrblob}}" [NC]
+#RewriteRule ^/[tT]-ark:/?99152/?.*\$      "_rslv_\${map_yamz_test:%{REQUEST_URI}.resolve \${$hdrblob}}" [NC]
+#RewriteRule ^/[tT]-ark:/?.*\$             "_rslv_\${map_ezid_test:%{REQUEST_URI}.resolve \${$hdrblob}}" [NC]
+
+RewriteRule ^/([tT]-ark:/?13960.*)\$ \\
+   "_rslv_\${map_oca_test:\${esc:\$1%{ENV:THUMPER}}.resolve \${$hdrblob}}" [NC]
+RewriteRule ^/([tT]-ark:/?99152.*)\$ \\
+   "_rslv_\${map_yamz_test:\${esc:\$1%{ENV:THUMPER}}.resolve \${$hdrblob}}" [NC]
+RewriteRule ^/([tT]-ark:.*)\$ \\
+   "_rslv_\${map_ezid_test:\${esc:\$1%{ENV:THUMPER}}.resolve \${$hdrblob}}" [NC]
 
 ## xxx isn't this more generic, less specific to n2t?
 ## This rule comes after the t-ark rules because it would otherwise match them.
@@ -128,16 +141,20 @@ RewriteRule ^/[tT]-ark:/?.*\$             "_rslv_\${map_ezid_test:%{REQUEST_URI}
 
 ########### this rule is mainstream resolution ################
 
-# Anything left: arks, prefixes, file paths
+## Anything left: arks, prefixes, file paths
+# Anything other than patterns matching ^_rslv_ rules which may have
+# resulted from prior yamz or oca rewrites (eg, inflections)
 
+# NB: $0 is whole string matched by RewriteRule _following_ RewriteCond
+#RewriteCond $0 !"^_rslv_"	
 RewriteRule ^/(.*)\$ \\
     "_rslv_\${map_ezid:\${esc:\$1%{ENV:THUMPER}}.resolve \${$hdrblob}}" [NC]
 
+#RewriteRule ^/ark:/?99152.*\$ \\
+#    "_rslv_\${map_yamz:%{REQUEST_URI}.resolve \${$hdrblob}}"
+#RewriteRule ^/(ark:/?99152.*)\$ \\
+#    "_rslv_\${map_yamz:\${esc:\$1%{ENV:THUMPER}}.resolve \${$hdrblob}}" [NC]
 
-
-## xxxxxx remove this soon
-## yyy this rule is insurance in case scheme/shoulder DB lookup fails
-#RewriteRule ^/pmid:(.*)\$ "http://www.ncbi.nlm.nih.gov/pubmed/\$1" [NC,R=302,L,NC]
 
 # XXX ?add rule to check if ^/ark: and empty result and for DSC or
 # escholarship arks, and do kludgy redirects to those systems?

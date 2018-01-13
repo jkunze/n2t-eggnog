@@ -788,7 +788,9 @@ inflect=$buildout_root/htdocs/e/x/inflect
 	use strict;
 	use warnings;
 
-	print "Content-type: text/plain; charset=utf-8\n\n";
+	print	"Content-type: text/plain; charset=utf-8\n",
+		"THUMP-Status: 0.7 200 OK\n",
+		"\n";
 
 	use Text::ParseWords;
 
@@ -809,8 +811,8 @@ inflect=$buildout_root/htdocs/e/x/inflect
 		say "\$h{briefblob}";
 	\$h{suffix} eq '??' and
 		say "\$h{metablob}";
-	say "# reference https://n2t.net/e/n2t_apidoc.html";
 	say "# inflections under construction";
+	say "# reference https://n2t.net/e/n2t_apidoc.html";
 
 	#say "args: \$@";
 	#foreach $var (sort(keys(%ENV))) {
@@ -1764,6 +1766,8 @@ cat << EOT >> conf/rewrite3-generic.conf
 # * because SPT will have left them intact.
 #
 # XXXXX inflections: test!!
+# resolver code checks inflections for ids we have stored, but they
+# remain for ids we don't store, eg, for rule-based redirects
 # Detect ? and ?? inflections and map with THUMP compatibility mode.
 # xxxx consider also real THUMP?
 # One question mark case:  ?  -> ?thump=0&show=brief&as=anvl/erc

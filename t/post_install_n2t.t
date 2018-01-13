@@ -182,7 +182,7 @@ like $x, qr/^Location: \Q$tgt2/m, "third new bound target value resolved";
 # NB: XXX these tests may not work on a new system until a server
 #     reboot, due to resolver bug (remove this note when fixed)
 
-my $cdl_ark = 'ark:/12345/fk1234';
+my $cdl_ark = 'ark:/12345/fk1234';		# ACTUAL real ARK!
 my $cdl_tgt = 'http://www.cdlib.org/services';
 my $cdl_ext = '/uc3/ezid/';
 
@@ -191,17 +191,31 @@ like $x, qr/^egg-status: 0/m, "egg sets target for $cdl_ark";
 
 $x = `wegn $cdl_ark.set erc.who CDL`;
 $x = `wegn $cdl_ark.set erc.when 2014`;
-like $x, qr/^egg-status: 0/m, "egg sets title $cdl_ark";
+like $x, qr/^egg-status: 0/m, "egg sets date for $cdl_ark";
 
 $x = `wegn locate "$cdl_ark$cdl_ext"`;
 like $x, qr/^Location: \Q$cdl_tgt$cdl_ext/m,
 	"documented suffix passthrough works for cdl_ark $cdl_ark";
-# xxx what's this next for?
-$x = `wegn locate "$cdl_ark"`;
 
 $x = `wegn resolve "$cdl_ark??"`;
 like $x, qr|erc:.*who: CDL.*when: 2014.*persistence:|s,
 	"?? inflection produces kernel plus persistence elements";
+
+my $yamz_ark = 'ark:/99152/dummy';		# don't clobber real term!
+my $yamz_tgt = 'https://yamz.net/term=dummy';
+my $ubdr = '@yamz@@yamz';	# user and binder for HUMB argument
+
+$x = `wegn $ubdr $yamz_ark.set _t $yamz_tgt`;
+like $x, qr/^egg-status: 0/m, "egg sets target for $yamz_ark";
+
+$x = `wegn $ubdr $yamz_ark.set erc.who id`;
+$x = `wegn $ubdr $yamz_ark.set erc.when 2018`;
+$x = `wegn $ubdr $yamz_ark.set erc.what association_between_string_and_thing`;
+like $x, qr/^egg-status: 0/m, "egg sets definition for $yamz_ark";
+
+$x = `wegn resolve "$yamz_ark?"`;
+like $x, qr|erc:.*who: id.*what: assoc.*when: 2018|s,
+	"? inflection produces kernel elements for non-ezid ark";
 
 #$x = `wegn locate "$srch_ark$srch_ext"`;
 #wegn resolve 'ark:/12345/fk1234??'
