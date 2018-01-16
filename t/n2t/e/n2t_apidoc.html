@@ -1,11 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
-<!--#include virtual="prelim.html" -->
+<head>
+  <!--#include virtual="/e/prelim.html" -->
+  <title>N2T API and UI Documentation</title>
+</head>
 <body>
-<!--#include virtual="header.html" -->
+<!--#include virtual="/e/header.html" -->
 <!--#include virtual="breadcrumb_n2t_apidoc.html" -->
-<div class="container-narrowest"><div class="section" id="overview">
-<h1>Overview</h1>
+<div class="container-narrowest">
+<div class="section" id="the-n2t-api-and-ui">
+<h1>The N2T API and UI</h1>
+<div class="section" id="overview">
+<h2>Overview</h2>
 <p>The Name-to-Thing (N2T) service provides public resolution of identifiers
 – ARKs, DOIs, etc.  Identifiers used by the public look like an acronym,
 a colon, and a string (eg, ark:/12345/fk1234), all appended to a URL
@@ -47,7 +53,7 @@ wg &quot;$b/a/sam/b?help readme&quot;
 </pre>
 </div>
 <div class="section" id="minting">
-<h1>Minting</h1>
+<h2>Minting</h2>
 <p>Minting is optional, and is generally used if you wish to generate
 randomized strings when you don't already have specific identifier
 strings in mind. N2T minters are set up in advance (not using the API)
@@ -79,7 +85,7 @@ while not having to worry about running out of unique spings. So in
 general it is best not to rely on spings being of a fixed length.</p>
 </div>
 <div class="section" id="binding">
-<h1>Binding</h1>
+<h2>Binding</h2>
 <p>N2T users have one or more binders (databases) for their exclusive use.
 Roughly, an identifier is created when you bind a string (whether a
 minted sping or not) to a thing. Underneath a given identifier string,
@@ -100,7 +106,7 @@ of your choice. Also, you may bind any number of elements, of any name
 you choose, under any identifier.</p>
 </div>
 <div class="section" id="deleting">
-<h1>Deleting</h1>
+<h2>Deleting</h2>
 <p>To delete an element entirely, use &quot;rm&quot; or, to delete all elements under
 an identifier (effectively deleting the identifier itself), &quot;purge&quot;.</p>
 <pre class="literal-block">
@@ -113,7 +119,7 @@ wg &quot;$b/a/sam/b?ark:/99999/fk4f30n.exists&quot;
 </pre>
 </div>
 <div class="section" id="special-characters">
-<h1>Special characters</h1>
+<h2>Special characters</h2>
 <p>Some characters you may want to include are significant to the command
 syntax, and there are a couple ways to deal with them. One way is to hex
 encode them as &quot;^hh&quot; and insert a &quot;:hx&quot; modifier in front of the whole
@@ -134,7 +140,7 @@ spaces should be quoted. Normal shell-like quoting conventions work
 value: a b&quot; c.</p>
 </div>
 <div class="section" id="bulk-operations">
-<h1>Bulk operations</h1>
+<h2>Bulk operations</h2>
 <p>You can submit lots of commands (thousands) as a batch inside the HTTP
 Request body. N2T looks for a batch of commands when the query string
 consists of just &quot;-&quot; (a hyphen). For example, you can set descriptive
@@ -151,7 +157,7 @@ wg &quot;$b/a/sam/b?-&quot; --post-data='
 <!-- xxx need smaller font to not wrap -->
 </div>
 <div class="section" id="identifier-metadata">
-<h1>Identifier metadata</h1>
+<h2>Identifier metadata</h2>
 <p>While some metadata elements are optional, the four elements above (who,
 what, when, how) are <strong>required</strong> to support basic metadata resolution,
 which is done via inflections and content negotiation. The element
@@ -270,7 +276,7 @@ what: (:tba) Work in progress
 </pre>
 </div>
 <div class="section" id="metatypes">
-<h1>Metatypes</h1>
+<h2>Metatypes</h2>
 <p>A &quot;resource type&quot; tells people that the identified object is of a certain
 kind. Often the resource type seems to suggest things about the
 surrounding metadata, for example, a resource of type book usually has
@@ -364,7 +370,7 @@ indicate a group, collection, or aggregation</li>
 </table>
 </div>
 <div class="section" id="optional-descriptive-metadata">
-<h1>Optional descriptive metadata</h1>
+<h2>Optional descriptive metadata</h2>
 <p>To enable richer descriptions, supplement the required elements with any
 other named metadata elements that you wish to make publicly viewable,
 and don't worry if some of the values already appear among the required
@@ -391,7 +397,7 @@ wg &quot;$b/a/sam/b?-&quot; --post-data='
 </pre>
 </div>
 <div class="section" id="users-and-api-paths">
-<h1>Users and API paths</h1>
+<h2>Users and API paths</h2>
 <p>A <em>populator</em> is an N2T user (eg, &quot;ezid&quot;). Each populator has its own
 password and a set of binders and minters for its exclusive use.
 Components for the API are all laid out under n2t.net/a/... as follows,
@@ -412,7 +418,7 @@ https://n2t-stg.n2t.net/a/ezid/b?help%20readme
 </pre>
 </div>
 <div class="section" id="resolution">
-<h1>Resolution</h1>
+<h2>Resolution</h2>
 <p>N2T resolution requires a fully qualified identifier, which essentially means that the identifier that is stored, such as,</p>
 <blockquote>
 <tt class="docutils literal"><span class="pre">ark:/12345/fk3</span></tt></blockquote>
@@ -422,8 +428,9 @@ https://n2t-stg.n2t.net/a/ezid/b?help%20readme
 <p>More generally,</p>
 <blockquote>
 <tt class="docutils literal"><span class="pre">n2t.net/&lt;scheme&gt;:[/]&lt;naan&gt;/&lt;blade&gt;</span></tt></blockquote>
+
 </div>
-<!--#include virtual="footer.html" -->
 </div>
+<!--#include virtual="/e/footer.html" -->
 </body>
 </html>

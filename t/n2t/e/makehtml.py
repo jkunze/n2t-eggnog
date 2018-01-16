@@ -50,14 +50,20 @@ f = open(outfile, "w")
 f.write(
 """<!DOCTYPE html>
 <html lang="en">
-<!--#include virtual="prelim.html" -->
+<head>
+  <!--#include virtual="/e/prelim.html" -->
+  <title>N2T API and UI Documentation</title>
+</head>
 <body>
-<!--#include virtual="header.html" -->
+<!--#include virtual="/e/header.html" -->
 <!--#include virtual="breadcrumb_%s.html" -->
-<div class="container-narrowest">%s</div>
-<!--#include virtual="footer.html" -->
+<div class="container-narrowest">
+%s
 </div>
+</div>
+<!--#include virtual="/e/footer.html" -->
 </body>
 </html>
 """ % (slug, body))
 f.close()
+#<div class="container-narrowest">%s</div>

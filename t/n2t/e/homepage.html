@@ -1,10 +1,3 @@
-# This bash script subfile is meant to be source'd by a caller that
-# defines any variable settings that may be needed.
-
-# DON'T call exit from in here or you will stop server building in its tracks!
-
-cat << 'EOT' > htdocs/index.html
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -27,7 +20,7 @@ cat << 'EOT' > htdocs/index.html
 
 <body class="background-home">
 <header class="header row center-xs">
-  <div class="col-xs-10 col-sm-6">
+  <div class="col-xs-10 col-sm-10">
     <div class="row middle-xs header">
       <h1 class="col-xs header-logo-left center-horiz">
       N2T
@@ -36,18 +29,13 @@ cat << 'EOT' > htdocs/index.html
         <source srcSet="/e/images/LogoRight_178x56.png" media="(min-width: 32em)"/>
         <img src="/e/images/LogoRight_140x40.png" alt="Resolving Names Into Things"/>
       </picture>
+      <p align="right">
+        <a href="/e/about.html">About N2T</a><br/><br/>
+        <a href="/e/n2t_apidoc.html">N2T API</a>
+      </p>
     </div>
   </div>
 </header>
-<div class="container-breadcrumb">
-  <div class="container-widest">
-    <nav class="col-xs-12 breadcrumb">
-      <ul>
-        <li><a href="/e/about.html">About N2T</a></li>
-      </ul>
-    </nav>
-  </div>
-</div>
 
 <div class="container-narrowest">
   <div class="row around-xs middle-xs">
@@ -57,6 +45,12 @@ cat << 'EOT' > htdocs/index.html
     <div class="col-xs-10 col-sm-5 center-horiz">
       <div class="box-fixed box-big-text">
         <section>
+          <span>Partners with</span>
+            <a href="https://ezid.cdlib.org">EZID.cdlib.org</a>,
+	    <a href="https://identifiers.org">Identifiers.org</a>,
+            <a href="https://www.archive.org">Archive.org</a>,
+            <a href="https://www.yamz.net">YAMZ.net metadictionary</a>
+	<!--
           <span>In partnership with:</span>
           <ul class="list">
             <li><a href="https://ezid.cdlib.org">EZID.cdlib.org</a></li>
@@ -64,6 +58,7 @@ cat << 'EOT' > htdocs/index.html
             <li><a href="https://www.archive.org">Internet Archive</a></li>
             <li><a href="https://www.yamz.net">YAMZ Metadictionary</a></li>
           </ul>
+	-->
         </section>
       </div>
     </div>
@@ -166,82 +161,3 @@ cat << 'EOT' > htdocs/index.html
   <!-- End Document -->
 </body>
 </html>
-
-EOT
-
-# ================ old homepage follows
-
-# cat << 'EOT' > htdocs/index.html
-# 
-# <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-# <html xmlns="http://www.w3.org/1999/xhtml"><head>
-# 
-# <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
-# <title>Name-to-Thing (N2T) Identifier Resolver Home Page</title>
-# <style type="text/css">/*<![CDATA[*/
-# body { text-align: center; font-family: Helvetica, sans-serif }
-# img { width: auto; max-height: 100%; }
-# #footer { position: fixed; top: auto; bottom: 0; left: 0; right: 0;
-#   padding-top: .25em; padding-bottom: .25em; font-size: 50% }
-# /*]]>*/</style>
-# 
-# </head><body>
-# 
-# <h2>The Name-to-Thing (N2T) Resolver</h2>
-# 
-# <p>&nbsp;</p>
-# 
-# <p>The N2T resolver keeps names (identifiers) of things <i>persistent</i> by forwarding them to their current web addresses.
-# </p>
-# 
-# <p>You can also use N2T to look up descriptions (metadata) of named things.
-# </p>
-# 
-# <p>It doesn't matter if the thing is a document, dataset, book, statue,
-# museum specimen, vocabulary term, symphony orchestra, etc.
-# </p>
-# 
-# <p>N2T can work with any kind of internet name:
-# URL, ARK, DOI, URN, Handle, LSID, etc.
-# </p>
-# 
-# <p>&nbsp;</p>
-# 
-# <p>The <a href="http://ezid.cdlib.org">EZID</a> service is currently the main
-# way to add to N2T's database of names, descriptions, and forwarding addresses.
-# </p>
-# 
-# <p>
-# <a href="http://www.cdlib.org/cdlinfo/2012/09/04/announcing-ezid-uk/">
-# Resolver replication</a> for N2T is underway.
-# </p>
-# 
-# <p>&nbsp;</p>
-# <p>&nbsp;</p>
-# 
-# <img src="/e/images/n2tnet_logo.png" height="80"
-# 	alt="N2T" title="Name-to-Thing Resolver">
-# 
-# <div id="footer">
-# <table align="center">
-# <tr>
-# <td>
-# <a href="http://www.cdlib.org/">
-# <img src="http://www.cdlib.org/images/logos/cdl_logo_eye.gif"
-# 	alt="California Digital Library" title="California Digital Library"/>
-# </a>
-# </td>
-# <td>
-# N2T is a service of the
-# <a href="http://www.cdlib.org/">California Digital Library</a>
-# • <a href="http://www.cdlib.org/about/privacy.html">Privacy policy</a>
-# <br/>
-# Copyright © 2006-2017 The Regents of the University of California
-# </td>
-# </tr>
-# </table>
-# </div>
-# 
-# </body></html>
-# 
-# EOT

@@ -1,3 +1,5 @@
+Be careful what you park here. All .html files will be copied to built server.
+
 To test the certificate code, before running any tests, do something like
 
 x=~/ssl/20150204

@@ -11,13 +11,13 @@
 .. _Identifier Conventions: https://ezid.cdlib.org/learn/id_concepts
 .. _Test server: https://n2t-stg.n2t.net/
 
-The N2T API
-=======================
-
 //BEGIN//
 
+The N2T API and UI
+==================
+
 Overview
----------
+--------
 
 The Name-to-Thing (N2T) service provides public resolution of identifiers
 – ARKs, DOIs, etc.  Identifiers used by the public look like an acronym,

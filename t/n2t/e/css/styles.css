@@ -4,9 +4,9 @@
 // }
 @font-face {
   font-family: 'KievitWeb';
-  src: url('../fonts/KievitWeb.eot'); /* IE9 Compat Modes */
-  src: url('../fonts/KievitWeb.eot?#iefix') format('embedded-opentype'), /* IE6-IE8 */
-     url('../fonts/KievitWeb.woff') format('woff'); /* Modern Browsers */
+  src: url('/e/fonts/KievitWeb.eot'); /* IE9 Compat Modes */
+  src: url('/e/fonts/KievitWeb.eot?#iefix') format('embedded-opentype'), /* IE6-IE8 */
+     url('/e/fonts/KievitWeb.woff') format('woff'); /* Modern Browsers */
 }
 body {
   font-family: KievitWeb;
@@ -14,7 +14,7 @@ body {
 }
 a,a:visited, a:active {
   color: #00778a;
-  text-decoration: underline;
+  text-decoration: none;
 }
 a:hover {
   color: #FFC857;
@@ -25,7 +25,7 @@ h2 {
 
 .background-home { 
   /* Big Background Image */
-   background: url(../images/shore.jpg) no-repeat center center fixed; 
+   background: url(/e/images/shore.jpg) no-repeat center center fixed; 
   -webkit-background-size: cover;
   -moz-background-size: cover;
   -o-background-size: cover;
@@ -37,7 +37,7 @@ h2 {
   border-radius: 5px;
   /* Background Color on un-linked boxes */
   background-color: #FFFFFF;
-  padding: 20px;
+  padding: 12px;
   margin: 10px 0px 0px;
 }
 
@@ -53,10 +53,10 @@ h2 {
 .box-fixed {
   border-radius: 5px;
   /* Background Color on un-linked boxes */
-  background-color: #FFFFFF;
+  background-color: #ffffff8c;
   padding: 0px 10px;
   margin: 10px 0px 0px;
-  height: 6.5em;
+  height: 4.5em;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -70,9 +70,8 @@ h2 {
   align-items: center;
   height: 6.3em;
   width: 100%;
-  font-size: inherit;
+  font-size: 18px;
   font-family: inherit;
-  text-decoration: underline;
   /* Background Color on linked boxes */
   background-color:  #C0D6DF;
   background-repeat: no-repeat;
@@ -80,10 +79,10 @@ h2 {
 }
 @media (min-width: 32em) {
   .box-linked {
-    height: 4.5em;
+    height: 3.5em;
   }
 }
-.box-linked:hover, .box-linked:focus { 
+.box-linked:hover, .box-linked:focus {
   background-color: #FFC857;
 }
 .box-linked:focus { 
@@ -106,7 +105,7 @@ h2 {
 }
 .breadcrumb ul > li:after {
   padding-left: 1.5em;
-  background: url('../images/icon_angle-right-black.svg') no-repeat center / contain;
+  background: url('/e/images/icon_angle-right-black.svg') no-repeat center / contain;
   content: '';
 }
 .breadcrumb ul > li:last-child:after {
@@ -144,7 +143,7 @@ h2 {
 }
 .footer {
   background-color: #C0D6DF; 
-  min-height: 5em;
+  min-height: 4em;
 }
 .header {
   margin-top: -8px;

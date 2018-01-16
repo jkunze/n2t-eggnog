@@ -1,8 +1,3 @@
-###### Among other things this script calls
-#   make_naanders_input to create anvl from naan reg, prefix.yaml, lsregistry
-#      then converts anvl -> yaml
-#   Then it creates other infrastructure
-
 # yyy Preserving the ordering of these sections MAY be important
 
 # This bash script subfile is meant to be source'd by a caller that defines
@@ -208,99 +203,6 @@ cp -pr $tr/e/n2t_vision_files $buildout_root/htdocs/e
 # #
 # create_test_rmap all all:ezid:oca:yamz
 # create_test_rmap all_test all_test:ezid_test:oca_test:yamz_test
-#
-# xxx add README file in this directory to explain all these filesystem bits
-
-#snaps=( ~/shoulders/{naans/master_naans,master_shoulders.txt} )
-#echo "Creating Prefixes, part from NAAN registry and shoulder file snapshots."
-#ls -l ${snaps[*]} | sed 's/.* \([A-Z]\)/  \1/'
-
-# not any more
-#mkdir -p $binders_root/pfx		# prefix database goes here
-
-#if [[ ! "$PFX_REDIR" ]]		# xxx do we still need this?
-#then	# get variables we need to communicate between scripts and databases
-#	source $tr/prefixes/set_pfx_db_vars || echo \
-#		"error: can't find PFX_... environment variable settings" 1>&2
-#fi
-
-# xxx arrange for build hosts to have regular (scrubbed) copies of these files
-# xxx is $binders_root the right place for these files to live?
-#
-# Try to wget the most up-to-date copies of the prefixes files in
-# preparation for rebuilding the prefix db from scratch.  If not
-# connected to the internet, try to use cached copies instead.
-# xxx how is cache filled for the first time? (fail with note to use this
-# script...?)
-# 
-# snaps=( ~/shoulders/{naans/master_naans,master_shoulders.txt} )
-#
-# http://n2t.net/e/naan_registry.txt  (clean copy, doesn't need scrubbing)
-# http://n2t.net/e/lsregistry.yml
-#
-# Import from prefix sources.
-# XXX disabled until we have timeouts and prefix backup sources in place
-# xxx implement pfx test mode that doesn't import?
-# $tr/prefixes/pfx import
-
-# yyy in the "n2t rollout" routine, call "pfx rollout"?
-#  no IF using mongo for prefixes since the connection to new pfx
-#        database will be automatic when server restarts
-#  yes IF using in-memory hash for prefixes
-# same reasoning for calling "pfx rollback" from the "n2t rollback"
-
-# Dependency: yyy this depends on the system pfx script being up-do-date
-
-# XXX remove make_naanders_input script from repo soon
-
-# =for removal
-# echo Creating $binders_root/n2t.anvl
-# cp $tr/prefixes/n2t.anvl $binders_root/n2t.anvl
-# #$tr/make_naanders_input ${snaps[*]} > $binders_root/n2t.anvl
-#
-# =for removal
-# echo 'Creating N2T prefix database (with MongoDB) and binder.'
-# admegn mong start		# make sure mongo service is started
-# 
-# #env N2T_PREFIXFILE=../n2t.yaml.xxx perl - << 'EOT'
-# #env N2T_PREFIXFILE=$binders_root/n2t.yaml perl - << 'EOT'
-# env N2T_PREFIXFILE=$binders_root/prefixes.yaml perl - << 'EOT'
-# #==========
-# use 5.006;
-# use strict;
-# use warnings;
-# 
-# use MongoDB;
-# use YAML 'LoadFile';
-# #use YAML::Tiny 'LoadFile';
-# 
-# my $pfx_aref = LoadFile( $ENV{N2T_PREFIXFILE} );
-# my $client = MongoDB->connect( $ENV{PFX_CONNECT} );
-# my $db = $client->get_database( $ENV{PFX_DB} );
-# $db->drop;						# delete old prefix DB
-# my $collection = $client->ns( $ENV{PFX_TABLE} );	# get prefix "table"
-# 
-# my $result = $collection->insert_many( $pfx_aref );
-# my $data = $collection->find_one({ prefix => 'ark:/67531' });
-# print " ", $result->inserted_count, " records inserted, sample target: ",
-# 	$data->{ $ENV{PFX_REDIR} }, "\n";
-# #==========
-# EOT
-# 
-# echo "Calling anvl2egg $binders_root/n2t.anvl (deprecated)."
-# 
-# rm -fr $binders_root/n2t
-# #
-# # NB: anvl2egg calls "egg"
-# #
-# # We call with -Mblib since this script is often run _before_ any scripts
-# # have been installed yet, when the only way we can access our own code is
-# # by using what's in the source directory (only callable with -Mblib).
-# #
-# (cd $src_top; perl -Mblib anvl2egg $binders_root/n2t.anvl)
-# #rm $binders_root/n2t.anvl
-# #echo "(removing N2T binder for now to suppress error message)"
-# =cut
 
 echo Creating default YAMZ and OCA minters.
 # default YAMZ and OCA minters are different from usual default

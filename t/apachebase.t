@@ -294,7 +294,7 @@ $y = flvl("< $ntd/rmapout", $x);
 is $x, "redir302 $ssvbase_u/e\n\n",
 	"raw resolver map script returns target URL";
 
-print "###### temporary testing stop ########\n"; exit;
+#print "###### temporary testing stop ########\n"; exit;
 
 $x = `$webcl "$srvbase_u/ark:/13030/b4cd3"`;
 like $x, qr{HTTP/\S+\s+200\s+OK.*extras directory}si,
