@@ -19,26 +19,42 @@ The N2T API and UI
 Overview
 --------
 
-The Name-to-Thing (N2T) service provides public resolution of identifiers
-– ARKs, DOIs, etc.  Identifiers used by the public look like an acronym,
-a colon, and a string (eg, ark:/12345/fk1234), all appended to a URL
-based at n2t.net, for example
+The Name-to-Thing (N2T.net) service provides public resolution of identifiers –
+ARKs, DOIs, etc.  Identifiers used by the public look like an acronym, a colon,
+and a string (eg, ark:/12345/fk1234), all appended to a URL based at n2t.net,
+for example,
 
   https://n2t.net/ark:/12345/fk1234
 
   http://n2t.net/doi:10.12345/FK4321
 
 When an identifier is presented to N2T for resolution, the web server is
-configured to do a database lookup and ask that the target (URL) *bound
-under* the identifier be returned in the form of an HTTP redirect.
-Arbitrary name/value pairs may be bound under an identifier.  
+configured to do a database lookup and ask that the target URL bound with the
+identifier be returned in the form of an HTTP redirect.
 
-Targets are bound under the reserved metadata element name, "_t".  If a
-target URL is found, the server redirects the client to it.  Other
-metadata elements support inflections and content negotiation.
+The target value (a URL) is metadata stored in a reserved element name, "_t",
+and it is considered to be *bound under* its identifier. Arbitrary name/value
+pairs may be bound under an identifier. Other metadata elements support
+inflections and content negotiation.
 
-Identifiers and metadata are created and maintained via the N2T API,
-which is the subject of this document.  The API supports
+On resolution if a target URL is found, the server redirects the client to it.
+Failing to find a bound identifier, the N2T.net resolver then looks for a
+redirection rule associated with the identifier. It does so by inspecting its
+hierarchical ancestors, namely, shorter strings formed by successively chopping
+from the end. For example, ::
+
+  ark:/12345/fk1234        # original identifier string
+  ark:/12345/fk1           # "shoulder"
+  ark:/12345               # NAAN (Name Assigning Authority Number)
+  ark                      # "scheme" (identifier class, aka, prefix)
+
+That briefly describes the minimal UI (user interface) that N2T.net has.
+
+This document
+-------------
+
+The API (application programming interface) is used to create and maintain
+identifiers and metadata. The API, the main subject of this document, supports
 
 - minting – generating randomized strings that can be used in creating
   identifiers, and
@@ -46,13 +62,15 @@ which is the subject of this document.  The API supports
 - binding – associating metadata name/value pairs with identifier strings
   meant to be published as URLs.
 
-Under the hood, N2T uses the EggNog software, with egg binders and nog
-minters behind an Apache HTTP server.  Minting and binding require HTTP
-Basic authentication over SSL.  The base *test* server URL for operating
-the API is https://n2t-stg.n2t.net, abbreviated as $b below. You'll need
-an N2T user name (known as a *populator*, "sam" below) and a password
-("xyzzy", not a real password).  The following shell definitions are used
-to shorten examples in this document. ::
+.. _EggNog software: https://bitbucket.org/cdl/n2t-eggnog
+
+Under the hood, N2T.net uses the `EggNog software`_, with egg binders and
+nog (nice opaque generator) minters behind an Apache HTTP server.  Minting and
+binding require HTTP Basic authentication over SSL.  The base *test* server URL
+for operating the API is https://n2t-stg.n2t.net, abbreviated as $b below.
+You'll need an N2T user name (known as a *populator*, "sam" below) and a
+password ("xyzzy", not a real password).  The following shell definitions are
+used to shorten examples in this document. ::
 
   b=https://n2t-stg.n2t.net
   alias wg='wget -q -O - --no-check-certificate --user=sam --password=xyzzy'
@@ -194,7 +212,7 @@ where                 yes      a machine-oriented identifier; NB: *no need to*
                                *supply, as it is implied by the identifier*
                                *string itself and any target information*
 how                   yes      a *metatype* constructed from the following
-                               base terms (further described below)
+                               base terms (described below)
                                ``: text, image, audio, video, data, code, term,
                                service, agent, human, project, event, oba``
 \_t                   yes      a target URL for redirecting content requests

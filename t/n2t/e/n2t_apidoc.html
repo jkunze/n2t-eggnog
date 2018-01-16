@@ -12,36 +12,51 @@
 <h1>The N2T API and UI</h1>
 <div class="section" id="overview">
 <h2>Overview</h2>
-<p>The Name-to-Thing (N2T) service provides public resolution of identifiers
-– ARKs, DOIs, etc.  Identifiers used by the public look like an acronym,
-a colon, and a string (eg, ark:/12345/fk1234), all appended to a URL
-based at n2t.net, for example</p>
+<p>The Name-to-Thing (N2T.net) service provides public resolution of identifiers –
+ARKs, DOIs, etc.  Identifiers used by the public look like an acronym, a colon,
+and a string (eg, ark:/12345/fk1234), all appended to a URL based at n2t.net,
+for example,</p>
 <blockquote>
 <p><a class="reference external" href="https://n2t.net/ark:/12345/fk1234">https://n2t.net/ark:/12345/fk1234</a></p>
 <p><a class="reference external" href="http://n2t.net/doi:10.12345/FK4321">http://n2t.net/doi:10.12345/FK4321</a></p>
 </blockquote>
 <p>When an identifier is presented to N2T for resolution, the web server is
-configured to do a database lookup and ask that the target (URL) <em>bound
-under</em> the identifier be returned in the form of an HTTP redirect.
-Arbitrary name/value pairs may be bound under an identifier.</p>
-<p>Targets are bound under the reserved metadata element name, &quot;_t&quot;.  If a
-target URL is found, the server redirects the client to it.  Other
-metadata elements support inflections and content negotiation.</p>
-<p>Identifiers and metadata are created and maintained via the N2T API,
-which is the subject of this document.  The API supports</p>
+configured to do a database lookup and ask that the target URL bound with the
+identifier be returned in the form of an HTTP redirect.</p>
+<p>The target value (a URL) is metadata stored in a reserved element name, &quot;_t&quot;,
+and it is considered to be <em>bound under</em> its identifier. Arbitrary name/value
+pairs may be bound under an identifier. Other metadata elements support
+inflections and content negotiation.</p>
+<p>On resolution if a target URL is found, the server redirects the client to it.
+Failing to find a bound identifier, the N2T.net resolver then looks for a
+redirection rule associated with the identifier. It does so by inspecting its
+hierarchical ancestors, namely, shorter strings formed by successively chopping
+from the end. For example,</p>
+<pre class="literal-block">
+ark:/12345/fk1234        # original identifier string
+ark:/12345/fk1           # &quot;shoulder&quot;
+ark:/12345               # NAAN (Name Assigning Authority Number)
+ark                      # &quot;scheme&quot; (identifier class, aka, prefix)
+</pre>
+<p>That briefly describes the minimal UI (user interface) that N2T.net has.</p>
+</div>
+<div class="section" id="this-document">
+<h2>This document</h2>
+<p>The API (application programming interface) is used to create and maintain
+identifiers and metadata. The API, the main subject of this document, supports</p>
 <ul class="simple">
 <li>minting – generating randomized strings that can be used in creating
 identifiers, and</li>
 <li>binding – associating metadata name/value pairs with identifier strings
 meant to be published as URLs.</li>
 </ul>
-<p>Under the hood, N2T uses the EggNog software, with egg binders and nog
-minters behind an Apache HTTP server.  Minting and binding require HTTP
-Basic authentication over SSL.  The base <em>test</em> server URL for operating
-the API is <a class="reference external" href="https://n2t-stg.n2t.net">https://n2t-stg.n2t.net</a>, abbreviated as $b below. You'll need
-an N2T user name (known as a <em>populator</em>, &quot;sam&quot; below) and a password
-(&quot;xyzzy&quot;, not a real password).  The following shell definitions are used
-to shorten examples in this document.</p>
+<p>Under the hood, N2T.net uses the <a class="reference external" href="https://bitbucket.org/cdl/n2t-eggnog">EggNog software</a>, with egg binders and
+nog (nice opaque generator) minters behind an Apache HTTP server.  Minting and
+binding require HTTP Basic authentication over SSL.  The base <em>test</em> server URL
+for operating the API is <a class="reference external" href="https://n2t-stg.n2t.net">https://n2t-stg.n2t.net</a>, abbreviated as $b below.
+You'll need an N2T user name (known as a <em>populator</em>, &quot;sam&quot; below) and a
+password (&quot;xyzzy&quot;, not a real password).  The following shell definitions are
+used to shorten examples in this document.</p>
 <pre class="literal-block">
 b=https://n2t-stg.n2t.net
 alias wg='wget -q -O - --no-check-certificate --user=sam --password=xyzzy'
@@ -196,7 +211,7 @@ definitions follow.</p>
 <tr><td>how</td>
 <td>yes</td>
 <td>a <em>metatype</em> constructed from the following
-base terms (further described below)
+base terms (described below)
 <tt class="docutils literal">: text, image, audio, video, data, code, term,
 service, agent, human, project, event, oba</tt></td>
 </tr>
@@ -429,6 +444,7 @@ https://n2t-stg.n2t.net/a/ezid/b?help%20readme
 <blockquote>
 <tt class="docutils literal"><span class="pre">n2t.net/&lt;scheme&gt;:[/]&lt;naan&gt;/&lt;blade&gt;</span></tt></blockquote>
 
+</div>
 </div>
 </div>
 <!--#include virtual="/e/footer.html" -->

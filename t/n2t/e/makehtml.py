@@ -61,6 +61,7 @@ f.write(
 %s
 </div>
 </div>
+</div>
 <!--#include virtual="/e/footer.html" -->
 </body>
 </html>
