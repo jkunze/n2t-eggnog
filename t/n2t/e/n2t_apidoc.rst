@@ -6,10 +6,12 @@
 .. |rArr| unicode:: U+021D2 .. rightwards double arrow
 .. |X| unicode:: U+02713 .. check mark
 
-.. _n2t: https://www.n2t.net
+.. _n2t: https://n2t.net
 .. _Identifier Basics: https://ezid.cdlib.org/learn/id_basics
 .. _Identifier Conventions: https://ezid.cdlib.org/learn/id_concepts
-.. _Test server: https://n2t-stg.n2t.net/
+.. _Suffix Passthrough Explained: https://ezid.cdlib.org/learn/suffix_passthrough
+.. _test server: https://n2t-stg.n2t.net/
+.. _EggNog software: https://bitbucket.org/cdl/n2t-eggnog
 
 //BEGIN//
 
@@ -49,6 +51,8 @@ from the end. For example, ::
   ark                      # "scheme" (identifier class, aka, prefix)
 
 That briefly describes the minimal UI (user interface) that N2T.net has.
+More about how N2T uses identifiers can be found in `Identifier Basics`_
+and `Identifier Conventions`_.
 
 This document
 -------------
@@ -62,15 +66,14 @@ identifiers and metadata. The API, the main subject of this document, supports
 - binding – associating metadata name/value pairs with identifier strings
   meant to be published as URLs.
 
-.. _EggNog software: https://bitbucket.org/cdl/n2t-eggnog
-
 Under the hood, N2T.net uses the `EggNog software`_, with egg binders and
-nog (nice opaque generator) minters behind an Apache HTTP server.  Minting and
-binding require HTTP Basic authentication over SSL.  The base *test* server URL
-for operating the API is https://n2t-stg.n2t.net, abbreviated as $b below.
-You'll need an N2T user name (known as a *populator*, "sam" below) and a
-password ("xyzzy", not a real password).  The following shell definitions are
-used to shorten examples in this document. ::
+nog (nice opaque generator) minters behind an Apache HTTP server.
+Minting and binding require HTTP Basic authentication over SSL.  The base
+`test server`_ URL for operating the API is https://n2t-stg.n2t.net,
+abbreviated as $b below.  You'll need an N2T user name (known as a
+*populator*, "sam" below) and a password ("xyzzy", not a real password).
+The following shell definitions are used to shorten examples in this
+document. ::
 
   b=https://n2t-stg.n2t.net
   alias wg='wget -q -O - --no-check-certificate --user=sam --password=xyzzy'
@@ -137,6 +140,24 @@ have been created using an N2T minter; you may bind any identifier string
 of your choice. Also, you may bind any number of elements, of any name
 you choose, under any identifier. 
 
+In a special case, if you have lots of things in a collection at a web
+server under your control, you may want to take advantage of N2T.net's
+"suffix passthrough" feature. This allows you to bind one identifier to
+the collection and advertise descendant (not ancestor) identifiers by
+adding a suffix to (lengthening) the original identifier. ::
+
+  wg "$b/a/sam/b?ark:/99999/fk4f30n.set _t http://example.org/d?suffix="
+
+For the above target, the following identifier mappings would occur::
+
+ ark:/99999/fk4f30n             -> http://example.org/d?suffix=
+ ark:/99999/fk4f30n/doc1        -> http://example.org/d?suffix=doc1
+ ark:/99999/fk4f30n/doc999      -> http://example.org/d?suffix=doc999
+ ark:/99999/fk4f30n/doc8/chap7  -> http://example.org/d?suffix=doc8/chap7
+
+See `Suffix Passthrough Explained`_ for more information.
+
+
 Deleting
 --------
 
@@ -161,8 +182,6 @@ identifier and the value: ::
 
   wg "$b/a/sam/b?:hx ark:/99999/fk4^0af30n.set _.eTm. http://example.com/content-negotiate/99999/fk4^0af30n"
 
-.. xxx need smaller font to not wrap
-
 Strings representing the identifier *i*, an element name *n*, and a data
 value *d* must be less than 4GB in length and must not start with a literal
 ':', '&', or '@' unless it is encoded. Other literals that must be
@@ -177,10 +196,10 @@ value: a b" c.
 Bulk operations
 ---------------
 
-You can submit lots of commands (thousands) as a batch inside the HTTP
-Request body. N2T looks for a batch of commands when the query string
-consists of just "-" (a hyphen). For example, you can set descriptive
-metadata along with a target URL. ::
+You can submit lots of commands as a batch inside the HTTP Request body.
+N2T looks for a batch of commands when the query string consists of just
+"-" (a hyphen). For example, this command sets descriptive metadata along
+with a target URL. ::
 
   wg "$b/a/sam/b?-" --post-data='
    ark:/13960/t6m042969.set _t http://www.archive.org/details/wonderfulwizardo00baumiala
@@ -190,7 +209,29 @@ metadata along with a target URL. ::
    ark:/13960/t6m042969.set when "1900, c1899"
   '
 
-.. xxx need smaller font to not wrap
+Great efficiency is possible. For example, if a file named "ids-to-purge"
+contains 9 million identifiers, one per line, the following server-side
+shell script (or its client-side equivalent) would purge them. ::
+
+  #!/bin/env bash
+  
+  binder=~/sv/cur/apache2/binders/ezid
+  batchsize=5000
+  bigbatch=ids-to-purge
+  linestotal=$( wc -l < ids-to-purge )
+  
+  split --lines=$batchsize $bigbatch batch
+  date > pout
+  
+  n=0
+  for f in batch??
+  do
+      sed 's/$/.purge/' $f | egg -d $binder - >> pout
+      (( n+=$batchsize ))
+      (( percent=(( $n * 100 ) / $linestotal ) ))
+      echo Processed batch $f, progress $percent%
+      sleep 2      # pause, releasing DB lock so others can use it too
+  done
 
 Identifier metadata
 -------------------
@@ -258,16 +299,17 @@ Metatypes
 A "resource type" tells people that the identified object is of a certain
 kind. Often the resource type seems to suggest things about the
 surrounding metadata, for example, a resource of type book usually has
-an author and publisher, but a geosample might not. It can also be seen
+an author and publisher, but a geosample does not. It can also be seen
 to suggest mappings to core concepts, such as, that the person
 responsible the collector (geosample) or author (book).
 
 A *metatype* (text, data, video, etc.) looks similar to a resource type,
-but instead of describing the object it describes the surrounding
-metadata. Why? To separate and clarify these two roles.  Metadata
-curators often lack object access or disciplinary expertise to review
-resource type assignments (eg, tissue sample? specimen?), but still want
-to convey which type-specific elements and semantics should be present.
+but instead of characterizing the object it give a functional description
+of the surrounding metadata. Why? To separate and clarify these two
+roles.  Metadata curators often lack object access or disciplinary
+expertise to review resource type assignments (eg, tissue sample vs
+specimen? map vs image vs pdf?), but still want to convey which
+type-specific elements and semantics should be present.
 Without having to rely on a received resource type or risk making up
 their own, they can with confidence apply a metatype that correctly
 describes their finished metadata. Finally, metatypes also assert enough
@@ -299,7 +341,7 @@ by ")", and may itself be composite. In general, this composite is
    indicate a group, collection, or aggregation
 
 .. class:: leftheaders
-.. xxx add links to definitions (see ongoing-notes)
+.. xxx add yamz links to definitions
 
 The base metatypes are controlled values defined below.
 

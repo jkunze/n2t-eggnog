@@ -20,11 +20,12 @@ def error (message):
   sys.stderr.write("makehtml: %s\n" % message)
   sys.exit(1)
 
-if len(sys.argv) != 2:
-  sys.stderr.write("Usage: makehtml {page_slug}.rst\n")
+if len(sys.argv) != 3:
+  sys.stderr.write("Usage: makehtml {page_slug}.rst Title\n")
   sys.exit(1)
 
 infile = sys.argv[1]
+title = sys.argv[2]
 slug = infile[:-4] 
 outfile = slug + ".html"
 
@@ -43,7 +44,7 @@ if not m: error("error parsing rst2html output")
 body = m.group(1)
 t.close()
 
-# Note the hack below: the extra </div> is needed to close the
+# Note the hack below: extra </div>'s are needed to close the
 # preceding section.
 
 f = open(outfile, "w")
@@ -52,7 +53,7 @@ f.write(
 <html lang="en">
 <head>
   <!--#include virtual="/e/prelim.html" -->
-  <title>N2T API and UI Documentation</title>
+  <title>%s</title>
 </head>
 <body>
 <!--#include virtual="/e/header.html" -->
@@ -65,6 +66,5 @@ f.write(
 <!--#include virtual="/e/footer.html" -->
 </body>
 </html>
-""" % (slug, body))
+""" % (title, slug, body))
 f.close()
-#<div class="container-narrowest">%s</div>
