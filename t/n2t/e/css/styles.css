@@ -19,6 +19,9 @@ a,a:visited, a:active {
 a:hover {
   color: #FFC857;
 }
+a-underline {
+  text-decoration: underline;
+}
 h2 {
   margin: 10px 0px;
 }
@@ -54,6 +57,7 @@ h2 {
   border-radius: 5px;
   /* Background Color on un-linked boxes */
   background-color: #ffffff8c;
+  /* opacity: 0.5; */ /* more standard, but makes text hard to read */
   padding: 0px 10px;
   margin: 10px 0px 0px;
   height: 4.5em;

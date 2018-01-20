@@ -12,14 +12,26 @@
 .. _Suffix Passthrough Explained: https://ezid.cdlib.org/learn/suffix_passthrough
 .. _test server: https://n2t-stg.n2t.net/
 .. _EggNog software: https://bitbucket.org/cdl/n2t-eggnog
+.. _text:	    words meant for reading
+.. _image:	    still visual information other than text
+.. _audio:	    information rendered as sounds
+.. _video:	    visual information made of moving images, often with sound
+.. _data:	    structured information meant for study and analysis
+.. _code:	    retrievable computer program in source or compiled form
+.. _term:	    word or phrase
+.. _service:    destination or automaton with which interaction is possible
+.. _agent:	    person, organization, or automaton that can act
+.. _human:	    specific kind of agent, namely, a person
+.. _event:	    non-persistent, time-based occurrence
+.. _oba: https://n2t.net/ark:/99152/h1193
 
 //BEGIN//
 
 The N2T API and UI
 ==================
 
-Overview
---------
+UI Overview
+-----------
 
 The Name-to-Thing (N2T.net) service provides public resolution of identifiers –
 ARKs, DOIs, etc.  Identifiers used by the public look like an acronym, a colon,
@@ -83,27 +95,35 @@ functionality (for the egg part of Eggnog) than is described here. ::
 
   wg "$b/a/sam/b?help readme"
 
+Yes, there's a space inside that URL, which you may hex encode if you prefer.
+
 Minting
 -------
 
 Minting is optional, and is generally used if you wish to generate
 randomized strings when you don't already have specific identifier
 strings in mind. N2T minters are set up in advance (not using the API)
-and are exclusively associated with particular N2T credentials. The
-randomized strings they generate are called *spings*.  A *sping* (semi-opaque
-string) is meant to be used as all or part of an identifier string.
+and are exclusively associated with particular N2T credentials. To
+avoid common confusion with identifiers, identifier strings, and minter
+output, the randomized strings that minters generate are called *spings*.
 
-Each minter is associated with a *shoulder*, usually a short string, such
-as "fk4", that extends an identifier base, such as "99999" (see
-`Identifier Basics`_ and `Identifier Conventions`_
-for details).  The examples
-that follow all use test spings beginning with 99999/fk4, as that
-designates a test shoulder shared across all N2T credentials.
+A *sping* (semi-opaque string) is meant to be used as all or part of an
+identifier string. We do not consider an identifier to be created until its
+association with something is publicized widely enough to be difficult to
+withdraw.
 
-Anyone with a password can liberally mint *spings* from the test shoulder
-and use them to create test identifiers. Test identifiers behave the same
-as real identifiers except that they normally expire in a few weeks. To
-mint a test sping, do ::
+Minters are useful to generate names at different levels in a hierarchical
+namespace. To help with this, each minter has a *shoulder*, usually a short
+string, such as "fk4", that extends an identifier base, such as "99999" (see
+`Identifier Basics`_ and `Identifier Conventions`_ for details). The examples
+that follow all use test spings beginning with 99999/fk4, as that designates a
+test shoulder shared across all N2T credentials.
+
+Anyone with a password can liberally mint *spings* from the test shoulder and
+use them to create test identifiers. Test identifiers behave the same as real
+identifiers except that you must not count on them to persist. For example, the
+EZID populator of N2T actively expires its test identifiers a few weeks after
+their creation. To mint a test sping, do ::
 
   wg "$b/a/sam/m/ark/99999/fk4?mint 1"
 
@@ -117,6 +137,12 @@ next run of spings will be longer by 3 characters (at each next expansion
 time). Auto-expansion allows you to enjoy shorter spings to start with
 while not having to worry about running out of unique spings. So in
 general it is best not to rely on spings being of a fixed length.
+
+Typically, N2T API minting calls look like 
+
+  wg "$b/a/sam/m/<Minter>?mint <Number>"
+
+where Number is a positive integer.
 
 Binding
 -------
@@ -157,6 +183,13 @@ For the above target, the following identifier mappings would occur::
 
 See `Suffix Passthrough Explained`_ for more information.
 
+Typically, N2T API binder calls look like 
+
+  wg "$b/a/<User>/b?<Modifier> <Identifier>.<Operation> <Element> <Value>"
+
+where Operation may be "set", "add", "rm", "purge", "exists", etc, and
+Modifier, Element, and Value are conditionally present (see below).
+The API closely resembles Eggnog's CLI (command line interface).
 
 Deleting
 --------
@@ -178,7 +211,8 @@ Some characters you may want to include are significant to the command
 syntax, and there are a couple ways to deal with them. One way is to hex
 encode them as "^hh" and insert a ":hx" modifier in front of the whole
 command. For example, this command allows a newline to be used in the
-identifier and the value: ::
+identifier (a contrived example, since newlines are not allowed in ARK
+identifiers) and the value: ::
 
   wg "$b/a/sam/b?:hx ark:/99999/fk4^0af30n.set _.eTm. http://example.com/content-negotiate/99999/fk4^0af30n"
 
@@ -203,7 +237,7 @@ with a target URL. ::
 
   wg "$b/a/sam/b?-" --post-data='
    ark:/13960/t6m042969.set _t http://www.archive.org/details/wonderfulwizardo00baumiala
-   ark:/13960/t6m042969.set how text
+   ark:/13960/t6m042969.set how (:metatype text)
    ark:/13960/t6m042969.set who "Baum, L. Frank (Lyman Frank), 1856-1919; Denslow, W. W. (William Wallace), 1856-1915"
    ark:/13960/t6m042969.set what "The wonderful wizard of Oz"
    ark:/13960/t6m042969.set when "1900, c1899"
@@ -236,10 +270,12 @@ shell script (or its client-side equivalent) would purge them. ::
 Identifier metadata
 -------------------
 
-While some metadata elements are optional, the four elements above (who,
-what, when, how) are **required** to support basic metadata resolution,
-which is done via inflections and content negotiation. The element
-definitions follow.
+Resolution does not require metadata other than target URLs, however, to be
+considered in good standing, ARKs and some other identifiers require a minimum
+set of descriptive elements. In order to achieve that standing, the four
+elements above (who, what, when, how) are **required** to support *basic
+metadata resolution*, which is done via inflections and content negotiation.
+Definitions of both required and optional elements follow.
 
 .. class:: leftheaders
 
@@ -297,31 +333,35 @@ Metatypes
 ---------
 
 A "resource type" tells people that the identified object is of a certain
-kind. Often the resource type seems to suggest things about the
+kind. Often the resource type *also* seems to suggest things about the
 surrounding metadata, for example, a resource of type book usually has
-an author and publisher, but a geosample does not. It can also be seen
-to suggest mappings to core concepts, such as, that the person
-responsible the collector (geosample) or author (book).
+an author and publisher, but a geosample does not. Moreover it suggests
+mappings to core concepts, such as, that the person responsible was the
+collector (geosample) or the author (book). This double duty sometimes causes
+confusion.
 
 A *metatype* (text, data, video, etc.) looks similar to a resource type,
-but instead of characterizing the object it give a functional description
-of the surrounding metadata. Why? To separate and clarify these two
-roles.  Metadata curators often lack object access or disciplinary
+but instead of characterizing the object it gives a functional description
+of the surrounding metadata. Why? To separate and clarify these two roles. A
+metatype assignment only reflects properties of the metadata and need not
+consider or match the resource type at all. Similarity between metatypes and
+resource types should be common, but never required.
+
+For one thing, metadata curators often lack object access or disciplinary
 expertise to review resource type assignments (eg, tissue sample vs
 specimen? map vs image vs pdf?), but still want to convey which
 type-specific elements and semantics should be present.
 Without having to rely on a received resource type or risk making up
 their own, they can with confidence apply a metatype that correctly
-describes their finished metadata. Finally, metatypes also assert enough
-information to permit basic mapping (crosswalking) between metadata sets.
+describes their finished metadata (not the object). Finally, metatypes also
+assert enough information to permit basic mapping (crosswalking) between
+metadata sets.
 
 Thus a metataype of "text" asserts only that the surrounding metadata
 should include other elements that normally accompany text-like objects.
-This is *not* an assertion that the object itself is of type "text" (it
-is possible, for example, for an assigned metatype to differ from a
-received resource type). Exactly which elements are implied by a given
-metatype, along with core mappings to common metadata element sets, is
-defined with the metatype term itself.
+This is *not* an assertion that the object itself is of type "text". Exactly
+which elements are implied by a given metatype, along with core mappings to
+common metadata element sets, is defined with the metatype term itself.
 
 Metatypes consist of a machine-readable part followed by an optional free
 text part. For example, ::
@@ -345,22 +385,22 @@ by ")", and may itself be composite. In general, this composite is
 
 The base metatypes are controlled values defined below.
 
-=======    =============================================================
-Literal    Definitions for base metatypes
-=======    =============================================================
-text	   words meant for reading
-image	   still visual information other than text
-audio	   information rendered as sounds
-video	   visual information made of moving images, often with sound
-data	   structured information meant for study and analysis
-code	   retrievable computer program in source or compiled form
-term	   word or phrase
-service	   destination or automaton with which interaction is possible
-agent	   person, organization, or automaton that can act
-human	   specific kind of agent, namely, a person
-event	   non-persistent, time-based occurrence
-oba        none of the above (meaning "other" in Tagolog)
-=======    =============================================================
+========    =============================================================
+Literal     Definitions for base metatypes
+========    =============================================================
+text 	    words meant for reading
+image 	    still visual information other than text
+audio 	    information rendered as sounds
+video 	    visual information made of moving images, often with sound
+data 	    structured information meant for study and analysis
+code 	    retrievable computer program in source or compiled form
+term 	    word or phrase
+service     destination or automaton with which interaction is possible
+agent 	    person, organization, or automaton that can act
+human 	    specific kind of agent, namely, a person
+event 	    non-persistent, time-based occurrence
+oba         none of the above (meaning "other" in Tagolog)
+========    =============================================================
 
 Optional descriptive metadata
 -----------------------------
@@ -423,6 +463,6 @@ is in the same form as what is presented to n2t.net:
 
 More generally,
 
-  ``n2t.net/<scheme>:[/]<naan>/<blade>``
+  ``n2t.net/<scheme>:[/]<naan>/<string>``
 
 //END//

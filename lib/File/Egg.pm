@@ -2601,7 +2601,8 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 			# @suffixable won't be defined if we're not using
 			# advance resolver code
 			@suffixable and grep(/^$elem$/, @suffixable) and
-				@dups = suffix_pass($bh, $id, $elem);
+				@dups = File::Resolver::suffix_pass($bh,
+						$id, $elem);
 
 		scalar(@dups) or	# if still none, try rule-based mapping
 			@dups = id2elemval($bh, $db, $id, $elem);
