@@ -12,18 +12,31 @@
 .. _Suffix Passthrough Explained: https://ezid.cdlib.org/learn/suffix_passthrough
 .. _test server: https://n2t-stg.n2t.net/
 .. _EggNog software: https://bitbucket.org/cdl/n2t-eggnog
-.. _text:	    words meant for reading
-.. _image:	    still visual information other than text
-.. _audio:	    information rendered as sounds
-.. _video:	    visual information made of moving images, often with sound
-.. _data:	    structured information meant for study and analysis
-.. _code:	    retrievable computer program in source or compiled form
-.. _term:	    word or phrase
-.. _service:    destination or automaton with which interaction is possible
-.. _agent:	    person, organization, or automaton that can act
-.. _human:	    specific kind of agent, namely, a person
-.. _event:	    non-persistent, time-based occurrence
+.. _metatype: https://n2t.net/ark:/99152/h3865
+.. _set: https://n2t.net/ark:/99152/h3866
+.. _text: https://n2t.net/ark:/99152/h3867
+.. _image: https://n2t.net/ark:/99152/h3868
+.. _audio: https://n2t.net/ark:/99152/h3869
+.. _video: https://n2t.net/ark:/99152/h3870
+.. _data: https://n2t.net/ark:/99152/h3871
+.. _code: https://n2t.net/ark:/99152/h3872
+.. _term: https://n2t.net/ark:/99152/h3873
+.. _service: https://n2t.net/ark:/99152/h3874
+.. _agent: https://n2t.net/ark:/99152/h3875
+.. _human: https://n2t.net/ark:/99152/h3876
+.. _event: https://n2t.net/ark:/99152/h3877
 .. _oba: https://n2t.net/ark:/99152/h1193
+.. _unac: https://n2t.net/ark:/99152/h3878
+.. _unal: https://n2t.net/ark:/99152/h3880
+.. _unap: https://n2t.net/ark:/99152/h3881
+.. _unas: https://n2t.net/ark:/99152/h3882
+.. _unav: https://n2t.net/ark:/99152/h3883
+.. _unkn: https://n2t.net/ark:/99152/h3884
+.. _none: https://n2t.net/ark:/99152/h3885
+.. _null: https://n2t.net/ark:/99152/h3886
+.. _etal: https://n2t.net/ark:/99152/h3887
+.. _tba: https://n2t.net/ark:/99152/h3888
+.. _at: https://n2t.net/ark:/99152/h3889
 
 //BEGIN//
 
@@ -237,7 +250,7 @@ with a target URL. ::
 
   wg "$b/a/sam/b?-" --post-data='
    ark:/13960/t6m042969.set _t http://www.archive.org/details/wonderfulwizardo00baumiala
-   ark:/13960/t6m042969.set how (:metatype text)
+   ark:/13960/t6m042969.set how (:mtype text)
    ark:/13960/t6m042969.set who "Baum, L. Frank (Lyman Frank), 1856-1919; Denslow, W. W. (William Wallace), 1856-1915"
    ark:/13960/t6m042969.set what "The wonderful wizard of Oz"
    ark:/13960/t6m042969.set when "1900, c1899"
@@ -291,7 +304,9 @@ where                 yes      a machine-oriented identifier; NB: *no need to*
 how                   yes      a *metatype* constructed from the following
                                base terms (described below)
                                ``: text, image, audio, video, data, code, term,
-                               service, agent, human, project, event, oba``
+                               service, agent, human, project, event, oba``;
+			       optionally followed by a human-readable object
+			       (resource) type
 \_t                   yes      a target URL for redirecting content requests
 \_,eTm,\ *contype*    no       (optional) a target URL for redirecting metadata
                                requests for a given ContentType contype
@@ -301,7 +316,9 @@ language              no       (optional) a language used in the content
 
 peek                  no       (optional) a glimpse of the content as a
                                thumbnail, clip, or abstract; for non-text
-                               values, use ``(:at)`` *URL_to_non-text_value*
+                               values, use (:at_) *URL_to_non-text_value*
+size                  no       (optional) one or more ";"-separated quantities,
+                               which may be human- or machine-readable
 ===================== ======== ================================================
 
 If you cannot enter an actual value for a **required element**, enter one
@@ -312,15 +329,17 @@ of these special reserved flavors for "missing value".
 ========  ==========================================================
 Literal   Definitions for missing values
 ========  ==========================================================
-(:unac)   temporarily inaccessible
-(:unal)   unallowed, suppressed intentionally
-(:unap)   not applicable, makes no sense
-(:unas)   value unassigned (e.g., Untitled)
-(:unav)   value unavailable, possibly unknown
-(:unkn)   known to be unknown (e.g., Anonymous, Inconnue)
-(:none)   never had a value, never will
-(:null)   explicitly and meaningfully empty
-(:tba)    to be assigned or announced later
+(:unac_)  temporarily inaccessible
+(:unal_)  unallowed, suppressed intentionally
+(:unap_)  not applicable, makes no sense
+(:unas_)  value unassigned (e.g., Untitled)
+(:unav_)  value unavailable, possibly unknown
+(:unkn_)  known to be unknown (e.g., Anonymous, Inconnue)
+(:none_)  never had a value, never will
+(:null_)  explicitly and meaningfully empty
+(:etal_)  other values too numerous to list
+(:tba_)   to be assigned or announced later
+(:at_)    present value is an indirect reference to the real value
 ========  ==========================================================
 
 You may optionally follow a reserved value with free text meant for human
@@ -340,7 +359,7 @@ mappings to core concepts, such as, that the person responsible was the
 collector (geosample) or the author (book). This double duty sometimes causes
 confusion.
 
-A *metatype* (text, data, video, etc.) looks similar to a resource type,
+A metatype_ (text, data, video, etc.) looks similar to a resource type,
 but instead of characterizing the object it gives a functional description
 of the surrounding metadata. Why? To separate and clarify these two roles. A
 metatype assignment only reflects properties of the metadata and need not
@@ -363,44 +382,44 @@ This is *not* an assertion that the object itself is of type "text". Exactly
 which elements are implied by a given metatype, along with core mappings to
 common metadata element sets, is defined with the metatype term itself.
 
-Metatypes consist of a machine-readable part followed by an optional free
-text part. For example, ::
+The metatype and resource type both appear in the kernel element "how", which
+permits machine-readable parts followed by optional human readable parts.
+For example, ::
 
-  how: (:metatype text) dissertation
-  how: (:metatype data) financial spreadsheet
-  how: (:metatype data+code set) time series analysis database
-  how: (:metatype data+code) visualization and simulation
-  how: (:metatype agent) fruit fly
-  how: (:metatype agent set) orchestra
+  how: (:mtype text) dissertation
+  how: (:mtype data) financial spreadsheet
+  how: (:mtype data+code set) time series analysis database
+  how: (:mtype data+code) visualization and simulation
+  how: (:mtype agent) fruit fly
+  how: (:mtype agent set) orchestra
 
-The machine-readable part must be preceded by "(:metatype " and followed
+The machine-readable part must be preceded by "(:mtype " and followed
 by ")", and may itself be composite. In general, this composite is
 
 1. a sequence of one or more *base* metatypes separated by "+", and
-2. is optionally followed by " set" (a space and the word "set") to
-   indicate a group, collection, or aggregation
+2. is optionally followed by " set" (a space and the word "set_") to
+   indicate that the metadata describes a group, collection, or aggregation
 
 .. class:: leftheaders
-.. xxx add yamz links to definitions
 
 The base metatypes are controlled values defined below.
 
-========    =============================================================
-Literal     Definitions for base metatypes
-========    =============================================================
-text 	    words meant for reading
-image 	    still visual information other than text
-audio 	    information rendered as sounds
-video 	    visual information made of moving images, often with sound
-data 	    structured information meant for study and analysis
-code 	    retrievable computer program in source or compiled form
-term 	    word or phrase
-service     destination or automaton with which interaction is possible
-agent 	    person, organization, or automaton that can act
-human 	    specific kind of agent, namely, a person
-event 	    non-persistent, time-based occurrence
-oba         none of the above (meaning "other" in Tagolog)
-========    =============================================================
+=========    =============================================================
+Metatype     Typical corresponding resource type
+=========    =============================================================
+text_	     words meant for reading
+image_	     still visual information other than text
+audio_	     information rendered as sounds
+video_	     visual information made of moving images, often with sound
+data_	     structured information meant for study and analysis
+code_	     retrievable computer program in source or compiled form
+term_	     word or phrase
+service_     destination or automaton with which interaction is possible
+agent_	     person, organization, or automaton that can act
+human_	     specific kind of agent, namely, a person
+event_	     non-persistent, time-based occurrence
+oba_         none of the above (meaning "other" in Tagolog)
+=========    =============================================================
 
 Optional descriptive metadata
 -----------------------------
