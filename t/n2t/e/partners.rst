@@ -37,14 +37,14 @@ Individual identifiers are stored in N2T.net by a number of partners.
 - `Archive.org`_ - the Internet Archive
 - `YAMZ.net metadictionary`_ - open vocabulary of metadata terms (CDL)
 
-Scheme (prefix) records are stored in N2T.net in partnership with
+Scheme (prefix) forwarding records are stored in N2T.net in partnership with
 
 - `European Bioinformatics Institute`_ - identifiers.org
 - `Prefix Commons`_ - prefixcommons.org
 
 While not currently storing individual identifiers for them, N2T stores
-"NAAN" and "shoulder" (described in `Identifier Basics`_) records for
-over 550 different ARK providers, including
+"NAAN" and "shoulder" (described in `Identifier Basics`_) forwarding
+records for over 550 different ARK providers, including
 
 - Portico Digital Preservation Service
 - The National Library of France
