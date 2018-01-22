@@ -59,7 +59,7 @@ When an identifier is presented to N2T for resolution, the web server is
 configured to do a database lookup and ask that the target URL bound with the
 identifier be returned in the form of an HTTP redirect.
 
-The target value (a URL) is metadata stored in a reserved element name, "_t",
+The target value (a URL) is metadata stored in a reserved element name, ``_t``,
 and it is considered to be *bound under* its identifier. Arbitrary name/value
 pairs may be bound under an identifier. Other metadata elements support
 inflections and content negotiation.
@@ -96,7 +96,7 @@ nog (nice opaque generator) minters behind an Apache HTTP server.
 Minting and binding require HTTP Basic authentication over SSL.  The base
 `test server`_ URL for operating the API is https://n2t-stg.n2t.net,
 abbreviated as $b below.  You'll need an N2T user name (known as a
-*populator*, "sam" below) and a password ("xyzzy", not a real password).
+*populator*, ``sam`` below) and a password (``xyzzy``, not a real password).
 The following shell definitions are used to shorten examples in this
 document. ::
 
@@ -127,7 +127,7 @@ withdraw.
 
 Minters are useful to generate names at different levels in a hierarchical
 namespace. To help with this, each minter has a *shoulder*, usually a short
-string, such as "fk4", that extends an identifier base, such as "99999" (see
+string, such as ``fk4``, that extends an identifier base, such as ``99999`` (see
 `Identifier Basics`_ and `Identifier Conventions`_ for details). The examples
 that follow all use test spings beginning with 99999/fk4, as that designates a
 test shoulder shared across all N2T credentials.
@@ -163,7 +163,7 @@ Binding
 N2T users have one or more binders (databases) for their exclusive use.
 Roughly, an identifier is created when you bind a string (whether a
 minted sping or not) to a thing. Underneath a given identifier string,
-you can bind any element, such as the redirection target URL ("_t"). ::
+you can bind any element, such as the redirection target URL (``_t``). ::
 
   wg "$b/a/sam/b?ark:/99999/fk4f30n.set _t https://archive.org/details/AllAboutBooks"
 
@@ -173,7 +173,7 @@ specific binding. ::
 
   wg "$b/a/sam/b?ark:/99999/fk4f30n.fetch _t"
 
-You can change an element at any time using another "set" command with a
+You can change an element at any time using another ``set`` command with a
 different value. Again, the identifier string you bind to doesn't have to
 have been created using an N2T minter; you may bind any identifier string
 of your choice. Also, you may bind any number of elements, of any name
@@ -200,15 +200,15 @@ Typically, N2T API binder calls look like
 
   wg "$b/a/<User>/b?<Modifier> <Identifier>.<Operation> <Element> <Value>"
 
-where Operation may be "set", "add", "rm", "purge", "exists", etc, and
+where Operation may be ``set``, ``add``, ``rm``, ``purge``, ``exists``, etc, and
 Modifier, Element, and Value are conditionally present (see below).
 The API closely resembles Eggnog's CLI (command line interface).
 
 Deleting
 --------
 
-To delete an element entirely, use "rm" or, to delete all elements under
-an identifier (effectively deleting the identifier itself), "purge". ::
+To delete an element entirely, use ``rm`` or, to delete all elements under
+an identifier (effectively deleting the identifier itself), ``purge``. ::
 
   wg "$b/a/sam/b?ark:/99999/fk4f30n.rm _t"
   wg "$b/a/sam/b?ark:/99999/fk4f30n.purge"
@@ -222,20 +222,20 @@ Special characters
 
 Some characters you may want to include are significant to the command
 syntax, and there are a couple ways to deal with them. One way is to hex
-encode them as "^hh" and insert a ":hx" modifier in front of the whole
+encode them as "^hh" and insert a ``:hx`` modifier in front of the whole
 command. For example, this command allows a newline to be used in the
 identifier (a contrived example, since newlines are not allowed in ARK
 identifiers) and the value: ::
 
   wg "$b/a/sam/b?:hx ark:/99999/fk4^0af30n.set _.eTm. http://example.com/content-negotiate/99999/fk4^0af30n"
 
-Strings representing the identifier *i*, an element name *n*, and a data
-value *d* must be less than 4GB in length and must not start with a literal
-':', '&', or '@' unless it is encoded. Other literals that must be
-encoded are any of the characters in "\|;()[]=:" anywhere in the strings i
-and n, and any '<' at the start of i. 
+Strings representing the identifier *i*, an element name *n*, and a data value
+*d* must be less than 4GB in length and must not start with a literal ':', '&',
+or '@' unless it is encoded. Other literals that must be encoded are any of the
+characters in "\|;()[]=:" anywhere in the strings *i* and *n*, and any '<' at
+the start of *i*. 
 
-The "set" command takes two arguments, so names or values that contain
+The ``set`` command takes two arguments, so names or values that contain
 spaces should be quoted. Normal shell-like quoting conventions work
 (single or double quotes, plus backslash), so "a b\" c" would specify the
 value: a b" c.
@@ -393,11 +393,11 @@ For example, ::
   how: (:mtype agent) fruit fly
   how: (:mtype agent set) orchestra
 
-The machine-readable part must be preceded by "(:mtype " and followed
-by ")", and may itself be composite. In general, this composite is
+The machine-readable part must be preceded by ``(:mtype `` and followed
+by ``)``, and may itself be composite. In general, this composite is
 
 1. a sequence of one or more *base* metatypes separated by "+", and
-2. is optionally followed by " set" (a space and the word "set_") to
+2. is optionally followed by `` set`` (a space and the word "set_") to
    indicate that the metadata describes a group, collection, or aggregation
 
 .. class:: leftheaders
