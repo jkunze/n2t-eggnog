@@ -43,8 +43,8 @@
 The N2T API and UI
 ==================
 
-UI Overview
------------
+User interface overview
+-----------------------
 
 The Name-to-Thing (N2T.net) service provides public resolution of identifiers –
 ARKs, DOIs, etc.  Identifiers used by the public look like an acronym, a colon,
@@ -78,6 +78,35 @@ from the end. For example, ::
 That briefly describes the minimal UI (user interface) that N2T.net has.
 More about how N2T uses identifiers can be found in `Identifier Basics`_
 and `Identifier Conventions`_.
+
+Branded vs opaque identifier strings
+------------------------------------
+
+Opaque identifier strings, which reveal little about the objects they identify
+or their origins, are generally considered good choices for persistent
+identifiers because they age and travel well. Often, however, organizations
+feel pressure to include branding in their strings to aid with visibility,
+promotion, and funding. How best to accommodate these seemingly conflictual
+aims of identifier and organizational sustainability?
+
+The approach advocated by N2T is to set up a specially branded DNS CNAME
+pointing to n2t.net and use it to advertise their identifiers. For example, if
+"Acme Rockets" has an identifier ark:/12345/6789, instead of publishing it as
+the opaque identifier,
+
+  n2t.net/ark:/12345/6789
+
+they would publish it as the dual-branded,
+
+  n2t.acme.example.org/ark:/12345/6789
+
+where n2t.acme.example.org is a CNAME that Acme Rockets' DNS administrator will
+have set up to forward all traffic to n2t.net. The CNAME provides branding and
+needs almost no maintenance. Should the acme.example.org domain ever lapse, the
+published identifier will no longer resolve "as is", but since the N2T brand is
+also present, it provides a social hint to future recipients that the
+well-known n2t.net resolver might still be able to resolve the part of the
+identifier after the hostname.
 
 This document
 -------------
