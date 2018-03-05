@@ -135,6 +135,32 @@ like $x, qr{redir302 zaf.*redir302 zaf}s,
 like $x, qr{redir302 zafD245/67},
 	"SPT on shoulder-as-id target";
 
+$url = 'ark:/98765/f3';
+$x = `$cmd -d $td/foo $url.set _t 'bar\${suffix}zaf\${suffix}foo'`;
+$x = `$cmd -d $td/foo $url.get _t`;
+like $x, qr|{suffix}zaf\${suffix}|, "target set with embedded suffix";
+
+my ($shadow_doi1, $shadow_doi2) = ('ark:/b0089/xt4%77%77q', 'ark:/c5072/Xt9');
+my ($doi1, $doi2) = ('doi:10.89/XT4WWQ', 'doi:10.15072/XT9');
+$x = `$cmd -d $td/foo $doi1.set _t doi1_target`;
+$x = `$cmd -d $td/foo $doi2.set _t doi2_target`;
+
+$x = resolve_stdin("-d $td/foo",
+	$url,
+	$url . 'abc',
+	$shadow_doi1,
+	$shadow_doi2,
+);
+
+like $x, qr/^redir302 barzaffoo\n.*barabczafabcfoo/,
+	"both internal suffix and empty string inserted globally";
+
+like $x, qr/\nredir302 doi1_target\n.*doi2_target/,
+	"legacy shadow ARKs resolve to their DOI counterparts";
+
+#print "x=$x\n";
+#exit;	####################
+
 my $host = '';	# yyy was $host meant to be empty?
 
 $x = `$cmd -d $td/foo "$host".delete _t`;		# delete target

@@ -12,6 +12,7 @@
 .. _Suffix Passthrough Explained: https://ezid.cdlib.org/learn/suffix_passthrough
 .. _test server: https://n2t-stg.n2t.net/
 .. _EggNog software: https://bitbucket.org/cdl/n2t-eggnog
+.. _inflections: https://confluence.ucop.edu/display/Curation/ARK
 .. _metatype: https://n2t.net/ark:/99152/h3865
 .. _set: https://n2t.net/ark:/99152/h3866
 .. _text: https://n2t.net/ark:/99152/h3867
@@ -62,7 +63,7 @@ identifier be returned in the form of an HTTP redirect.
 The target value (a URL) is metadata stored in a reserved element name, ``_t``,
 and it is considered to be *bound under* its identifier. Arbitrary name/value
 pairs may be bound under an identifier. Other metadata elements support
-inflections and content negotiation.
+inflections_ and content negotiation.
 
 On resolution if a target URL is found, the server redirects the client to it.
 Failing to find a bound identifier, the N2T.net resolver then looks for a
@@ -208,15 +209,18 @@ have been created using an N2T minter; you may bind any identifier string
 of your choice. Also, you may bind any number of elements, of any name
 you choose, under any identifier. 
 
-In a special case, if you have lots of things in a collection at a web
+Suffix Passthrough
+------------------
+
+In a special case, if a thing you identify has lots of sub-things at a web
 server under your control, you may want to take advantage of N2T.net's
 "suffix passthrough" feature. This allows you to bind one identifier to
-the collection and advertise descendant (not ancestor) identifiers by
-adding a suffix to (lengthening) the original identifier. ::
+the top-level thing and advertise sub-thing (descendant) identifiers by adding
+a suffix to (thus lengthening) the original identifier. ::
 
   wg "$b/a/sam/b?ark:/99999/fk4f30n.set _t http://example.org/d?suffix="
 
-For the above target, the following identifier mappings would occur::
+For the above target, the following identifier resolutions would occur::
 
  ark:/99999/fk4f30n             -> http://example.org/d?suffix=
  ark:/99999/fk4f30n/doc1        -> http://example.org/d?suffix=doc1
@@ -336,7 +340,9 @@ how                   yes      a *metatype* constructed from the following
                                service, agent, human, project, event, oba``;
 			       optionally followed by a human-readable object
 			       (resource) type
-\_t                   yes      a target URL for redirecting content requests
+\_t                   yes      a target URL for redirecting content requests;
+                               if the URL is preceded by an integer and a
+                               space, the integer is used as a redirect code
 \_,eTm,\ *contype*    no       (optional) a target URL for redirecting metadata
                                requests for a given ContentType contype
 \_,eTi,\ *inflection* no       (optional) a target URL for redirecting
@@ -503,14 +509,12 @@ Resolution
 
 N2T resolution requires a fully qualified identifier, which essentially means that the identifier that is stored, such as,
 
-  ``ark:/12345/fk3``
+  ark:/12345/fk3
 
 is in the same form as what is presented to n2t.net:
 
-  ``http://n2t.net/ark:/12345/fk3``
+  \https://n2t.net/ark:/12345/fk3
 
-More generally,
-
-  ``n2t.net/<scheme>:[/]<naan>/<string>``
+More generally, the form follows n2t.net/*scheme:[/]naan/string*.
 
 //END//

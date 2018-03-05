@@ -20,6 +20,13 @@ def error (message):
   sys.stderr.write("makehtml: %s\n" % message)
   sys.exit(1)
 
+if sys.argv[1] == '--date':
+  dopt = '--date'
+  sys.argv.pop(1)
+else:
+  dopt = '--no-datestamp'
+# yyy timestamp not showing up in docs
+
 if len(sys.argv) != 3:
   sys.stderr.write("Usage: makehtml {page_slug}.rst Title\n")
   sys.exit(1)
@@ -32,10 +39,10 @@ outfile = slug + ".html"
 t = tempfile.NamedTemporaryFile()
 try:
   try:					# try the Mac OS way
-    if subprocess.call(["rst2html.py", infile, t.name]) != 0:
+    if subprocess.call(["rst2html.py", dopt, infile, t.name]) != 0:
       error("subprocess call failed")
   except OSError:			# try the Linux way
-    if subprocess.call(["rst2html", infile, t.name]) != 0:
+    if subprocess.call(["rst2html", dopt, infile, t.name]) != 0:
       error("subprocess call failed")
 except:
   raise

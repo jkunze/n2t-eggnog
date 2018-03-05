@@ -131,6 +131,7 @@ $x = resolve_stdin_hdr( "--home $buildout_root",
 
 
 	'ark:12148/btv1b8426258c', '',	# BnF, and no :/
+	'minid:b97957', '',		# minid to ark test
 	'ark:/67531/metapth346793', '',	# UNT example from ARK docs
 	'ark:/99166/w6qz2nsx', '',	# SNAC (303)
 	'ark:/76951/jhcs23vum3', '',	# SPMC, using n2t.net by agreement
@@ -202,6 +203,8 @@ isnt index($x, '302 http://id.example.org/nothing_to_subst'), -1,
 
 isnt index($x, '302 http://ark.bnf.fr/ark:/12148/btv1b8426258c'), -1,
 	'ark naan (BnF) prefix redirect, with only : instead of :/'; 
+isnt index($x, '302 http://n2t.net/ark:/57799/b97957'), -1,
+	'n2t.net/minid:... redirects to n2t.net/ark:... (recursion exception)'; 
 isnt index($x, '302 http://digital.library.unt.edu/ark:/67531/metapth346793'),
 	-1, 'ark naan (UNT) prefix redirect from ARK documentation'; 
 isnt index($x, '303 http://socialarchive.iath.virginia.edu/ark:/99166/w6qz2nsx'), -1,
@@ -293,7 +296,7 @@ isnt index($x, '302 http://www.w3c.org'), -1,
 isnt index($x, '302 https://goo.gl/forms/'), -1,
 	'pre-binder-lookup redirect for externally hosted content';
 
-#print "xxx x=$x\n";
+print "xxx x=$x\n";
 #$x = apachectl('graceful-stop'); #	and print("$x\n");
 #print "######### temporary testing stop #########\n"; exit;
 

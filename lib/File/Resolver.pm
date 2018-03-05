@@ -524,6 +524,7 @@ use constant PARTIAL_SC => 2;	# scheme + colon only
 use constant PARTIAL_SN => 3;	# scheme + naan or prefix only
 use constant PARTIAL_SP => 4;	# scheme + naan or prefix + /
 use constant PARTIAL_SS => 5;	# scheme + naan or prefix + / non-empty shlder
+use constant PARTIAL_US => 6;	# unspecified: scheme + optional naan
 
 sub idx_init { my( $idx )=@_; 
 
@@ -754,7 +755,7 @@ sub id_decompose { my( $pfxs, $id )=@_;
 	# case conversion and de-hyphenation.
 	#
 	$idx->{query} = '';
-	$id =~ s/(\?.*)// and
+	$id =~ s/(\?.*)// and		# NB: removing query string from $id
 		$idx->{query} = $1;
 	$rid = $id;			# update default root id
 
@@ -771,7 +772,7 @@ sub id_decompose { my( $pfxs, $id )=@_;
 #use constant PARTIAL_SP => 4;	# scheme + naan or prefix + /
 #use constant PARTIAL_SS => 5;	# scheme + naan or prefix + / non-empty shlder
 
-# Also check flag $idx{ partial } to detect cases such as
+# Also check flag $idx{partial} to detect cases such as
 # Then use the flag to take on things that pfx_grok currently does
 # watch out for "xxx" logic that strip /'s and "'s below
 
@@ -782,6 +783,8 @@ sub id_decompose { my( $pfxs, $id )=@_;
 	#     in the prefix database.
 	#
 	my $kludge = '';
+	# naan_sep is really naan_terminator (goes after the NAAN)
+	# yyy what about IGSN, which has no naan_sep?
 	$idx->{naan_sep} = '/';		# default, but we didn't call idx_init
 	if ($scheme eq 'ark') {
 		# xxx stop this -- it prevents truncated queries and
@@ -820,8 +823,11 @@ sub id_decompose { my( $pfxs, $id )=@_;
 		$idx->{naan} = '';		# no $naan
 	}
 	$rid = $id;			# update default root id
-	# By the time we get here, $idx->{naan} and $idx->{naan_sep} will
-	# be defined.
+	# By the time we get here, we'll be done defining $idx->{naan} and
+	# $idx->{naan_sep}.
+
+	! $id and
+		$idx->{partial} = PARTIAL_US;
 
 	# NB: $kludge holds the inital '/' that begins (for now) ARK NAANs
 	# but is empty otherwise; $idx->{naan} does NOT have an initial '/'.
@@ -843,8 +849,12 @@ sub id_decompose { my( $pfxs, $id )=@_;
 	#
 	# ($short_shoulder, $blade) = get_shoulder_exceptions(yyy not yet);
 
+	# yyy could be a fictional shoulder for any but EZID ARKs and DOIs
+	#     so can't trust this setting
+	# NB: we can trust non-empty $idx->{naan} as naming a true NAA
+
 	my ($blade, $short_shoulder) = ('', '');
-	$id =~ m|^([a-z]*\d)(.*)|i and		# isolate but don't remove
+	$id =~ m|^([a-z]*\d)(.*)|i and	# isolate shoulder but don't remove
 		$short_shoulder = $1,
 		$blade = $2;
 	$idx->{blade} = $blade;
@@ -874,11 +884,21 @@ sub id_decompose { my( $pfxs, $id )=@_;
 
 	$idx->{full_id} = $scheme . ':' . $idx->{slid} . $idx->{query};
 
+	# The ARK scheme is case-sensitive, but in practice all EZID ARKs
+	# (after 11 years) are lowercase only, and we can prepare for a good
+	# UX for those users who assume resolution is case-INsenstive, eg,
+	# common in certain old-school government agencies.
+
+	$scheme eq 'ark' and	# xxx check if shoulder flag denies this
+		$idx->{full_id_case_insensitive} =
+			$scheme . ':' . uc( $idx->{slid} ) . $idx->{query};
+
 	$pfxs ||= $empty_hash;		# prevent exceptions from next three
 	# read info on each of these, if any, but don't act on it
-	$idx->{ shdr_i }   = $pfxs->{ $fqshoulder } || $empty_hash;
-	$idx->{ naan_i }   = $pfxs->{ $fqnaan }     || $empty_hash;
-	$idx->{ scheme_i } = $pfxs->{ $scheme }     || $empty_hash;
+	#    shdr, naan, or scheme information
+	$idx->{shdr_i}   = $pfxs->{$fqshoulder} || $empty_hash;
+	$idx->{naan_i}   = $pfxs->{$fqnaan}     || $empty_hash;
+	$idx->{scheme_i} = $pfxs->{$scheme}     || $empty_hash;
 
 	# When we select one of these, usually because it's the first one
 	# of the three to have a non-empty redirect, we want to know what
@@ -890,8 +910,21 @@ sub id_decompose { my( $pfxs, $id )=@_;
 	$idx->{scheme_i}->{key} = $scheme;
 	$idx->{rid} = $rid;
 
+# If there's no lexically parsed blade, we MIGHT have a partial id.
+# Whether we have a full id is determined by the binder -- if it's in
+# the binder, it's a full id. If it's not in the binder, then we may
+# inspect the $idx->{partial} flag for suggestions of what sort of
+# partial id we might have.
+
+#$idx->{partial} = ( $blade ? PARTIAL_SHDR$blade
+#	if (! $id) {
+#	}
+#	$pfxs->{$scheme} and
+#		$idx->{partial} = PARTIAL_SO;
+#		# yyy not detecting partial matches on NAAN or shoulder
+
 	# Because of $empty_hash, from now on we can confidently use
-	# $idx->{ *_i } as pointers without throwing an exception.
+	# $idx->{*_i} as pointers without throwing an exception.
 
 	return $idx;
 }
@@ -1013,22 +1046,19 @@ sub tidy_prefix_hash { my( $sh, $pfxs, $msgR )=@_;
 	#     redirect loops by pattern-matching on the hostname
 	#     and eliminating such rules at prefix load time.
 	#
-# xxx drop
-	#my $config = $pfxs->{ resolver_config } ||	# xxx document this key
-	#	$empty_hash;
 
 	# yyy not well-tested
 	my $ignore = $sh->{conf_flags}->{resolver_ignore_redirect_host}
 		|| '';			# eg, 'n2t'
 
-#print "xxx tidy_p_h: ignore=$ignore\n";
-
-# xxx drop
 	#my $ignore = $config->{ ignore_redirect_host } || '';	# eg, 'n2t'
-	my $regex = qr|^(?:https?:/+)?[\w.-]*$ignore[\w.-]*|o;
+	#my $regex = qr|^(?:https?:/+)?[\w.-]*$ignore[\w.-]*|o;
+	my $regex = qr|^(?:https?:/+)?[\w.-]*$ignore[\w.-]*/+([^:]+:?)|o;
+	# now capture any scheme name in the redirect ------->^^^^^
+	#  test below: if it doesn't end in ':' don't consider it a scheme name
 
 	my (@resolver_aliases, @resolver_synonyms);
-	my ($k, $prefix, $alias, $ename, $pinfo, $redirect);
+	my ($k, $prefix, $alias, $ename, $pinfo, $redirect, $scheme);
 	while (($prefix, $pinfo) = each %$pfxs) {
 		# xxx document this canonical ("prefix"), different from
 		#     "key" added by id_decompose
@@ -1043,13 +1073,19 @@ sub tidy_prefix_hash { my( $sh, $pfxs, $msgR )=@_;
 		$ename = $pinfo->{for} and	# Existing (previous) name
 			push(@resolver_synonyms, $ename, $prefix);
 
-#print "xxx before pr=$pinfo->{redirect}\n";
 		$redirect = $pinfo->{redirect} or
 			next;
 		# if here, there's a redirect rule we might need to ignore
+		# figure out the scheme associated with the prefix
+		($scheme = $prefix) =~ s/:.*//;
 		$ignore and $redirect =~ $regex and
-			$pinfo->{redirect} = '';	# annihilate
-#print "xxx after pr=$pinfo->{redirect}\n";
+			$1 eq "$scheme:" and	# should have these outcomes
+#print(STDERR "xxx 1=$1, prefix:=$prefix:, redirect=$redirect\n") and
+				# ark:... -> n2t.net/ark:... (ignore)
+				# minid:... -> n2t.net/ark:... (pass)
+				# ark:... -> n2t.net/arkane... (ignore)
+				$pinfo->{redirect} = '';	# kill redirect
+				# annihilate redirect rule in some cases
 	}
 	# yyy n2tadds.yaml maintained under ~/shoulders on n2tprda, copied
 	#     to $sa/htdocs/e by naans makefile, pulled to Mac via cron
@@ -1265,11 +1301,11 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 	#### Step 0 Redirect directives to look for _before_ binder lookup
 	#  yyy as Last Step look up $UNKNOWN_SCHEME ids post-binder-lookup
 	# Also check flag $idx{ partial } to detect cases such as
-	# PART_SO scheme only
-	# PART_SC scheme plus colon only
-	# PART_SN scheme plus naan or prefix only
-	# PART_SP scheme plus naan or prefix plus /
-	# PART_SS scheme plus naan or prefix plus / non-empty shoulder
+	# PARTIAL_SO scheme only
+	# PARTIAL_SC scheme plus colon only
+	# PARTIAL_SN scheme plus naan or prefix only
+	# PARTIAL_SP scheme plus naan or prefix plus /
+	# PARTIAL_SS scheme plus naan or prefix plus / non-empty shoulder
 	# Then use the flag to take on things that pfx_grok currently does
 
 	if ($idx->{scheme} eq $UNKNOWN_SCHEME) {
@@ -1280,7 +1316,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 			$dups[0] = $target;
 		scalar(@dups) and
 			return cnflect( $bh, $txnid, $db, $rpinfo, $accept,
-				$id, \@dups, $idx, "aftereaster" );
+				$id, \@dups, $idx, "unknown", "aftereaster" );
 		#$msg = "don't know what to do with $ur_origid";
 		#return undef;
 	}
@@ -1303,7 +1339,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 
 	scalar(@dups) and
 		return cnflect( $bh, $txnid, $db, $rpinfo, $accept,
-			$id, \@dups, $idx, "aftereaster" );
+			$id, \@dups, $idx, "unnormalized", "aftereaster" );
 
 	# if not found...
 	#### Step 2. replace id with normalized id and lookup again
@@ -1321,18 +1357,22 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 	# define new version of id_normalize($db, $idx) 
 
 # yyy allow scheme name minus id to return description of scheme
-# yyy Julie M: when scheme is unknown, produce message to that effect for
+# yyy Julie M: when scheme is unknown, produce message (log?) to that effect for
 #   resolution
 
-	# Here's the second lookup.
+	# Here comes the second lookup.
 	$id = $idx->{full_id} || '';	# normalized id or defined empty string
 			# any suffix or query string will still be attached
 
 	@dups = File::Egg::get_dup($db, $id . TSUBEL);		# usual case
 	scalar(@dups) and
 		return cnflect( $bh, $txnid, $db, $rpinfo, $accept,
-			$id, \@dups, $idx );
+			$id, \@dups, "normalized", $idx );
 
+	# This will be fleshed out later AFTER ezid stops storing shadow
+	# ARKs, but people still resolve shadow arks found in the wild.
+
+# xxx remove this 2a code after all shadow ARKs are gone from the binder
 	# if still not found...
 	#### Step 2a. ... and we might store a shadow ARK for it (eg, doi:...)
 
@@ -1342,14 +1382,20 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 			File::Egg::get_dup($db, $shadow . TSUBEL);
 		scalar(@dups) and
 			return cnflect( $bh, $txnid, $db, $rpinfo, $accept,
-				$shadow, \@dups, $idx );
+				$shadow, \@dups, $idx, "doi2shadow" );
 	}
 
 	# if still not found...
-	#### Step 2b. ... and it might BE a shadow ARK for it (eg, ark:/b...)
+	#### Step 2b. ... and it might be a shadow ARK for it (eg, ark:/b...)
 
-	    # This will be fleshed out later AFTER ezid stops storing shadow
-	    # ARKs, but people still resolve shadow arks found in the wild
+	if ($idx->{scheme} eq 'ark' and $idx->{naan} =~ /^[b-z]\d\d\d\d$/) {
+		my $real_id = shadow2id($id);
+		defined($real_id) and @dups =
+			File::Egg::get_dup($db, $real_id . TSUBEL);
+		scalar(@dups) and
+			return cnflect( $bh, $txnid, $db, $rpinfo, $accept,
+				$real_id, \@dups, $idx, "doi2shadow" );
+	}
 
 #	# if still not found...
 #	#### Step 2c. ... see what kind of redirect info there is
@@ -1393,14 +1439,14 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 # 	#print_hash("/ fqshoulder=$idx->{fqshoulder}", $idx->{shdr_i});
 # 	#print_hash("/ fqnaan=$idx->{fqnaan}", $idx->{naan_i});
 # 	#print_hash("/ scheme=$idx->{scheme}", $idx->{scheme_i});
-
+######
 # XXXXX
 #  this is short-circuiting all SPT for all the prefixes we know about!
 #   and that have a redirect rule!  ie, all ARKs!!!
 # if ! $rpinfo then don't bother with SPT -- ie, fail now?
 # then try SPT
 # _then_ look at doing redirects
-
+######
 # 	if ($rpinfo and $rpinfo ne 'SAI') {
 # 		# If we get here, we will redirect to the result of a
 # 		# prefix-based redirect rule found in $rpinfo, into which
@@ -1431,30 +1477,30 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 # 	elsif ($rpinfo and $rpinfo eq 'SAI') {		# xxx drop this kludge!
 # 		$rpinfo = undef;
 # 	}
-
-	# N. do range lookup on fqnaan to see if we have anything
-	#  serve ids for the shdr, naan, or scheme?
-	#    if yes, apply normalization rules for next lookup
-	#    eg, upper2lower for ARKs on most shoulders
-	#    (we hardwire rules for our ARKs, DOIs, URNs, UUs, EOIs)
-	# xxx return full_id and norm_id (different)
-	# xxx return clear statement about whether we manage this thing
-
-
-	# if still not found...
-	#### Step 3. we may do suffix passthrough (SPT).  That could be
-	# costly, so the SPT routine first lookup the shoulder via a range
-	# search (yyy adjust eventually for multi-binder (resolverlist)
-	# case) to see if we even store any ids starting with it, and bail
-	# early if not.  Also bail if a shoulder or naan flag tells us not
-	# to do SPT.
-
-	# if still not found...
-	#### Step 4. if there's a prefix redirect rule, forward request
-	# eg, shoulders for escholarship and DSC
-	# eg, naans for UNT and BnF
-	# eg, schemes for PMID and RRID
-
+######
+#	# N. do range lookup on fqnaan to see if we have anything
+#	#  serve ids for the shdr, naan, or scheme?
+#	#    if yes, apply normalization rules for next lookup
+#	#    eg, upper2lower for ARKs and DOIs on most shoulders
+#	#    (we hardwire rules for our ARKs, DOIs, URNs, UUs, EOIs)
+#	# xxx return full_id and norm_id (different)
+#	# xxx return clear statement about whether we manage this thing
+#
+#
+#	# if still not found...
+#	#### Step 3. we may do suffix passthrough (SPT).  That could be
+#	# costly, so the SPT routine first looks up the shoulder via a range
+#	# search (yyy adjust eventually for multi-binder (resolverlist)
+#	# case) to see if we even store any ids starting with it, and bail
+#	# early if not.  Also bail if a shoulder or naan flag tells us not
+#	# to do SPT.
+#
+#	# if still not found...
+#	#### Step 4. if there's a prefix redirect rule, forward request
+#	# eg, shoulders for escholarship and DSC
+#	# eg, naans for UNT and BnF
+#	# eg, schemes for PMID and RRID
+######
 # 3a. corollary: while any id can be an exception to what we're
 # responsible for (1 and 2 above), the prefix db will prevent us from
 # doing suffix PT on any such exceptions
@@ -1479,42 +1525,66 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 #		PFX_XFORM => '2U,NH',
 #		PFX_LOOK => 0,
 #	},
-
-
-	# yyy is this @suffixable array a holdover from proprietary code
-	#     worries? can it be adapted to support metadata passthrough?
-	# if nothing, try suffix pass thru
-	# @suffixable is also an array of elements that we're
-	# willing to do SPT on; we'll assume that _t is always in
-	# it rather than bother to check for each resolution.
-	#
+#######
+#
+#	# yyy is this @suffixable array a holdover from proprietary code
+#	#     worries? can it be adapted to support metadata passthrough?
+#	# if nothing, try suffix pass thru
+#	# @suffixable is also an array of elements that we're
+#	# willing to do SPT on; we'll assume that _t is always in
+#	# it rather than bother to check for each resolution.
+#	#
+# yyy isn't the test @suffixable deprecated; use scalar(@suffixable) instead?
 	if (@suffixable) {
+		my ($suffix, $rid);		# rid = root id + suffix
 		# NB: next call alters the $suffix argument (a return param)
-		my ($suffix, $rid);		# id = root id + suffix
 		@dups = suffix_pass($bh, $id,
 				File::Binder::TRGT_MAIN, $suffix);
+		# suffix has NOT yet been added to target
 		$rid = substr($id, 0, - length($suffix));
 		($idx->{suffix}, $idx->{rid}) = ($suffix, $rid);
+		# At this point, $id includes the suffix, and $rid does not.
+
 		scalar(@dups) and
 			return cnflect( $bh, $txnid, $db, $rpinfo, $accept,
-				$id, \@dups, $idx );
+				$id, \@dups, $idx, "spt" );
 		#@suffixable and grep(/^\Q$elem\E$/, @suffixable) and
 	}
 	#
 	# From here on, $idx->{suffix} is defined iff suffix_pass() was called.
 
-	# still nothing, so try rule-based mapping
+	# if still nothing, so try ancient noid-born rule-based mapping
 	@dups = File::Egg::id2elemval($bh, $db, $id, File::Binder::TRGT_MAIN);
 	scalar(@dups) and
 		return cnflect( $bh, $txnid, $db, $rpinfo, $accept,
-			$id, \@dups, $idx );
+			$id, \@dups, $idx, "id2elemval" );
 
+# xxx problem: this is capturing web server file paths as if they were partial
+# ids to send to pfx for lookup
+#	# If still nothing, see if we have a probable partial match.
+#	# This is risky as we might occlude rule-based redirection
+#	# if we flag as partial something that ought to simply redirect.
+#
+# 	if ($idx->{partial}) {		# scheme, or scheme+naan
+#		my $partial = 
+#			$idx->{shdr_i}->{key}
+#			|| $idx->{naan_i}->{key}
+#			|| $idx->{scheme_i}->{key};
+#		return cnflect( $bh, $txnid, $db, $rpinfo, $accept,
+#			$id, [ ], $idx, "partial=$partial" );
+#	}
+
+	# If still nothing, try new rule-based mapping.
 	# Get redirection prefix info for the first, most-specific
 	# redirect rule that we find.
+	# yyy when/where do we use the info blocks except for a thest
+	#     that we found a redirect? the info itself will be provided
+	#     by calling out to pfx (at least for now).
+
 	$rpinfo ||=
- 		($idx->{shdr_i}->{redirect}   ? $idx->{ shdr_i } :
- 		($idx->{naan_i}->{redirect}   ? $idx->{ naan_i } :
- 		($idx->{scheme_i}->{redirect} ? $idx->{ scheme_i } :
+ 		($idx->{shdr_i}->{redirect}   ? $idx->{shdr_i} :
+ 		($idx->{naan_i}->{redirect}   ? $idx->{naan_i} :
+ 		($idx->{scheme_i}->{redirect} ? $idx->{scheme_i} :
  		undef )));
  
 #print "xxx resolve: r=$idx->{scheme_i}->{redirect}\n";
@@ -1540,18 +1610,18 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 		#     load_prefix_hash().
 
 		$proto ||= 'http';		# usually set in $hdrinfo
-		my $redirect = $rpinfo->{ redirect };
+		my $redirect = $rpinfo->{redirect};
 		#   ${a} replaced with string "after" the colon
 		#   ${blade} replaced with blade part of id
 		# $redirect =~ s/\${a}/$idx->{ slid }/g;	# maybe later
 #print "xxx before re=$redirect, ";
-		$redirect =~ s/\${blade}/$idx->{ blade }/g;
-		$redirect =~ s/\$id\b/$idx->{ slid }/g;
+		$redirect =~ s/\${blade}/$idx->{blade}/g;
+		$redirect =~ s/\$id\b/$idx->{slid}/g;
 # XXX proto preservation should work for ALL targets, not just rule-based
 		$redirect =~ m|https?://| or	# if proto not specified by rule
 			$redirect =~ s|^|$proto://|;	# go with user's choice
 		return cnflect( $bh, $txnid, $db, $rpinfo, $accept,
-			$id, [ $redirect ], $idx );
+			$id, [ $redirect ], $idx, "rulebased" );
 	}
 
 	$idx->{fail} = 1;	# failure indicated by this flag and
@@ -1559,7 +1629,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 				# which satisfies the rrm protocol
 
 	return cnflect( $bh, $txnid, $db, $rpinfo, $accept,
-		$id, \@dups, $idx );
+		$id, \@dups, $idx, "failed" );
 		#\@dups, $idx, $tag . " lastcall" ...
 }
 
@@ -1635,7 +1705,7 @@ my $Ti = File::Binder::TRGT_INFLECTION; # target for inflection
 # Content Negotiation/Inflection
 
 sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id, 
-				$dupsR, $idx, $tag )=@_;
+				$dupsR, $idx, $op, $tag )=@_;
 
 	my $sh = $bh->{sh};
 	my $fail = $idx->{fail};
@@ -1643,6 +1713,7 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 	my $suffix = $idx->{suffix};
 	my $ur_origid = $idx->{ur_origid} || '';
 	my $st;
+	$op ||= 'default';
 	#$tag ||= "tag_undef, id=$id";	# debug tool to trace which caller
 
 	# SPT has been attempted by now, xxx explain better in comments how
@@ -1674,8 +1745,21 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 	my $eset = 'brief';
 	my $format = 'anvl';
 
-	if (! $fail and $suffix and $suffix !~ /\w/) {	# now check root id
+	if ($op =~ /^partial=(.*)/) {	# just scheme given, maybe naan too
+		my $partial = $1;
+		$returnline = quote_args(
+			inflect_cmd( $bh, $eset, $format, $idx,
+				"op=partial", "partial=$partial"))
+	}
 
+	# yyy shouldn't this be checking $idx->{query}, not $suffix?
+	#     because what if you want to do SPT _and_ inflections?
+	# if no returnline yet and we didn't fail the lookup and if SPT was
+	# called and returned a non-empty suffix that contains no word char...
+
+	if (! $returnline and ! $fail and $suffix and $suffix !~ /\w/) {
+
+		# now check the root id
 		$db->db_get("$rid$Rs$Ti$suffix", $target) and	# unless found
 			$db->db_get("$rid$Rs$Ti", $target) and	# unless found
 				$target = '';			# not found
@@ -1713,6 +1797,20 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 				inflect_cmd( $bh, $eset, $format, $idx,
 					"op=cn.$accept"))
 		;
+	}
+	if (! $returnline) {
+		my $newstr = $suffix || '';	# make sure it's defined string
+
+		# This is the step where the suffix is appended to (by default)
+		# or substituted for any ${suffix} inside the the target.
+		# If there's no suffix, any ${suffix} construct should vanish.
+		#@dups = map $_ . $suffix, File::Egg::get_dup($db, "$newid|$element");
+
+		@$dupsR = map {
+			s/\${suffix}/$newstr/g && $_	# try substitution
+				or			# or if that fails
+			$_ . $newstr			# just append suffix
+			} @$dupsR;
 	}
 
 	# Check for multiple redirection if $returnline is still empty
@@ -1757,6 +1855,8 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 		$txnid = tlogger($sh, $txnid,
 			"INFO $id returnline had a newline inside!");
 
+	# The main event, what everything as been building to.
+
 	#$st = print( $returnline, $tag, "\n" );	# EXACTLY ONE newliine
 	$st = print( $returnline, "\n" );	# EXACTLY ONE newliine
 
@@ -1774,7 +1874,6 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 		$rpinfo and
 			$msg .= " PFX $rpinfo->{key}";
 		$msg .= " -> $returnline";
-		#$msg .= " resolve $id to $dups[0]";
 		$txnid = tlogger $sh, $txnid, $msg;
 	}
 	return $st;	# return code rarely correlates with failed lookup
@@ -1852,7 +1951,7 @@ sub doip2naan { my $prefix = shift or return '';
 }
 # above two routines imported from doip2naan script
 
-####XXXXXXXXXX unofficial NAAN registration for shadow arks
+#### unofficial NAAN registration for shadow arks
 # urn:uuid: -> 97720
 # uuid: -> 97721
 # purl: -> 97722
@@ -1868,7 +1967,67 @@ sub doip2naan { my $prefix = shift or return '';
 #!contact: Kunze, John | California Digital Library || jak@ucop.edu
 ##! 97720 = Burns, Oregon
 
-# XXX thanks to shadow ARKs, Suffix Passthrough works on all ids??
+# We don't check, but both args should be non-empty strings,
+# the first being an NCDA-acceptable char [bcdfghjk...].
+# NCDA = Nog Check Digit Algorithm
+
+sub n2d { my( $chr1, $final4 )=@_;
+
+	my $finalpart = $final4;
+	$finalpart =~ s/^0+//;		# remove 0 padding, if any
+	# this ensures that we put out 10.12 instead of 10.0012
+	my $firstpart =
+		($chr1 eq 'b' ? '' :
+		($chr1 eq 'c' ? '1' :
+		($chr1 eq 'd' ? '2' :
+		($chr1 eq 'f' ? '3' :
+		($chr1 eq 'g' ? '4' :
+		($chr1 eq 'h' ? '5' :
+		($chr1 eq 'j' ? '6' :
+		($chr1 eq 'k' ? '7' :
+		($chr1 eq 'm' ? '8' :
+		($chr1 eq 'n' ? '9' :
+		($chr1 eq 'p' ? '10' :
+		($chr1 eq 'q' ? '20' :
+		($chr1 eq 'r' ? '30' :
+		($chr1 eq 's' ? '40' :
+		($chr1 eq 't' ? '50' :
+		($chr1 eq 'v' ? '60' :
+		($chr1 eq 'w' ? '70' :
+		($chr1 eq 'x' ? '80' :
+		($chr1 eq 'z' ? '90' :
+				'OUTofRANGE'
+	)))))))))))))))))));
+
+	return $firstpart . $finalpart;
+}
+
+sub ark2doi { my( $ark )=@_;
+
+	$ark =~ s { ^ (ark:/*)? ([bcdfghjkmnpqrstvwxz]) (\w{4}) \b (\S*) }
+		  { "doi:10." . n2d($2, $3) . "\U$4\E" }xeg or
+		  return undef;
+	$ark =~ s/%([0-9A-Fa-f]{2})/uc chr hex $1/xeg;
+	return $ark;
+}
+
+# Take shadow ARK (EZID kludge) to real (new) id (a DOI).
+
+sub shadow2id { my( $id )=@_;		# $id assumed to be shadowing a DOI
+
+	my $query = '';
+	$id =~ s/(\?.*)// and
+		$query = $1;
+	my $origid = $id;
+	my $doi;
+	$doi = ark2doi($id) or
+		return undef;		# not shadow id, so no transformation
+
+	$doi ne $origid and		# if change occurred, return shadow and
+		return $doi . $query;	#    restore un-normalized query string
+	return undef;			# else no known shadow transformation
+}
+
 # Shadow ARKs (kludge)
 # Take id to shadow ARK (EZID kludge) or shadow DOI (CrossRef kludge).
 # (This is a non-reversible transformation.)
@@ -2341,14 +2500,6 @@ sub suffix_pass { my( $bh, $id, $element, $suffix_return )=@_;
 	my $stopchop = $origlen - length($stop);
 	my $shoulder = substr $id, 0, $stopchop;
 
-# XXX for binder cutover, document improvements to
-#     security (ssl, authn), stability during system upgrades,
-#     reliability and speed of the db (upgrading to newer versions
-#         of underlying packages))
-#     better foundation for adding new functionality
-#     big one: SPT
-# XXXXXX use newer reserved element format (_.eT....)
-#        for documenting this
 # XXX document support for "_t_am n" on the shoulder or on the id
 #     no support yet for "q" or "t"
 # DRAFT
@@ -2487,7 +2638,7 @@ sub suffix_pass { my( $bh, $id, $element, $suffix_return )=@_;
 	! $newid and
 		return ();
 
-	@dups = File::Egg::get_dup($db, "$newid|$am");
+	@dups = File::Egg::get_dup($db, "$newid|$am");	# check flag for $newid
 	$amflag = scalar(@dups) ?	$dups[0] : '';
 	$verbose and print "id amflag=$amflag for $newid|$am\n";
 	$amflag eq 'n' and
@@ -2499,20 +2650,23 @@ sub suffix_pass { my( $bh, $id, $element, $suffix_return )=@_;
 	$verbose and	# xxx this $verbose is more like $debug
 		print "chopped back to $newid\n";
 
-	# Found something.  Extract suffix by presenting the original
+	# Found something.  Isolate the suffix by giving the original
 	# id and a negative offset to substr().
 	#
 	my $suffix = substr $id, length($newid) - $origlen;
 	$_[3] = $suffix;		# set $suffix_return
 	$verbose and	# xxx this $verbose is more like $debug
 		print "suffix for newid ($newid) is $suffix\n";
+		# yyy shouldn't this use STDERR?
 
 	# yyy flexencode considerations?
 	# note that chopback looked this up, but not dup-sensitive;
 	# so we look it up again, this time passing dups back
 	# 
 # XXXXXX did we encode $newid chars here and for chopback?? eg, any |'s?
-	@dups = map $_ . $suffix, File::Egg::get_dup($db, "$newid|$element");
+
+	@dups = File::Egg::get_dup($db, "$newid|$element");
+# XXX @dups now has base target, but no appended or substituted suffix !!!
 
 	$verbose	and print "spt to: ", join(", ", @dups), "\n";
 

@@ -70,6 +70,14 @@ RewriteRule ^/eoi:/?.*\$ \\
 RewriteCond %{HTTP_HOST} ^(www\\.n2t\\.net|(www\\.)?n2t\\.(com|info|me|org))|arks\\.princeton\\.edu\$ [NC]
 RewriteRule ^/(.*) http://n2t.net/\$1 [L,R=permanent]
 
+#From Debra Bartling:
+#www.arks.org is a cname => n2t.net.
+#The zone apex (arks.org) cannot be a CNAME, so it is configured as an A record
+#ALIAS directly to your n2t production load balancer. If you nslookup n2t.net or
+#arks.org you will see the same response. MAKE A NOTE of this in case we ever
+#change the name of your load balancer. It is a "Classic" load balancer; at some
+#point we may need to update to the newer "Application" load balancer.
+
 # yyy Greg's rule; is it needed? what about localhost?
 ## Forbid all other hostnames, IP addresses, etc., just in case.
 #RewriteCond %{HTTP_HOST} !^n2t\.net\$ [NC]
@@ -177,6 +185,12 @@ RewriteRule "^_rslv_redir399 +(.+)"   \$1 [L,NE]
 RewriteRule "^_rslv_inflect +(.+)" \\
   "$document_root/e/x/inflect? --api --ua %{QUERY_STRING} \$1" [L]
 #  "$document_root/e/x/inflect? --api $tlog --ua %{QUERY_STRING} \$1" [L]
+
+# XXX it seems bizarre that you cannot call a script with args, but have
+# to pass args in via a QUERY_STRING env variable -- is this really true?
+#
+RewriteRule "^_rslv_pfxlookup +(.+)" \\
+  "$document_root/e/x/pfxlookup? --api --ua %{QUERY_STRING} \$1" [L]
 
 #RewriteRule "^_rslv_multi +(.+)" \\
 #  "$document_root/e/x/multi? --api $tlog --ua %{QUERY_STRING} \$1" [L]

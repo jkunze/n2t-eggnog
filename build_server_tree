@@ -776,6 +776,7 @@ inflect=$buildout_root/htdocs/e/x/inflect
 	# Remember to quote normal $ \ and ` in << blocks.
 	cat > $inflect << EOT
 #!/bin/sh
+# This "inflect" script handles inflections and prefix lookup.
 
 	PERL5LIB=$PERL5LIB
 	PATH=$egpath
@@ -795,7 +796,7 @@ inflect=$buildout_root/htdocs/e/x/inflect
 
 	use Text::ParseWords;
 
-	#say "qs: \$ENV{QUERY_STRING}";
+say "qs: \$ENV{QUERY_STRING}";
 	# QUERY_STRING contains pseudo command arguments
 	my @args = shellwords( \$ENV{QUERY_STRING} );
 	my (%h, \$key, \$val);
@@ -807,6 +808,24 @@ inflect=$buildout_root/htdocs/e/x/inflect
 		(\$key, \$val) = (\$1, \$2);
 		\$val =~ s/%([[:xdigit:]]{2})/chr hex \$1/eg;	# hex decode
 		\$h{\$key} = \$val;
+	}
+
+	if (\$h{op} eq 'partial') {
+		# prefix lookup, eg, n2t.net/pdb   -> pfx -s rec find '\bpdb$'
+		#    returns descriptions of all providers
+		# These all work "as is" (normalize by stripping final : and /)
+		#  '\bpdbe/pdb$'      for one provider
+		#  '\bark:/13030$'    (strip final :, then final /)
+		#  '\bark:/99999/fk4$'    (strip final :, then final /)
+		#  '\bdoi:10.5072/fk2'    (strip final :, then final /)
+		#  '\b.'  (disallow:  return 0 results for short patterns which
+		#          would allow people to harvest the database directly?)
+
+		my \$p = \$h{partial};
+		\$p =~ s|[:/]*\$||;
+		print "xxx \$ENV{HOME}/local/bin/pfx -s rec find \$p";
+		system("\$ENV{HOME}/local/bin/pfx -s rec find \$p");
+		exit;
 	}
 	\$h{suffix} eq '?' and
 		say "\$h{briefblob}";
@@ -828,7 +847,6 @@ EOT
 
 	chmod 755 $inflect
 }
-
 
 # XXX consider putting tlog and pfxf stuff into config file under $home
 home="--home $srvref_root"
@@ -1528,6 +1546,14 @@ SSLPassPhraseDialog  builtin
 SSLSessionCache   "shmcb:$srvref_root/logs/ssl_scache(512000)"
 SSLSessionCacheTimeout  300
 SSLMutex          "file:$srvref_root/logs/ssl_mutex"
+
+# Temporary co-hosting of the arks.org website
+#<VirtualHost arks.org:$port_hprs>
+#DocumentRoot "$document_root/arks.org"
+#</VirtualHost>
+#<VirtualHost arks.org:$port_hpr>
+#DocumentRoot "$document_root/arks.org"
+#</VirtualHost>
 
 <VirtualHost _default_:$port_hprs>
 

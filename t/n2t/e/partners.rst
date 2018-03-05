@@ -21,6 +21,7 @@
 .. _SNAC: http://snaccooperative.org
 .. _NIH: http://www.nih.gov
 .. _Force11: https://www.force11.org/
+.. _IMLS: https://www.imls.gov/
 
 .. _n2t: https://n2t.net
 .. _Identifier Basics: https://ezid.cdlib.org/learn/id_basics
@@ -60,7 +61,7 @@ We also have replication arrangements with
 - US National Library of Medicine
 - University of Edinburgh
 
-Finally, we engage in ongoing projects and funded work (NIH_, Force11_)
+Finally, we engage in ongoing projects and funded work (NIH_, IMLS_, Force11_)
 with consortia of data archives and publishers such as
 
 - DataCite_

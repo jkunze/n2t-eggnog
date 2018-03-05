@@ -126,6 +126,9 @@ $x = `$webcl "$ssvbase_u/e"`;
 like $x, qr{HTTP/\S+\s+200\s+OK.*extras directory}si,
 	'public https access to extras dir authorized';
 
+#$x = apachectl('graceful-stop'); #	and print("$x\n");
+#print "######### temporary testing stop #########\n"; exit;
+
 $x = `$webcl "$ssvbase_u/e/index.html"`;
 like $x, qr{HTTP/\S+\s+200\s+OK.*extras directory}si,
 	'public https access inside extras directory is authorized';
