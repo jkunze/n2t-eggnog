@@ -796,7 +796,7 @@ inflect=$buildout_root/htdocs/e/x/inflect
 
 	use Text::ParseWords;
 
-say "qs: \$ENV{QUERY_STRING}";
+	#say "qs: \$ENV{QUERY_STRING}";
 	# QUERY_STRING contains pseudo command arguments
 	my @args = shellwords( \$ENV{QUERY_STRING} );
 	my (%h, \$key, \$val);
@@ -823,8 +823,10 @@ say "qs: \$ENV{QUERY_STRING}";
 
 		my \$p = \$h{partial};
 		\$p =~ s|[:/]*\$||;
-		print "xxx \$ENV{HOME}/local/bin/pfx -s rec find \$p";
-		system("\$ENV{HOME}/local/bin/pfx -s rec find \$p");
+		#print "xxx \$ENV{HOME}/local/bin/pfx -s rec find \$p";
+		print "xxx cgi-bin/pfx -s rec find \$p";
+		system("cgi-bin/pfx -s rec find \$p");
+		#system("\$ENV{HOME}/local/bin/pfx -s rec find \$p");
 		exit;
 	}
 	\$h{suffix} eq '?' and

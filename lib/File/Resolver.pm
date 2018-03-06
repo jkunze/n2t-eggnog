@@ -30,7 +30,7 @@ use EggNog::Log qw(tlogger);
 
 use constant TSUBEL	=> File::Binder::TRGT_MAIN_SUBELEM;	# shorthand
 
-my $UNKNOWN_SCHEME = ':unkn';	# xxx -> :unkn
+my $SCHEMELESS = ':unkn';	# xxx -> :unkn
 
 # elems for which we call suffix_pass
 our @suffixable = ( File::Binder::TRGT_MAIN );
@@ -681,12 +681,12 @@ sub id_decompose { my( $pfxs, $id )=@_;
 			$scheme = $1;
 		}
 		else {
-			$scheme = $UNKNOWN_SCHEME;
+			$scheme = $SCHEMELESS;
 		}
 		$scheme_raw = $scheme;
 	}
 	else {
-		$scheme = $scheme_raw = $UNKNOWN_SCHEME;
+		$scheme = $scheme_raw = $SCHEMELESS;
 	}
 	$rid = $id;	# init default root id, modified if we detect a suffix
 
@@ -698,27 +698,27 @@ sub id_decompose { my( $pfxs, $id )=@_;
 	my $sid = "$scheme:$id";	# save scheme:id form in $sid
 
 	# yyy done? change build_server_tree to permit file paths into
-	#     resolver classify such paths as $UNKNOWN_SCHEME
-	# yyy failing that, rewrite UNKNOWN_SCHEMEaths to original and fail out,
+	#     resolver classify such paths as $SCHEMELESS
+	# yyy failing that, rewrite SCHEMELESS to original and fail out,
 	#     so that apache rewrite rules can have one more crack at them
 	# yyy check them for post binder lookup too
 
 	# xxx doc: caller to check this case first
-	if ($scheme eq $UNKNOWN_SCHEME) {	# prune this case and return
+	if ($scheme eq $SCHEMELESS) {	# prune this case and return
 		idx_init( $idx );
 		$idx->{scheme} = $scheme;
 		$idx->{rid} = $rid;
-		! $id and
-			$idx->{partial} = PARTIAL_SO;
+		# NB: important that $idx->{partial} be zero
+		$idx->{partial} = 0;		# eg, any server file path
 		$idx->{full_id} = $sid;
 		($idx->{slid} =			# 'slid' is rawest id form
-			$sid) =~ s/^$UNKNOWN_SCHEME://io;
+			$sid) =~ s/^$SCHEMELESS//io;
 		return $idx;
 	}
 
 	# xxx replace this test with n2tid scheme database lookup test
 	#      lookup shoulder later (below), after scheme n'tion
-	# yyy add $UNKNOWN_SCHEME scheme to n2tid database ?
+	# yyy add $SCHEMELESS scheme to n2tid database ?
 	#     lookup return will instruct on case normalization
 	#     lookup return will instruct on encoding conversion, eg, uuid
 	# yyy? new way to do uuids?  '9' suggesting 'g' (guid)
@@ -1299,7 +1299,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 	$idx->{ ur_origid } = $ur_origid;
 
 	#### Step 0 Redirect directives to look for _before_ binder lookup
-	#  yyy as Last Step look up $UNKNOWN_SCHEME ids post-binder-lookup
+	#  yyy as Last Step look up $SCHEMELESS ids post-binder-lookup
 	# Also check flag $idx{ partial } to detect cases such as
 	# PARTIAL_SO scheme only
 	# PARTIAL_SC scheme plus colon only
@@ -1308,7 +1308,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 	# PARTIAL_SS scheme plus naan or prefix plus / non-empty shoulder
 	# Then use the flag to take on things that pfx_grok currently does
 
-	if ($idx->{scheme} eq $UNKNOWN_SCHEME) {
+	if ($idx->{scheme} eq $SCHEMELESS) {
 		my $target =
 			$sh->{conf_pre_redirs} ?
 				$sh->{conf_pre_redirs}->{ $ur_origid } : '';
@@ -1321,7 +1321,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 		#return undef;
 	}
 	# if ($sh->{conf_post_redirs}) { yyy no post-binder-lookup yet }
-	# yyy no look up of $UNKNOWN_SCHEME ids post-binder-lookup
+	# yyy no look up of $SCHEMELESS ids post-binder-lookup
 
 	#### Step 1. look up unnormalized (verbatim) id
 
@@ -1367,7 +1367,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 	@dups = File::Egg::get_dup($db, $id . TSUBEL);		# usual case
 	scalar(@dups) and
 		return cnflect( $bh, $txnid, $db, $rpinfo, $accept,
-			$id, \@dups, "normalized", $idx );
+			$id, \@dups, $idx, "normalized" );
 
 	# This will be fleshed out later AFTER ezid stops storing shadow
 	# ARKs, but people still resolve shadow arks found in the wild.
@@ -1561,18 +1561,18 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 
 # xxx problem: this is capturing web server file paths as if they were partial
 # ids to send to pfx for lookup
-#	# If still nothing, see if we have a probable partial match.
-#	# This is risky as we might occlude rule-based redirection
-#	# if we flag as partial something that ought to simply redirect.
-#
-# 	if ($idx->{partial}) {		# scheme, or scheme+naan
-#		my $partial = 
-#			$idx->{shdr_i}->{key}
-#			|| $idx->{naan_i}->{key}
-#			|| $idx->{scheme_i}->{key};
-#		return cnflect( $bh, $txnid, $db, $rpinfo, $accept,
-#			$id, [ ], $idx, "partial=$partial" );
-#	}
+	# If still nothing, see if we have a probable partial match.
+	# This is risky as we might occlude rule-based redirection
+	# if we flag as partial something that ought to simply redirect.
+
+ 	if ($idx->{partial}) {		# scheme, or scheme+naan
+		my $partial = 
+			$idx->{shdr_i}->{key}
+			|| $idx->{naan_i}->{key}
+			|| $idx->{scheme_i}->{key};
+		return cnflect( $bh, $txnid, $db, $rpinfo, $accept,
+			$id, [ ], $idx, "partial=$partial" );
+	}
 
 	# If still nothing, try new rule-based mapping.
 	# Get redirection prefix info for the first, most-specific
