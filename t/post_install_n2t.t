@@ -98,9 +98,9 @@ if ($ENV{EGNAPA_HOST_CLASS} eq 'prd') {
 		"Perio.do target redirect";
 
 	$x = `wegn locate "ark:/c7605/auct3"`;
-	my $loc_shadow = $x =~ m/^Location: (.*)/;
+	my ($loc_shadow) = $x =~ m/Location: (.*)/;
 	$x = `wegn locate "doi:10.17605/AUCT3"`;
-	my $loc_doi = $x =~ m/^Location: (.*)/;
+	my ($loc_doi) = $x =~ m/Location: (.*)/;
 	my $empty = $loc_doi ? '' : " (EMPTY TARGET!?)";
 	is $loc_shadow, $loc_doi,
 		"Center for Open Science shadow ARK resolves to DOI$empty";
