@@ -296,7 +296,7 @@ isnt index($x, '302 http://www.w3c.org'), -1,
 isnt index($x, '302 https://goo.gl/forms/'), -1,
 	'pre-binder-lookup redirect for externally hosted content';
 
-print "xxx x=$x\n";
+#print "xxx x=$x\n";
 #$x = apachectl('graceful-stop'); #	and print("$x\n");
 #print "######### temporary testing stop #########\n"; exit;
 

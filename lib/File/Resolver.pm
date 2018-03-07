@@ -1803,8 +1803,8 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 
 		# This is the step where the suffix is appended to (by default)
 		# or substituted for any ${suffix} inside the the target.
-		# If there's no suffix, any ${suffix} construct should vanish.
-		#@dups = map $_ . $suffix, File::Egg::get_dup($db, "$newid|$element");
+		# It is important that if there's no suffix, any "${suffix}"
+		# construct should be erased from the redirect.
 
 		@$dupsR = map {
 			s/\${suffix}/$newstr/g && $_	# try substitution
