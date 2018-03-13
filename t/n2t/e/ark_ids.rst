@@ -32,8 +32,8 @@
 
 //BEGIN//
 
-ARK
-=============
+Archival Resource Key (ARK) Identifiers
+=======================================
 
 ARKs are URLs designed to support long-term access to information objects.
 In 2001 ARKs were introduced to identify objects of any type:
