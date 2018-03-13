@@ -86,17 +86,22 @@
 
 <div class="container-widest">
   <div class="row around-xs middle-xs">
-    <div class="col-xs-6 col-sm-4 center-horiz">
-      <button type="button" class="box box-linked" aria-pressed="false" onclick="btnHref('https://confluence.ucop.edu/display/Curation/ARK')" aria-label="More about Archival Resource Key Identifiers (ARKs)">
+    <div class="col-xs-6 col-sm-3 center-horiz">
+      <button type="button" class="box box-linked" aria-pressed="false" onclick="btnHref('/e/ark_ids.html')" aria-label="More about Archival Resource Key Identifiers (ARKs)">
         <span class="box-linked-text">About ARK Identifiers</span>
       </button>
     </div>
-    <div class="col-xs-6 col-sm-4 center-horiz">
+    <div class="col-xs-6 col-sm-3 center-horiz">
+      <button type="button" class="box box-linked" aria-pressed="false" onclick="btnHref('https://wiki.duraspace.org/display/DSP/ARKs+in+the+Open+Project')" aria-label="CDL and Duraspace building an open, international community around Archival Resource Keys (ARKs)">
+        <span class="box-linked-text">ARKs in the Open</span>
+      </button>
+    </div>
+    <div class="col-xs-6 col-sm-3 center-horiz">
       <button type="button" class="box box-linked" aria-pressed="false" onclick="btnHref('https://goo.gl/forms/bmckLSPpbzpZ5dix1')" aria-label="Register your organization's interest in assigning ARK identifiers">
         <span class="box-linked-text">Register to assign ARKs (it's free)</span>
       </button>
     </div>
-    <div class="col-xs-6 col-sm-4 center-horiz">
+    <div class="col-xs-6 col-sm-3 center-horiz">
       <button type="button" class="box box-linked" aria-pressed="false" onclick="btnHref('https://groups.google.com/forum/?hl=en#!forum/arks-forum')" aria-label="ARKs Forum">
         <span class="box-linked-text">ARKs discussion forum</span>
       </button>
@@ -112,7 +117,7 @@
 
 <div class="container-narrowest">
   <div class="row center-xs">
-    <div class="box col-xs-8">
+    <div class="box-bigger col-xs-8">
       <h2 class="header2">N2T works with
       <a href="https://identifiers.org">Identifiers.org</a>
       to resolve over 600 kinds of <a style="text-decoration: underline;"
@@ -127,37 +132,7 @@
   </div>
 </div>
 
-  <!-- Spacer -->
-  <div class="row center-xs">
-    &nbsp;<br/>
-  </div>
-
-  <!-- Footer -->
-  <div class="row footer">
-    <div class="col-xs-12 container-widest">
-      <div class="row">
-        <div class="col-xs-12 col-sm-12">
-          <p class="text-sm">N2T is a service of the <a href="https://www.cdlib.org/">California Digital Library</a>, a division of the <a href="https://www.universityofcalifornia.edu/">University of California Office of the President</a></p>
-          <p class="text-sm">&copy; 2017 The Regents of the University of California</p>
-        </div>
-        <!-- div class="col-xs-12 col-sm-4">
-          <ul>
-            <li>Lorem Ipsum</li>
-            <li>Lorem Ipsum</li>
-            <li>Lorem Ipsum</li>
-          </ul>
-        </div>
-      <div class="col-xs-12 col-sm-4">
-        <ul>
-          <li>Lorem Ipsum</li>
-          <li>Lorem Ipsum</li>
-          <li>Lorem Ipsum</li>
-        </ul>
-      </div>
-      <div class="col-xs-12 col-sm-4 first-sm">N2T is ...</div --> </div>
-    </div>
-  </div>
-
+<!--#include virtual="/e/footer.html" -->
   <!-- Function for button links -->
   <script type="text/javascript">
     function btnHref(url) {

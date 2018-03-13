@@ -1,13 +1,13 @@
 #! /usr/bin/env python
 
-# Transforms an API documentation file, written in reStructuredText
+# Transforms an file written in reStructuredText
 # (http://docutils.sourceforge.net/rst.html), to an HTML file.
 # This script is just a thin wrapper around the Docutils rst2html
 # tool, which is assumed to be in the caller's path.
 #
-# Usage: makehtml.py apidoc.{version}.rst
+# Usage: makehtml {filename}.rst
 #
-# Output is written to apidoc.{version}.html.
+# Output is written to {filename}.html.
 #
 # adapted from Greg Janee's code (gjanee@ucop.edu, September 2015)
 

@@ -7,7 +7,7 @@
 .. |X| unicode:: U+02713 .. check mark
 
 .. _EZID: https://ezid.cdlib.org
-.. _ARK: https://confluence.ucop.edu/display/Curation/ARK
+.. _ARK: /e/ark_ids.html
 .. _DOI: https://www.doi.org
 .. _EZID.cdlib.org: https://ezid.cdlib.org
 .. _Archive.org: https://archive.org
@@ -43,7 +43,7 @@ particular identifier, relies on stored information relevant to the kind
 of identifier it is.
 
 The primary audience for N2T services is the global community of people
-engaged in reseach, academic, and cultural heritage endeavors. Together
+engaged in research, academic, and cultural heritage endeavors. Together
 with our primary partner, EZID_, we work with national and university
 libraries, academic and society publishers, natural history and art
 museums, as well as companies and funders that support education and

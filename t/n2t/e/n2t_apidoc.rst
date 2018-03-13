@@ -12,7 +12,7 @@
 .. _Suffix Passthrough Explained: https://ezid.cdlib.org/learn/suffix_passthrough
 .. _test server: https://n2t-stg.n2t.net/
 .. _EggNog software: https://bitbucket.org/cdl/n2t-eggnog
-.. _inflections: https://confluence.ucop.edu/display/Curation/ARK
+.. _inflections: /e/ark_ids.html
 .. _metatype: https://n2t.net/ark:/99152/h3865
 .. _set: https://n2t.net/ark:/99152/h3866
 .. _text: https://n2t.net/ark:/99152/h3867

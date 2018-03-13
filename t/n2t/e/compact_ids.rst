@@ -7,7 +7,7 @@
 .. |X| unicode:: U+02713 .. check mark
 
 .. _EZID: https://ezid.cdlib.org
-.. _ARK: https://confluence.ucop.edu/display/Curation/ARK
+.. _ARK: /e/ark_ids.html
 .. _DOI: https://www.doi.org
 .. _EZID.cdlib.org: https://ezid.cdlib.org
 .. _Archive.org: https://archive.org

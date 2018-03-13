@@ -2075,7 +2075,8 @@ RewriteRule ^/r/$b/+(.*)\$ \"_rslv_\${map_$b:\$1.resolve \${$hdrblob}}\"" >> $rw
 	done
 
 	# copy .html files with paths intact
-	for file in $( cd $template_root; find . -name '*.html' )
+	for file in $( cd $template_root; \
+			find . -name '*.html' -o -name '*.txt' )
 	do
 		cp $template_root/$file htdocs/$file	# copy path "as is"
 	done

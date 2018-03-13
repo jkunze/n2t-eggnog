@@ -66,6 +66,17 @@ h2 {
   align-items: center;
 }
 
+.box-bigger {
+  border-radius: 5px;
+  /* Background Color on un-linked boxes */
+  background-color: #ffffff8c;
+  /* opacity: 0.5; */ /* more standard, but makes text hard to read */
+  padding: 12px 12px 12px;
+  margin: 10px 0px 0px;
+  justify-content: center;
+  align-items: center;
+}
+
 /* Linked boxes */
 .box-linked {
   border: none;
