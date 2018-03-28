@@ -22,8 +22,8 @@
 .. _Towards Electronic Persistence Using ARK Identifiers: /e/Towards_Electronic_Persistence_Using_ARK_Identifiers.pdf
 .. _ARK and CDL Identifier conventions: http://ezid.cdlib.org/learn/id_concepts
 .. _Archival Resource Key - Wikipedia: http://en.wikipedia.org/wiki/Archival_Resource_Key
-.. _Noid (Nice Opaque Identifiers): https://confluence.ucop.edu/display/Curation/NOID
-.. _Noid: https://confluence.ucop.edu/display/Curation/NOID
+.. _Noid (Nice Opaque Identifiers): /e/noid.html
+.. _Noid: /e/noid.html
 .. _ARK plugin for Omeka: https://github.com/Daniel-KM/ArkAndNoid4Omeka
 .. _EZID service: https://ezid.cdlib.org
 .. _N2T.net resolver: /
