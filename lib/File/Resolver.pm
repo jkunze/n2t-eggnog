@@ -525,6 +525,7 @@ use constant PARTIAL_SN => 3;	# scheme + naan or prefix only
 use constant PARTIAL_SP => 4;	# scheme + naan or prefix + /
 use constant PARTIAL_SS => 5;	# scheme + naan or prefix + / non-empty shlder
 use constant PARTIAL_US => 6;	# unspecified: scheme + optional naan
+use constant PARTIAL_ST => 7;	# scheme contains *, id may be non-empty
 
 sub idx_init { my( $idx )=@_; 
 
@@ -638,8 +639,9 @@ sub id_decompose { my( $pfxs, $id )=@_;
 	#
 	my ($scheme_raw, $scheme, $rid);
 
-# yyy add crutch to make grid:x.y become grid:grid.x.y (when x ne "grid")
-# yyy add url: as scheme?
+	# yyy ?add crutch to make grid:x.y become grid:grid.x.y
+	#        (when x ne "grid")
+	# yyy add url: as scheme?
 
 	if ($id =~ /^urn:([^:]+):(.*)/i) {	# yyy kludgy special case
 		my $nid_raw = $1;
@@ -660,6 +662,7 @@ sub id_decompose { my( $pfxs, $id )=@_;
 		$scheme = lc $1;	# $scheme defined and lowercase
 		$id = $2 || '';		# after removing scheme, initial spaces
 	}
+	# yyy what might it mean if id begins with a colon (:) ?
 	elsif ($id !~ /:/) {		# if no colon-y bit, infer scheme
 		if ($id =~ /^10\.\d+/o) {			# DOI Prefix
 			$scheme = 'doi';
@@ -766,13 +769,7 @@ sub id_decompose { my( $pfxs, $id )=@_;
 	# assume a $naan and a $naan_sep only for those three schemes.
 	# xxx but IGSN has a $naan concept without a $naan_sep
 
-#use constant PARTIAL_SO => 1;	# scheme only
-#use constant PARTIAL_SC => 2;	# scheme + colon only
-#use constant PARTIAL_SN => 3;	# scheme + naan or prefix only
-#use constant PARTIAL_SP => 4;	# scheme + naan or prefix + /
-#use constant PARTIAL_SS => 5;	# scheme + naan or prefix + / non-empty shlder
-
-# Also check flag $idx{partial} to detect cases such as
+# Also check flag $idx->{partial} to detect cases such as ...?
 # Then use the flag to take on things that pfx_grok currently does
 # watch out for "xxx" logic that strip /'s and "'s below
 
@@ -787,31 +784,37 @@ sub id_decompose { my( $pfxs, $id )=@_;
 	# yyy what about IGSN, which has no naan_sep?
 	$idx->{naan_sep} = '/';		# default, but we didn't call idx_init
 	if ($scheme eq 'ark') {
-		# xxx stop this -- it prevents truncated queries and
-		# breaks in the face of future scheme changes
-		$id =~ s|^([^/]+)/*|| or	# must match else panic
-			return undef;
-		$idx->{naan} = $1;
+		#$id =~ s|^([^/]+)/*|| or	# must match else panic
+		#	return undef;
+		$id =~ s|^([^/]+)/*|| and
+			$idx->{naan} = $1,
+			$kludge = '/',		# '/' before (and after) NAAN
+		1 or
+			$idx->{naan} = '',
+		;
 		$id =~ s|[-\s]||g;	# remove hyphens and internal whitespace
 		# NB:  arks are weird with their '/' after the ':'
 		# xxx this weirdness should go away one day when we change
 		#     storage from ark:/12345/... to ark:12345/...
-		$kludge = '/';			# '/' before (and after) NAAN
 	}
 	elsif ($scheme eq 'doi') {
-		# xxx stop this -- it prevents truncated queries and
-		# breaks in the face of future scheme changes
-		$id =~ s|^([^/]+)/*|| or	# must match else panic
-			return undef;
-		$idx->{naan} = $1;
+		#$id =~ s|^([^/]+)/*|| or	# must match else panic
+		#	return undef;
+		$id =~ s|^([^/]+)/*|| and
+			$idx->{naan} = $1,
+		1 or
+			$idx->{naan} = '',
+		;
 		$id = uc $id;			# DOIs normalize to uppercase
 	}
-	elsif ($scheme eq 'urn') {		# per RFC 2141, URN NID must
-		# xxx stop this -- it prevents truncated queries and
-		# breaks in the face of future scheme changes
-		$id =~ s|^([^:]+):*|| or	# be present (else panic) and
-			return undef;		# case-insenstive
-		$idx->{naan} = lc $1;		# NID now in $naan
+	elsif ($scheme eq 'urn') {		# per RFC 2141, URN NID must be
+		#$id =~ s|^([^:]+):*|| or	# be present (else panic) and
+		#	return undef;		# case-insenstive
+		$id =~ s|^([^:]+):*|| and	# present and case-insensitive
+			$idx->{naan} = lc $1,	# NID in $naan
+		1 or
+			$idx->{naan} = '',
+		;
 		$idx->{naan_sep} = ':';
 	}
 	elsif ($scheme eq 'uuid') {		# for UUIDs there's no naan
@@ -826,8 +829,15 @@ sub id_decompose { my( $pfxs, $id )=@_;
 	# By the time we get here, we'll be done defining $idx->{naan} and
 	# $idx->{naan_sep}.
 
-	! $id and
-		$idx->{partial} = PARTIAL_US;
+	! $id and	# catches NAAN-only partials of type ARK, DOI, and URN
+		$idx->{partial} = PARTIAL_US,	# UnSpecified
+	1 or
+	$scheme =~ /\*/ and
+		$idx->{partial} = PARTIAL_ST,	# contains STar
+	;
+# yyy this fails to catch shoulders, which still pass through as if
+#     they were ids ... maybe need to set flag here that, if set,
+#     causes resolve() to check for exact match to shoulder record
 
 	# NB: $kludge holds the inital '/' that begins (for now) ARK NAANs
 	# but is empty otherwise; $idx->{naan} does NOT have an initial '/'.
@@ -1670,7 +1680,8 @@ sub inflect_cmd { my(   $bh, $eset, $format,  $idx )=
 			"scheme=$idx->{scheme}",
 			"naan=$idx->{naan}",
 			"shoulder=$idx->{shoulder}",
-			"shoshoblade=$idx->{shoshoblade}",
+			"ac=$idx->{slid}",
+			#"shoshoblade=$idx->{shoshoblade}",
 			"suffix=" . ($idx->{suffix} || ""),
 	);
 	push @args, @_;			# append any extra params from caller

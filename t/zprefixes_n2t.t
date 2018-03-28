@@ -176,6 +176,7 @@ $x = resolve_stdin_hdr( "--home $buildout_root",
 	'urn:lsid:ipni.org:names:77145066-1:1.4', '',	# URN-ish LSID
 	'url:www.w3c.org', '',		# URL
 	'e/naan_request', '',		# path-like request lookup
+	'e/arks_eoi', '',		# path-like request lookup
 
 );
 #is index($x, 'emsg='), -1,
@@ -295,6 +296,8 @@ isnt index($x, '302 http://www.w3c.org'), -1,
 	'Uniform Resource Locator -- url';
 isnt index($x, '302 https://goo.gl/forms/'), -1,
 	'pre-binder-lookup redirect for externally hosted content';
+isnt index($x, '302 https://bit.ly/'), -1,
+	'pre-binder-lookup redirect for ARKs in the Open EOI form';
 
 #print "xxx x=$x\n";
 #$x = apachectl('graceful-stop'); #	and print("$x\n");

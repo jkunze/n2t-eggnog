@@ -88,6 +88,43 @@ my $v1bdb = ($x =~ /DB version 1/);
 $x = `$cmd -p $td mkbinder foo`;
 shellst_is 0, $x, "make binder named foo";
 
+$x = resolve_stdin("-d $td/foo",
+"*/pdb:1234",
+"ark:",
+"doi:",
+"urn:",
+"ark:/99999",
+"doi:10.5072/",
+"pdb:",
+"*/pdb:1234",
+);
+like $x, qr|"op=partial".*"partial=\*/pdb"|,
+	"partial id detected because of * in scheme";
+
+like $x, qr|"op=partial".*"partial=ark:"|,
+	"partial id detected for ark";
+
+like $x, qr|"op=partial".*"partial=doi:"|,
+	"partial id detected for doi";
+
+like $x, qr|"op=partial".*"partial=urn"|,
+	"partial id detected for urn, no final colon";
+
+like $x, qr|"op=partial".*"partial=ark:/99999"|,
+	"partial id detected for ark with NAAN";
+
+like $x, qr|"op=partial".*"partial=doi:10.5072"|,
+	"partial id detected for doi with NAAN";
+
+like $x, qr|"op=partial".*"partial=pdb"|,
+	"partial id detected for pdb";
+
+like $x, qr|"op=partial".*"partial=\*/pdb"|,
+	"partial id detected for */pdb";
+
+#say "xxx x=$x"; exit; ##################
+#exit;
+
 my $url;
 $url = 'ark:/98765/foo';	# yyy not a well-named variable?
 #$url = 'http://a.b.c/foo';
@@ -215,9 +252,6 @@ $x = resolve_stdin_hdr("-d $td/fon",
 );
 like $x, qr|^inflect.*op=cn.text/turtle|,
 	"script called for content negotiation";
-
-#exit;
-#say "xxx x=$x"; exit; ##################
 
 # xxx test when id set actually includes(overrides) inflection
 $x =~ s/^.*\n//;				# remove top line

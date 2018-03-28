@@ -261,6 +261,12 @@ function is_build_out_of_date {
 	exit 1
 }
 
+[[ "$sv" ]] || {
+	echo 'An SVU mode must be in effect, eg, "svu cur" or "svu new".' 1>&2
+	echo 'Type "svu" for details.' 1>&2
+	exit 1
+}
+
 #
 # Configuring.
 #
@@ -770,6 +776,7 @@ feedback=$buildout_root/htdocs/e/x/feedback.pl
 # text/turtle
 # application/atom+xml
 #
+cp -p $HOME/local/bin/pfx $buildout_root/htdocs/e/x/pfx		# local copy
 inflect=$buildout_root/htdocs/e/x/inflect
 [[ -e $inflect ]] || {
 
@@ -777,9 +784,10 @@ inflect=$buildout_root/htdocs/e/x/inflect
 	cat > $inflect << EOT
 #!/bin/sh
 # This "inflect" script handles inflections and prefix lookup.
+# Add /usr/local/bin to path so that we get our version of bash.
 
 	PERL5LIB=$PERL5LIB
-	PATH=$egpath
+	PATH=/usr/local/bin:$egpath
 	export PERL5LIB PATH
 
 	exec perl << 'EOS'
@@ -811,22 +819,39 @@ inflect=$buildout_root/htdocs/e/x/inflect
 	}
 
 	if (\$h{op} eq 'partial') {
-		# prefix lookup, eg, n2t.net/pdb   -> pfx -s rec find '\bpdb$'
-		#    returns descriptions of all providers
-		# These all work "as is" (normalize by stripping final : and /)
-		#  '\bpdbe/pdb$'      for one provider
-		#  '\bark:/13030$'    (strip final :, then final /)
-		#  '\bark:/99999/fk4$'    (strip final :, then final /)
-		#  '\bdoi:10.5072/fk2'    (strip final :, then final /)
-		#  '\b.'  (disallow:  return 0 results for short patterns which
-		#          would allow people to harvest the database directly?)
+		# prefix lookup, eg, n2t.net/pdb:   
+		# n2t.net/pdbe/pdb:
+		#    */pdb: == pdb:
+		#    */pdb:12345 -> list of targets
+		#    user-supplied regex disallowed for now by use of \Q ... \E
+
+		# yyy need $sv to keep pfx working
+		# copy \$sv from current to inherited environment
+		\$ENV{sv} = "$sv";
 
 		my \$p = \$h{partial};
 		\$p =~ s|[:/]*\$||;
-		#print "xxx \$ENV{HOME}/local/bin/pfx -s rec find \$p";
-		print "xxx cgi-bin/pfx -s rec find \$p";
-		system("cgi-bin/pfx -s rec find \$p");
-		#system("\$ENV{HOME}/local/bin/pfx -s rec find \$p");
+
+		# prepare to call pfx script, which should be in the same dir
+		my \$cmd = "./pfx ";
+		my \$pfxflag;
+
+		my \$initglob = \$p =~ s|^\*/||; # whether glob spec removed
+		my \$tsearch = \$h{ac} // '';	# "after colon"
+
+		my \$re = "(?:^|/)\\Q\$p\\E(?:/\\\\w*)?\\\$";   # PERL regex
+		if (\$initglob and \$tsearch) {
+			\$pfxflag = '-s targets';
+			\$cmd .= "\$pfxflag find '\$re' ";
+			\$cmd .= "| sed -n 's/\\\$id/\$tsearch/gp'";
+		}
+		else {
+			\$pfxflag = '-s records';
+			\$cmd .= "\$pfxflag find '\$re' 2>&1";
+		}
+		say \`\$cmd\`;
+		#my \$results = \`\$cmd\`;
+		#say "results from running \$cmd\n\$results";
 		exit;
 	}
 	\$h{suffix} eq '?' and
