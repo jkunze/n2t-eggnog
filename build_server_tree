@@ -849,9 +849,11 @@ inflect=$buildout_root/htdocs/e/x/inflect
 			\$pfxflag = '-s records';
 			\$cmd .= "\$pfxflag find '\$re' 2>&1";
 		}
-		say \`\$cmd\`;
-		#my \$results = \`\$cmd\`;
-		#say "results from running \$cmd\n\$results";
+		my \$result = \`\$cmd\`;
+		\$result =~ /^\\s*\$/s and
+			\$result = 'Not Found';
+		say \$result;
+		#say \`\$cmd\`;
 		exit;
 	}
 	\$h{suffix} eq '?' and

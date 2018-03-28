@@ -71,6 +71,21 @@ url:
   probe: "http://www.w3c.org"
   more: "https://www.w3c.org/"
 
+urn:
+  type: "scheme"
+  name: "Uniform Resource Name"
+  alias: 
+  primary: "true"
+  forward: "http://nbn-resolving.org/resolver?identifier=urn:${ac}&verb=redirect"
+  redirect: "http://nbn-resolving.org/resolver?identifier=urn:$id&verb=redirect"
+  description: "Uniform Resource Names (URNs) are intended to serve as persistent, location-independent, resource identifiers."
+  location: "Germany"
+  institution: "Deutsche Nationalbibliothek, Frankfurt"
+  prefixed: "false"
+  test: "urn:nbn:fi:tkk-004781"
+  probe: "http://nbn-resolving.org/resolver?identifier=urn:nbn:fi:tkk-004781&verb=redirect"
+  more: "https://tools.ietf.org/html/rfc2141"
+
 repec:
   type: "scheme"
   name: "Research Papers in Economics"
@@ -116,6 +131,7 @@ nbn:
 
 # RePEc:fip:fedkrm:y:2013:n:qi
 # econpapers.repec.org/RePEc:fip:fedkrm:y:2013:n:qi
+# yyy these test prefixes should be moved to a proper test area
 
 zzztestprefix:
   type: "scheme"

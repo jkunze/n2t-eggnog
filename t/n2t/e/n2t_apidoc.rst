@@ -60,10 +60,10 @@ When an identifier is presented to N2T for resolution, the web server is
 configured to do a database lookup and ask that the target URL bound with the
 identifier be returned in the form of an HTTP redirect.
 
-The target value (a URL) is metadata stored in a reserved element name, ``_t``,
-and it is considered to be *bound under* its identifier. Arbitrary name/value
-pairs may be bound under an identifier. Other metadata elements support
-inflections_ and content negotiation.
+The target value (a URL) is a metadata value stored in a reserved element name,
+``_t``, and it is considered to be *bound under* its identifier. Arbitrary
+name/value pairs may be bound under an identifier. Other metadata elements
+support inflections_ and content negotiation.
 
 On resolution if a target URL is found, the server redirects the client to it.
 Failing to find a bound identifier, the N2T.net resolver then looks for a
@@ -74,7 +74,16 @@ from the end. For example, ::
   ark:/12345/fk1234        # original identifier string
   ark:/12345/fk1           # "shoulder"
   ark:/12345               # NAAN (Name Assigning Authority Number)
-  ark                      # "scheme" (identifier class, aka, prefix)
+  ark:                     # "scheme" (identifier class, aka, prefix)
+
+While N2T is mostly used to redirect identifiers to objects at external web
+addresses, it can also directly return internal N2T information on certain
+truncated identifier forms. For example (and these are subject to change), ::
+
+  ark:/99999               # records for ARK NAAN 99999 and its shoulders
+  doi:10.5072              # records for DOI Prefix 10.5072 and its shoulders
+  pdb:                     # records for scheme PDB and its providers
+  */pdb:2gc4               # all provider redirection targets for pdb:2gc4
 
 That briefly describes the minimal UI (user interface) that N2T.net has.
 More about how N2T uses identifiers can be found in `Identifier Basics`_
