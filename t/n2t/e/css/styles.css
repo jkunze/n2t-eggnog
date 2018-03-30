@@ -56,8 +56,10 @@ h2 {
 .box-fixed {
   border-radius: 5px;
   /* Background Color on un-linked boxes */
-  background-color: #ffffff8c;
+  background: rgb(255, 255, 255); /* The Fallback (fully opaque) */
+  background: rgba(255, 255, 255, 0.35);
   /* opacity: 0.5; */ /* more standard, but makes text hard to read */
+  /* background-color: #ffffff8c; */ /* good text, but no background on IE11 */
   padding: 0px 10px;
   margin: 10px 0px 0px;
   height: 4.5em;
@@ -69,8 +71,10 @@ h2 {
 .box-bigger {
   border-radius: 5px;
   /* Background Color on un-linked boxes */
-  background-color: #ffffff8c;
+  background: rgb(255, 255, 255); /* The Fallback (fully opaque) */
+  background: rgba(255, 255, 255, 0.35);
   /* opacity: 0.5; */ /* more standard, but makes text hard to read */
+  /* background-color: #ffffff8c; */ /* good text, but no background on IE11 */
   padding: 12px 12px 12px;
   margin: 10px 0px 0px;
   justify-content: center;
