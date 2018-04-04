@@ -1211,6 +1211,13 @@ SetEnvIf Range (?:,.*?){5,5} bad-range=1
 RequestHeader unset Range env=bad-range
 RequestHeader unset Request-Range
 
+# Now enable CORS support for cross-site forwarding, but only for GET requests.
+# Should be safe because (a) we use "*" below and (b) we don't use cookies.
+
+UnSetEnv GET_REQUEST
+SetEnvIf Request_Method ^GET\$ GET_REQUEST=1
+Header set Access-Control-Allow-Origin "*" env=GET_REQUEST
+
 <Directory />
     Options FollowSymLinks
     AllowOverride None
