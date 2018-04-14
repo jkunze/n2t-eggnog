@@ -30,3 +30,23 @@ blockquote p {
   font-style: normal;
   font-weight: normal;
 }
+
+table.leftheaders {
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 5 0 15 5;
+}
+
+table.leftheaders tr > td:first-child {
+  font-size: 0.9em;
+  font-weight: bold;
+}
+
+tr td, th {
+  padding: 5px;
+}
+
+th {
+  text-align: left;
+  background-color: $gray-lighter;
+}

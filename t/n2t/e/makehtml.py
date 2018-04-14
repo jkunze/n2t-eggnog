@@ -63,10 +63,12 @@ f.write(
   <title>%s</title>
 </head>
 <body>
+<div class="content">
 <!--#include virtual="/e/header.html" -->
 <!--#include virtual="breadcrumb_%s.html" -->
 <div class="container-narrowest">
 %s
+</div>
 </div>
 </div>
 </div>
