@@ -1920,10 +1920,12 @@ RewriteRule ^/([ar])/*\$ /\$1/ [PT]
 RewriteCond %{REQUEST_URI} !^/[^:]*:.+\$
 RewriteRule (.*)    \$1 [R=404,L]
 
-# XXXX add Greg's N2T rules
+# yyy add Greg's N2T rules
 
-# xxx special rule for escholarship; remove when EZID registers their ARKs
+# yyy special rule for escholarship; remove when EZID registers their ARKs
 RewriteRule ^/ark:/*13030/qt(.*)\$ "http://escholarship.org/uc/item/\$1" [R=302,L,NC]
+# yyy special rule for OAC; remove when EZID registers their ARKs
+RewriteRule ^/ark:/*(13030/(?:tf|ft|kt).*)\$ "http://ark.cdlib.org/ark:/\$1" [R=302,L,NC]
 
 # yyy all the NC flags in these rules are untested
 ## DOIs

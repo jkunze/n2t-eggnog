@@ -543,7 +543,9 @@ sub get_execution_context { my( $m_cmd, $version, $getoptlistR, $optR )=@_;
 	# perform output, so that HTTP headers are output only once.
 	# We may later alter the Status header, eg, with
 	#    $om->{cgih}->add( { Status => '401 unauthorized' } );
+	#    $om->{cgih}->add( { Status => '500 Internal Server Error' } );
 	#
+	# This is Head stuff is defined in lib/CGI under anvl/src/lib
 	my $cgih = $WeAreOnWeb ?
 		CGI::Head->new( {
 			#'Status'  => '200 OK',		# optimistic

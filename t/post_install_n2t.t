@@ -317,6 +317,10 @@ $x = `wegn -v locate "ark:/13030/qt123456789"`;
 like $x, qr{^Location: http://escholarship.org/uc/item/123456789}m,
 	"Escholarship target redirect via post-egg Apache kludge";
 
+$x = `wegn -v locate "ark:/13030/tf3000038j"`;
+like $x, qr{^Location: http://ark.cdlib.org/ark:/13030/tf3000038j}m,
+	"Legacy OAC redirect via post-egg Apache kludge";
+
 #print "xxx premature exit\n";
 #exit;
 
@@ -346,6 +350,11 @@ $x = `wegn -v locate "pmid:$i?$q"`;
 #like $x, qr/response.*302 .*\nLocation: \Q$target/,
 like $x, qr/response.*302 .*\nLocation: \Q$target?$q/,
 	"PMID rule -- rule-based target redirect";
+
+$x = `wegn -v locate "swh:2:rev:foo"`;
+$target = 'https://archive.softwareheritage.org/browse/swh:2:rev:foo';
+like $x, qr|response.*302 .*\nLocation: \Q$target\E |,
+	"prefixed scheme with potentially confusing colons";
 
 ($i, $q) = ('9606', '-z-?');
 $target = 'http://www.rcsb.org/pdb/explore/explore.do?structureId=$id';
@@ -481,8 +490,6 @@ like $x, qr/^Location: \Q$eoi_tgt/m,
 #like $x, qr/^egg-status: 0/m,
 #	"purge test id $eoi from CrossRef binder";
 
-# yyy Selected redirects until the naanders database is in place (temporary) 
-#
 $x = `wegn locate ark:/12148/foo`;
 like $x, qr|^Location: http://ark\.bnf\.fr/.*foo|m, "BNF redirect";
 #

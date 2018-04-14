@@ -134,9 +134,11 @@ redirects:
     - "s e/prefix_overview https://docs.google.com/document/d/1qwvcEfzZ6GpaB6Fql6SQ30Mt9SVKN_MytaWoKdmqCBI"
   post_lookup:
     - "s e/NAAN_request https://goo.gl/forms/bmckLSPpbzpZ5dix1"
-    # xxx special rule for escholarship; remove when EZID registers their ARKs
-    # xxx no 'r' support
+    # xxx special rules for escholarship and OAC; remove when EZID registers
+    # their ARKs, eg, ark:/13030/tf3000038j
+    # xxx no 'r' support, ie, these don't do anything at all (yet)!
     - "r ark:/13030/qt(.*) https://escholarship.org/uc/item/\$1"
+    - "r (ark:/13030/(?:tf|ft|kt).*) http://ark.cdlib.org/\$1"
 
 @;
 

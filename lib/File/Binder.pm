@@ -1208,6 +1208,7 @@ sub ibopen { my( $bh, $mdr, $flags, $minderpath, $mindergen )=@_;
 		# xxx should we just call DESTROY??
 		$msg = "abort: $msg";
 		#logmsg($bh, $msg);
+		$bh->{om}->{cgih}->add( { Status => '500 Internal Error' } );
 		$bh->{rlog}->out("N: $msg");
 		addmsg($bh, $msg);
 		undef $db;
@@ -1357,11 +1358,15 @@ sub version_match { my( $bh )=@_;
 	my $dbver = $dbh->{"$A/version"};
 	my $incompatible = "incompatible with this software ($VERSION)";
 
-	defined($dbver)		or return
-		"the database version is undefined, which is $incompatible";
+	if (! defined $dbver) {
+		return
+		  "the database version is undefined, which is $incompatible";
+	}
 	# xxx not a very good version check
-	$dbver =~ /^1\.\d+/	or return
-		"the database version ($dbver) is $incompatible";
+	if (! $dbver =~ /^1\.\d+/) {
+		return
+			"the database version ($dbver) is $incompatible";
+	}
 
 	return "";		# successful match
 }
