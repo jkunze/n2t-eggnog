@@ -104,6 +104,16 @@ zzztestprefix:
   probe: "id.example.org/0123456789"
   more: "https://id.example.org/"
 
+a/b/ark:
+  type: "scheme"
+  name: "Test Multi-Layer Prefix"
+  alias: 
+  primary: "true"
+  redirect: "id.example.org/\$id"
+  test: "0123456789"
+  probe: "id.example.org/0123456789"
+  more: "https://id.example.org/"
+
 ark:/99997/6:
   type: "shoulder"
   manager: "ezid"
@@ -1333,7 +1343,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 	# if ($sh->{conf_post_redirs}) { yyy no post-binder-lookup yet }
 	# yyy no look up of $SCHEMELESS ids post-binder-lookup
 
-	#### Step 1. look up unnormalized (verbatim) id
+	#### Step 1. look up unnormalized (verbatim) id, query string intact.
 
 	# Here's the first real lookup.
 	# Check for one special reserved ARK that is an easter egg that
@@ -1353,6 +1363,9 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 
 	# if not found...
 	#### Step 2. replace id with normalized id and lookup again
+	#     this time with the query string stripped off (but still
+	#     preserved for later processing (eg, inflections and
+	#     suffix passthrough)
 	# yyy do we do (a) vanilla n11n (all hardwired, only sensitive
 	#     to a few schemes) or (b) scheme-specific n11n, and/or
 	#     (c) naan- or shoulder-specific n11n?
@@ -1563,7 +1576,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 	#
 	# From here on, $idx->{suffix} is defined iff suffix_pass() was called.
 
-	# if still nothing, so try ancient noid-born rule-based mapping
+	# if still nothing, try ancient noid-born rule-based mapping
 	@dups = File::Egg::id2elemval($bh, $db, $id, File::Binder::TRGT_MAIN);
 	scalar(@dups) and
 		return cnflect( $bh, $txnid, $db, $rpinfo, $accept,
@@ -1667,7 +1680,7 @@ sub inflect_cmd { my(   $bh, $eset, $format,  $idx )=
 		{ outhandle => 0 });		# output to a string
 
 	my ($metablob, $briefblob) =		# args we manufacture
-		egg_inflect(
+		File::Egg::egg_inflect(
 			$bh, { all => 1 },		# $mods->{all} = 1
 			$om, $idx->{rid} );
 

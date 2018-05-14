@@ -2181,9 +2181,29 @@ sub egg_inflect { my ($bh, $mods, $om, $id)=@_;
 					@erc;
 			next;				# don't push erc blob
 		}
+
+# #From https://stackoverflow.com/questions/156683/what-is-the-best-xslt-engine-for-perl
+# (modules installed with cpanm on mac, and yum on dev,stg,prd)
+# use XML::LibXSLT;
+# use XML::LibXML;
+#
+# my $parser = XML::LibXML->new();
+# my $xslt = XML::LibXSLT->new();
+#
+# my $source = $parser->parse_file('foo.xml');
+# my $style_doc = $parser->parse_file('bar.xsl');
+#
+# my $stylesheet = $xslt->parse_stylesheet($style_doc);
+#
+# my $results = $stylesheet->transform($source);
+#
+# print $stylesheet->output_string($results);
+
 		if ($key eq 'datacite') {
-			push @pairs, $key, $val;	# don't push xml blob
-			next;				# yyy after exploding it
+			# see datacite.xsl file from ezid code base
+			# xxx xml2anvl($val, 'datacite.xsl')
+			push @pairs, $key, $val;	# yyy stop pushing xml
+			next;				# blob when exploded
 		}
 		push @pairs, $key, $val;
 	}
