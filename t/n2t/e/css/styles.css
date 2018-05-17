@@ -3,18 +3,25 @@
 // border: 1px solid red;
 // }
 @font-face {
-  font-family: 'KievitWeb';
-  src: url('/e/fonts/KievitWeb.eot'); /* IE9 Compat Modes */
-  src: url('/e/fonts/KievitWeb.eot?#iefix') format('embedded-opentype'), /* IE6-IE8 */
-     url('/e/fonts/KievitWeb.woff') format('woff'); /* Modern Browsers */
+  font-family: 'SourceSansPro';
+  src:
+    url('/e/fonts/SourceSansPro-Regular.ttf.woff2') format('woff2'),
+    url('/e/fonts/SourceSansPro-Regular.ttf.woff') format('woff');
+  font-display: swap;
 }
+// @font-face {
+//   font-family: 'KievitWeb';
+//   src: url('/e/fonts/KievitWeb.eot'); /* IE9 Compat Modes */
+//   src: url('/e/fonts/KievitWeb.eot?#iefix') format('embedded-opentype'), /* IE6-IE8 */
+//      url('/e/fonts/KievitWeb.woff') format('woff'); /* Modern Browsers */
+// }
 html, body {
   height: 100%;
 }
 body {
   display: flex;
   flex-direction: column;
-  font-family: KievitWeb;
+  font-family: SourceSansPro;
   font-size: 15px;
 }
 a,a:visited, a:active {
