@@ -19,7 +19,7 @@ our @EXPORT_OK = qw(
 	gen_txnid
 	human_num
 	OP_READ OP_WRITE OP_EXTEND OP_TAKE OP_CREATE OP_DELETE
-	SUPPORT_PATTERN CTIME_ELEM PERMS_ELEM
+	SUPPORT_ELEMS_RE CTIME_ELEM PERMS_ELEM
 	BIND_KEYVAL BIND_PLAYLOG BIND_RINDEX BIND_PAIRTREE
 	prep_default_minder init_minder gen_minder mkminder rmminder
 	cast mopen mclose mshow mstatus fiso_erc
@@ -372,8 +372,8 @@ use constant OP_CREATE	=> 002;		# xxx?
 use constant OP_DELETE	=> 001;		# xxx? 020 | 001
 
 # xxx temporily look for two patterns until EZID database is all converted
-use constant SUPPORT_PATTERN	=> '(?:__m|_\.e)[cp]';
-#use constant SUPPORT_PATTERN	=> '__m[cp]';
+use constant SUPPORT_ELEMS_RE	=> '(?:__m|_\.e)[cp]';
+#use constant SUPPORT_ELEMS_RE	=> '__m[cp]';
 #use constant PERMS_ELEM		=> '|__mp';
 #use constant CTIME_ELEM		=> '|__mc';
 

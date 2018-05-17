@@ -393,8 +393,8 @@ $x = run_cmdz_in_body($cfgdir, $td, "oca", "oca_test", $cmdblock);
 like $x, qr{<binder> prefix.*\nthis: th.*\nthis: }si,
 	"web bulk commands in request body, binder prefix turned down";
 
-use File::Binder 'SUPPORT_PATTERN';
-my $spat = File::Binder::SUPPORT_PATTERN;
+use File::Binder 'SUPPORT_ELEMS_RE';
+my $spat = File::Binder::SUPPORT_ELEMS_RE;
 
 like $x, qr{$spat:.*$spat:}si,
 	"admin elements present in fetch of all elements (due to --all)";

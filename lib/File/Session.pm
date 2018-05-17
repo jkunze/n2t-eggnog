@@ -142,6 +142,13 @@ redirects:
 
 @;
 
+sub connect_string { my( $hostlist, $repsetopts, $setname )=@_;
+	defined($hostlist) && defined($repsetopts) && defined($setname) or
+		return undef;		# all args must be defined
+	return 'mongodb://' .
+			$hostlist . "/?$repsetopts" . "&replicaSet=$setname";
+}
+
 # Eggnog session configuration. Defines $sh->{cfgd} when done.
 # Returns empty string on success, or an error message on failure.
 
@@ -264,6 +271,8 @@ sub config { my( $sh )=@_;
 	if (($pos = index($dbie, 'e')) > -1) {
 		$sh->{exdb} = {};		# yyy document these keys
 		$sh->{exdb}->{connect_string} =
+			connect_string( $ENV{MG_CSTRING_HOSTS},
+				$ENV{MG_REPSETOPTS}, $ENV{MG_REPSETNAME} ) ||
 			$sh->{conf_db}->{exdb_connect_string} || EXDB_CONNECT;
 		$sh->{fetch_exdb} =		# read exdb on fetch if 0
 			$pos == 0 || $sh->{ietest};

@@ -36,7 +36,7 @@ our @EXPORT_OK = qw(
 	authz unauthmsg badauthmsg
 	human_num
 	OP_READ OP_WRITE OP_EXTEND OP_TAKE OP_CREATE OP_DELETE
-	SUPPORT_PATTERN CTIME_ELEM CTIME_EL_EX PERMS_ELEM PERMS_EL_EX
+	SUPPORT_ELEMS_RE CTIME_ELEM CTIME_EL_EX PERMS_ELEM PERMS_EL_EX
 	BIND_KEYVAL BIND_PLAYLOG BIND_RINDEX BIND_PAIRTREE
 	prep_default_binder gen_minder createbinder rmbinder cast
 	bopen bclose ibopen omclose
@@ -361,8 +361,8 @@ use constant OP_CREATE	=> 002;		# xxx?
 use constant OP_DELETE	=> 001;		# xxx? 020 | 001
 
 # yyy temporily look for several patterns until EZID database is all converted
-use constant SUPPORT_PATTERN	=> '(?:__m|_[.,]e)[cp]';
-#use constant SUPPORT_PATTERN	=> '__m[cp]';
+use constant SUPPORT_ELEMS_RE	=> '(?:__m|_[.,]e)[cp]';
+#use constant SUPPORT_ELEMS_RE	=> '__m[cp]';
 #use constant PERMS_ELEM		=> '|__mp';
 #use constant CTIME_ELEM		=> '|__mc';
 

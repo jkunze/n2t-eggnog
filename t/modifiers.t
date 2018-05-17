@@ -49,8 +49,8 @@ like $x, qr/^bar:\s*z\^0aa%250af r\n/,
 # '
 #     doesn't match '(?^:^bar:\s*z\^0aa%250af r\n)'
 
-use File::Binder 'SUPPORT_PATTERN';
-my $spat = File::Binder::SUPPORT_PATTERN;
+use File::Binder 'SUPPORT_ELEMS_RE';
+my $spat = File::Binder::SUPPORT_ELEMS_RE;
 
 $x = `$cmd -d $td/foo :all id.fetch`;
 like $x, qr{$spat:.*$spat:}si,

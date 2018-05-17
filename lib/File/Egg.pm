@@ -145,6 +145,8 @@ sub egg_exists { my( $bh, $mods, $id, $elem ) = (shift,shift,shift,shift);
 			addmsg($bh, "instantiate failed from exists"),
 			return undef;
 		$key = flex_enc_indb($id, $elem);
+# xxx nb: $id and $elem, now changed, not used again in this routine
+# => ok to hide those pass by ref changes
 		$exists = defined( $bh->{tied_hash_ref}->{$key} )
 				? 1 : 0;
 	}
@@ -155,6 +157,8 @@ sub egg_exists { my( $bh, $mods, $id, $elem ) = (shift,shift,shift,shift);
 			addmsg($bh, "instantiate failed from exists no elem"),
 			return undef;
 		$key = flex_enc_indb($id);
+# xxx nb: $id and $elem, now changed, not used again in this routine
+# => ok to hide those pass by ref changes
 		$exists = defined( $bh->{tied_hash_ref}->{$key . PERMS_ELEM} )
 				? 1 : 0;
 	# xxxx need policy on protocol-breaking deletions, eg, to permkey
@@ -164,94 +168,93 @@ sub egg_exists { my( $bh, $mods, $id, $elem ) = (shift,shift,shift,shift);
 	# XXX this om return status is being ignored
 
 	return 1;
-
-=for removal
-
-	# xxxyyy test with no $elem given
-	# xxx this optional $elem thing isn't thought through
-	defined($elem) and (
-		File::Cmdline::instantiate($bh, $mods->{hx}, $id, $elem) or
-			addmsg($bh, "instantiate failed from exists"),
-			return undef
-	),
-	1
-	or (				# caller did not supply an element
-		(File::Cmdline::instantiate($bh, $mods->{hx}, $id) or
-			addmsg($bh, "instantiate failed from exists no elem"),
-			return undef),
-		return		# protocol: if perms string exists, id exists
-			$bh->{tied_hash_ref}->{$id . PERMS_ELEM} ?
-				1 : 0
-	);
-	#
-	# If we get here, the caller supplied an element.
-
-	my ($key, $value);
-	$key = flex_enc_indb($id, $elem);
-
-
-#xxxx can we remove the rest of this?
-	# XXX do we need all 3 of these vars?
-	# $st holds accumlated strings/statuses returns from $om calls, if any
-	my $p = $om ? $om->{outhandle} : 0;  # whether 'print' status or small
-	my $s = '';                     # output strings are returned to $s
-	my $st = $p ? 1 : '';           # returns (stati or strings) accumulate
-
-	# We can't just do a simple test against the id, since the definition
-	# of existence is any element bound under the id.  There's seldom (or
-	# never?) a key matching just the id.  So we need partial keys.
-#XXXXXX now this could change, because id exists iff there's a permstring!!
-# XXXX    or maybe a more certain test is if the creation time elem exists,
-#         since we are less certain of keeping permstring around
-	#if (! defined $dbh->{$id . PERMS_ELEM}) # if no top-level permkey,
-	#
-	## Partial keys are only available with 'seq' and R_CURSOR:
-	# Partial keys are only available with 'seq' and DB_SET_RANGE:
-	# "Note, for the DB_BTREE access method, the returned key is not
-	#  necessarily an exact match for the specified key. The returned key
-	#  is the smallest key greater than or equal to the specified key,
-	#  permitting partial key matches and range searches." (BDB docs)
-
-	my $origkey = $key;
-	my $cursor = $db->db_cursor();
-	#my $status = $db->seq($key, $value, R_CURSOR);
-	my $status = $cursor->c_get($key, $value, DB_SET_RANGE);
-
-	# $status is 0 on "success", -1 on error, 1 on not found.
-	#
-	# But we can't trust "success" until we compare the returned key
-	# and our original key.  The test for an id|elem combo's existence
-	# is strict equality.  The test for just an id (no elem) is whether
-	# the returned key contains the original key from the beginning of
-	# the string up to a possible '|'.
-	#
-	# yyy incorporate this error into the $om->elem call?
-	$status < 0 and
-		$cursor->c_close(),
-		undef($cursor),
-		return undef;	# error
-	my $exists = (
-		$status == 0 and
-			$key eq $origkey
-			||
-			#! defined($elem)   &&   $key =~ m/^\Q$origkey\E\|/
-			! defined($elem)   &&   (
-				$origkey .= '|',
-				$origkey eq substr($key, 0, length($origkey))
-			)
-	)
-		? 1 : 0 ;
-
-	$st = $om->elem("exists", $exists);
-			# XXX this om return status is being ignored
-
-	$cursor->c_close();
-	undef($cursor);
-	return 1;
-
-=cut
-
 }
+
+#=for removal		# was part of above routine
+#
+#	# xxxyyy test with no $elem given
+#	# xxx this optional $elem thing isn't thought through
+#	defined($elem) and (
+#		File::Cmdline::instantiate($bh, $mods->{hx}, $id, $elem) or
+#			addmsg($bh, "instantiate failed from exists"),
+#			return undef
+#	),
+#	1
+#	or (				# caller did not supply an element
+#		(File::Cmdline::instantiate($bh, $mods->{hx}, $id) or
+#			addmsg($bh, "instantiate failed from exists no elem"),
+#			return undef),
+#		return		# protocol: if perms string exists, id exists
+#			$bh->{tied_hash_ref}->{$id . PERMS_ELEM} ?
+#				1 : 0
+#	);
+#	#
+#	# If we get here, the caller supplied an element.
+#
+#	my ($key, $value);
+#	$key = flex_enc_indb($id, $elem);
+#
+#
+##xxxx can we remove the rest of this?
+#	# XXX do we need all 3 of these vars?
+#	# $st holds accumlated strings/statuses returns from $om calls, if any
+#	my $p = $om ? $om->{outhandle} : 0;  # whether 'print' status or small
+#	my $s = '';                     # output strings are returned to $s
+#	my $st = $p ? 1 : '';           # returns (stati or strings) accumulate
+#
+#	# We can't just do a simple test against the id, since the definition
+#	# of existence is any element bound under the id.  There's seldom (or
+#	# never?) a key matching just the id.  So we need partial keys.
+##XXXXXX now this could change, because id exists iff there's a permstring!!
+## XXXX    or maybe a more certain test is if the creation time elem exists,
+##         since we are less certain of keeping permstring around
+#	#if (! defined $dbh->{$id . PERMS_ELEM}) # if no top-level permkey,
+#	#
+#	## Partial keys are only available with 'seq' and R_CURSOR:
+#	# Partial keys are only available with 'seq' and DB_SET_RANGE:
+#	# "Note, for the DB_BTREE access method, the returned key is not
+#	#  necessarily an exact match for the specified key. The returned key
+#	#  is the smallest key greater than or equal to the specified key,
+#	#  permitting partial key matches and range searches." (BDB docs)
+#
+#	my $origkey = $key;
+#	my $cursor = $db->db_cursor();
+#	#my $status = $db->seq($key, $value, R_CURSOR);
+#	my $status = $cursor->c_get($key, $value, DB_SET_RANGE);
+#
+#	# $status is 0 on "success", -1 on error, 1 on not found.
+#	#
+#	# But we can't trust "success" until we compare the returned key
+#	# and our original key.  The test for an id|elem combo's existence
+#	# is strict equality.  The test for just an id (no elem) is whether
+#	# the returned key contains the original key from the beginning of
+#	# the string up to a possible '|'.
+#	#
+#	# yyy incorporate this error into the $om->elem call?
+#	$status < 0 and
+#		$cursor->c_close(),
+#		undef($cursor),
+#		return undef;	# error
+#	my $exists = (
+#		$status == 0 and
+#			$key eq $origkey
+#			||
+#			#! defined($elem)   &&   $key =~ m/^\Q$origkey\E\|/
+#			! defined($elem)   &&   (
+#				$origkey .= '|',
+#				$origkey eq substr($key, 0, length($origkey))
+#			)
+#	)
+#		? 1 : 0 ;
+#
+#	$st = $om->elem("exists", $exists);
+#			# XXX this om return status is being ignored
+#
+#	$cursor->c_close();
+#	undef($cursor);
+#	return 1;
+#
+#=cut
 
 # xxx purge bug? why does the @- arg get ignored (eg, doesn't eat up the
 # lines that follow)?
@@ -312,8 +315,9 @@ sub egg_purge { my( $bh, $mods, $lcmd, $formal, $id )=@_;
 	# xxx who calls flex_encode?
 			$ret = $coll->delete_many(	# yyy delete_one
 							# should be sufficient!
-				{ PKEY => $id },	# query
-			);
+				{ PKEY() => $id },	# query
+			)
+			// 0;		# 0 != undefined
 		}
 		catch {
 			$msg = "error deleting id \"$id\" from "
@@ -331,6 +335,8 @@ sub egg_purge { my( $bh, $mods, $lcmd, $formal, $id )=@_;
 		return $ret;
 	}
 	my $id_key = flex_enc_indb($id);		# we want side-effect
+# xxx NB: here we WANT the side effect for below
+# => if we want to hide side effect, we must surface it for below
 						# yyy need $id_key?
 
 	# Set "all" flag so get_rawidtree() returns even admin elements.
@@ -391,25 +397,23 @@ sub exdb_get_dup { my( $bh, $id, $elem )=@_;
 	my ($result, $msg);
 	my $ok = try {				# exdb_get_dup
 		my $coll = $bh->{sh}->{exdb}->{binder};	# collection
-# xxx make sure del and purge are done for exdb
-# xxx change to take over _id, and use find_id not find_one
-# xxx ALL elems should be arrays, NOT(?) returning them
-# xxx who calls flex_encode?
 		$result = $coll->find_one(
-			{ PKEY => $id },	# query
+			{ PKEY() => $id },	# query
 			{ $elem => 1 },		# projection
 					# _id returned by default
-		);
+		)
+		// 0;		# 0 != undefined
 	}
 	catch {
 		$msg = "error fetching id \"$id\" from external database: $_";
 		return undef;	# returns from "catch", NOT from routine
 	};
-	! defined($ok) and 	# test undefined since zero is ok
+	! defined($ok) and 	# test for undefined since zero is ok
 		addmsg($bh, $msg),
 		return undef;
-	! $result and			# if nothing found, return empty array
+	$result && $result->{$elem} or	# if nothing found, return empty array
 		return ();
+#say STDERR "xxx result->elem($elem): $result->{$elem}";
 	return $result->{ $elem };	# yyy should be an array
 }
 
@@ -435,7 +439,7 @@ sub egg_get_dup { my( $bh, $id, $elem )=@_;
 #	# xxx ALL elems should be arrays, NOT returning them
 #	# xxx who calls flex_encode?
 #			$ret = $coll->find_one(
-#				{ PKEY => $id },	# query
+#				{ PKEY() => $id },	# query
 #				{ $elem => 1 },		# projection
 #						# _id returned by default
 #			);
@@ -501,7 +505,9 @@ sub egg_del_dup { my( $bh, $id, $elem )=@_;
 	my ($instatus, $result) = (0, 1);	# default is success
 	my $db = $bh->{db};
 
-	# xxx who calls flex_encode?
+# XXXXXXXXX next: call flex_encode in indb case and rerun all tests!
+
+# xxx who calls flex_encode? no one?
 	# xxx check that $elem is non-empty?
 	# XXX who calls arith_with_dups?
 	if ($bh->{sh}->{indb}) {
@@ -518,9 +524,10 @@ sub egg_del_dup { my( $bh, $id, $elem )=@_;
 		my $msg;
 		my $ok = try {
 			$result = $coll->update_one(
-				{ PKEY		=> $id },
+				{ PKEY()		=> $id },
 				{ '$unset'	=> { $elem => 1 } }
 			)
+			// 0;		# 0 != undefined
 		}
 		catch {
 			$msg = "error deleting elem \"$elem\" under " .
@@ -744,7 +751,9 @@ sub flex_dec_indb { my $s = shift;
 # Circumflex-encode, external db version.  Return a storage-ready egg DB
 # key and storage-ready egg args.
 # NOTE: except in the :idmap case below, this modifies its
-# arguments as a side-effect!
+# arguments as a side-effect! As long as the calling function
+# passes in args that are local to the calling function, this
+# is still safe from modifying "my" variables in, eg, resolve().
 #
 sub flex_enc_exdb { my( $id, $elem )=@_;	# importantly NOT using shift
 
@@ -1081,12 +1090,16 @@ sub exdb_set { my( $bh, $id, $elem, $val, $optime )=@_;
 # 2. call update, query on _id, $push to array of dupes
 	my $msg;
 	my $ok = try {
-		$result = $coll->insert_one( {
-			PKEY			=> $id,
-			$elem			=> $val,
-			CTIME_EL_EX()		=> $optime,
-			# XXX add perms string too!
-		} )
+		$result = $coll->update_one(
+			{ PKEY()	=> $id },
+			{ '$set'	=> {
+				$elem		=> $val,
+				CTIME_EL_EX()	=> $optime,
+				# XXX add perms string too!
+			} },
+			{ upsert	=> 1 }
+		)
+		// 0;		# since 0 != undefined
 	}
 	catch {
 		$msg = "error setting id \"$id\" in external database: $_";
@@ -1110,17 +1123,17 @@ sub exdb_set { my( $bh, $id, $elem, $val, $optime )=@_;
 sub exdb_find_one { my( $bh, $coll, $id, $elem, $val )=@_;
 
 	my $query = {
-		PKEY	=> $id,
+		PKEY()	=> $id,
 	};
 	#defined($id) and
-	#	$query->{PKEY} = $id;
+	#	$query->{PKEY()} = $id;
 	defined($elem) and defined($val) and
 		$query->{"'$elem'"} = $val;
 
 	my ($result, $msg);
 	my $ok = try {
-		$result = $coll->find_one( $query );
-		1;	# we're ok if nothing found
+		$result = $coll->find_one( $query )
+		// 0;		# 0 != undefined; we're ok if nothing found
 	}
 	catch {
 		$msg = "error looking up id \"$id\" in external database: $_";
@@ -2462,8 +2475,9 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 			my $msg;
 			my $ok = try {
 				$result = $coll->find_one(
-					{ PKEY	=> $id },
+					{ PKEY()	=> $id },
 				)
+				// 0;		# 0 != undefined
 			}
 			catch {
 				$msg = "error fetching id \"$id\" " .
@@ -2491,13 +2505,15 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 			my $skipregex = '';
 			my $spat = '';
 			if (! $all) {	# case 1: skip usual support elements
-				$spat = SUPPORT_PATTERN;
+				$spat = SUPPORT_ELEMS_RE;
 				$skipregex = qr/^$spat/o;
 			}
 
 			my $nelems = 0;
 			while (my ($k, $v) = each %$result) {
 				$skipregex and $k =~ $skipregex and
+					next;
+				$k eq '_id' and		# yyy peculiar to mongo
 					next;
 				$out_elem = $k ne '' ? $k : '""';
 				$out_elem =~	# "flex_dec_exdb" as needed
@@ -2779,7 +2795,7 @@ sub get_rawidtree { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id )=
 		: $bh->{opt}->{all} || '';
 	my ($spat, $skipregex);
 	! $all and			# case 1: skip usual support elements
-		$spat = SUPPORT_PATTERN,
+		$spat = SUPPORT_ELEMS_RE,
 	1
 	or
 		$skipregex = undef
@@ -2872,7 +2888,9 @@ sub get_rawidtree { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id )=
 			#		. ": " : "") . "$value\n";
 		}
 		# this picks up duplicates just fine, if any
+
 		$status = $cursor->c_get($key, $value, DB_NEXT);
+
 		#$status = $db->seq($key, $value, R_NEXT);
 		#$status != 0 || $key !~ /^\Q$first/ and
 		# yyy no error check, assume non-zero == DB_NOTFOUND
