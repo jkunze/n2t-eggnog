@@ -46,6 +46,8 @@ my $minters_root = $ENV{EGNAPA_MINTERS_ROOT};
 my ($ntd, $ntd2) = ($binders_root, $minters_root);
 
 my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "egg";
+$td or			# if error
+	exit 1;
 my ($td2, $cmd2);
 ($td2, $cmd2, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "nog";
 # This script calls egg, and we want the latest -Mblib and cleanest, eg,

@@ -72,13 +72,12 @@ Nicer opaque identifiers
 
 This is where NOID (rhymes with "employed") comes in.
 
-================= ====================================================
+================= ===============================================
 Name:             NOID
 Version:          0.424 (2006.04.21)
-Status:           Beta
-Documentation:    http://search.cpan.org/~jak/Noid-0.424/noid
-Download:         http://search.cpan.org/~jak/Noid-0.424/
-================= ====================================================
+Documentation:    https://metacpan.org/pod/distribution/Noid/noid
+Download:         https://metacpan.org/release/Noid
+================= ===============================================
 
 The NOID software tool mints (generates) opaque identifiers and tracks
 information to help them remain unique, stable, and closely connected to the

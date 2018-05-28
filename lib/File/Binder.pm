@@ -1243,8 +1243,10 @@ sub ebopen { my( $bh, $exbrname, $flags )=@_;
 
 
 	my $exdb = $bh->{sh}->{exdb};
+	#my $open_exdb = {};
 	my $msg;
 	my $ok = try {
+		#$open_exdb->{binder} =
 		$exdb->{binder} = $exdb->{client}->ns( $exbrname );
 	}
 	catch {
@@ -1256,7 +1258,10 @@ sub ebopen { my( $bh, $exbrname, $flags )=@_;
 	! defined($ok) and
 		addmsg($bh, $msg),
 		return undef;
+	#$open_exdb->{exdbname} = # xxx transition to $bh->{open_exdb}->{binder}
+					# and stop with $sh->{exdb}->{binder}
 	$exdb->{exdbname} = $exbrname;
+	#$bh->{open_exdb} = $open_exdb;
 	return 1;
 }
 

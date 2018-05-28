@@ -139,7 +139,8 @@ ark:/99998/pfx8:
 # We use a reserved "admin" prefix of $A for all administrative
 # variables, so, "$A/oacounter" is ":/oacounter".
 #
-my $A = $File::Binder::A;
+my $A = File::Binder::ADMIN_PREFIX;
+my $Se = File::Binder::SUBELEM_SC;
 
 #use Fcntl qw(:DEFAULT :flock);
 #use File::Spec::Functions;
@@ -196,7 +197,8 @@ sub expand_blobs { my( $db, $id, $msg, $khashR )=
 	# expand them, constitute a hash from blobs we find in $id.
 	# XXX currently only look for erc blobs; don't do xml blobs yet
 	#
-	my @dups = File::Egg::get_dup($db, "$id|erc");
+	#my @dups = File::Egg::get_dup($db, "$id|erc");
+	my @dups = File::Egg::get_dup($db, "$id${Se}erc");
 	my @elems;
 	for my $erc (@dups) {
 		$erc =~ s{		# undo (decode) any %-encoding

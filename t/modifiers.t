@@ -9,6 +9,8 @@ use File::ValueTester ':all';
 use File::Value ':all';
 
 my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "egg";
+$td or			# if error
+	exit 1;
 $ENV{EGG} = $hgbase;		# initialize basic --home and --bgroup values
 
 {
@@ -17,6 +19,14 @@ my $x;
 
 $x = `$cmd -p $td mkbinder foo`;
 shellst_is 0, $x, "make binder named foo";
+
+#$x = `$cmd -d $td/foo :hx id.set bar "z^0aa^0af"`;
+#$x = `$cmd -d $td/foo id.get bar`;
+#like $x, qr/^z\na\nf\n/,
+#	"hex modifier puts newlines globally into a value";
+#
+#say "xxxxxxx premature end";
+#exit;
 
 $x = `$cmd -d $td/foo :hx id.set bar "z^0aa^0af"`;
 $x = `$cmd -d $td/foo id.get bar`;

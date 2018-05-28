@@ -26,7 +26,7 @@ our ($perl, $blib, $bin);
 our ($rawstatus, $status);	# "shell status" version of "is"
 
 # Return values usefule for testing a given $script:
-#   $td		temporary directory
+#   $td		temporary directory, or empty string on error
 #   $cmd	command string
 #   $homedir	--home value
 #   $bgroup	binder group (for exdb case)
@@ -55,9 +55,17 @@ sub script_tester { my( $script )=@_;
 	my $indb = 1;			# default
 	my $exdb = 0;			# default
 	if ($ENV{EGG_DBIE}) {
-		index($ENV{EGG_DBIE}, 'e') >= 0 and
+		if (index($ENV{EGG_DBIE}, 'e') >= 0) {
 			say("script_tester: detecting env var " .
 				"EGG_DBIE=$ENV{EGG_DBIE}");
+			my $mgstatus = `mg status`;	# yyy mongo-specific
+			if ($mgstatus !~ m/OK.*running/) {
+				say STDERR "script_tester: database daemon ",
+					"appears to be down; did you do ",
+					"\"mg start\"?";
+				return ('');		# error
+			}
+		}
 		$bgroup = $td;		# td_egg is ok as dir or bgroup name
 		$exdb = 1;
 		$indb = index($ENV{EGG_DBIE}, 'i') >= 0;	# not default

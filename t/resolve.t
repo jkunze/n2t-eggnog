@@ -17,6 +17,8 @@ use File::Value ':all';
 use File::Binder ':all';
 
 my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "egg";
+$td or			# if error
+	exit 1;
 $ENV{EGG} = $hgbase;		# initialize basic --home and --bgroup values
 
 # Tests for resolver mode look a little convoluted because we have

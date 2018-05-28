@@ -65,7 +65,8 @@ our $SL = length $separator;
 # We use a reserved "admin" prefix of $A for all administrative
 # variables, so, "$A/oacounter" is ":/oacounter".
 #
-my $A = $File::Binder::A;
+my $A = File::Binder::ADMIN_PREFIX;
+my $Se = File::Binder::SUBELEM_SC;
 
 use Fcntl qw(:DEFAULT :flock);
 use File::Spec::Functions;
@@ -427,8 +428,7 @@ sub egg_get_dup { my( $bh, $id, $elem )=@_;
 	$sh->{fetch_indb} and		# set by File::Session::config
 	# xxx who calls flex_encode?
 		@indups = get_dup($bh->{db},
-			$id . File::Binder::SUBELEM_SC . $elem);
-			# eg, "$id|$elem"
+			$id . $Se . $elem);
 		# yyy if error?
 
 	if ($sh->{fetch_exdb}) {		# set by File::Session::config
@@ -511,7 +511,7 @@ sub egg_del_dup { my( $bh, $id, $elem )=@_;
 	# xxx check that $elem is non-empty?
 	# XXX who calls arith_with_dups?
 	if ($bh->{sh}->{indb}) {
-		my $key = "$id|$elem";	# xxx hardcoded SUBELEM_SC
+		my $key = "$id$Se$elem";
 		$instatus = $db->db_del($key);
 		$instatus != 0 and addmsg($bh,
 			"problem deleting elem \"$elem\" under id \"$id\" " .
@@ -576,10 +576,12 @@ sub egg_del { my( $bh, $mods, $lcmd, $formal, $id, $elem )=@_;
 		(File::Cmdline::instantiate($bh, $mods->{hx}, $id, $elem) or
 			addmsg($bh, "instantiate failed from delete"),
 			return undef),
+# xxx looks like we're flex encoding only if we're not called via rawidtree
+# => could use hash ...
 		$key = flex_enc_indb($id, $elem),
 	1
 	or
-		$key = "$id|$elem",	# xxx hardcoded SUBELEM_SC
+		$key = "$id$Se$elem",
 	;
 
 	# yyy should rawidtree call (for purge) egg_del?
@@ -631,10 +633,10 @@ sub egg_del { my( $bh, $mods, $lcmd, $formal, $id, $elem )=@_;
 		## xxx $opt->{force} is not needed -- non-existent key ok
 		#($status == 1 && ! $opt->{force} ?	# typical
 		#	"$key doesn't exist" :
-		#	#"$id|$elem doesn't exist" :
+		#	#"$id$Se$elem doesn't exist" :
 
 		($status != 0 && $status != DB_NOTFOUND() ?	# error
-			"couldn't remove $key ($id|$elem) ($status)" :
+			"couldn't remove $key ($id$Se$elem) ($status)" :
 			''	);
 
 	$msg and 
@@ -664,7 +666,7 @@ sub egg_del { my( $bh, $mods, $lcmd, $formal, $id, $elem )=@_;
 	# yyy Kludgy protocol to allow 'egg_purge' to pass empty $lcmd
 	# to signify that we shouldn't log (as it logged one 'purge').
 	#
-	#$lcmd and $msg = $bh->{rlog}->out("C: $id|$elem.$lcmd") and
+	#$lcmd and $msg = $bh->{rlog}->out("C: $id$Se$elem.$lcmd") and
 	# XXXXXX NOTE: cannot abandon id|elem.OP syntax
 	#        without major complication to the logging syntax!!
 	# yyy no need for this log line if $status == 0 above
@@ -688,11 +690,11 @@ sub egg_del { my( $bh, $mods, $lcmd, $formal, $id, $elem )=@_;
 	# XXX change "element" to "dupe"
 	# XXX where does --ack fit in?
 	my $omstatus = $om->elem("ok", ($oldvalcnt == 1 ?
-		#"element removed: $id|$elem" :
+		#"element removed: $id$Se$elem" :
 		"element removed: $key" :
 		($status == 1 ? "element doesn't exist" :
 			"$oldvalcnt elements removed: $key")));
-			#"$oldvalcnt elements removed: $id|$elem")));
+			#"$oldvalcnt elements removed: $id$Se$elem")));
 	return 1;
 }
 
@@ -730,10 +732,8 @@ sub flex_enc_indb { my( $id, $elem )=@_;	# importantly NOT using shift
 		return
 			"$A/idmap/$elem|$pattern";
 	}
-	# xxx redo this one with $SUBELEM_SC (to switch from | to \t later)
-	#      and 'o' (once) modifier for speed
-	return	join '|', grep
-		s{ ([|^]) }{ sprintf("^%02x", ord($1)) }xeg || 1,
+	return	join $Se, grep
+		s{ ([$Se^]) }{ sprintf("^%02x", ord($1)) }xoeg || 1,
 		@_
 	;
 }
@@ -807,11 +807,11 @@ sub buildkey { my( $bh, $id, $elem )=@_;
 	# hex-encode with ^ to permit | in element name
 	defined($elem) and
 		$elem =~ s{ ([|^]) }{ sprintf("^%02x", ord($1)) }xeg,
-		return "$id|$elem";
+		return "$id$Se$elem";
 	return ($id ? $id : "|" );		# $cursor->c_get doesn't like ""
 
 	#return
-	#	(defined($elem) ? "$id|$elem"	:
+	#	(defined($elem) ? "$id$Se$elem"	:
 	#	($id		? $id		:
 	#			  "|"		# $cursor->c_get doesn't like ""
 	#	));
@@ -1292,8 +1292,11 @@ sub egg_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 	# yyy document default values for element and value
 
 # xxx differently for exdb case! and THIS MODIFIES its args!
+#   question: sometimes we DO want and sometimes we DON'T want/need that
+#   question: when do RELY on that and when would it cause HARM?
+#   best: don't modify args, but return hash with modified versions
 # xxx do this closer to or inside egg_get_dup,
-# xxx why are we not calling flex_enc_* for fetch/get?
+#     are we calling flex_enc_indb for fetch/get? YES!!
 	my $key = flex_enc_indb($id, $elem);
 
 	! egg_authz_ok($bh, $id, OP_WRITE) and
@@ -1330,7 +1333,7 @@ sub egg_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 	# more of something that has a start and an end time.
 
 	my $txnid;		# undefined until first call to tlogger
-	$txnid = tlogger $sh, $txnid, "BEGIN $id|$elem.$lcmd $slvalue";
+	$txnid = tlogger $sh, $txnid, "BEGIN $id$Se$elem.$lcmd $slvalue";
 
 	#my $oldvalcnt = egg_get_dup($bh, $key);
 	my $oldvalcnt = egg_get_dup($bh, $id, $elem);
@@ -1415,7 +1418,7 @@ sub egg_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 	if ($bh->{sh}->{indb}) {
 		$status = $db->db_put($key, $value);
 		$status < 0 and
-			addmsg($bh, "couldn't set $id|$elem ($status): $!");
+			addmsg($bh, "couldn't set $id$Se$elem ($status): $!");
 	}
 	$status != 0 and 
 		dbunlock(),
@@ -1432,8 +1435,8 @@ sub egg_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 
 		# XXX NOT setting doing this for external db. DROP for indb?
 		$bh->{sh}->{indb} and
-			$msg = $bh->{rlog}->out("C: $id|$elem.$lcmd $slvalue");
-		tlogger $sh, $txnid, "END SUCCESS $id|$elem.$lcmd ...";
+			$msg = $bh->{rlog}->out("C: $id$Se$elem.$lcmd $slvalue");
+		tlogger $sh, $txnid, "END SUCCESS $id$Se$elem.$lcmd ...";
 		$msg and
 			addmsg($bh, $msg),
 			return undef;
@@ -2338,7 +2341,7 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 		return undef;
 
 	# yyy should we permit holds (ie, reserve some id)?
-	# yyy this isn't ready since we don't yet bind just $id (only $id|...)
+	# yyy this isn't ready since we don't yet bind just $id (only $id$Se...)
 	#     but this may change with mkid creating an "empty" root
 
 	# $st holds accumlated strings/statuses returns from $om calls, if any
@@ -2450,9 +2453,10 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 		$key = flex_enc_indb($id, @elems),
 	1
 	or
-		$key = join('|', $id, @elems),
+		$key = join($Se, $id, @elems),
 	;
 
+# xxx eg, this $id needs to reference the MODIFIED $id
 	! egg_authz_ok($bh, $id, OP_READ) and
 		return undef;
 
@@ -2600,9 +2604,10 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 				next;		# xxx error?  or what?
 		}
 		else {
-			# xxx no call to flex_enc_indb?
+# xxx no call to flex_enc_indb?
+# OK, since it was called above for at least one of the branches
 			@dups = egg_get_dup($bh, $id, $elem);
-			#@dups = get_dup($db, "$id|$elem");
+			#@dups = get_dup($db, "$id$Se$elem");
 
 			$rrm and $id eq RRMINFOARK and
 				@dups = ( File::Binder::rrminfo() );
@@ -2616,8 +2621,7 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 				$shadow = File::Resolver::id2shadow($id) and
 					@dups = egg_get_dup($bh,
 						$shadow, $elem);
-					# xxx hardcoded SUBELEM_SC
-					#@dups = get_dup($db, "$shadow|$elem");
+					#@dups = get_dup($db, "$shadow$Se$elem");
 		}
 
 		# yyy adds values that were hidden in blobs; presumably
@@ -2769,12 +2773,13 @@ sub get_rawidtree { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id )=
 				# setting a $mods entry for downstream calls?
 
 	# xxx if we ever allow $id to be bound w.o. an element (ie, as
-	#     $id along and not as $id|...), then this code will change
-	#my ($first, $skip, $done) = ("$id|", 0, 0);
+	#     $id along and not as $id$Se...), then this code will change
+	#my ($first, $skip, $done) = ("$id$Se", 0, 0);
 
 	my $elem = '';
 	my ($first, $skip, $done) =
-		("$id|$elem", 0, 0);	# DON'T call flex_enc_indb here
+		("$id$Se$elem", 0, 0);	# DON'T call flex_enc_indb here
+		#("$id|$elem", 0, 0);	# DON'T call flex_enc_indb here
 	my ($key, $value) =
 		($first, '');
 
@@ -2820,7 +2825,7 @@ sub get_rawidtree { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id )=
 
 	# yyy no error check, assume non-zero == DB_NOTFOUND
 	$status == 0 and
-		#$skip = ($key =~ m|^\Q$first$A/|),	# skip if $id|:/...
+		#$skip = ($key =~ m|^\Q$first$A/|),	# skip if $id$Se:/...
 
 		# update $skip only if $skipregex is non-null
 		($skipregex and

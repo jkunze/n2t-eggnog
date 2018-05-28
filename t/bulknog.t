@@ -8,6 +8,8 @@ use File::ValueTester ':all';
 use File::Value ':all';
 
 my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "nog";
+$td or			# if error
+	exit 1;
 $ENV{NOG} = $hgbase;		# initialize basic --home and --bgroup values
 
 # Use this subroutine to get actual commands onto STDIN (eg, bulkcmd).

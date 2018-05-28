@@ -51,7 +51,7 @@ my $srvbase_u = 'http://localhost:18880';
 # First test a simple mint.  Make sure to error out if server isn't even up.
 $x = `wegn mint 1`;
 $x =~ /failed.*refused/ and
-	print("\n    ERROR: server isn't reachable!  Is it started?\n\n"),
+	print("\n    ERROR: server isn't reachable! Is it started?\n\n"),
 	exit 1;
 like $x, qr@99999/fk4\w\w\w@, "minted id matches format";
 
@@ -290,6 +290,7 @@ chop $hgid;
 $x = `wegn locate "$rrminfo"`;
 $x =~ qr{Location:.*dvcsid=\Q$hgid\E&rmap=}i or say STDERR
 	"**** WARNING: SOURCE DVCSID DOESN'T MATCH INSTALLED DVCSID ****";
+
 #like $x, qr{Location:.*dvcsid=\Q$hgid\E&rmap=}i,
 #	'resolver info with correct dvcsid returned';
 

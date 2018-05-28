@@ -22,6 +22,8 @@ use File::ApacheTester ':all';
 #my ($td2, $cmd2) = script_tester "nog";		# yyy needed?
 
 my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "egg";
+$td or			# if error
+	exit 1;
 my ($td2, $cmd2);
 ($td2, $cmd2, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "nog";
 $ENV{EGG} = $hgbase;		# initialize basic --home and --bgroup values

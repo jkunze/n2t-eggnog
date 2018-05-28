@@ -8,6 +8,8 @@ use File::ValueTester ':all';
 use File::Value ':all';
 
 my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "egg";
+$td or			# if error
+	exit 1;
 $ENV{EGG} = $hgbase;		# initialize basic --home and --bgroup values
 
 {
