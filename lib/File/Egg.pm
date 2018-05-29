@@ -127,8 +127,8 @@ sub mkid {
 
 # MUCH FASTER way to query mongo for existence
 # https://blog.serverdensity.com/checking-if-a-document-exists-mongodb-slow-findone-vs-find/
+
 sub egg_exists { my( $bh, $mods, $id, $elem ) = (shift,shift,shift,shift);
-# XXXX shift these args, leaving $id, [$elem [...]] ?
 
 	my $db = $bh->{db};
 	my $opt = $bh->{opt};
@@ -139,15 +139,15 @@ sub egg_exists { my( $bh, $mods, $id, $elem ) = (shift,shift,shift,shift);
 		return undef;
 
 	my ($exists, $key);
+	my $efs;		# encoded-for-storage versions of id, elem, ...
 	if (defined $elem) {	# do "defined $elem" since it might match /^0+/
 		# xxx are there situations (eg, from_rawidtree that
 		#     should prevent us calling this?
 		File::Cmdline::instantiate($bh, $mods->{hx}, $id, $elem) or
 			addmsg($bh, "instantiate failed from exists"),
 			return undef;
-		$key = flex_enc_indb($id, $elem);
-# xxx nb: $id and $elem, now changed, not used again in this routine
-# => ok to hide those pass by ref changes
+		$efs = flex_enc_indb($id, $elem);
+		$key = $efs->{key};		# only need encoded key
 		$exists = defined( $bh->{tied_hash_ref}->{$key} )
 				? 1 : 0;
 	}
@@ -157,9 +157,8 @@ sub egg_exists { my( $bh, $mods, $id, $elem ) = (shift,shift,shift,shift);
 		File::Cmdline::instantiate($bh, $mods->{hx}, $id) or
 			addmsg($bh, "instantiate failed from exists no elem"),
 			return undef;
-		$key = flex_enc_indb($id);
-# xxx nb: $id and $elem, now changed, not used again in this routine
-# => ok to hide those pass by ref changes
+		$efs = flex_enc_indb($id);
+		$key = $efs->{key};		# only need encoded key
 		$exists = defined( $bh->{tied_hash_ref}->{$key . PERMS_ELEM} )
 				? 1 : 0;
 	# xxxx need policy on protocol-breaking deletions, eg, to permkey
@@ -170,92 +169,6 @@ sub egg_exists { my( $bh, $mods, $id, $elem ) = (shift,shift,shift,shift);
 
 	return 1;
 }
-
-#=for removal		# was part of above routine
-#
-#	# xxxyyy test with no $elem given
-#	# xxx this optional $elem thing isn't thought through
-#	defined($elem) and (
-#		File::Cmdline::instantiate($bh, $mods->{hx}, $id, $elem) or
-#			addmsg($bh, "instantiate failed from exists"),
-#			return undef
-#	),
-#	1
-#	or (				# caller did not supply an element
-#		(File::Cmdline::instantiate($bh, $mods->{hx}, $id) or
-#			addmsg($bh, "instantiate failed from exists no elem"),
-#			return undef),
-#		return		# protocol: if perms string exists, id exists
-#			$bh->{tied_hash_ref}->{$id . PERMS_ELEM} ?
-#				1 : 0
-#	);
-#	#
-#	# If we get here, the caller supplied an element.
-#
-#	my ($key, $value);
-#	$key = flex_enc_indb($id, $elem);
-#
-#
-##xxxx can we remove the rest of this?
-#	# XXX do we need all 3 of these vars?
-#	# $st holds accumlated strings/statuses returns from $om calls, if any
-#	my $p = $om ? $om->{outhandle} : 0;  # whether 'print' status or small
-#	my $s = '';                     # output strings are returned to $s
-#	my $st = $p ? 1 : '';           # returns (stati or strings) accumulate
-#
-#	# We can't just do a simple test against the id, since the definition
-#	# of existence is any element bound under the id.  There's seldom (or
-#	# never?) a key matching just the id.  So we need partial keys.
-##XXXXXX now this could change, because id exists iff there's a permstring!!
-## XXXX    or maybe a more certain test is if the creation time elem exists,
-##         since we are less certain of keeping permstring around
-#	#if (! defined $dbh->{$id . PERMS_ELEM}) # if no top-level permkey,
-#	#
-#	## Partial keys are only available with 'seq' and R_CURSOR:
-#	# Partial keys are only available with 'seq' and DB_SET_RANGE:
-#	# "Note, for the DB_BTREE access method, the returned key is not
-#	#  necessarily an exact match for the specified key. The returned key
-#	#  is the smallest key greater than or equal to the specified key,
-#	#  permitting partial key matches and range searches." (BDB docs)
-#
-#	my $origkey = $key;
-#	my $cursor = $db->db_cursor();
-#	#my $status = $db->seq($key, $value, R_CURSOR);
-#	my $status = $cursor->c_get($key, $value, DB_SET_RANGE);
-#
-#	# $status is 0 on "success", -1 on error, 1 on not found.
-#	#
-#	# But we can't trust "success" until we compare the returned key
-#	# and our original key.  The test for an id|elem combo's existence
-#	# is strict equality.  The test for just an id (no elem) is whether
-#	# the returned key contains the original key from the beginning of
-#	# the string up to a possible '|'.
-#	#
-#	# yyy incorporate this error into the $om->elem call?
-#	$status < 0 and
-#		$cursor->c_close(),
-#		undef($cursor),
-#		return undef;	# error
-#	my $exists = (
-#		$status == 0 and
-#			$key eq $origkey
-#			||
-#			#! defined($elem)   &&   $key =~ m/^\Q$origkey\E\|/
-#			! defined($elem)   &&   (
-#				$origkey .= '|',
-#				$origkey eq substr($key, 0, length($origkey))
-#			)
-#	)
-#		? 1 : 0 ;
-#
-#	$st = $om->elem("exists", $exists);
-#			# XXX this om return status is being ignored
-#
-#	$cursor->c_close();
-#	undef($cursor);
-#	return 1;
-#
-#=cut
 
 # xxx purge bug? why does the @- arg get ignored (eg, doesn't eat up the
 # lines that follow)?
@@ -271,7 +184,6 @@ sub egg_exists { my( $bh, $mods, $id, $elem ) = (shift,shift,shift,shift);
 # element removed: i|c
 
 sub egg_purge { my( $bh, $mods, $lcmd, $formal, $id )=@_;
-# XXXX shift these args, leaving $id, [$elem [...]] ?
 
 	my $sh = $bh->{sh};
 	my @elems = ();
@@ -313,7 +225,7 @@ sub egg_purge { my( $bh, $mods, $lcmd, $formal, $id )=@_;
 	# xxx make sure del and purge are done for exdb
 	# xxx change to take over _id, and use find_id not find_one
 	# xxx ALL elems should be arrays, NOT returning them
-	# xxx who calls flex_encode?
+	# xxx who calls flex_enc_exdb?
 			$ret = $coll->delete_many(	# yyy delete_one
 							# should be sufficient!
 				{ PKEY() => $id },	# query
@@ -335,10 +247,10 @@ sub egg_purge { my( $bh, $mods, $lcmd, $formal, $id )=@_;
 		tlogger $sh, $txnid, "END SUCCESS $id.$lcmd";
 		return $ret;
 	}
-	my $id_key = flex_enc_indb($id);		# we want side-effect
-# xxx NB: here we WANT the side effect for below
-# => if we want to hide side effect, we must surface it for below
-						# yyy need $id_key?
+	my $efs;		# encoded-for-storage versions of id, elem, ...
+	$efs = flex_enc_indb($id);			# we want side-effect
+	my $id_key = $efs->{key};	# yyy need $id_key?
+	$id = $efs->{id};		# need encoded $id
 
 	# Set "all" flag so get_rawidtree() returns even admin elements.
 	#
@@ -572,17 +484,18 @@ sub egg_del { my( $bh, $mods, $lcmd, $formal, $id, $elem )=@_;
 		$txnid = tlogger $sh, $txnid, "BEGIN $id.$lcmd $elem";
 
 	my $key;
-	! $mods->{did_rawidtree} and
-		(File::Cmdline::instantiate($bh, $mods->{hx}, $id, $elem) or
+	my $efs;		# encoded-for-storage versions of id, elem, ...
+	if (! $mods->{did_rawidtree}) {
+		File::Cmdline::instantiate($bh, $mods->{hx}, $id, $elem) or
 			addmsg($bh, "instantiate failed from delete"),
-			return undef),
-# xxx looks like we're flex encoding only if we're not called via rawidtree
-# => could use hash ...
-		$key = flex_enc_indb($id, $elem),
-	1
-	or
-		$key = "$id$Se$elem",
-	;
+			return undef;
+		$efs = flex_enc_indb($id, $elem);
+		($key, $id, $elem) =
+			($efs->{key}, $efs->{id}, $efs->{elems}->[0]);
+	}
+	else {
+		$key = "$id$Se$elem";
+	}
 
 	# yyy should rawidtree call (for purge) egg_del?
 	#     -- it already does so for fetch...
@@ -718,24 +631,34 @@ sub sif { my( $bh, $elem, $oldvalcnt )=@_;
 	return 1;
 }
 
-# Circumflex-encode, internal db version.  Return a storage-ready egg DB
-# key and storage-ready egg args.
-# NOTE: except in the :idmap case below, this modifies its
-# arguments as a side-effect!
-#
-sub flex_enc_indb { my( $id, $elem )=@_;	# importantly NOT using shift
+# Circumflex-encode, internal db version.
+# Return hash with encoded-for-storage (efs) versions of
+#   key		# for indb case
+#   id		# identifier
+#   elems		# array: elem, subelem, subsubelem, ...
 
+sub flex_enc_indb { my ( $id, @elems )=@_;
+
+	my $efs = {};	# hash that we'll return with encoded-for-storage stuff
 	if ($id =~ m|^:idmap/(.+)|) {
 		my $pattern = $1;	# note: we don't encode $pattern
 					# xxx document
-		$elem =~ s{ ([|^]) }{ sprintf("^%02x", ord($1)) }xeg;
-		return
-			"$A/idmap/$elem|$pattern";
+		my $elem = $elems[0];
+		$elem =~ s{ ([$Se^]) }{ sprintf("^%02x", ord($1)) }xeg;
+		$efs->{key} = "$A/idmap/$elem$Se$pattern";
+		$efs->{id} = $id;		# unprocessed
+		$efs->{elems} = [ $elem ];	# subelems not supported
+		return $efs;
 	}
-	return	join $Se, grep
+	# if we get here we don't have an :idmap case
+
+	$efs->{key} =
+		join $Se, grep
 		s{ ([$Se^]) }{ sprintf("^%02x", ord($1)) }xoeg || 1,
-		@_
-	;
+		$id, @elems;
+	$efs->{id} = $id;		# modified
+	$efs->{elems} = \@elems;	# modified
+	return $efs;
 }
 
 # Take encoded string and return circumflex-decoded string.  Does not
@@ -1295,9 +1218,11 @@ sub egg_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 #   question: sometimes we DO want and sometimes we DON'T want/need that
 #   question: when do RELY on that and when would it cause HARM?
 #   best: don't modify args, but return hash with modified versions
-# xxx do this closer to or inside egg_get_dup,
-#     are we calling flex_enc_indb for fetch/get? YES!!
-	my $key = flex_enc_indb($id, $elem);
+
+	my $efs;		# encoded-for-storage versions of id, elem, ...
+	$efs = flex_enc_indb($id, $elem);
+	my $key;
+	($key, $id, $elem) = ($efs->{key}, $efs->{id}, $efs->{elems}->[0]);
 
 	! egg_authz_ok($bh, $id, OP_WRITE) and
 		return undef;
@@ -2446,17 +2371,20 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 	# the args originated by discovery via get_rawidtree().
 	#
 	my $key;
-	! $mods->{did_rawidtree} and
-		(File::Cmdline::instantiate($bh, $mods->{hx}, $id, @elems) or
+	my $efs;		# encoded-for-storage versions of id, elem, ...
+	if (! $mods->{did_rawidtree}) {
+		File::Cmdline::instantiate($bh, $mods->{hx}, $id, @elems) or
 			addmsg($bh, "instantiate failed from fetch"),
-			return undef),
-		$key = flex_enc_indb($id, @elems),
-	1
-	or
+			return undef;
+		$efs = flex_enc_indb($id, @elems);
+		$key = $efs->{key};
+		$id = $efs->{id};		# need encoded $id
+		@elems = @{ $efs->{elems} };	# need encoded @elems
+	}
+	else {
 		$key = join($Se, $id, @elems),
-	;
+	}
 
-# xxx eg, this $id needs to reference the MODIFIED $id
 	! egg_authz_ok($bh, $id, OP_READ) and
 		return undef;
 
@@ -2472,9 +2400,11 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 
 		$txnid = tlogger $sh, $txnid, "BEGIN $lcmd $id";
 
+# xxx if 'ie' then both exdb and indb values are fetched?
 		if ($bh->{sh}->{exdb}) {		# egg_fetch
 			my $result;
-# XXX binder belongs in $bh, NOT to $sh!
+			# yyy binder belongs in $bh, NOT to $sh!
+			#     see ebopen()
 			my $coll = $bh->{sh}->{exdb}->{binder};	# collection
 			my $msg;
 			my $ok = try {
@@ -2486,7 +2416,8 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 			catch {
 				$msg = "error fetching id \"$id\" " .
 					"from external database: $_";
-				return undef;	# returns from "catch", NOT from routine
+				return undef;
+				# returns from "catch", NOT from routine
 			};
 			! defined($ok) and # test undefined since zero is ok
 				addmsg($bh, $msg),
@@ -2532,6 +2463,7 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 			# yyy $st contains return value
 			# xxx unused at the moment
 		}
+# xxx if 'ie' then both exdb and indb values are fetched?
 		if ($bh->{sh}->{indb}) {
 			# Unlike the call from within egg_purge(), this call to
 			# get_rawidtree() does our work itself by outputing as
@@ -2567,6 +2499,7 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 		addmsg($bh, $msg),
 		return undef;
 
+# xxx newelems aren't encoded
 	scalar(@newelems)	and push @elems, @newelems;
 	#
 	# Any new elements were pushed on together with existing element
@@ -2604,8 +2537,10 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 				next;		# xxx error?  or what?
 		}
 		else {
-# xxx no call to flex_enc_indb?
-# OK, since it was called above for at least one of the branches
+			# NB: encoding-for-storage for $id and $elem(s) will
+			# have been done either through get_rawidtree() or
+			# through code earlier in this routine.
+
 			@dups = egg_get_dup($bh, $id, $elem);
 			#@dups = get_dup($db, "$id$Se$elem");
 
@@ -2778,8 +2713,11 @@ sub get_rawidtree { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id )=
 
 	my $elem = '';
 	my ($first, $skip, $done) =
-		("$id$Se$elem", 0, 0);	# DON'T call flex_enc_indb here
-		#("$id|$elem", 0, 0);	# DON'T call flex_enc_indb here
+		("$id$Se$elem", 0, 0);
+
+		# NB: we don't call flex_enc_indb here since these keys are
+		# discovered FROM storage, hence they're already encoded.
+
 	my ($key, $value) =
 		($first, '');
 

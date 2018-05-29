@@ -269,6 +269,10 @@ a^b|c%25d: x
 # admin + user elements found to purge under i^j|k%l: 3\n\n\n",
 	"tokens displaying with mix of % and ^ encodings";
 
+#say "x: $x";
+#say STDERR "xxx premature exit";
+#exit;
+
 $cmdblock = "
 purge
 set f g
