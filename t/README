@@ -1,0 +1,19 @@
+Filenames follow patterns:
+
+ *egg_* = tests egg mostly
+ *nog_* = tests nog mostly
+ *egn_* = apache tests with egg and nog
+
+Directories contain configuration for web services:
+
+  n2t = for n2t-specific services
+        (tested by egn_service_n2t.t and z_egg_prefixes_n2t.t)
+  web = for generic services
+        (tested by egn_apachebase.t)
+
+NB: z_egg_prefixes_n2t begins with 'z' so that it runs last with
+
+  run 'make test'
+
+as it builds a fresh prefix file ready for 'n2t rollout && n2t test'
+(this is a bit of a kludge).
