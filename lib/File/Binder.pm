@@ -1553,8 +1553,8 @@ sub mkebinder { my( $sh, $mods, $exbrname, $bgroup, $user, $what, $minderdir )=@
 		return undef;
 
 	my $exdb = $sh->{exdb};
-	! File::Egg::exdb_set( $bh,
-			"$A/", "erc", fiso_erc($sh->{ruu}, '', $what) ) and
+	! File::Egg::exdb_set_dup( $bh, "$A/", "erc",
+			fiso_erc($sh->{ruu}, '', $what) ) and
 		addmsg($sh, "problem initializing binder \"$exbrname\""),
 		return undef;
 

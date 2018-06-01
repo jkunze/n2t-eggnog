@@ -197,8 +197,8 @@ sub expand_blobs { my( $db, $id, $msg, $khashR )=
 	# expand them, constitute a hash from blobs we find in $id.
 	# XXX currently only look for erc blobs; don't do xml blobs yet
 	#
-	#my @dups = File::Egg::get_dup($db, "$id|erc");
-	my @dups = File::Egg::get_dup($db, "$id${Se}erc");
+	#my @dups = indb_get_dup($db, "$id|erc");
+	my @dups = indb_get_dup($db, "$id${Se}erc");
 	my @elems;
 	for my $erc (@dups) {
 		$erc =~ s{		# undo (decode) any %-encoding
@@ -1355,7 +1355,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 		@dups = ( File::Binder::rrminfo() ),		# easter egg
 		# yyy move to after consulting $rpinfo?
 	1 or
-		@dups = File::Egg::get_dup($db, $id . TSUBEL),	# usual case
+		@dups = indb_get_dup($db, $id . TSUBEL),	# usual case
 	;
 	#$tag = "aftereaster id=$id, origid=$origid";	# debug
 
@@ -1389,7 +1389,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 	$id = $idx->{full_id} || '';	# normalized id or defined empty string
 			# any suffix or query string will still be attached
 
-	@dups = File::Egg::get_dup($db, $id . TSUBEL);		# usual case
+	@dups = indb_get_dup($db, $id . TSUBEL);		# usual case
 	scalar(@dups) and
 		return cnflect( $bh, $txnid, $db, $rpinfo, $accept,
 			$id, \@dups, $idx, "normalized" );
@@ -1404,7 +1404,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 	if ($idx->{scheme} ne 'ark') {
 		my $shadow = id2shadow($id);
 		defined($shadow) and @dups =
-			File::Egg::get_dup($db, $shadow . TSUBEL);
+			indb_get_dup($db, $shadow . TSUBEL);
 		scalar(@dups) and
 			return cnflect( $bh, $txnid, $db, $rpinfo, $accept,
 				$shadow, \@dups, $idx, "doi2shadow" );
@@ -1416,7 +1416,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 	if ($idx->{scheme} eq 'ark' and $idx->{naan} =~ /^[b-z]\d\d\d\d$/) {
 		my $real_id = shadow2id($id);
 		defined($real_id) and @dups =
-			File::Egg::get_dup($db, $real_id . TSUBEL);
+			indb_get_dup($db, $real_id . TSUBEL);
 		scalar(@dups) and
 			return cnflect( $bh, $txnid, $db, $rpinfo, $accept,
 				$real_id, \@dups, $idx, "doi2shadow" );
@@ -1443,7 +1443,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 # 		my @sai;		# there may be stored "shoulder as id"
 # 		# xxx as a backup, this should do a case-insensitive
 # 		#    lookup lookup for some schemes (ARK?)
-# 		@sai = File::Egg::get_dup($db, $idx->{fqshoulder} . TSUBEL);
+# 		@sai = indb_get_dup($db, $idx->{fqshoulder} . TSUBEL);
 # 		scalar(@sai) and $sai[0] and	# non-empty target?
 # 			$rpinfo = 'SAI';	# xxx kludge constant,
 # 			# used once to avoid executing code block below
@@ -2399,7 +2399,7 @@ sub check_naan { my( $db, $naan, $id, $element ) =
 	my $remainder =			# get this BEFORE normalization
 		substr $id, length($naan);
 	$naan =~ s|/*$||;		# do some light normalization
-	my @dups = File::Egg::get_dup($db, "$naan|$element");
+	my @dups = indb_get_dup($db, "$naan|$element");
 	scalar(@dups) or
 		return '';		# NAAN not found; can't help here
 
@@ -2414,7 +2414,7 @@ sub check_naan { my( $db, $naan, $id, $element ) =
 
 	# If we get here, $qs is ? or ??.  Now check ..._inflect element.
 	#
-	@dups = File::Egg::get_dup($db, "$naan|$element" . "_inflect");
+	@dups = indb_get_dup($db, "$naan|$element" . "_inflect");
 	my $ifl = scalar(@dups) ? $dups[0] : '';
 	#$ifl eq 'cgi' || $ifl eq 'thump' || $ifl eq 'noexpand' or
 	$ifl eq 'thump' || $ifl eq 'noexpand' or
@@ -2633,7 +2633,7 @@ sub suffix_pass { my( $bh, $id, $element, $suffix_return )=@_;
 		return ();
 
 	my $am = $element . '_am';	# the "ancestor match" element
-	@dups = File::Egg::get_dup($db, "$shoulder|$am");
+	@dups = indb_get_dup($db, "$shoulder|$am");
 	my $amflag = scalar(@dups) ?
 		$dups[0] : '';		# yyy safe to ignore other dups?
 	$verbose and print "shoulder amflag=$amflag for $shoulder|$am\n";
@@ -2654,7 +2654,7 @@ sub suffix_pass { my( $bh, $id, $element, $suffix_return )=@_;
 	#	print "chopback id was $id\n";
 	! $newid and
 		# yyy are we over-doing this checking of dups thing?
-		@dups = File::Egg::get_dup($db, "$shoulder|$element"),
+		@dups = indb_get_dup($db, "$shoulder|$element"),
 		scalar(@dups) and
 			$newid = $shoulder;
 
@@ -2664,7 +2664,7 @@ sub suffix_pass { my( $bh, $id, $element, $suffix_return )=@_;
 	! $newid and
 		return ();
 
-	@dups = File::Egg::get_dup($db, "$newid|$am");	# check flag for $newid
+	@dups = indb_get_dup($db, "$newid|$am");	# check flag for $newid
 	$amflag = scalar(@dups) ?	$dups[0] : '';
 	$verbose and print "id amflag=$amflag for $newid|$am\n";
 	$amflag eq 'n' and
@@ -2691,7 +2691,7 @@ sub suffix_pass { my( $bh, $id, $element, $suffix_return )=@_;
 	# 
 # XXXXXX did we encode $newid chars here and for chopback?? eg, any |'s?
 
-	@dups = File::Egg::get_dup($db, "$newid|$element");
+	@dups = indb_get_dup($db, "$newid|$element");
 # XXX @dups now has base target, but no appended or substituted suffix !!!
 
 	$verbose	and print "spt to: ", join(", ", @dups), "\n";

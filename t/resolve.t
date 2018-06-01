@@ -319,8 +319,9 @@ my $urn = "urn:uuid:430c5f08-017e-11e1-858f-0025bce7cc84";
 my $urn_shadow = File::Resolver::id2shadow($urn);
 
 $x = `$cmd $urn_shadow.set this that`;
-$x = `$cmd $urn.get this`;
-like $x, qr/^that\n\n$/, 'URN shadow takes an element';
+# vanilla binder doesn't supports shadow ids; use resolve() for that
+#$x = `$cmd $urn.get this`;
+#like $x, qr/^that\n\n$/, 'URN shadow takes an element';
 
 my $urn_t = 'http://www.cdlib.org/';
 $x = `$cmd $urn_shadow.set _t $urn_t`;

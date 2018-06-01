@@ -208,8 +208,9 @@ my $urn_shadow = File::Resolver::id2shadow($urn);
 #print "######### temporary testing stop #########\n"; exit;
 
 $x = `$webcl $pps "$ssvbase_u/a/ezid/b? $urn_shadow.set this that"`;
-$x = `$webcl $pps "$ssvbase_u/a/ezid/b? $urn.get this"`;
-like $x, qr/^this: that$/m, 'URN shadow takes an element';
+# vanilla binder doesn't supports shadow ids; use resolve() for that
+#$x = `$webcl $pps "$ssvbase_u/a/ezid/b? $urn.get this"`;
+#like $x, qr/^this: that$/m, 'URN shadow takes an element';
 
 my $urn_t = 'http://www.cdlib.org/';
 $x = `$webcl $pps "$ssvbase_u/a/ezid/b? $urn_shadow.set _t $urn_t"`;
