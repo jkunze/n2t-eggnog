@@ -8,19 +8,19 @@ use ExtUtils::MakeMaker;
 
 my $pm = {
     	'lib/EggNog/Log.pm' => 'blib/lib/EggNog/Log.pm',
-    	'lib/File/Egg.pm' => 'blib/lib/File/Egg.pm',
-    	'lib/File/Nog.pm' => 'blib/lib/File/Nog.pm',
-    	'lib/File/Binder.pm' => 'blib/lib/File/Binder.pm',
-    	'lib/File/Minder.pm' => 'blib/lib/File/Minder.pm',
-    	'lib/File/Cmdline.pm' => 'blib/lib/File/Cmdline.pm',
-    	'lib/File/Session.pm' => 'blib/lib/File/Session.pm',
-    	'lib/File/Help.pm' => 'blib/lib/File/Help.pm',
-    	'lib/File/Temper.pm' => 'blib/lib/File/Temper.pm',
-    	'lib/File/Resolver.pm' => 'blib/lib/File/Resolver.pm',
-    	'lib/File/Rlog.pm' => 'blib/lib/File/Rlog.pm',
-    	'lib/File/RUU.pm' => 'blib/lib/File/RUU.pm',
-    	'lib/File/ApacheTester.pm' => 'blib/lib/File/ApacheTester.pm',
-    	'lib/File/ValueTester.pm' => 'blib/lib/File/ValueTester.pm',
+    	'lib/EggNog/Egg.pm' => 'blib/lib/EggNog/Egg.pm',
+    	'lib/EggNog/Nog.pm' => 'blib/lib/EggNog/Nog.pm',
+    	'lib/EggNog/Binder.pm' => 'blib/lib/EggNog/Binder.pm',
+    	'lib/EggNog/Minder.pm' => 'blib/lib/EggNog/Minder.pm',
+    	'lib/EggNog/Cmdline.pm' => 'blib/lib/EggNog/Cmdline.pm',
+    	'lib/EggNog/Session.pm' => 'blib/lib/EggNog/Session.pm',
+    	'lib/EggNog/Help.pm' => 'blib/lib/EggNog/Help.pm',
+    	'lib/EggNog/Temper.pm' => 'blib/lib/EggNog/Temper.pm',
+    	'lib/EggNog/Resolver.pm' => 'blib/lib/EggNog/Resolver.pm',
+    	'lib/EggNog/Rlog.pm' => 'blib/lib/EggNog/Rlog.pm',
+    	'lib/EggNog/RUU.pm' => 'blib/lib/EggNog/RUU.pm',
+    	'lib/EggNog/ApacheTester.pm' => 'blib/lib/EggNog/ApacheTester.pm',
+    	'lib/EggNog/ValueTester.pm' => 'blib/lib/EggNog/ValueTester.pm',
 };
 
 WriteMakefile(

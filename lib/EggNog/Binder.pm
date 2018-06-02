@@ -1,4 +1,4 @@
-package File::Binder;
+package EggNog::Binder;
 
 =for dbnotes
 
@@ -54,8 +54,8 @@ use File::Path qw( make_path mkpath rmtree );
 use File::Pairtree ":all";	# barely used, could drop easily yyy
 use File::Namaste;
 use File::Find;
-use File::Rlog;
-use File::RUU;
+use EggNog::Rlog;
+use EggNog::RUU;
 use Try::Tiny;			# to use try/catch as safer than eval
 use Safe::Isa;
 use File::Basename;
@@ -114,8 +114,8 @@ use constant RRMINFOARK		=> 'ark:/99999/__rrminfo__';
 # yyy moving towards new new; just one arg: $sh
 sub newnew { my( $sh )=@_;
 
-	return File::Binder->new (
-		$sh, File::Binder::ND_BINDER,
+	return EggNog::Binder->new (
+		$sh, EggNog::Binder::ND_BINDER,
 		$sh->{WeAreOnWeb}, $sh->{om}, $sh->{opt}
 	);
 }
@@ -192,7 +192,7 @@ sub new { # call with $sh, type, WeAreOnWeb, om, optref
 		$self->{objname} = "nog";
 		$self->{dbname} = $nogbdb;
 		$self->{humname} = "minter";
-		$self->{version} ||= $File::Nog::VERSION;
+		$self->{version} ||= $EggNog::Nog::VERSION;
 
 		$self->{fname_pfix} = 'nog_';	# used in making filenames
 	}
@@ -204,7 +204,7 @@ sub new { # call with $sh, type, WeAreOnWeb, om, optref
 		$self->{objname} = "egg";	# used in making filenames
 		$self->{dbname} = "egg.bdb";
 		$self->{humname} = "binder";
-		$self->{version} ||= $File::Egg::VERSION;
+		$self->{version} ||= $EggNog::Egg::VERSION;
 
 		$self->{fname_pfix} = 'egg_';	# used in making filenames
 		$self->{edbdir} =		# embedded db directory
@@ -238,7 +238,7 @@ sub new { # call with $sh, type, WeAreOnWeb, om, optref
 		$self->{objname} = "nabber";
 		$self->{dbname} = "nabber.anvl";
 		$self->{humname} = "nabber";
-		$self->{version} ||= $File::Nog::VERSION;
+		$self->{version} ||= $EggNog::Nog::VERSION;
 	}
 	else {	# yyy ???
 		$self->{default_minder} =
@@ -247,7 +247,7 @@ sub new { # call with $sh, type, WeAreOnWeb, om, optref
 		$self->{objname} =
 		$self->{dbname} = "minder_unknown";
 		$self->{humname} = "minder";
-		$self->{version} ||= $File::Nog::VERSION;
+		$self->{version} ||= $EggNog::Nog::VERSION;
 	}
 
 	return $self;
@@ -815,11 +815,11 @@ sub open_resolverlist { my( $bh, $list )=@_;
 
 	my @mharray = map {			# for each resolver in list
 	    					# IF ...
-		$rmh = File::Binder->new(	# we get a new binder handler
+		$rmh = EggNog::Binder->new(	# we get a new binder handler
 						# xxx don't want to do
 						#    this every time
 			$bh->{sh},
-			File::Binder::ND_BINDER,
+			EggNog::Binder::ND_BINDER,
 			$bh->{WeAreOnWeb},
 			$bh->{om},
 			$bh->{opt},
@@ -1045,7 +1045,7 @@ sub ibopen { my( $bh, $mdr, $flags, $minderpath, $mindergen )=@_;
 	# 
 	# yyy do we need to open the rlog so early?? how about after tie()??
 
-	$bh->{rlog} = File::Rlog->new(
+	$bh->{rlog} = EggNog::Rlog->new(
 		$basename, {
 			preamble => "$ruu->{who} $ruu->{where}",
 			header => "H: $bh->{cmdname} $bh->{version}",
@@ -1273,7 +1273,7 @@ sub bopen { my( $bh, $bdr, $flags, $minderpath, $mindergen )=@_;
 	my $sh = $bh->{sh} or	# yyy or open a session for the caller?
 		return undef;
 	my $msg;
-	if (! $sh->{cfgd} and $msg = File::Session::config($sh)) {
+	if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {
 		addmsg($bh, $msg);	# failed to configure
 		return undef;
 	}
@@ -1289,7 +1289,7 @@ sub bopen { my( $bh, $bdr, $flags, $minderpath, $mindergen )=@_;
 
 sub fiso_erc { my( $ruu, $tagdir, $what )=@_;
 
-	use File::Temper 'etemper';
+	use EggNog::Temper 'etemper';
 
 	my $cwd = file_name_is_absolute($tagdir)
 		?  $tagdir : catfile(curdir(), $tagdir);
@@ -1418,7 +1418,7 @@ sub str2brnames { my( $sh, $binder, $bgroup, $user )=@_;
 	$bname =~ s/^[\W_]+//;		# drop leading and trailing non-word,
 	$bname =~ s/[\W_]+$//;		# non-_ characters from item name
 	my (undef, undef, $ns_root, $clean_ubname) =
-		File::Session::ebinder_names($sh, $bgroup, $user, $bname);
+		EggNog::Session::ebinder_names($sh, $bgroup, $user, $bname);
 	#$exbrname = $sh->{exdb}->{ns_root_name} . $bname;
 	#return ($inbrname, $exbrname);
 	return ($inbrname, "$ns_root$clean_ubname");
@@ -1445,7 +1445,7 @@ sub binder_exists { my( $sh, $mods, $binder, $bgroup, $user, $minderdir )=@_;
 	#		'letters, digits, and internal underscores'),
 	#	return undef;
 	my $msg;
-	if (! $sh->{cfgd} and $msg = File::Session::config($sh)) {
+	if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {
 		addmsg($sh, $msg);	# failed to configure
 		return undef;
 	}
@@ -1471,8 +1471,8 @@ sub binder_exists { my( $sh, $mods, $binder, $bgroup, $user, $minderdir )=@_;
 			return undef;
 		my $ret;
 		if (ebopen( $bh, $exbrname )) {		# yyy other args unused
-			require File::Egg;
-			$ret = File::Egg::exdb_find_one( $bh,
+			require EggNog::Egg;
+			$ret = EggNog::Egg::exdb_find_one( $bh,
 				$sh->{exdb}->{binder}, "$A/");
 			! $ret || ! $ret->{ "erc" } and	# not a binder
 				addmsg($sh, "$exbrname is not a binder"),
@@ -1503,7 +1503,7 @@ sub mkbinder { my( $sh, $mods, $binder, $bgroup, $user, $what, $minderdir )=@_;
 	! $sh and
 		return undef;
 	my $msg;
-	if (! $sh->{cfgd} and $msg = File::Session::config($sh)) {
+	if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {
 		addmsg($sh, $msg);	# failed to configure
 		return undef;
 	}
@@ -1553,7 +1553,7 @@ sub mkebinder { my( $sh, $mods, $exbrname, $bgroup, $user, $what, $minderdir )=@
 		return undef;
 
 	my $exdb = $sh->{exdb};
-	! File::Egg::exdb_set_dup( $bh, "$A/", "erc",
+	! EggNog::Egg::exdb_set_dup( $bh, "$A/", "erc",
 			fiso_erc($sh->{ruu}, '', $what) ) and
 		addmsg($sh, "problem initializing binder \"$exbrname\""),
 		return undef;
@@ -1620,7 +1620,7 @@ sub mkibinder { my( $sh, $mods, $binder, $bgroup, $user, $what, $minderdir )=@_;
 		return undef;
 
 	my ($v1bdb, $dbfile, $built, $running) =
-		File::Binder::get_dbversion();	# iii
+		EggNog::Binder::get_dbversion();	# iii
 
 	$dbh->{"$A/version"} = $VERSION;	# iii
 	$dbh->{"$A/dbversion"} = "With Egg version $VERSION, " .   # iii
@@ -1635,7 +1635,7 @@ sub mkibinder { my( $sh, $mods, $binder, $bgroup, $user, $what, $minderdir )=@_;
 		$erc .= qq@
 Note:      $noflock@;
 	$v1bdb and
-		$erc .= "Note:  " . $File::Binder::v1bdb_dup_warning;
+		$erc .= "Note:  " . $EggNog::Binder::v1bdb_dup_warning;
 		# XXX not proper ANVL (not ANVL line-wrapped)
 	$dbh->{"$A/erc"} = $erc;	# iii
 
@@ -1671,14 +1671,14 @@ Note:      $noflock@;
 # Set $minderhome to "." to _not_ use default minderhome (eg, when
 # "bind -d ..." was used), else leave empty.
 
-# Protocol:  call File::Egg->new to make a fresh $bh before mkminter/mkbinder,
+# Protocol:  call EggNog::Egg->new to make a fresh $bh before mkminter/mkbinder,
 #            which checks to make sure the input $bh isn't already open
 #            returns the $bh still open (as most method calls do).  In
 #            other words, don't call mkminter/mkbinder on an $bh that
 #            you just finished minting or binding on.
 # yyy should omclose($bh) close and destroy?  yes??
 # yyy could we use a user-level omclose for bulkcmds?
-#            $bh=File::Egg->new(); mkminter/mkbinder($bh); omclose($bh);
+#            $bh=EggNog::Egg->new(); mkminter/mkbinder($bh); omclose($bh);
 # 		then $bh->DESTROY;?
 #    (need way to clone parts of $bh in creating $submh )
 #
@@ -1782,7 +1782,7 @@ sub brmgroup { my( $sh, $mods, $bgroup, $user )=@_;
 		return undef;
 	# yyy should we check if $bgroup matches $sh->{bgroup} ?
 	my $msg;
-	if (! $sh->{cfgd} and $msg = File::Session::config($sh)) {
+	if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {
 		addmsg($sh, $msg);	# failed to configure
 		return undef;
 	}
@@ -1838,11 +1838,11 @@ sub brmgroup_standalone { my( $bgroup )=@_;
 
 # xxx require instead of use?
 # yyy test database instead of egg_eggnog? eg, egg_td_egnapa
-	use File::Session;
-	my $sh = File::Session->new(0) or
+	use EggNog::Session;
+	my $sh = EggNog::Session->new(0) or
 		return "couldn't create session handler";
 	my $msg;
-	$msg = File::Session::config($sh) and
+	$msg = EggNog::Session::config($sh) and
 		return $msg;
 	brmgroup($sh, undef, $bgroup) or
 		return outmsg($sh);
@@ -1855,7 +1855,7 @@ sub rmbinder { my( $sh, $mods, $binder, $bgroup, $user, $minderpath )=@_;
 	! $sh and
 		return undef;
 	my $msg;
-	if (! $sh->{cfgd} and $msg = File::Session::config($sh)) {
+	if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {
 		addmsg($sh, $msg);	# failed to configure
 		return undef;
 	}
@@ -1945,7 +1945,7 @@ sub rmibinder { my( $sh, $mods, $mdr, $bgroup, $user, $minderpath )=@_;
 	#
 	my $mdrdir = fiso_uname($mdrfile);
 # xxx txnlog
-	#$bh->{rlog} = File::Rlog->new(		# log this important event
+	#$bh->{rlog} = EggNog::Rlog->new(		# log this important event
 	#	catfile($mdrdir, FS_OBJECT_TYPE), {
 	#		preamble => $sh->{opt}->{rlog_preamble},
 	#		header => $sh->{opt}->{rlog_header},
@@ -2168,7 +2168,7 @@ sub ebshow { my( $sh, $mods, $om, $bgroup, $user, $ubname )=@_;
 
 	my $exdb = $sh->{exdb};
 	my ($edatabase_name, $ebinder_root_name, $ns_root_name, $clean_ubname) =
-		File::Session::ebinder_names($sh, $bgroup, $user, $ubname);
+		EggNog::Session::ebinder_names($sh, $bgroup, $user, $ubname);
 	my ($msg, $db, @cns);
 	my $ok = try {
 		$db = $exdb->{client}->db( $edatabase_name );
@@ -2218,7 +2218,7 @@ sub bshow { my( $sh, $mods, $om, $bgroup, $user, $ubname )=@_;
 	! $sh and
 		return undef;
 	my $msg;
-	if (! $sh->{cfgd} and $msg = File::Session::config($sh)) {
+	if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {
 		addmsg($sh, $msg);	# failed to configure
 		return undef;
 	}
@@ -2274,7 +2274,7 @@ sub mstatus { my( $bh, $mods, $status )=@_;
 	my $sh = $bh->{sh} or
 		return undef;
 	#my $msg;
-	#if (! $sh->{cfgd} and $msg = File::Session::config($sh)) {
+	#if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {
 	#	addmsg($bh, $msg);	# failed to configure
 	#	return undef;
 	#}
@@ -2398,16 +2398,16 @@ sub prep_default_binder { my( $sh, $ie, $flags, $minderpath, $mindergen )=@_;
 
 		# New $submh is auto-destroyed when we leave this scope.
 		#
-		#my $submh = File::Binder->new($bh->{sh}, $mtype,
+		#my $submh = EggNog::Binder->new($bh->{sh}, $mtype,
 # xxx change $bh to $sh in this routine, eg, next line!
-		my $submh = File::Binder->new($sh, $mtype,
+		my $submh = EggNog::Binder->new($sh, $mtype,
 			$sh->{WeAreOnWeb}, $om, $opt);
 			# xxx {om} ?? logging?
 		$submh or
 			addmsg($sh, "couldn't create caster handler"),
 			return undef;
 		my $dbname = $mtype eq ND_MINTER ?
-			File::Nog::mkminter($submh, undef, $mdr,
+			EggNog::Nog::mkminter($submh, undef, $mdr,
 				$sh->{default_template}, $sh->{minderhome})
 			:
 			# yyy should there be an exdb case for this?
@@ -2494,8 +2494,8 @@ sub gen_minder { my( $sh, $minderpath )=@_;
 	$c_opt->{rlog_preamble} = $sh->{opt}->{rlog_preamble};
 	#$c_opt->{version} = $bh->{opt}->{version};
 		# XXX this probably corrupts $implicit_caster_opt
-	#my $cmh = File::Binder->new($bh->{sh}, ND_MINTER, 
-	my $cmh = File::Binder->new($sh, ND_MINTER, 
+	#my $cmh = EggNog::Binder->new($bh->{sh}, ND_MINTER, 
+	my $cmh = EggNog::Binder->new($sh, ND_MINTER, 
 		$sh->{WeAreOnWeb},
 		File::OM->new("anvl"),	# default om has no outputs for
 					# next implicit mkminter operation
@@ -2523,13 +2523,13 @@ sub gen_minder { my( $sh, $minderpath )=@_;
 		# Output messages from implicit mkminter and hold
 		# operations are mostly suppressed.
 		# 
-		my $dbname = File::Nog::mkminter($cmh, undef, $mdr,
+		my $dbname = EggNog::Nog::mkminter($cmh, undef, $mdr,
 				$implicit_caster_template, $sh->{minderhome});
 		$dbname or
 			addmsg($sh, getmsg $cmh),
 			addmsg($sh, "couldn't create caster ($mdr)"),
 			return undef;
-		File::Nog::hold($cmh, undef, "hold", "set",
+		EggNog::Nog::hold($cmh, undef, "hold", "set",
 				@implicit_caster_except) or
 			addmsg($sh,
 				"couldn't reserve caster exceptions ($mdr)"),
@@ -2553,8 +2553,8 @@ sub gen_minder { my( $sh, $minderpath )=@_;
 	my $opt = $implicit_minter_opt;
 	$opt->{rlog_preamble} = $sh->{opt}->{rlog_preamble};
 		# XXX this probably corrupts $implicit_minter_opt
-	#my $submh = File::Binder->new($bh->{sh}, ND_MINTER, 
-	my $submh = File::Binder->new($sh, ND_MINTER, 
+	#my $submh = EggNog::Binder->new($bh->{sh}, ND_MINTER, 
+	my $submh = EggNog::Binder->new($sh, ND_MINTER, 
 		$sh->{WeAreOnWeb},
 		File::OM->new("anvl"),	# default om has no outputs for
 					# next implicit mkminter operation
@@ -2563,7 +2563,7 @@ sub gen_minder { my( $sh, $minderpath )=@_;
 	$submh or
 		addmsg($sh, "couldn't create handler for newly cast shoulder"),
 		return undef;
-	my $dbname = File::Nog::mkminter($submh, undef, $mdr, $mdr . $implicit_minter_template,
+	my $dbname = EggNog::Nog::mkminter($submh, undef, $mdr, $mdr . $implicit_minter_template,
 	# XXXXX should handle defaults via variables?
 		$sh->{minderhome});
 	$dbname or
@@ -2581,7 +2581,7 @@ sub cast { my( $bh, $minderpath )=@_;
 	my $mdr;		# generated minder name
 	my ($max_tries, $n) = (10, 1);
 	while ($n++ < $max_tries) {
-		($mdr, undef, undef) = File::Nog::mint($bh, undef, 'cast');
+		($mdr, undef, undef) = EggNog::Nog::mint($bh, undef, 'cast');
 		defined($mdr) or
 			addmsg($bh, "ran out of shoulders!?"),
 			return undef;
@@ -2662,7 +2662,7 @@ Minder - routines to support minders on behalf of Nog.pm and Egg.pm
 
 =head1 SYNOPSIS
 
- use File::Binder ':all';	    # import routines into a Perl script
+ use EggNog::Binder ':all';	    # import routines into a Perl script
 
 =head1 BUGS
 

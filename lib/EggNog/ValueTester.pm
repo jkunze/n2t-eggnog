@@ -1,4 +1,4 @@
-package File::ValueTester;
+package EggNog::ValueTester;
 
 use 5.010;
 use strict;
@@ -20,7 +20,7 @@ use Test::More;
 use File::Path;
 use Try::Tiny;			# to use try/catch as safer than eval
 use Safe::Isa;			# avoid exceptions with the unblessed
-use File::Binder ();
+use EggNog::Binder ();
 
 our ($perl, $blib, $bin);
 our ($rawstatus, $status);	# "shell status" version of "is"
@@ -90,7 +90,7 @@ sub remake_td { my( $td, $bgroup )=@_;	# make $td with possible cleanup
 	#my $td = shift;
 	-e $td			and remove_td($td);
 	if ($bgroup) {
-		my $msg = File::Binder::brmgroup_standalone($bgroup);
+		my $msg = EggNog::Binder::brmgroup_standalone($bgroup);
 		$msg and
 			say STDERR $msg;
 	}
@@ -114,7 +114,7 @@ sub remove_td { my( $td, $bgroup )=@_;
 	# not bothering to check status of $ok
 	my $msg;
 	if ($bgroup) {
-		my $msg = File::Binder::brmgroup_standalone($bgroup);
+		my $msg = EggNog::Binder::brmgroup_standalone($bgroup);
 		$msg and
 			say STDERR $msg;
 	}
@@ -137,7 +137,7 @@ ValueTester - routines for temporary directory and command script testing
 
 =head1 SYNOPSIS
 
- use File::ValueTester ':all';	    # import routines into a Perl script
+ use EggNog::ValueTester ':all';	    # import routines into a Perl script
 
 =head1 BUGS
 

@@ -1,4 +1,4 @@
-package File::RUU;
+package EggNog::RUU;
 
 # how to make this secure for web but permissive for non-web?
 # if we're not on the web, whoever runs me and has read/write
@@ -597,9 +597,9 @@ sub read_conf { my $basename = shift;	# remaining arg $_[0] to be updated
 }
 
 # Call to create new RUU object as
-#    $ruu = File::RUU->new($WeAreOnWeb, $conf_ruu, $mh->{u2phash}, [ $opt ]);
+#    $ruu = EggNog::RUU->new($WeAreOnWeb, $conf_ruu, $mh->{u2phash}, [ $opt ]);
 # maybe one day yyy old:
-#    $ruu = File::RUU->new($OnWeb, $conf_dir, $userid, $proxy, $opt);
+#    $ruu = EggNog::RUU->new($OnWeb, $conf_dir, $userid, $proxy, $opt);
 
 # Some authorization depends on whether you are
 #   remote  (eg, talking via http or ssh)
@@ -689,7 +689,7 @@ RUU - are you you?
 
 =head1 SYNOPSIS
 
- use File::RUU;		# import routines into a Perl script
+ use EggNog::RUU;		# import routines into a Perl script
 
 =head1 BUGS
 

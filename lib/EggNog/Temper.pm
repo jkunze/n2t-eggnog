@@ -1,4 +1,4 @@
-package File::Temper;
+package EggNog::Temper;
 
 use 5.010;
 use strict;
@@ -158,7 +158,7 @@ Temper - routines to manipulate TEMPER dates
 
 =head1 SYNOPSIS
 
- use File::Temper;         # import routines into a Perl script
+ use EggNog::Temper;         # import routines into a Perl script
  temper( [$time] )         # vanilla, eg, 20150628221445
  stemper( [$time] )        # short temper
  etemper( [$time] )        # even temper, eg, 2015.06.28_22:14:45

@@ -1,4 +1,4 @@
-package File::Rlog;
+package EggNog::Rlog;
 
 # XXX how to record --sif and other, eg, --force in deltas?
 # Unsure how sophisticated to make this.  Current use suggests
@@ -29,7 +29,7 @@ our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
 
 use File::Copy 'mv';
 use File::Value ":all";
-use File::Temper;
+use EggNog::Temper;
 
 # XXX encode contact/who in case of embedded token separators?
 # xxx add locking protocol for logfiles?
@@ -51,7 +51,7 @@ sub cull { my( $self ) =
 		mkdir $sdir || return (0, $!);
 
 	my ($vtime, $fname, $msg);
-	$vtime = File::Temper::temper();	# get vanilla temper string for
+	$vtime = EggNog::Temper::temper();	# get vanilla temper string for
 	$fname = "$sdir/rlog.$vtime";		# file uniqueness and ordering
 
 =for removal
@@ -185,7 +185,7 @@ sub logname { my $base = shift;		# xxx document
 	return $base . '.rlog';
 }
 
-# call with $rlog = File::Rlog->new(catfile($dbhome, $hname), { opts });
+# call with $rlog = EggNog::Rlog->new(catfile($dbhome, $hname), { opts });
 #
 sub new { my( $class, $basename,  $opt ) =
 	    (  shift,     shift, shift );
@@ -207,10 +207,10 @@ sub new { my( $class, $basename,  $opt ) =
 		$opt->{join_string} || ' ';
 	$self->{extra_func} =			# join fields with string
 		$opt->{extra_func} ||
-			\&File::Temper::etemper;
+			\&EggNog::Temper::etemper;
 	$self->{header} =			# header string for top of
 		$opt->{header} ||		# newly (re)created log file
-			"File::Rlog version $VERSION";
+			"EggNog::Rlog version $VERSION";
 	return $self;
 }
 
@@ -232,7 +232,7 @@ rlog - routines to support robust replay logs
 
 =head1 SYNOPSIS
 
- use File::Rlog ':all';	    # import routines into a Perl script
+ use EggNog::Rlog ':all';	    # import routines into a Perl script
 
 The log file gets recreated if it disappears, typically with a
 culling event (supplied).

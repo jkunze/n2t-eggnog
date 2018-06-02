@@ -1,4 +1,4 @@
-package File::Session;
+package EggNog::Session;
 
 use 5.010;
 use strict;
@@ -19,7 +19,7 @@ our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
 use File::Spec::Functions;
 use File::Path 'mkpath';
 use File::Basename;
-use File::RUU;
+use EggNog::RUU;
 use File::Value 'flvl';
 use EggNog::Log qw(init_tlogger);
 use Try::Tiny;			# to use try/catch as safer than eval
@@ -283,7 +283,7 @@ sub config { my( $sh )=@_;
 	# Note: this is the only time that $sh->{ruu} is defined or redefined.
 	# yyy add to $sh config file name used and last time it was read?
 	#
-	my $ruu = File::RUU->new(	# XXX stop calling from $mh config
+	my $ruu = EggNog::RUU->new(	# XXX stop calling from $mh config
 		$sh->{WeAreOnWeb},
 		$sh->{conf_ruu},
 		$sh->{u2phash},
@@ -712,7 +712,7 @@ Session - routines to support eggnog sessions
 
 =head1 SYNOPSIS
 
- use File::Session;	   
+ use EggNog::Session;	   
 
 =head1 BUGS
 

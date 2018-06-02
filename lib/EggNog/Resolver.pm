@@ -1,4 +1,4 @@
-package File::Resolver;
+package EggNog::Resolver;
 
 use 5.010;
 use strict;
@@ -24,16 +24,16 @@ our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
 
 use File::Value ":all";
 use File::Binder ':all';	# xxx be more restricitve
-use File::Egg ':all';
+use EggNog::Egg ':all';
 use EggNog::Log qw(tlogger);
-#use File::Session qw(tlogger);
+#use EggNog::Session qw(tlogger);
 
-use constant TSUBEL	=> File::Binder::TRGT_MAIN_SUBELEM;	# shorthand
+use constant TSUBEL	=> EggNog::Binder::TRGT_MAIN_SUBELEM;	# shorthand
 
 my $SCHEMELESS = ':unkn';	# xxx -> :unkn
 
 # elems for which we call suffix_pass
-our @suffixable = ( File::Binder::TRGT_MAIN );
+our @suffixable = ( EggNog::Binder::TRGT_MAIN );
 
 # Resolver - resolver functions (Perl module)
 # 
@@ -139,8 +139,8 @@ ark:/99998/pfx8:
 # We use a reserved "admin" prefix of $A for all administrative
 # variables, so, "$A/oacounter" is ":/oacounter".
 #
-my $A = File::Binder::ADMIN_PREFIX;
-my $Se = File::Binder::SUBELEM_SC;
+my $A = EggNog::Binder::ADMIN_PREFIX;
+my $Se = EggNog::Binder::SUBELEM_SC;
 
 #use Fcntl qw(:DEFAULT :flock);
 #use File::Spec::Functions;
@@ -419,7 +419,7 @@ sub authz_ok { my( $bh, $id, $op ) =@_;
 	my $dbh = $bh->{tied_hash_ref};		# speed by $bh arg check
 	my $WeNeed = $op;			# operation requested
 	#my $id_permkey = $id . PERMS_ELEM;
-	my $id_permkey = $id . File::Egg::PERMS_ELEM();
+	my $id_permkey = $id . EggNog::Egg::PERMS_ELEM();
 
 	! $bh->{remote} and		# ok if not from web, as we only
 		return 1;		# need to do authz if on web
@@ -1352,7 +1352,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 	# returns information about the Resolver Rewrite Map process.
 	#
 	$id eq RRMINFOARK and
-		@dups = ( File::Binder::rrminfo() ),		# easter egg
+		@dups = ( EggNog::Binder::rrminfo() ),		# easter egg
 		# yyy move to after consulting $rpinfo?
 	1 or
 		@dups = indb_get_dup($db, $id . TSUBEL),	# usual case
@@ -1564,7 +1564,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 		my ($suffix, $rid);		# rid = root id + suffix
 		# NB: next call alters the $suffix argument (a return param)
 		@dups = suffix_pass($bh, $id,
-				File::Binder::TRGT_MAIN, $suffix);
+				EggNog::Binder::TRGT_MAIN, $suffix);
 		# suffix has NOT yet been added to target
 		$rid = substr($id, 0, - length($suffix));
 		($idx->{suffix}, $idx->{rid}) = ($suffix, $rid);
@@ -1579,7 +1579,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 	# From here on, $idx->{suffix} is defined iff suffix_pass() was called.
 
 	# if still nothing, try ancient noid-born rule-based mapping
-	@dups = File::Egg::id2elemval($bh, $db, $id, File::Binder::TRGT_MAIN);
+	@dups = EggNog::Egg::id2elemval($bh, $db, $id, EggNog::Binder::TRGT_MAIN);
 	scalar(@dups) and
 		return cnflect( $bh, $txnid, $db, $rpinfo, $accept,
 			$id, \@dups, $idx, "id2elemval" );
@@ -1682,7 +1682,7 @@ sub inflect_cmd { my(   $bh, $eset, $format,  $idx )=
 		{ outhandle => 0 });		# output to a string
 
 	my ($metablob, $briefblob) =		# args we manufacture
-		File::Egg::egg_inflect(
+		EggNog::Egg::egg_inflect(
 			$bh, { all => 1 },		# $mods->{all} = 1
 			$om, $idx->{rid} );
 
@@ -1717,10 +1717,10 @@ sub quote_args {			# quote args
 }
 
 # Some globals to set once and use below, which are really constants. yyy
-my $Rs = File::Binder::SUBELEM_SC	# reserved sub-element
-	. File::Binder::RSRVD_PFIX;
-my $Tm = File::Binder::TRGT_METADATA;   # actually content negotiation
-my $Ti = File::Binder::TRGT_INFLECTION; # target for inflection
+my $Rs = EggNog::Binder::SUBELEM_SC	# reserved sub-element
+	. EggNog::Binder::RSRVD_PFIX;
+my $Tm = EggNog::Binder::TRGT_METADATA;   # actually content negotiation
+my $Ti = EggNog::Binder::TRGT_INFLECTION; # target for inflection
 
 
 # NB: $id may be different (eg, shadow) from what's in $idx->{full_id} yyy
@@ -2710,7 +2710,7 @@ Resolver - routines to do advanced identifier resolution
 
 =head1 SYNOPSIS
 
- use File::Resolver;		    # import routines into a Perl script
+ use EggNog::Resolver;		    # import routines into a Perl script
 
 =head1 BUGS
 

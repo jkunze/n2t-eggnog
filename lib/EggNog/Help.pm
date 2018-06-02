@@ -1,6 +1,6 @@
 # xxx for Namaste, use \Q$dtname\E to disable .dir_ matching xdir_
 
-package File::Help;
+package EggNog::Help;
 
 use 5.010;
 use strict;
@@ -125,9 +125,9 @@ Help - command-line "help" access to POD sub-sections
 
 =head1 SYNOPSIS
 
- use File::Help;	    # import routines into a Perl script
+ use EggNog::Help;	    # import routines into a Perl script
 
- File::Help::help($filehandle, $topic);
+ EggNog::Help::help($filehandle, $topic);
 
 =head1 DESCRIPTION
 

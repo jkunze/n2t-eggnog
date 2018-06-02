@@ -1,4 +1,4 @@
-package File::Minder;
+package EggNog::Minder;
 
 # XXX XXX need to add authz to noid!
 
@@ -34,8 +34,8 @@ use File::Value ":all";
 use File::Copy 'mv';
 use File::Path qw( make_path mkpath rmtree );
 use File::Find;
-use File::Rlog;
-use File::RUU;
+use EggNog::Rlog;
+use EggNog::RUU;
 use Try::Tiny;			# to use try/catch as safer than eval
 use Safe::Isa;
 
@@ -156,7 +156,7 @@ use constant RRMINFOARK		=> 'ark:/99999/__rrminfo__';
 #####
 # Trying this one for now.
 # package Nog;
-# $mh = File::Nog->new($mdrtype, $contact, $om, $minderpath, $opt);
+# $mh = EggNog::Nog->new($mdrtype, $contact, $om, $minderpath, $opt);
 #       # create new minder handler, where $mdrtype is one of
 #           ND_MINTER, ND_BINDER, ND_NABBER, ND_COUNTER
 
@@ -231,7 +231,7 @@ sub new { # call with type, WeAreOnWeb, om, minderpath, optref
 		$self->{objname} = "nog";
 		$self->{dbname} = $nogbdb;
 		$self->{humname} = "minter";
-		$self->{version} ||= $File::Nog::VERSION;
+		$self->{version} ||= $EggNog::Nog::VERSION;
 
 		$self->{fname_pfix} = 'nog_';	# used in making filenames
 	}
@@ -242,7 +242,7 @@ sub new { # call with type, WeAreOnWeb, om, minderpath, optref
 		$self->{objname} = "egg";	# used in making filenames
 		$self->{dbname} = "egg.bdb";
 		$self->{humname} = "binder";
-		$self->{version} ||= $File::Egg::VERSION;
+		$self->{version} ||= $EggNog::Egg::VERSION;
 
 		$self->{fname_pfix} = 'egg_';	# used in making filenames
 		$self->{edbdir} =		# embedded db directory
@@ -277,7 +277,7 @@ sub new { # call with type, WeAreOnWeb, om, minderpath, optref
 		$self->{objname} = "nabber";
 		$self->{dbname} = "nabber.anvl";
 		$self->{humname} = "nabber";
-		$self->{version} ||= $File::Nog::VERSION;
+		$self->{version} ||= $EggNog::Nog::VERSION;
 	}
 	else {	# yyy ???
 		$self->{default_minder} =
@@ -286,7 +286,7 @@ sub new { # call with type, WeAreOnWeb, om, minderpath, optref
 		$self->{objname} =
 		$self->{dbname} = "minder_unknown";
 		$self->{humname} = "minder";
-		$self->{version} ||= $File::Nog::VERSION;
+		$self->{version} ||= $EggNog::Nog::VERSION;
 	}
 
 	return $self;
@@ -823,10 +823,10 @@ sub open_resolverlist { my( $mh, $list )=@_;
 
 	my @mharray = map {			# for each resolver in list
 	    					# IF ...
-		$rmh = File::Minder->new(	# we get a new minder handler
+		$rmh = EggNog::Minder->new(	# we get a new minder handler
 						# xxx don't want to do
 						#    this every time
-			File::Minder::ND_BINDER,
+			EggNog::Minder::ND_BINDER,
 			$mh->{WeAreOnWeb},
 			$mh->{om},
 			undef,			# normally a STRING minderpath
@@ -1073,7 +1073,7 @@ What if no server running when client starts:  startup server on demand?
 	#   call some RUU::conf (sub)routines
 	my ($msg, $cfh);
 	$creating and			# create a default configuration file
-		$msg = File::RUU::set_conf($basename, $mh->{opt}),
+		$msg = EggNog::RUU::set_conf($basename, $mh->{opt}),
 		($msg and		# can't write? that's a problem
 			addmsg($mh, $msg),
 			return undef);
@@ -1090,7 +1090,7 @@ What if no server running when client starts:  startup server on demand?
 	#     such as only re-reading the file if it changes
 	#     yyy add --nice option for not re-opening between mode changes?
 	#
-	$msg = File::RUU::get_conf($basename, $cfh);	# get config file info
+	$msg = EggNog::RUU::get_conf($basename, $cfh);	# get config file info
 	$msg and $mh->{opt}->{verbose} and $om and	# no config isn't fatal
 		$om->elem("note", $msg);		# but is interesting
 	#
@@ -1135,7 +1135,7 @@ What if no server running when client starts:  startup server on demand?
 	# xxx let every_user come from config file.
 	# xxx maybe combine auth() method with new()
 	#
-	my $ruu = File::RUU->new(
+	my $ruu = EggNog::RUU->new(
 		$mh->{WeAreOnWeb},
 		$mh->{conf_ruu},
 		$mh->{u2phash},
@@ -1177,7 +1177,7 @@ What if no server running when client starts:  startup server on demand?
 
 #print "xxXX: b=$basename, c=$mh->{cmdname}, who=$ruu->{who}, where=$ruu->{where}, v=$mh->{version}\n";
 #$mh->{version} ||= 'foo';
-	$mh->{rlog} = File::Rlog->new(
+	$mh->{rlog} = EggNog::Rlog->new(
 		$basename, {
 			preamble => "$ruu->{who} $ruu->{where}",
 			header => "H: $mh->{cmdname} $mh->{version}",
@@ -1190,10 +1190,10 @@ What if no server running when client starts:  startup server on demand?
 	# xxx this should replace the older rlog, probably with log4perl
 	#
 	if ($mh->{opt}->{txnlog}) {
-		$mh->{txnlog} = File::Rlog->new(
+		$mh->{txnlog} = EggNog::Rlog->new(
 			$mh->{opt}->{txnlog}, {
 				preamble => "$ruu->{who} $ruu->{where}",
-				extra_func => \&File::Temper::uetemper,
+				extra_func => \&EggNog::Temper::uetemper,
 				header => "H: $mh->{cmdname} $mh->{version} "
 					. localtime(),
 				# xxx localtime() call only really necessary
@@ -1328,7 +1328,7 @@ What if no server running when client starts:  startup server on demand?
 
 sub fiso_erc { my( $ruu, $tagdir, $what )=@_;
 
-	use File::Temper 'etemper';
+	use EggNog::Temper 'etemper';
 
 	my $cwd = file_name_is_absolute($tagdir)
 		?  $tagdir : catfile(curdir(), $tagdir);
@@ -1422,14 +1422,14 @@ sub version_match { my( $mh )=@_;
 ##     minder_uname is somewhere in minderpath, unless --force
 ########
 
-# Protocol:  call File::Egg->new to make a fresh $mh before mkminter/mkbinder,
+# Protocol:  call EggNog::Egg->new to make a fresh $mh before mkminter/mkbinder,
 #            which checks to make sure the input $mh isn't already open
 #            returns the $mh still open (as most method calls do).  In
 #            other words, don't call mkminter/mkbinder on an $mh that
 #            you just finished minting or binding on.
 # xxx should mclose($mh) close and destroy?  yes??
 # xxx could we use a user-level mclose for bulkcmds?
-#            $mh=File::Egg->new(); mkminter/mkbinder($mh); mclose($mh);
+#            $mh=EggNog::Egg->new(); mkminter/mkbinder($mh); mclose($mh);
 # 		then $mh->DESTROY;?
 #    (need way to clone parts of $mh in creating $submh )
 #
@@ -1459,8 +1459,8 @@ sub mkminder { my( $mh, $dirname, $minderdir )=@_;
 #print "xxxzzz $mh/$dirname: after minderdir=$minderdir\n";
 	#print "xxx after unless dirname=$dirname\n";
 
-#use File::Minder ':all';
-#File::Minder::addmsg($mh, "xxxxxx");
+#use EggNog::Minder ':all';
+#EggNog::Minder::addmsg($mh, "xxxxxx");
 #file_value();
 #print "FFFF\n";
 
@@ -1545,7 +1545,7 @@ sub rmminder { my( $mh, $mods, $lcmd, $mdr, $minderpath )=@_;
 
 	#$mh->{ruu}->{webtype} and
 	$mh->{remote} and
-		File::Minder::unauthmsg($mh),
+		EggNog::Minder::unauthmsg($mh),
 		return undef;
 	$mdr or
 		addmsg($mh, "no $hname specified"),
@@ -1571,7 +1571,7 @@ sub rmminder { my( $mh, $mods, $lcmd, $mdr, $minderpath )=@_;
 	# directory is $mdrdir.
 	#
 	my $mdrdir = fiso_uname($mdrfile);
-	$mh->{rlog} = File::Rlog->new(		# log this important event
+	$mh->{rlog} = EggNog::Rlog->new(		# log this important event
 		catfile($mdrdir, $mh->{objname}), {
 			preamble => $mh->{opt}->{rlog_preamble},
 			header => $mh->{opt}->{rlog_header},
@@ -1913,17 +1913,17 @@ sub prep_default_minder { my( $mh, $flags, $minderpath, $mindergen )=@_;
 
 		# New $submh is auto-destroyed when we leave this scope.
 		#
-		my $submh = File::Minder->new($mtype, $mh->{WeAreOnWeb}, $om,
+		my $submh = EggNog::Minder->new($mtype, $mh->{WeAreOnWeb}, $om,
 			$mh->{minderpath}, $opt);
 			# xxx {om} ?? logging?
 		$submh or
 			addmsg($mh, "couldn't create caster handler"),
 			return undef;
 		my $dbname = $mtype eq ND_MINTER ?
-			File::Nog::mkminter($submh, undef, $mdr,
+			EggNog::Nog::mkminter($submh, undef, $mdr,
 				$mh->{default_template}, $mh->{minderhome})
 			:
-			File::Egg::mkbinder($submh, undef, $mdr,
+			EggNog::Egg::mkbinder($submh, undef, $mdr,
 				"default binder", $mh->{minderhome});
 		$dbname or
 			addmsg($mh, getmsg($submh)),
@@ -1975,7 +1975,7 @@ sub gen_minder { my( $mh, $minderpath )=@_;
 		$mdr =~ s/\d+$/$n/;	# xxx assumes it ends in a number
 		# xxx shouldn't we be using name returned in $msg?
 		# XXX this _assumes_ only other type is ND_BINDER!!
-		my $dbname = File::Egg::mkbinder($mh, undef, $mdr,
+		my $dbname = EggNog::Egg::mkbinder($mh, undef, $mdr,
 			"Auto-generated binder", $mh->{minderhome});
 		$dbname or
 			addmsg($mh, "couldn't create snagged name ($mdr)"),
@@ -2001,7 +2001,7 @@ sub gen_minder { my( $mh, $minderpath )=@_;
 	$c_opt->{rlog_preamble} = $mh->{opt}->{rlog_preamble};
 #$c_opt->{version} = $mh->{opt}->{version};
 		# XXX this probably corrupts $implicit_caster_opt
-	my $cmh = File::Minder->new(ND_MINTER, 
+	my $cmh = EggNog::Minder->new(ND_MINTER, 
 		$mh->{WeAreOnWeb},
 		File::OM->new("anvl"),	# default om has no outputs for
 					# next implicit mkminter operation
@@ -2028,13 +2028,13 @@ sub gen_minder { my( $mh, $minderpath )=@_;
 		# Output messages from implicit mkminter and hold
 		# operations are mostly suppressed.
 		# 
-		my $dbname = File::Nog::mkminter($cmh, undef, $mdr,
+		my $dbname = EggNog::Nog::mkminter($cmh, undef, $mdr,
 				$implicit_caster_template, $mh->{minderhome});
 		$dbname or
 			addmsg($mh, getmsg $cmh),
 			addmsg($mh, "couldn't create caster ($mdr)"),
 			return undef;
-		File::Nog::hold($cmh, undef, "hold", "set",
+		EggNog::Nog::hold($cmh, undef, "hold", "set",
 				@implicit_caster_except) or
 			addmsg($mh,
 				"couldn't reserve caster exceptions ($mdr)"),
@@ -2058,7 +2058,7 @@ sub gen_minder { my( $mh, $minderpath )=@_;
 	my $opt = $implicit_minter_opt;
 	$opt->{rlog_preamble} = $mh->{opt}->{rlog_preamble};
 		# XXX this probably corrupts $implicit_minter_opt
-	my $submh = File::Minder->new(ND_MINTER, 
+	my $submh = EggNog::Minder->new(ND_MINTER, 
 		$mh->{WeAreOnWeb},
 		File::OM->new("anvl"),	# default om has no outputs for
 					# next implicit mkminter operation
@@ -2067,7 +2067,7 @@ sub gen_minder { my( $mh, $minderpath )=@_;
 	$submh or
 		addmsg($mh, "couldn't create handler for newly cast shoulder"),
 		return undef;
-	my $dbname = File::Nog::mkminter($submh, undef, $mdr, $mdr . $implicit_minter_template,
+	my $dbname = EggNog::Nog::mkminter($submh, undef, $mdr, $mdr . $implicit_minter_template,
 	# XXXXX should handle defaults via variables?
 		$mh->{minderhome});
 	$dbname or
@@ -2085,7 +2085,7 @@ sub cast { my( $mh, $minderpath )=@_;
 	my $mdr;		# generated minder name
 	my ($max_tries, $n) = (10, 1);
 	while ($n++ < $max_tries) {
-		($mdr, undef, undef) = File::Nog::mint($mh, undef, 'cast');
+		($mdr, undef, undef) = EggNog::Nog::mint($mh, undef, 'cast');
 		defined($mdr) or
 			addmsg($mh, "ran out of shoulders!?"),
 			return undef;
@@ -2166,7 +2166,7 @@ Minder - routines to support minders on behalf of Nog.pm and Egg.pm
 
 =head1 SYNOPSIS
 
- use File::Minder ':all';	    # import routines into a Perl script
+ use EggNog::Minder ':all';	    # import routines into a Perl script
 
 =head1 BUGS
 

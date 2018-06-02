@@ -38,7 +38,7 @@
 #  $SIG{INT} = ’catch_zap’;  # could fail in modules
 #  $SIG{INT} = \&catch_zap;  # best strategy
 
-package File::Nog;
+package EggNog::Nog;
 
 use 5.010;
 use strict;
@@ -62,8 +62,8 @@ use File::Namaste;
 use EggNog::Log qw(tlogger);
 use File::Copy 'mv';
 use File::Find;
-use File::Temper 'temper';
-use File::Minder ':all';	# xxx be more restricitve
+use EggNog::Temper 'temper';
+use EggNog::Minder ':all';	# xxx be more restricitve
 #use Math::BigInt;		# XXXXXX ??? leave as option? given slowdown?
 
 # Nog - Nice opaque generator (Perl module)
@@ -92,7 +92,7 @@ use constant SPING		=> 's';
 # We use a reserved "admin" prefix of $A for all administrative
 # variables, so, "$A/oacounter" is ":/oacounter".
 #
-my $A = $File::Minder::A;
+my $A = $EggNog::Minder::A;
 
 use Fcntl qw(:DEFAULT :flock);
 use File::Spec::Functions;
@@ -425,7 +425,7 @@ sub mkminter { my( $mh, $mods, $minder, $template, $minderdir )=@_;
 
 	## $submh is auto-destroyed when we leave scope of this routine.
 	##
-	#my $submh = File::Nog->new(Nog::ND_MINTER, $contact, $om,
+	#my $submh = EggNog::Nog->new(Nog::ND_MINTER, $contact, $om,
 	#	$mh->{minderpath}, $nog_opt);
 	#$submh or
 	#	addmsg($mh, "couldn't create sub-minder handler"),
@@ -524,7 +524,7 @@ sub mkminter { my( $mh, $mods, $minder, $template, $minderdir )=@_;
 	$$nog{"$A/gseqnum_date"} = 0;		# see queue()
 
 	my ($v1bdb, $dbfile, $built, $running) =
-		File::Minder::get_dbversion();
+		EggNog::Minder::get_dbversion();
 
 	$$nog{"$A/version"} = $VERSION;
 	$$nog{"$A/dbversion"} = "With Nog version $VERSION, " .
@@ -777,7 +777,7 @@ sub mstat { my( $mh, $mods, $om, $cmdr, $level )=@_;
 	my $opt = $mh->{opt};
 	my ($key, $value) = ("$A/", 0);
 	my ($mtime, $size);
-	use File::Temper ':all';
+	use EggNog::Temper ':all';
 
 	$level ||= "brief";
 	if ($level eq "brief") {
@@ -2548,7 +2548,7 @@ Nog - routines to mint and manage nice opaque strings
 
 =head1 SYNOPSIS
 
- use File::Nog;			    # import routines into a Perl script
+ use EggNog::Nog;			    # import routines into a Perl script
 
  xxxxxx
  $dbreport = Nog::dbcreate(	    # create minter database & printable

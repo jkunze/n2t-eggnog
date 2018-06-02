@@ -134,7 +134,7 @@ sub tlogger { my( $sh, $txnid, $msg )=@_;
 	# +jak jak-macbook 2017.10.08_19:38:06.303051 ho5M4Zqs5xGEVOa5cX4dag
 	$sh->{tlogger}->info(
 		$sh->{tlogger_preamble}, ' ',
-		File::Temper::uetemper(), ' ',
+		EggNog::Temper::uetemper(), ' ',
 		( $txnid || '-' ), ' ',
 		$msg,
 	);

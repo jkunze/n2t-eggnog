@@ -1,4 +1,4 @@
-package File::ApacheTester;
+package EggNog::ApacheTester;
 
 use 5.010;
 use strict;
@@ -22,7 +22,7 @@ our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
 
 use Test::More;
 use File::Value ':all';
-use File::ValueTester 'shellst_is';
+use EggNog::ValueTester 'shellst_is';
 
 #### start web server control code
 
@@ -588,8 +588,8 @@ sub enhance { my( $ret ) = ( shift );
 }
 
 #upi: testuser | testpass | &P/9   yyy
-#use File::RUU;   yyy
-#$pps = "--user=admin --password=$File::RUU::adminpass";
+#use EggNog::RUU;   yyy
+#$pps = "--user=admin --password=$EggNog::RUU::adminpass";
 #$pps = "--user=$upw --password=$upw";
 
 1;
@@ -600,7 +600,7 @@ ApacheTester - routines to support Apache testing for Egg.pm and Nog.pm
 
 =head1 SYNOPSIS
 
- use File::ApacheTester ':all';	    # import routines into a Perl script
+ use EggNog::ApacheTester ':all';	    # import routines into a Perl script
 
  get_user_pwd ( $realm, $user, $cfgdir)     # get login name and password for
                                     # $user in a given populator $realm;

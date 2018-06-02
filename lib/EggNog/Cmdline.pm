@@ -1,7 +1,7 @@
-package File::Cmdline;
+package EggNog::Cmdline;
 
 # XXX to do to fix the $line_count problem and tidy up this sprawling mess:
-#     change package name to File::Cmdstream,
+#     change package name to EggNog::Cmdstream,
 #     add 'new(...) that replaces "get_execution_context"
 #     replace globals in noid and egg with class vars,
 #     add $line_count to the object
@@ -274,7 +274,7 @@ use File::Value ":all";
 use File::Copy 'mv';
 use File::Path;
 use File::Find;
-use File::Minder ':all';
+use EggNog::Minder ':all';
 use CGI::Head;
 
 sub xinit_om_formal { my( $mh )=@_;
@@ -1289,7 +1289,7 @@ sub def_mdr { my( $mh, $minder, $expected )=@_;
 	my $cmdr = fiso_dname($minder, $mh->{dbname});	# global side-effect
 	my $cmdr_from_d_flag = 0;			# global side-effect
 
-	my @mdrs = File::Minder::exists_in_path($cmdr, $mh->{minderpath});
+	my @mdrs = EggNog::Minder::exists_in_path($cmdr, $mh->{minderpath});
 	my $n = scalar(@mdrs);
 
 	my $mdr = $n ? $mdrs[0] : "";			# global side-effect
@@ -1300,7 +1300,7 @@ sub def_mdr { my( $mh, $minder, $expected )=@_;
 
 	# If we get here, it must hold that $n != $expected and $n > 0.
 	# Dispense with the remove minder case ($exected > 0) by falling
-	# through and letting errors be caught by File::Egg::rmminder().
+	# through and letting errors be caught by EggNog::Egg::rmminder().
 	#
 	$expected > 0 and			# remove minder case
 		return ($mdr, $cmdr, $cmdr_from_d_flag, $err);	# normal
@@ -1358,9 +1358,9 @@ sub dx_rmminder { my( $mh, $name )=@_;	# yyy works for noid and bind
 	my $minderpath = $cmdr_from_d_flag ?	# if user specified -d
 		"" :			# ignore minderpath setting
 		$mh->{minderpath};	# else use $mh->{minderpath}
-# xxx these File::Egg::* routines should take a name that is either a
+# xxx these EggNog::Egg::* routines should take a name that is either a
 #     fiso_dname or fiso_uname (which is easier on the caller/user)
-	File::Minder::rmminder($mh, fiso_uname($cmdr), $minderpath) or
+	EggNog::Minder::rmminder($mh, fiso_uname($cmdr), $minderpath) or
 		return err1 outmsg($mh);
 	return 0;
 }
@@ -1380,7 +1380,7 @@ sub dx_rmminder { my( $mh, $name )=@_;	# yyy works for noid and bind
 # show known binders
 sub dx_mshow { my( $mh )=@_;
 
-	File::Minder::mshow($mh)	or return 1;
+	EggNog::Minder::mshow($mh)	or return 1;
 	return 0;
 }
 
@@ -1406,7 +1406,7 @@ Cmdline - routines to support command line scripts
 
 =head1 SYNOPSIS
 
- use File::Cmdline ':all';	    # import routines into a Perl script
+ use EggNog::Cmdline ':all';	    # import routines into a Perl script
 
 This module provides general support for scripts that want a consistent
 way (across a set of scripts) to add features to options processing,

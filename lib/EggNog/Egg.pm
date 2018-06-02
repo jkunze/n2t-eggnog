@@ -1,4 +1,4 @@
-package File::Egg;
+package EggNog::Egg;
 
 # Author:  John A. Kunze, jak@ucop.edu, California Digital Library
 #		Originally created, UCSF/CKM, November 2002
@@ -27,8 +27,8 @@ use File::OM;
 use File::Value ":all";
 use File::Copy;
 use File::Find;
-use File::Temper ':all';
-use File::Binder ':all';	# xxx be more restricitve
+use EggNog::Temper ':all';
+use EggNog::Binder ':all';	# xxx be more restricitve
 use EggNog::Log qw(tlogger);
 use Try::Tiny;			# to use try/catch as safer than eval
 use Safe::Isa;
@@ -65,8 +65,8 @@ our $SL = length $separator;
 # We use a reserved "admin" prefix of $A for all administrative
 # variables, so, "$A/oacounter" is ":/oacounter".
 #
-my $A = File::Binder::ADMIN_PREFIX;
-my $Se = File::Binder::SUBELEM_SC;	# indb case
+my $A = EggNog::Binder::ADMIN_PREFIX;
+my $Se = EggNog::Binder::SUBELEM_SC;	# indb case
 my $EXsc = qr/(^\$|[.^])/;		# exdb special chars, mongo-specific
 
 use Fcntl qw(:DEFAULT :flock);
@@ -149,7 +149,7 @@ sub egg_exists { my( $bh, $mods, $id, $elem )=@_;
 	if (defined $elem) {	# do "defined $elem" since it might match /^0+/
 		# xxx are there situations (eg, from_rawidtree that
 		#     should prevent us calling this?
-		File::Cmdline::instantiate($bh, $mods->{hx}, $id, $elem) or
+		EggNog::Cmdline::instantiate($bh, $mods->{hx}, $id, $elem) or
 			addmsg($bh, "instantiate failed from exists"),
 			return undef;
 # xxx indb-specific
@@ -161,7 +161,7 @@ sub egg_exists { my( $bh, $mods, $id, $elem )=@_;
 	else {					# else no element was given
 		# xxx are there situations (eg, from_rawidtree that
 		#     should prevent us calling this?
-		File::Cmdline::instantiate($bh, $mods->{hx}, $id) or
+		EggNog::Cmdline::instantiate($bh, $mods->{hx}, $id) or
 			addmsg($bh, "instantiate failed from exists no elem"),
 			return undef;
 # xxx indb-specific
@@ -221,7 +221,7 @@ sub egg_purge { my( $bh, $mods, $lcmd, $formal, $id )=@_;
 	#		unauthmsg($bh),
 	#		return undef;
 
-	File::Cmdline::instantiate($bh, $mods->{hx}, $id) or
+	EggNog::Cmdline::instantiate($bh, $mods->{hx}, $id) or
 		addmsg($bh, "instantiate failed from purge"),
 		return undef;
 
@@ -353,14 +353,14 @@ sub egg_get_dup { my( $bh, $id, $elem )=@_;
 	my (@indups, @exdups, $ret);
 	my $wantlist = wantarray();
 
-	$sh->{fetch_indb} and		# set by File::Session::config
+	$sh->{fetch_indb} and		# set by EggNog::Session::config
 	# xxx who calls/called flex_encode?
 		@indups = indb_get_dup($bh->{db},
 			$id . $Se . $elem);
 		# yyy if error?
 
 
-	if ($sh->{fetch_exdb}) {		# set by File::Session::config
+	if ($sh->{fetch_exdb}) {		# set by EggNog::Session::config
 #		try {
 #			my $coll = $bh->{sh}->{exdb}->{binder};	# collection
 #	# xxx make sure del and purge are done for exdb
@@ -507,7 +507,7 @@ sub egg_del { my( $bh, $mods, $lcmd, $formal, $id, $elem )=@_;
 	my $key;
 	my $irfs;		# ready-for-storage versions of id, elem, ...
 	if (! $mods->{did_rawidtree}) {
-		File::Cmdline::instantiate($bh, $mods->{hx}, $id, $elem) or
+		EggNog::Cmdline::instantiate($bh, $mods->{hx}, $id, $elem) or
 			addmsg($bh, "instantiate failed from delete"),
 			return undef;
 		$irfs = flex_enc_indb($id, $elem);
@@ -868,7 +868,7 @@ sub getbulkelems { my( $bh, $mods, $lcmd, $delete, $polite, $how, $id )=@_;
 		1 or
 			chop $value
 		;
-		File::Egg::egg_set($bh, $mods, $lcmd,
+		EggNog::Egg::egg_set($bh, $mods, $lcmd,
 				$delete, $polite, $how, $id, $elem, $value) and
 			$bound++,
 			($ack and $octets += length($value));
@@ -1230,7 +1230,7 @@ sub egg_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 		# yyy does not expand beyond single value token,
 		#     eg, id.set a b @ -> a: b @
 		# yyy instantiate NEEDs $elem not to be null
-		(File::Cmdline::instantiate($bh,
+		(EggNog::Cmdline::instantiate($bh,
 				$mods->{hx}, $id, $elem, $value) or
 			return undef),
 		$args_in_memory = 1,
@@ -2054,7 +2054,7 @@ sub logmark { my( $bh, $mods, $string )=@_;
 	my $sh = $bh->{sh} or
 		return undef;
 	my $msg;
-	if (! $sh->{cfgd} and $msg = File::Session::config($sh)) {
+	if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {
 		addmsg($bh, $msg);	# failed to configure
 		return undef;
 	}
@@ -2179,7 +2179,7 @@ sub show { my( $bh, $mods, $id, @elems )=@_;
 
 	my @vals;
 	$bh->{cite} = 1;	# total kludge to get title quotes
-	my $xerc = File::Egg::egg_fetch($bh, undef, $som, undef, \@vals, $id, @elems);
+	my $xerc = EggNog::Egg::egg_fetch($bh, undef, $som, undef, \@vals, $id, @elems);
 	$bh->{cite} = undef;	# total kludge to get title quotes
 	# XXX need one of these for HTML?
 	my $citation = join(", ", @vals);
@@ -2187,7 +2187,7 @@ sub show { my( $bh, $mods, $id, @elems )=@_;
 
 	# xxx kludgy to call print directly instead of OM?
 	print "# Please cite as\n#  $citation\n\n";
-	my $erc = File::Egg::egg_fetch($bh, undef, $bh->{om}, undef, undef, $id, @elems);
+	my $erc = EggNog::Egg::egg_fetch($bh, undef, $bh->{om}, undef, undef, $id, @elems);
 	#$bh->{om}->elem("erc", $erc);
 	# yyy no role for OM here?
 
@@ -2302,7 +2302,7 @@ sub egg_inflect { my ($bh, $mods, $om, $id)=@_;
 				;
 				next;			# don't push
 			}
-			elsif ($_ eq File::Binder::RSRVD_PFIX.'c') {
+			elsif ($_ eq EggNog::Binder::RSRVD_PFIX.'c') {
 				# n2t internal creation date
 				$key = 'id created';
 				$val = etemper( $val );
@@ -2552,7 +2552,7 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 #			# pre-opened minders don't have resolverlist_a set.
 #			#
 #
-#			$st = File::Egg::egg_fetch($rmh, $mods, $om,
+#			$st = EggNog::Egg::egg_fetch($rmh, $mods, $om,
 #					undef, \@rvals, $id, @elems) or
 #			     #$rmh->{xxx} .= " *** error on recursive fetch ",
 #				return undef;
@@ -2613,7 +2613,7 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 #	}
 
 	if (! $mods->{did_rawidtree}) {
-		File::Cmdline::instantiate($bh, $mods->{hx}, $id, @elems) or
+		EggNog::Cmdline::instantiate($bh, $mods->{hx}, $id, @elems) or
 			addmsg($bh, "instantiate failed from fetch"),
 			return undef;
 	}
@@ -2744,8 +2744,8 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 	my %khash = ();		# kludge hash
 	my $msg;
 	my @newelems = ();
-	defined(&File::Resolver::expand_blobs) and
-		push @newelems, File::Resolver::expand_blobs
+	defined(&EggNog::Resolver::expand_blobs) and
+		push @newelems, EggNog::Resolver::expand_blobs
 			($db, $id, $msg, \%khash, @elems);
 	#print "newelems=@newelems\n";
 	$msg and
@@ -2785,7 +2785,7 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 		$special = '';
 		my $key;
 		if ($elem =~ /^:/) {		# special element like :brief
-			File::Resolver::special_elem(
+			EggNog::Resolver::special_elem(
 					$id, $special, $elem, \@dups) or
 				next;		# xxx error?  or what?
 		}
@@ -2799,7 +2799,7 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 			#@dups = indb_get_dup($db, "$id$Se$elem");
 
 #			$rrm and $id eq RRMINFOARK and
-#				@dups = ( File::Binder::rrminfo() );
+#				@dups = ( EggNog::Binder::rrminfo() );
 #			my $shadow;
 #			scalar(@dups) or
 #				# yyy maybe id2shadow is ONLY
@@ -2807,7 +2807,7 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 #				    # used ONLY by EZID client, which knows
 #				    # exactly how to create the form of the
 #				    # name used for set/fetch ops
-#				$shadow = File::Resolver::id2shadow($id) and
+#				$shadow = EggNog::Resolver::id2shadow($id) and
 #					@dups = egg_get_dup($bh,
 #						$shadow, $elem);
 #					#@dups = indb_get_dup($db, "$shadow$Se$elem");
@@ -2830,7 +2830,7 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 #			# @suffixable won't be defined if we're not using
 #			# advance resolver code
 #			@suffixable and grep(/^$elem$/, @suffixable) and
-#				@dups = File::Resolver::suffix_pass($bh,
+#				@dups = EggNog::Resolver::suffix_pass($bh,
 #						$id, $elem);
 #
 #		scalar(@dups) or	# if still none, try rule-based mapping
@@ -3206,7 +3206,7 @@ Egg - routines to bind and resolve identifier data
 
 =head1 SYNOPSIS
 
- use File::Egg;		    # import routines into a Perl script
+ use EggNog::Egg;		    # import routines into a Perl script
 
 =head1 BUGS
 

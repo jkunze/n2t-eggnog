@@ -60,12 +60,12 @@ use File::OM;
 #use DB_File;		# xxx needed? provides only O_RDWR?
 use Fcntl;
 use Config;
-use File::Minder ':all';
-use File::Cmdline ':all';
-use File::Nog;
+use EggNog::Minder ':all';
+use EggNog::Cmdline ':all';
+use EggNog::Nog;
 use File::Value ":all";
 use Pod::Usage;
-#use File::RUU;
+#use EggNog::RUU;
 
 my $usage_text = << "EOF";
 
@@ -258,13 +258,13 @@ my @getoptlist = (
 	my $om_formal;
 	($pname_mdr, $WeAreOnWeb, $WeAreResolver,
 	 $om, $om_formal, $BulkCmdMode, $cgih) =
-	 	get_execution_context($m_cmd, $File::Nog::VERSION,
+	 	get_execution_context($m_cmd, $EggNog::Nog::VERSION,
 			\@getoptlist, \%opt);
 
 #	# For many ops we want to record as much as we can find out about
 #	# the person or agent who is calling us.
 #	#
-#	my $ruu = File::RUU->new( $WeAreOnWeb, {
+#	my $ruu = EggNog::RUU->new( $WeAreOnWeb, {
 #		default_user => 'public',
 #	} );
 
@@ -281,9 +281,9 @@ my @getoptlist = (
 	# Options without one-to-one key/value to transfer.
 	#
 	$mh_opt->{om_formal} = $om_formal;
-	$mh_opt->{version} = $File::Nog::VERSION;
+	$mh_opt->{version} = $EggNog::Nog::VERSION;
 
-	$mh = File::Minder->new(File::Minder::ND_MINTER,
+	$mh = EggNog::Minder->new(EggNog::Minder::ND_MINTER,
 			$WeAreOnWeb, $om, $opt{minderpath}, $mh_opt) or
 #			$ruu, $om, $opt{minderpath}, $mh_opt) or
 		outmsg("couldn't create minder handler"),
@@ -561,7 +561,7 @@ sub ndx_mkminter { my( $shoulder_or_template, $blade )=@_;
 	my $err = 0;
 	$shoulder and
 		($mdr, $cmdr, $cmdr_from_d_flag, $err) =
-			File::Cmdline::def_mdr($mh, $shoulder, 0),
+			EggNog::Cmdline::def_mdr($mh, $shoulder, 0),
 		($err		and outmsg($mh), return 1);
 #	my $retval = def_mdr($mh, $shoulder, 0);# 0 or '' is a normal return
 #	$retval	and				# bail if non-null
@@ -574,7 +574,7 @@ sub ndx_mkminter { my( $shoulder_or_template, $blade )=@_;
 		"" ;			# else use $mh->{minderhome}
 # xxx what if user-specified a shoulder but wants name of minter to be
 #     other than the shoulder?
-	File::Nog::mkminter($mh, $mods, fiso_uname($cmdr),
+	EggNog::Nog::mkminter($mh, $mods, fiso_uname($cmdr),
 			$template, $minderhome) or
 		outmsg($mh), return 1;
 	hasmsg($mh) and
@@ -590,7 +590,7 @@ sub dx_rmminder { my( $lcmd, $name )=@_;	# yyy works for noid and bind
 	my $err = 0;
 	$name and
 		($mdr, $cmdr, $cmdr_from_d_flag, $err) =
-			File::Cmdline::def_mdr($mh, $name, 1),
+			EggNog::Cmdline::def_mdr($mh, $name, 1),
 		($err		and outmsg($mh), return 1);
 #	my $retval = def_mdr($mh, $name, 1);	# 0 or '' is a normal return
 #	# yyy that should have returned our candidate minder, right?
@@ -600,9 +600,9 @@ sub dx_rmminder { my( $lcmd, $name )=@_;	# yyy works for noid and bind
 	my $minderpath = $cmdr_from_d_flag ?	# if user specified -d
 		"" :			# ignore minderpath setting
 		$mh->{minderpath};	# else use $mh->{minderpath}
-# xxx these File::Nog::* routines should take a name that is either a
+# xxx these EggNog::Nog::* routines should take a name that is either a
 #     fiso_dname or fiso_uname (which is easier on the caller/user)
-	File::Minder::rmminder($mh, $mods, $lcmd, fiso_uname($cmdr), $minderpath) or
+	EggNog::Minder::rmminder($mh, $mods, $lcmd, fiso_uname($cmdr), $minderpath) or
 		outmsg($mh), return 1;
 	return 0;
 }
@@ -623,7 +623,7 @@ sub dx_rmminder { my( $lcmd, $name )=@_;	# yyy works for noid and bind
 # show known binders
 sub ndx_mshow {
 
-	File::Nog::mshow($mh, $mods)	or return 1;
+	EggNog::Nog::mshow($mh, $mods)	or return 1;
 	return 0;
 }
 
@@ -639,7 +639,7 @@ sub ndx_mstat { my( $level )=@_;
 	mopen($mh, $cmdr, O_RDONLY, $minderpath) or
 		outmsg($mh), return 1;
 
-	File::Nog::mstat($mh, $mods, $mh->{om_formal}, $cmdr, $level);
+	EggNog::Nog::mstat($mh, $mods, $mh->{om_formal}, $cmdr, $level);
 	return 0;
 }
 
@@ -680,7 +680,7 @@ sub ndx_mstatus { my( $status )=@_;
 	mopen($mh, $cmdr, $flag, $minderpath) or
 		outmsg($mh), return 1;
 
-	$om->elem('status', File::Minder::mstatus($mh, $mods, $status));
+	$om->elem('status', EggNog::Minder::mstatus($mh, $mods, $status));
 	return 0;
 }
 
@@ -696,13 +696,13 @@ sub ndx_dbinfo { my( $level )=@_;
 	mopen($mh, $cmdr, O_RDONLY, $minderpath) or
 		outmsg($mh), return 1;
 
-	File::Nog::dbinfo($mh, $mods, $level);
+	EggNog::Nog::dbinfo($mh, $mods, $level);
 	return 0;
 }
 
 sub ndx_gen { my( $number, $niceness )=@_;
 
-	File::Nog::gen_c64($mh, $mods, $number, $niceness) or
+	EggNog::Nog::gen_c64($mh, $mods, $number, $niceness) or
 		outmsg($mh, "problem generating ids"), return 1;
 	return 0;
 }
@@ -710,7 +710,7 @@ sub ndx_gen { my( $number, $niceness )=@_;
 sub ndx_nab {
 
 	# yyy wrap in an eval (see Nog::nab)?
-	File::Nog::nab($mh, $mods, @_ ) or
+	EggNog::Nog::nab($mh, $mods, @_ ) or
 		outmsg($mh, "problem nabbing ids"), return 1;
 	return 0;
 }
@@ -730,7 +730,7 @@ sub ndx_man { pod2use($cgih, -exitstatus => 0, -verbose => 2) }
 
 sub ndx_help {
 
-	use File::Help;
+	use EggNog::Help;
 
 	# xxx We're not properly able to use $om here, because we don't
 	#     know how to capture pod2usage as a string instead of printing
@@ -747,10 +747,10 @@ sub ndx_help {
 		print ($cgih->take);
 	my $special = 'pronunciation';
 	$t and $special =~ /^$t/i and
-		File::Help::help(
+		EggNog::Help::help(
 			{ $special => "Stay employed with noid!\n"}, $special),
 		return 0;
-	File::Help::help(undef, $topic, @_);
+	EggNog::Help::help(undef, $topic, @_);
 	#$om->{cgih}->take;		# (yyy) quell any headers 
 
 	return 0;	# xxx return error if not found?
@@ -788,7 +788,7 @@ sub ndx_hold { my( $on_off, @ids )=@_;
 		outmsg($mh), return 1;
 
 	# yyy silence $om->elem by changing output handler?
-	my $ret = File::Nog::hold($mh, $mods, "hold", $on_off, @ids);
+	my $ret = EggNog::Nog::hold($mh, $mods, "hold", $on_off, @ids);
 	defined($ret) or
 		outmsg($mh), return 1;
 
@@ -827,7 +827,7 @@ sub ndx_mint { my( $n, $elem, $value, $pepper )=@_;
 	my ($id, $atlast, $tnum);
 	my ($action, $exit_status) = ("", 0);
 	while ($n--) {
-		($id, $atlast, $tnum) = File::Nog::mint($mh, $mods, "mint", $pepper);
+		($id, $atlast, $tnum) = EggNog::Nog::mint($mh, $mods, "mint", $pepper);
 		if ($atlast) {
 			$action = $atlast;
 			$action !~ /^add/ and		# the N in addN isn't
@@ -855,7 +855,7 @@ sub ndx_queue { my( $when, @ids )=@_;
 		outmsg($mh), return 1;
 
 	# yyy silence $om->elem by changing output handler?
-	my $ret = File::Nog::queue($mh, $mods, "queue", $when, @ids);
+	my $ret = EggNog::Nog::queue($mh, $mods, "queue", $when, @ids);
 	defined($ret) or
 		outmsg($mh), return 1;
 
@@ -879,7 +879,7 @@ sub ndx_validate { my( $template, @ids )=@_;
 			outmsg($mh), return 1;
 	}
 
-	my $n = File::Nog::validate($mh, $mods, $template, @ids);
+	my $n = EggNog::Nog::validate($mh, $mods, $template, @ids);
 	$n or
 		outmsg($mh),
 		#usage(1, 1, "validate"),
@@ -911,7 +911,7 @@ sub bdx_version {
 	my ($v1bdb, $dbfile, $built, $running) = get_dbversion();
 
 	$om->elem("version",
-		qq@This is "$m_cmd" version $File::Nog::VERSION, with Berkeley DB @ .
+		qq@This is "$m_cmd" version $EggNog::Nog::VERSION, with Berkeley DB @ .
 		qq@version $running@);
 
 	return 0			# normal return

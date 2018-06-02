@@ -41,16 +41,16 @@ use BerkeleyDB;
 use constant DB_RDWR => 0;		# why BerkeleyDB doesn't define this?
 use Fcntl;
 use Config;
-#use File::Minder ':all';
-use File::Binder ':all';
-use File::Cmdline ':all';
-use File::Session;
-use File::Egg;
+#use EggNog::Minder ':all';
+use EggNog::Binder ':all';
+use EggNog::Cmdline ':all';
+use EggNog::Session;
+use EggNog::Egg;
 use File::Value ":all";
 use Pod::Usage;
-#use File::RUU;
-use File::Rlog;
-use File::Resolver;
+#use EggNog::RUU;
+use EggNog::Rlog;
+use EggNog::Resolver;
 
 # yyy alternative text
 # Egg is a binder. The egg command sets names in a database to arbitrary
@@ -249,7 +249,7 @@ my @getoptlist = (
 	my $om_formal;
 	($pname_mdr, $WeAreOnWeb, $WeAreResolver,
 	 $om, $om_formal, $BulkCmdMode, $cgih) =
-	 	get_execution_context($m_cmd, $File::Egg::VERSION,
+	 	get_execution_context($m_cmd, $EggNog::Egg::VERSION,
 			\@getoptlist, \%opt);
 
 	# Pass options from command line to the binder handler.
@@ -271,19 +271,19 @@ my @getoptlist = (
 	#
 	$bh_opt->{om_formal} = $om_formal;	# yyy irritating exception
 # xxx drop this next line?
-	#$bh_opt->{version} = $File::Egg::VERSION;
+	#$bh_opt->{version} = $EggNog::Egg::VERSION;
 
 	# light session initialization on object creation, but the bulk
 	# of initialization happens much later during configuration
 
-	$sh = File::Session->new($WeAreOnWeb, $om, $om_formal, $bh_opt) or
+	$sh = EggNog::Session->new($WeAreOnWeb, $om, $om_formal, $bh_opt) or
 		outmsg("couldn't create session handler"),
 		exit 1;
 	# now we have home for $om in $sh; but haven't done configuration
 	#   (for that call config(), which defines ruu also)
 
 	# yyy this next should initialize a session if first arg undefined?
-	$bh = File::Binder->new($sh, File::Binder::ND_BINDER,
+	$bh = EggNog::Binder->new($sh, EggNog::Binder::ND_BINDER,
 			$WeAreOnWeb, $om, $bh_opt) or
 		outmsg("couldn't create binder handler"),
 		exit 1;
@@ -569,7 +569,7 @@ sub bdx_bmake { my( $name, $bgroup, $user )=@_;
 	my $msg;
 	my $sh = $bh->{sh};
 	# yyy need to configure so we can test $sh->{exdb} below
-	if (! $sh->{cfgd} and $msg = File::Session::config($sh)) {
+	if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {
 		outmsg($sh, $msg);      # failed to configure
 		return 1;
 	}
@@ -582,7 +582,7 @@ sub bdx_bmake { my( $name, $bgroup, $user )=@_;
 	}
 	elsif ($name and $sh->{indb}) {
 		($mdr, $cmdr, $cmdr_from_d_flag, $err) =
-			File::Cmdline::def_mdr($bh, $name, 0);
+			EggNog::Cmdline::def_mdr($bh, $name, 0);
 		$err and
 			outmsg($bh),
 			return 1;
@@ -591,7 +591,7 @@ sub bdx_bmake { my( $name, $bgroup, $user )=@_;
 	my $minderhome = $cmdr_from_d_flag ?	# if user specified -d
 		"." :			# use current context, not minderhome
 		"" ;			# else use $sh->{minderhome}
-	File::Binder::mkbinder($sh, $mods, fiso_uname($cmdr), $bgroup, $user,
+	EggNog::Binder::mkbinder($sh, $mods, fiso_uname($cmdr), $bgroup, $user,
 			"user-initiated (with mkbinder)", $minderhome) or
 		outmsg($sh), return 1;
 
@@ -608,7 +608,7 @@ sub bdx_brm { my( $name, $bgroup, $user )=@_;
 	$name ||= "";
 	my $msg;
 	# yyy need to configure so we can test $sh->{exdb} below
-	if (! $sh->{cfgd} and $msg = File::Session::config($sh)) {
+	if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {
 		outmsg($sh, $msg);      # failed to configure
 		return 1;
 	}
@@ -621,7 +621,7 @@ sub bdx_brm { my( $name, $bgroup, $user )=@_;
 	}
 	elsif ($name and $sh->{indb}) {
 		($mdr, $cmdr, $cmdr_from_d_flag, $err) =
-			File::Cmdline::def_mdr($bh, $name, 1);	# yyy $sh?
+			EggNog::Cmdline::def_mdr($bh, $name, 1);	# yyy $sh?
 		$err and
 			outmsg($bh),	# yyy $sh?
 			return 1;
@@ -630,11 +630,11 @@ sub bdx_brm { my( $name, $bgroup, $user )=@_;
 	my $minderpath = $cmdr_from_d_flag ?	# if user specified -d
 		"" :			# ignore minderpath setting
 		$sh->{minderpath};	# else use $sh->{minderpath}
-	# yyy these File::Egg::* routines should take a name that is either a
+	# yyy these EggNog::Egg::* routines should take a name that is either a
 	#     fiso_dname or fiso_uname (which is easier on the caller/user)
 	# xxxx this minderpath is really a Perl array not a string!
 
-	File::Binder::rmbinder($sh, $mods, fiso_uname($cmdr), $bgroup, $user,
+	EggNog::Binder::rmbinder($sh, $mods, fiso_uname($cmdr), $bgroup, $user,
 			$minderpath) or
 		outmsg($sh),
 		return 1;
@@ -657,14 +657,14 @@ sub bdx_brm { my( $name, $bgroup, $user )=@_;
 # show known binders (was mshow)
 sub bdx_bshow { my( $bgroup, $user, $ubname )=@_;
 
-	File::Binder::bshow($sh, $mods, $sh->{om}, $bgroup, $user, $ubname) or
+	EggNog::Binder::bshow($sh, $mods, $sh->{om}, $bgroup, $user, $ubname) or
 		outmsg($sh), return 1;
 	return 0;
 }
 
 sub bdx_brmgroup { my( $bgroup, $user )=@_;
 
-	File::Binder::brmgroup($sh, $mods, $bgroup, $user) or
+	EggNog::Binder::brmgroup($sh, $mods, $bgroup, $user) or
 		outmsg($sh), return 1;
 	return 0;
 }
@@ -685,7 +685,7 @@ sub bdx_mstat { my( $level )=@_;
 	bopen($bh, $cmdr, DB_RDONLY, $minderpath) or
 		outmsg($bh), return 1;
 
-	File::Egg::mstat($bh, $mods, $bh->{om_formal}, $cmdr, $level) or
+	EggNog::Egg::mstat($bh, $mods, $bh->{om_formal}, $cmdr, $level) or
 		outmsg($bh), return 1;
 	return 0;
 }
@@ -715,7 +715,7 @@ sub bdx_next_list { my( $max, $nextkey, @inkeys )=@_;
 		" listing for binder $bh->{minder_file_name}, max $max"
 		. (defined($nextkey) ? ", from $nextkey" : ''), '1#');
 	my ($num_ids, $num_bindings) =
-		File::Egg::next_list($bh, $mods, $max, $nextkey, @inkeys);
+		EggNog::Egg::next_list($bh, $mods, $max, $nextkey, @inkeys);
 	defined($num_ids) or
 		outmsg($bh), return 1;
 
@@ -755,7 +755,7 @@ sub bdx_resolve {	# any args are optional headers, passed to Egg::resolve
 
 	my @header_args = @_;	# because @_ isn't available inside "try" block
 	my $ok = try {
-		File::Resolver::resolve($bh, $mods, $bindid, @header_args) or
+		EggNog::Resolver::resolve($bh, $mods, $bindid, @header_args) or
 			print("$mtag failed on $bindid (mh=$bh)\n"), return 1;
 			# yyy should do this with $ur_origid or callback
 			#     egg should NOT have this special knowledge
@@ -775,8 +775,8 @@ sub bdx_resolve {	# any args are optional headers, passed to Egg::resolve
 
 # XXX this should not require any minder to be specified!
 sub bdx_norm {
-	#my $nid = File::Resolver::id_normalize($bh->{pfxdb}, $bindid);
-	my $idx = File::Resolver::id_decompose($bh->{pfxs}, $bindid);
+	#my $nid = EggNog::Resolver::id_normalize($bh->{pfxdb}, $bindid);
+	my $idx = EggNog::Resolver::id_decompose($bh->{pfxs}, $bindid);
 	defined($idx) or
 		return 1;
 	return $bh->{om}->elem('id', $idx->{full_id});
@@ -784,12 +784,12 @@ sub bdx_norm {
 
 # XXX this should not require any minder to be specified!
 sub bdx_shadow {
-	my $idx = File::Resolver::id_decompose($bh->{pfxs}, $bindid);
+	my $idx = EggNog::Resolver::id_decompose($bh->{pfxs}, $bindid);
 	defined($idx) or
 		return 1;
-	my $nid = File::Resolver::id2shadow($idx->{full_id});
-	#my $nid = File::Resolver::id2shadow(
-		#File::Resolver::id_normalize($bh->{pfxdb}, $bindid));
+	my $nid = EggNog::Resolver::id2shadow($idx->{full_id});
+	#my $nid = EggNog::Resolver::id2shadow(
+		#EggNog::Resolver::id_normalize($bh->{pfxdb}, $bindid));
 	defined($nid) or
 		return 1;
 	$bh->{om}->elem('id', $nid);
@@ -835,7 +835,7 @@ sub bdx_mstatus { my( $status )=@_;
 	bopen($bh, $cmdr, $flag, $minderpath) or
 		outmsg($bh), return 1;
 
-	$om->elem('status', File::Binder::mstatus($bh, $mods, $status));
+	$om->elem('status', EggNog::Binder::mstatus($bh, $mods, $status));
 	return 0;
 }
 
@@ -851,7 +851,7 @@ sub bdx_dbinfo { my( $level )=@_;
 	bopen($bh, $cmdr, DB_RDONLY, $minderpath) or
 		outmsg($bh), return 1;
 
-	File::Egg::dbinfo($bh, $mods, $level);
+	EggNog::Egg::dbinfo($bh, $mods, $level);
 	return 0;
 }
 
@@ -876,7 +876,7 @@ sub bdx_testlock { my( $secs, $locktype )=@_;
 
 	my $minderpath = $cmdr_from_d_flag ?
 		"" : $bh->{minderpath};		# search unless -d used
-	File::Binder::bopen($bh, $cmdr, $mode, $minderpath) or
+	EggNog::Binder::bopen($bh, $cmdr, $mode, $minderpath) or
 		outmsg($bh), return 1;
 	sleep $secs;
 	outmsg("held $locktype lock for $secs seconds");
@@ -902,13 +902,13 @@ sub bdx_dbsave { my( $destfile )=@_;	# arg may name a directory
 	bopen($bh, $cmdr, DB_RDWR, $minderpath) or
 		outmsg($bh), return 1;
 
-	#File::Egg::logmark($bh, undef, "before dbsave") or
+	#EggNog::Egg::logmark($bh, undef, "before dbsave") or
 	#	outmsg($bh), return 1;
 	#my $msg;
 	#$msg = $bh->{rlog}->out("C: $id.$lcmd") and
 	#	addmsg($bh, $msg),
 	#	return undef;
-	File::Egg::dbsave($bh, $mods, $destfile) or
+	EggNog::Egg::dbsave($bh, $mods, $destfile) or
 		outmsg($bh), return 1;
 	return 0;
 }
@@ -932,7 +932,7 @@ sub bdx_dbload { my( $srcfile )=@_;	# arg may name a directory
 	bopen($bh, $cmdr, DB_RDWR, $minderpath) or
 		outmsg($bh), return 1;
 
-	File::Egg::dbload($bh, $mods, $srcfile) or
+	EggNog::Egg::dbload($bh, $mods, $srcfile) or
 		outmsg($bh), return 1;
 	return 0;
 }
@@ -959,21 +959,21 @@ sub bdx_cullrlog { my( $destfile )=@_;	# arg is optional
 	bopen($bh, $cmdr, DB_RDWR, $minderpath) or
 		outmsg($bh), return 1;
 
-	File::Egg::cullrlog($bh, $mods) or
+	EggNog::Egg::cullrlog($bh, $mods) or
 		outmsg($bh), return 1;
 	# xxx how to tell if there is or isn't a message to output?
 	outmsg($bh);
 	return 0;
 }
 
-sub bdx_set	{ bdx_assign( "set", 1, 0, File::Egg::HOW_SET, @_ ) }
-sub bdx_let	{ bdx_assign( "let", 1, 1, File::Egg::HOW_SET, @_ ) }
-sub bdx_add	{ bdx_assign( "add", 0, 0, File::Egg::HOW_ADD, @_ ) }
-sub bdx_another	{ bdx_assign( "another", 0, 1, File::Egg::HOW_ADD, @_ ) }	# xxx needed?
-sub bdx_insert	{ bdx_assign( "insert", 0, 0, File::Egg::HOW_INSERT, @_ ) }
-sub bdx_vinsert	{ bdx_assign( "vinsert", 0, 1, File::Egg::HOW_INSERT, @_ ) }
-sub bdx_incr	{ bdx_assign( "incr", 1, 0, File::Egg::HOW_INCR, @_ ) }
-sub bdx_decr	{ bdx_assign( "decr", 1, 0, File::Egg::HOW_DECR, @_ ) }
+sub bdx_set	{ bdx_assign( "set", 1, 0, EggNog::Egg::HOW_SET, @_ ) }
+sub bdx_let	{ bdx_assign( "let", 1, 1, EggNog::Egg::HOW_SET, @_ ) }
+sub bdx_add	{ bdx_assign( "add", 0, 0, EggNog::Egg::HOW_ADD, @_ ) }
+sub bdx_another	{ bdx_assign( "another", 0, 1, EggNog::Egg::HOW_ADD, @_ ) }	# xxx needed?
+sub bdx_insert	{ bdx_assign( "insert", 0, 0, EggNog::Egg::HOW_INSERT, @_ ) }
+sub bdx_vinsert	{ bdx_assign( "vinsert", 0, 1, EggNog::Egg::HOW_INSERT, @_ ) }
+sub bdx_incr	{ bdx_assign( "incr", 1, 0, EggNog::Egg::HOW_INCR, @_ ) }
+sub bdx_decr	{ bdx_assign( "decr", 1, 0, EggNog::Egg::HOW_DECR, @_ ) }
 # xxx replace shifts by more usual way of copying args
 sub bdx_assign { my( $lcmd, $delete, $polite, $how )=( shift, shift, shift, shift );
 
@@ -983,7 +983,7 @@ sub bdx_assign { my( $lcmd, $delete, $polite, $how )=( shift, shift, shift, shif
 	bopen($bh, $cmdr, DB_RDWR, $minderpath) or
 		outmsg($bh), return 1;
 
-	File::Egg::egg_set($bh, $mods, $lcmd, $delete, $polite, $how,
+	EggNog::Egg::egg_set($bh, $mods, $lcmd, $delete, $polite, $how,
 			$bindid, @_) or
 		outmsg($bh), return 1;
 
@@ -1001,7 +1001,7 @@ sub bdx_getfetch { my( $formal, @elems )=@_;
 	bopen($bh, $cmdr, DB_RDONLY, $minderpath) or
 		outmsg($bh), return 1;
 
-	File::Egg::egg_fetch($bh, $mods, $om, undef, undef, $bindid, @elems) or
+	EggNog::Egg::egg_fetch($bh, $mods, $om, undef, undef, $bindid, @elems) or
 		outmsg($bh), return 1;
 
 	return 0;
@@ -1018,7 +1018,7 @@ sub bdx_inflect { my( @elems )=@_;
 	bopen($bh, $cmdr, DB_RDONLY, $minderpath) or
 		outmsg($bh), return 1;
 
-	File::Egg::egg_inflect($bh, $mods, $om, $bindid) or
+	EggNog::Egg::egg_inflect($bh, $mods, $om, $bindid) or
 		outmsg($bh), return 1;
 
 	return 0;
@@ -1031,7 +1031,7 @@ sub bdx_show { my( @elemsets )=@_;	# acts on ELEMENTS, eg, "show :brief"
 	bopen($bh, $cmdr, DB_RDONLY, $minderpath) or
 		outmsg($bh), return 1;
 
-	File::Egg::show($bh, $mods, $bindid, @elemsets) or
+	EggNog::Egg::show($bh, $mods, $bindid, @elemsets) or
 		outmsg($bh), return 1;
 
 	return 0;
@@ -1044,7 +1044,7 @@ sub bdx_exists {	# might have an element name argument
 	bopen($bh, $cmdr, DB_RDONLY, $minderpath) or
 		outmsg($bh), return 1;
 
-	File::Egg::egg_exists($bh, $mods, $bindid, @_) or
+	EggNog::Egg::egg_exists($bh, $mods, $bindid, @_) or
 		outmsg($bh), return 1;
 
 	return 0;
@@ -1060,7 +1060,7 @@ sub bdx_del { my( $lcmd, $formal )=( shift, shift );
 	bopen($bh, $cmdr, DB_RDWR, $minderpath) or
 		outmsg($bh), return 1;
 
-	File::Egg::egg_del($bh, $mods, $lcmd, $formal, $bindid, @_) or
+	EggNog::Egg::egg_del($bh, $mods, $lcmd, $formal, $bindid, @_) or
 		outmsg($bh), return 1;
 
 	return 0;
@@ -1077,7 +1077,7 @@ sub bdx_purge { my( $formal )=shift;
 	bopen($bh, $cmdr, DB_RDWR, $minderpath) or
 		outmsg($bh), return 1;
 
-	File::Egg::egg_purge($bh, $mods, "purge", $formal, $bindid) or
+	EggNog::Egg::egg_purge($bh, $mods, "purge", $formal, $bindid) or
 		outmsg($bh), return 1;
 
 	return 0;
@@ -1098,7 +1098,7 @@ sub bdx_man { pod2use($cgih, -exitstatus => 0, -verbose => 2) }
 
 sub bdx_help { my( $topic ) = ( shift );
 
-	use File::Help;
+	use EggNog::Help;
 
 	# xxx We're not properly able to use $om here, because we don't
 	#     know how to capture pod2usage as a string instead of printing
@@ -1113,7 +1113,7 @@ sub bdx_help { my( $topic ) = ( shift );
 		return 0;
 	$WeAreOnWeb and $cgih and	# (yyy) by hand CGI headers
 		print ($cgih->take);
-	File::Help::help(undef, $topic, @_);
+	EggNog::Help::help(undef, $topic, @_);
 	#$om->{cgih}->take;		# (yyy) quell any headers 
 
 	return 0;	# xxx return error if not found?
@@ -1144,14 +1144,14 @@ sub bdx_logmark { my( $string )=@_;
 		#usage(1, 1, "logmark");
 		return 0;
 	}
-	File::Egg::logmark($bh, $mods, $string) or
+	EggNog::Egg::logmark($bh, $mods, $string) or
 		outmsg($bh), return 1;
 	return 0;
 }
 
 sub bdx_pr {		# pass @_ on through
 
-	File::Egg::egg_pr($bh, $mods, @_) or
+	EggNog::Egg::egg_pr($bh, $mods, @_) or
 		outmsg($bh), return 1;
 	return 0;
 }
@@ -1175,7 +1175,7 @@ sub bdx_note { my( $key, $value )=@_;
 	#Noid::dbopen($bh, $mdr, DB_RDWR) or
 		outmsg($bh), return 1;
 
-	File::Egg::note($bh, $mods, $key, $value) or
+	EggNog::Egg::note($bh, $mods, $key, $value) or
 		outmsg($bh), return 1;
 	#Noid::dbclose($bh);
 	return 0;
@@ -1205,7 +1205,7 @@ sub bdx_version {
 #	$onbof = $1;
 
 	$om->elem("version",
-		qq@This is "$m_cmd" version $File::Egg::VERSION, @ .
+		qq@This is "$m_cmd" version $EggNog::Egg::VERSION, @ .
 #"USER_AGENT=$ENV{HTTP_USER_AGENT}, modif=$x, onbof=$onbof, " .
 			"with Berkeley DB version $running" .
 			" and MongoDB.pm $mongo");

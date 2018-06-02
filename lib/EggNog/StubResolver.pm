@@ -1,4 +1,4 @@
-package File::StubResolver;
+package EggNog::StubResolver;
 
 use 5.010;
 use strict;
@@ -31,7 +31,7 @@ StubResolver - stub routines for advanced identifier resolution
 
 =head1 SYNOPSIS
 
- use File::StubResolver;	    # import routines into a Perl script
+ use EggNog::StubResolver;	    # import routines into a Perl script
 
 =head1 BUGS
 
