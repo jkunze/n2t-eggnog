@@ -1,5 +1,5 @@
 use 5.010;
-use Test::More qw( no_plan );
+use Test::More;
 
 use strict;
 use warnings;
@@ -11,6 +11,11 @@ my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "egg";
 $td or			# if error
 	exit 1;
 $ENV{EGG} = $hgbase;		# initialize basic --home and --bgroup values
+
+$exdb and plan skip_all =>
+    "why: incr/decr not yet supported for the exdb case";
+
+plan 'no_plan';		# how we usually roll -- freedom to test whatever
 
 {
 remake_td($td);

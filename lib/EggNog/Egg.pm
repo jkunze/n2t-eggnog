@@ -652,6 +652,22 @@ sub sif { my( $bh, $elem, $oldvalcnt )=@_;
 	return 1;
 }
 
+=for consideration what ezid encodes
+
+	# python"[%'\"\\\\&@|;()[\\]=]|[^!-~]"
+	#s{ ([|^]) }{ sprintf("^%02x", ord($1)) }xeg
+
+	$slvalue =~ 			# kludgy, specific to EZID encoding
+	 	s{ ([%'"\\&@|;()[\]=]|[^!-~]) }
+		 { sprintf("%%%02x", ord($1))  }xego;
+
+	my $eid = $id;			# encoded id
+	$eid =~ 			# kludgy, specific to EZID encoding
+	 	s{ ([%'"\\&@|;()[\]=:<]|[^!-~]) }	# adds : and < to above
+		 { sprintf("%%%02x", ord($1))  }xego;
+
+=cut
+
 # Circumflex-encode, internal db (indb) version.
 # Return hash with ready-for-storage (efs) versions of
 #   key		# for storage
@@ -1268,6 +1284,7 @@ sub indb_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 	# yyy rename $irfs -> $rfs?
 	my $irfs = flex_enc_indb($id, $elem);
 	my $key;
+# xxx consider dropping this assignment and using $irfs->* as needed
 	($key, $id, $elem) = ($irfs->{key}, $irfs->{id}, $irfs->{elems}->[0]);
 
 	! egg_authz_ok($bh, $id, OP_WRITE) and
@@ -1276,7 +1293,9 @@ sub indb_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 	my $optime = time();
 
 # xxx requires the ready-for-storage $id
-	if (! egg_init_id($bh, $id, $optime)) {  # an id is "created" if need be
+	# an id is "created" if need be
+	#if (! egg_init_id($bh, $id, $optime)) ...
+	if (! egg_init_id($bh, $irfs->{id}, $optime)) {
 		addmsg($bh, "error: could not initialize $id");
 		return undef;
 	}
@@ -1425,17 +1444,22 @@ sub exdb_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 	my $erfs = flex_enc_exdb($id, $elem);
 
 	my $key;
-($key, $id, $elem) = ($erfs->{key}, $erfs->{id}, $erfs->{elems}->[0]);
-# XXX use $irfs/$erfs below instead of raw $key $id $elem
+#($key, $id, $elem) = ($erfs->{key}, $erfs->{id}, $erfs->{elems}->[0]);
+# XXX unlike indb case, use $irfs/$erfs below instead of raw $key $id $elem
 
-	! egg_authz_ok($bh, $id, OP_WRITE) and
+	#! egg_authz_ok($bh, $id, OP_WRITE) and
+	# yyy encoded $id
+	! egg_authz_ok($bh, $erfs->{id}, OP_WRITE) and
 		return undef;
 
 	my $optime = time();
 
 # xxx do we need to call this at all?
 # xxx requires the ready-for-storage $id
-	if (! egg_init_id($bh, $id, $optime)) {  # an id is "created" if need be
+	# an id is "created" if need be
+	#if (! egg_init_id($bh, $id, $optime)) ...
+	# yyy encoded $id
+	if (! egg_init_id($bh, $erfs->{id}, $optime)) {
 		addmsg($bh, "error: could not initialize $id");
 		return undef;
 	}
@@ -1443,27 +1467,10 @@ sub exdb_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 	my $slvalue = $value;		# single-line log encoding of $value
 	$slvalue =~ s/\n/%0a/g;	# xxxxx nasty, incomplete kludge
 					# xxx note NOT encoding $elem
-
-=for consideration what ezid encodes
-
-	# python"[%'\"\\\\&@|;()[\\]=]|[^!-~]"
-	#s{ ([|^]) }{ sprintf("^%02x", ord($1)) }xeg
-
-	$slvalue =~ 			# kludgy, specific to EZID encoding
-	 	s{ ([%'"\\&@|;()[\]=]|[^!-~]) }
-		 { sprintf("%%%02x", ord($1))  }xego;
-
-	my $eid = $id;			# encoded id
-	$eid =~ 			# kludgy, specific to EZID encoding
-	 	s{ ([%'"\\&@|;()[\]=:<]|[^!-~]) }	# adds : and < to above
-		 { sprintf("%%%02x", ord($1))  }xego;
-
-=cut
-
 	# Not yet a real transaction in the usual sense, but
 	# more of something that has a start and an end time.
 
-# xxx uses encoded $id $elem
+	# yyy UNencoded $id and $elem
 	my $txnid;		# undefined until first call to tlogger
 	$txnid = tlogger $sh, $txnid, "BEGIN $id$Se$elem.$lcmd $slvalue";
 
@@ -1471,6 +1478,7 @@ sub exdb_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 # yyy exdb: we can do incr/decr MUCH more efficiently than this
 # inputs to this section: $irfs ($id, $elem, $value), $how, $polite
 # calls with rfs $id and rfs $elem
+
 	my $oldvalcnt = egg_get_dup($bh, $id, $elem);
 	! defined($oldvalcnt) and
 		return undef;
@@ -1479,9 +1487,22 @@ sub exdb_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 	# yyy make this a command modifier, not an option, and rlog it!
 	# yyy what if $elem is buried inside $id?
 	# yyy shouldn't there be some sort of message with the undef??
+
+# xxx ditch 'sif', even in indb case? or implement this  with $set operator?
+#     if with $set, how?
 	sif($bh, $elem, $oldvalcnt) or		# check "succeed if" option
 		return undef;
 
+# xxx note that in indb case we only did this on _first_ dup, so ok
+#     to do same in exdb case
+# in exdb case, will every value be an array of one or more?
+#    or will some be scalars and others be arrays?
+# should there be a version of exdb_set that forces scalar (no dupes)?
+#
+# if incr_decr:
+#   (use mongo aggregation framework?)
+#   if element ! exists, then create with 0+incr value
+#   if element exists, then incr by amount
 	# yyy to add: possibly other ops (* + - / **)
 	if ($incr_decr) {
 
@@ -1531,6 +1552,7 @@ sub exdb_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 				addmsg($bh, "del failed"),
 				return undef;
 # XXX NOT setting arith_with_dups numbers in exdb
+# *** exdb: db.mycollection.count() to count docs in a collection
 # maybe we won't support bindings count in exdb (first pass)
 			arith_with_dups($dbh, "$A/bindings_count", -$oldvalcnt);
 			#$dbh->{"$A/bindings_count"} < 0 and addmsg($bh,

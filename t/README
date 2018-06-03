@@ -11,9 +11,7 @@ Directories contain configuration for web services:
   web = for generic services
         (tested by egn_apachebase.t)
 
-NB: z_egg_prefixes_n2t begins with 'z' so that it runs last with
-
-  run 'make test'
-
-as it builds a fresh prefix file ready for 'n2t rollout && n2t test'
-(this is a bit of a kludge).
+NB: z_egg_prefixes_n2t begins with 'z' so that the server it builds via
+'make test' sorts, and therefore runs, last. This permits the flag file
+it leaves (to indicate whether the current prefixes "tested_ok") to be
+checked by a subsequent 'n2t rollout && n2t test'.

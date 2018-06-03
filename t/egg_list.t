@@ -1,5 +1,4 @@
 use 5.010;
-#use Test::More qw( no_plan );
 use Test::More;
 
 use strict;
@@ -13,6 +12,11 @@ $td or			# if error
 	exit 1;
 $ENV{EGG} = $hgbase;		# initialize basic --home and --bgroup values
 
+$exdb and plan skip_all =>
+    "why: list/next not yet supported for the exdb case";
+
+plan 'no_plan';		# how we usually roll -- freedom to test whatever
+
 # Use this subroutine to get actual commands onto STDIN (eg, bulkcmd).
 #
 sub run_cmds_on_stdin { my( $cmdblock, $flags )=@_;
@@ -24,11 +28,6 @@ sub run_cmds_on_stdin { my( $cmdblock, $flags )=@_;
 }
 
 # yyy? check mstat command ?
-
-$exdb and plan skip_all =>
-	"why: list/next functions not implemented for dbie=e case";
-
-plan 'no_plan';		# how we usually roll -- freedom to test whatever
 
 SKIP: {
 remake_td($td);

@@ -62,7 +62,7 @@ my $usage_text = << "EOF";
 
  Usage: egg [ options ] i.command [ name [ data ] ]
 
-Egg is a binder. The egg command makes and manages arbitrary non-volatile data
+Egg is a binder. The egg command makes and manages flexible non-volatile data
 element bindings in which each element belongs to a parent identifier (even if
 empty). Identifiers can be made "resolvable" to particular element values. The
 acronym, BIND (Bind Identifier to Named Data), echoes typical argument order.
@@ -1106,6 +1106,7 @@ sub bdx_help { my( $topic ) = ( shift );
 	#     headers (if need be) ourselves, and also to quell headers
 	#     (yyy) output by $om if object is destroyed without output.
 	#     
+
 	my $t = $topic || "";
 	$t and "usage" =~ /^$t/i and
 		usage(undef),
@@ -1114,6 +1115,7 @@ sub bdx_help { my( $topic ) = ( shift );
 	$WeAreOnWeb and $cgih and	# (yyy) by hand CGI headers
 		print ($cgih->take);
 	EggNog::Help::help(undef, $topic, @_);
+
 	#$om->{cgih}->take;		# (yyy) quell any headers 
 
 	return 0;	# xxx return error if not found?
@@ -1281,7 +1283,7 @@ Alternatively, they can also support short-lived names for transaction
 identifiers, compact web server session keys, and other ephemera.
 
 A "binder" is a lightweight database designed for efficiently binding
-arbitrary element names and element values that are either stored or
+flexible element names and element values that are either stored or
 produced upon retrieval from rule-based transformations of requested
 identifiers, the latter having application in identifier resolution.
 Binders are very fast, scalable, easy to create and tear down, and have a
@@ -1296,7 +1298,7 @@ Usage:
  
     egg [ options ] i.command [ name [ data ] ]
 
-Egg is a binder. The egg command makes, manages, and resolves arbitrary
+Egg is a binder. The egg command makes, manages, and resolves flexible
 data element bindings, each belonging to a parent identifier (which may
 be empty).  Each element name is bound as a child of an identifier, i,
 which comes into existence when its first element is bound.  Any number
