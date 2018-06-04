@@ -1044,38 +1044,61 @@ use MongoDB;
 # yyy big opportunity to optimize assignment of a bunch of elements in
 #     one batch (eg, from ezid).
 
-sub exdb_set_dup { my( $bh, $id, $elem, $val, $optime )=@_;
-# XXX hypoth. this routine should be the one to call flex_enc...
+# This routine assumes $id and $elem args have been flex_encoded
+
+sub exdb_set_dup { my( $bh, $id, $elem, $val, $flags )=@_;
+
+	$flags ||= {};
+	my $optime = $flags->{optime} || time();
+	my $delete = $flags->{delete} || 0;		# default
+	my $polite = $flags->{polite} || 0;		# default
 
 	my $result;
 	my $coll = $bh->{sh}->{exdb}->{binder};		# collection
-# add: flex_enc_exdb( $elem );	# want side-effect on $elem
+# xxx to do:
+# rename $sh->{exdb} to $sh->{exdb_session}
+#   move ebopen artifacts to $bh->{exdb}
 # add: flex_dec_exdb on fetch and resolve!
-# need to allow for duplicate elems!
-# db.t.update({_id:4},{$push: {au_ar:"wong"}},{upsert:true})
-# 1. encode $elem, with upsert:true
+# add: sort on fetch to mimic indb behavior with btree
 #    NB: using _id:4 for built-in uniqueness
-# 2. call update, query on _id, $push to array of dupes
-	my $msg;
+#    NB: using _id for built-in uniqueness
+
 #			{ '$set'	=> {
 #				$elem		=> $val,
 #				CTIME_EL_EX()	=> $optime,
 #			} },
+#				'$push' => { $elem => $val },
+
+	my $filter_doc = { PKEY() => $id };		# initialize
+	my $upsert = 1;					# default
+	if ($polite) {
+		$filter_doc->{$elem} = { '$exists' => 0 };
+		$upsert = 0;	# causes update to fail if $elem exists
+	}
+
+	my $update_doc = {};
+	my $to_set = { CTIME_EL_EX() => $optime };	# initialize
+	if ($delete) {
+		$to_set->{$elem} = [ $val ];		# to be set
+	}
+	else {
+		$update_doc->{'$push'} = { $elem => $val };
+	}
+	$update_doc->{'$set'} = $to_set;
+	my $msg;
 	my $ok = try {
 		$result = $coll->update_one(
-			{ PKEY()	=> $id },
-			{
-				'$push' => { $elem => $val },
-				'$set' => { CTIME_EL_EX() => $optime },
-			},
-			{ upsert	=> 1 }
+#			{ PKEY()	=> $id },
+			$filter_doc,
+			$update_doc,
+#			{
+#				'$set' => { $elem => [ $val ],
+#					CTIME_EL_EX() => $optime }
+#			},
+			{ upsert	=> $upsert }
 		)
 		// 0;		# since 0 != undefined
 	}
-#			{
-#				'$set' => { $elem => $val },
-#				'$set' => { CTIME_EL_EX() => $optime },
-#			},
 	catch {
 		$msg = "error setting id \"$id\" in external database: $_";
 		return undef;	# returns from "catch", NOT from routine
@@ -1084,6 +1107,11 @@ sub exdb_set_dup { my( $bh, $id, $elem, $val, $optime )=@_;
 		addmsg($bh, $msg),
 		return undef;
 
+	if ($polite and $result and $result->{matched_count} < 1) {
+		addmsg($bh, "cannot proceed on an element ($elem) that " .
+			"already has a value");
+		return undef;
+	}
 	return $result;		# yyy is this a good return status?
 
 #use Data::Dumper "Dumper"; print Dumper $result;
@@ -1242,7 +1270,7 @@ sub egg_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 	#
 	my $args_in_memory = 0;
 	$mods->{on_bind} ||= $bh->{on_bind};	# default actions if needed
-	$mods->{on_bind} & BIND_KEYVAL and
+	$mods->{on_bind} & BIND_KEYVAL and	# yyy drop BIND_KEYVAL?
 		# yyy does not expand beyond single value token,
 		#     eg, id.set a b @ -> a: b @
 		# yyy instantiate NEEDs $elem not to be null
@@ -1424,6 +1452,7 @@ sub indb_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 }
 
 
+# *** exdb: db.mycollection.count() to count docs in a collection
 sub exdb_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 						$incr_decr,
 						$id, $elem, $value )=@_;
@@ -1441,25 +1470,20 @@ sub exdb_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 	# yyy document default values for element and value
 
 	# ready-for-storage versions of id, elem, ...
-	my $erfs = flex_enc_exdb($id, $elem);
-
-	my $key;
-#($key, $id, $elem) = ($erfs->{key}, $erfs->{id}, $erfs->{elems}->[0]);
-# XXX unlike indb case, use $irfs/$erfs below instead of raw $key $id $elem
+	my $rfs = flex_enc_exdb($id, $elem);
 
 	#! egg_authz_ok($bh, $id, OP_WRITE) and
 	# yyy encoded $id
-	! egg_authz_ok($bh, $erfs->{id}, OP_WRITE) and
+	! egg_authz_ok($bh, $rfs->{id}, OP_WRITE) and
 		return undef;
 
 	my $optime = time();
 
-# xxx do we need to call this at all?
-# xxx requires the ready-for-storage $id
 	# an id is "created" if need be
 	#if (! egg_init_id($bh, $id, $optime)) ...
-	# yyy encoded $id
-	if (! egg_init_id($bh, $erfs->{id}, $optime)) {
+	# yyy pass in encoded $id
+	if (! egg_init_id($bh, $rfs->{id}, $optime)) {
+		# xxx do we need to call egg_init_id for exdb case at all?
 		addmsg($bh, "error: could not initialize $id");
 		return undef;
 	}
@@ -1474,133 +1498,96 @@ sub exdb_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 	my $txnid;		# undefined until first call to tlogger
 	$txnid = tlogger $sh, $txnid, "BEGIN $id$Se$elem.$lcmd $slvalue";
 
-# START vvvvvvv
-# yyy exdb: we can do incr/decr MUCH more efficiently than this
-# inputs to this section: $irfs ($id, $elem, $value), $how, $polite
-# calls with rfs $id and rfs $elem
+#	my $oldvalcnt = egg_get_dup($bh, $id, $elem);
+#	! defined($oldvalcnt) and
+#		return undef;
+#	#my $oldvalcnt = indb_get_dup($db, $key);
+#	my $oldval;
+#	# yyy make this a command modifier, not an option, and rlog it!
+#	# yyy what if $elem is buried inside $id?
+#	# yyy shouldn't there be some sort of message with the undef??
 
-	my $oldvalcnt = egg_get_dup($bh, $id, $elem);
-	! defined($oldvalcnt) and
-		return undef;
-	#my $oldvalcnt = indb_get_dup($db, $key);
-	my $oldval;
-	# yyy make this a command modifier, not an option, and rlog it!
-	# yyy what if $elem is buried inside $id?
-	# yyy shouldn't there be some sort of message with the undef??
+	# xxx ditch 'sif', even in indb case? or implement this
+	#    with $set operator? if with $set, how?
+	#sif($bh, $elem, $oldvalcnt) or		# check "succeed if" option
+	#	return undef;
 
-# xxx ditch 'sif', even in indb case? or implement this  with $set operator?
-#     if with $set, how?
-	sif($bh, $elem, $oldvalcnt) or		# check "succeed if" option
-		return undef;
-
-# xxx note that in indb case we only did this on _first_ dup, so ok
-#     to do same in exdb case
-# in exdb case, will every value be an array of one or more?
-#    or will some be scalars and others be arrays?
-# should there be a version of exdb_set that forces scalar (no dupes)?
-#
-# if incr_decr:
-#   (use mongo aggregation framework?)
-#   if element ! exists, then create with 0+incr value
-#   if element exists, then incr by amount
-	# yyy to add: possibly other ops (* + - / **)
 	if ($incr_decr) {
+		addmsg($bh, "incr/decr not yet supported for the exdb case"),
+		return undef;
 
-		$oldvalcnt > 1 and
-			addmsg($bh, "incr/decr not allowed on element " .
-				"($elem) with duplicate values ($oldvalcnt)"),
-			return undef;
-# xxx indb-specific!
-		$oldval = $dbh->{$key} || 0;	# if unset, start with zero
-		$oldval =~ /^[-+]?\d+$/ or
-			addmsg($bh, "incr/decr not allowed unless existing " .
-				"value ($oldval) is a decimal number"),
-			return undef;
-		my $amount = 1;
-		$value ne "" and
-			$amount = $value;
-		$amount =~ /^[-+]?\d+$/ or
-			addmsg($bh, "incr/decr amount ($amount) must be a " .
-				"decimal number"),
-			return undef;
-		# Now compute the new value that we'll be setting.
-		$value = $how eq HOW_INCR ?
-			$oldval + $amount : $oldval - $amount;
-			#"how_incr $amount" : "how_decr $amount";
-			#$oldval + int($amount) : $oldval - int($amount);
+		# See indb case for code to implement
+		# note that in indb case we only did this on _first_ dup,
+		#     so ok to do same in exdb case
+		# in exdb case, will every value be an array of one or more?
+		#    or will some be scalars and others be arrays?
+		#
+		# if incr_decr:
+		#   (use mongo aggregation framework?)
+		#   if element ! exists, then create with 0+incr value
+		#   if element exists, then incr by amount
 	}
+
+#	$polite and $oldvalcnt > 0 and $how eq HOW_SET and
+#		addmsg($bh, "cannot proceed on an element ($elem) that " .
+#			"already has a value"),
+#		return undef;
+#
+#	# yyy do more tests with dups
+#	# with "bind set" need first to delete, including any dups
+#
+#	# Delete value (and dups) if called for (eg, by "bind set").
+#	#   delete() is a convenient way of stomping on all dups
+#	#
+#	if ($delete and $oldvalcnt > 0) {
+#		if ($bh->{sh}->{indb}) {
+#			$db->db_del($key) and
+#				addmsg($bh, "del failed"),
+#				return undef;
+#			arith_with_dups($dbh, "$A/bindings_count", -$oldvalcnt);
+#			#$dbh->{"$A/bindings_count"} < 0 and addmsg($bh,
+#			#	"bindings count went negative on $key"),
+#			#	return undef;
+#		}
+#	}
+
+	# The main event.
+
+	dblock();	# no-op
 
 	# permit 'set' to overwrite dups, but don't permit 'let' unless
 	#    there is no value set
 
-	$polite and $oldvalcnt > 0 and $how eq HOW_SET and
-		addmsg($bh, "cannot proceed on an element ($elem) that " .
-			"already has a value"),
+	#if (! exdb_set_dup($bh, $id, $elem, $slvalue, $optime)) 
+	if (! exdb_set_dup($bh, $rfs->{id}, $rfs->{elems}->[0], $slvalue, {
+			optime => $optime,
+			delete => $delete,
+			polite => $polite,
+			how => $how,			# yyy necessary?
+			incr_decr => $incr_decr,	# yyy necessary?
+	})) {
+		dbunlock();
+		addmsg($bh, "couldn't set $id$Se$elem");
 		return undef;
-
-	dblock();	# no-op
-
-	# yyy do more tests with dups
-	# with "bind set" need first to delete, including any dups
-
-	# Delete value (and dups) if called for (eg, by "bind set").
-	#   delete() is a convenient way of stomping on all dups
-	#
-	if ($delete and $oldvalcnt > 0) {
-		if ($bh->{sh}->{indb}) {
-			$db->db_del($key) and
-				addmsg($bh, "del failed"),
-				return undef;
-# XXX NOT setting arith_with_dups numbers in exdb
-# *** exdb: db.mycollection.count() to count docs in a collection
-# maybe we won't support bindings count in exdb (first pass)
-			arith_with_dups($dbh, "$A/bindings_count", -$oldvalcnt);
-			#$dbh->{"$A/bindings_count"} < 0 and addmsg($bh,
-			#	"bindings count went negative on $key"),
-			#	return undef;
-		}
-		if ($bh->{sh}->{exdb}) {
-# XXX do we need to delete dupes or just overwrite in the Mongo document?
-		}
-	}
-# END ^^^^^^^^^^
-
-	# The main event.
-
-	if ($bh->{sh}->{exdb}) {
-# add args: $how, $polite, $sif
-		! exdb_set_dup($bh, $id, $elem, $slvalue, $optime) and
-			dbunlock(),
-			return undef;
-	}
-	if ($bh->{sh}->{indb}) {
-		my $status = $db->db_put($key, $value);
-		$status < 0 and
-			addmsg($bh, "couldn't set $id$Se$elem ($status): $!");
-		$status != 0 and 
-			dbunlock(),
-			return undef;
-# XXX NOT setting arith_with_dups numbers in external db
-		arith_with_dups($dbh, "$A/bindings_count", +1);
 	}
 
-
-	my $msg;
-	if ($mods->{on_bind} & BIND_PLAYLOG) {
+	#my $msg;
+	if ($mods->{on_bind} & BIND_PLAYLOG) {		# yyy drop BIND_PLAYLOG?
+		# yyy dropping this for exdb
 		# NB: Must keep writing this rlog because EDINA replication
 		# depends on it!
 
 		# XXX NOT setting doing this for external db. DROP for indb?
-		$bh->{sh}->{indb} and
-			$msg = $bh->{rlog}->out("C: $id$Se$elem.$lcmd $slvalue");
+		#$bh->{sh}->{indb} and
+		#	$msg = $bh->{rlog}->out("C: $id$Se$elem.$lcmd $slvalue");
 		tlogger $sh, $txnid, "END SUCCESS $id$Se$elem.$lcmd ...";
-		$msg and
-			addmsg($bh, $msg),
-			return undef;
+
+		#$msg and
+		#	addmsg($bh, $msg),
+		#	return undef;
 	}
 	$bh->{opt}->{ack} and			# do oxum
 		$om->elem("oxum", length($value) . ".1"); # yyy ignore status
-		#$status = $om->elem("oxum", length($value) . ".1");
 
 	dbunlock();
 	return 1;
@@ -1632,7 +1619,8 @@ sub egg_init_id { my( $bh, $id, $optime )=@_;
 			return 1;		# so nothing to do
 		# XXX NOT setting arith_with_dups numbers in external db
 		# xxx do I need to normalize elem name & value?
-		! exdb_set_dup($bh, $id, PERMS_EL_EX, $id_value, $optime) and
+		! exdb_set_dup($bh, $id, PERMS_EL_EX, $id_value, {
+				optime => $optime, delete => 1 }) and
 			return undef;
 	}
 	return 1;
@@ -2450,7 +2438,6 @@ sub egg_inflect { my ($bh, $mods, $om, $id)=@_;
 #  done: correctly done for $id _inside_ get_rawidtree()
 # exdb_get_dup
 # indb_get_dup
-# exdb_set_dup
 # exdb_set_dup
 # indb_set (?? doesn't exist)
 # xxx must implement exists() for exdb case
