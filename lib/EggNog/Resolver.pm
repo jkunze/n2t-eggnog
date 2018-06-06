@@ -180,13 +180,15 @@ our %deblobify = (
 
 # Returns list of any new elements to add and updates $khashR
 #
-sub expand_blobs { my( $db, $id, $msg, $khashR )=
+sub expand_blobs { my( $bh, $id, $msg, $khashR )=
 		(shift,shift,shift,shift);	# rest of arg list is elements
 
 	$msg = '';
+	my $db = $bh->{db};
 	#my @triggers = grep $deblobify{$_}, @_;
 	my @triggers = ();
-	map { $deblobify{$_} and push @triggers, $deblobify{$_} } @_;
+	map { $deblobify{$_} and push @triggers, $deblobify{$_} }
+		@_;		# remaining args are elements
 	scalar(@triggers) or	# if no trigger elements, return empty list
 		return ();
 
@@ -197,10 +199,21 @@ sub expand_blobs { my( $db, $id, $msg, $khashR )=
 	# expand them, constitute a hash from blobs we find in $id.
 	# XXX currently only look for erc blobs; don't do xml blobs yet
 	#
-	#my @dups = indb_get_dup($db, "$id|erc");
-	my @dups = indb_get_dup($db, "$id${Se}erc");
+	#my @dups = indb_get_dup($db, "$id${Se}erc");
+	my ($erfs, $irfs);
+	my @dups;
+	if ($bh->{sh}->{fetch_indb}) {
+		$irfs = flex_enc_indb($id, 'erc');
+		@dups = indb_get_dup($db, $irfs->{key});
+	}
+	else {
+		$erfs = flex_enc_exdb($id, 'erc');
+		@dups = exdb_get_dup($bh, $erfs->{id}, 'erc');
+	}
+
 	my @elems;
 	for my $erc (@dups) {
+					# xxx why? what about flex-ecoding?
 		$erc =~ s{		# undo (decode) any %-encoding
 			%([0-9a-fA-F]{2})
 		}{
@@ -219,6 +232,7 @@ sub expand_blobs { my( $db, $id, $msg, $khashR )=
 	return map { ref($_) eq "CODE" and &$_ } @triggers;
 }
 
+# NB: on success MODIFIES args $special and $elem
 # process elem requests specially if they begin with :
 # returns 1 on success, 0 for elem requests that require no further
 # processing (eg, an element set name like :brief) or are unrecognized
@@ -1239,6 +1253,8 @@ sub load_prefixes { my( $sh )=@_;
 }
 
 sub resolve { my( $bh, $mods, $id, @headers )=@_;
+
+# XXXXXX is flex_enc_* being called at all? add test for both {ex,in}db
 
 	defined($id) or
 		addmsg($bh, "no identifier specified to fetch"),

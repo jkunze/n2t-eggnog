@@ -76,6 +76,9 @@ like $x, qr/Smith.*Victory.*1998.*Calif.*support-what:.*cdlib.org/s,
 $x = `$cmd -m anvl $ark.show :brief`;
 like $x, qr/,\s*"Victory.*:\s*Victory/s, 'citation support';
 
+#say "xxx premature exit x=$x";
+#exit;
+
 $ENV{EGG} = $hgbase;
 }
 #=cut
@@ -123,9 +126,6 @@ like $x, qr|"op=partial".*"partial=pdb"|,
 
 like $x, qr|"op=partial".*"partial=\*/pdb"|,
 	"partial id detected for */pdb";
-
-#say "xxx x=$x"; exit; ##################
-#exit;
 
 my $url;
 $url = 'ark:/98765/foo';	# yyy not a well-named variable?
@@ -301,12 +301,12 @@ like $x, qr|^redir303 newt\n|,
 
 my $rrminfo = RRMINFOARK;
 
-print "XXX disabled resolverlist test1 for now\n";
+#print "XXX disabled resolverlist test1 for now\n";
 #$x = resolve_stdin("-d $td/foo --resolverlist=$td/fon:$td/foo", $url);
 #like $x, qr/^redir302 nersc\n$/,
 #	"got _t with resolverlist, but 1st value hides 2nd";
 
-print "XXX disabled resolverlist test2 for now\n";
+#print "XXX disabled resolverlist test2 for now\n";
 #$x = `$cmd -d $td/fon $url.rm _t`;
 #$x = resolve_stdin("-d $td/fon --resolverlist=$td/fon:$td/foo", $url);
 #like $x, qr/^zaf\n$/,

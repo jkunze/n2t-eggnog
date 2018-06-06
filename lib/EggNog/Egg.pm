@@ -17,7 +17,8 @@ our @ISA = qw(Exporter);
 
 our @EXPORT = qw();
 our @EXPORT_OK = qw(
-	indb_get_dup id2elemval egg_inflect
+	exdb_get_dup indb_get_dup id2elemval egg_inflect
+	flex_enc_exdb flex_enc_indb
 	PERMS_ELEM OP_READ
 );
 our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
@@ -133,7 +134,6 @@ sub mkid {
 
 # calls flex_enc_indb
 
-#sub egg_exists { my( $bh, $mods, $id, $elem ) = (shift,shift,shift,shift);
 sub egg_exists { my( $bh, $mods, $id, $elem )=@_;
 
 	my $db = $bh->{db};
@@ -225,7 +225,6 @@ sub egg_purge { my( $bh, $mods, $lcmd, $formal, $id )=@_;
 		addmsg($bh, "instantiate failed from purge"),
 		return undef;
 
-
 	my $ret;
 	if ($sh->{exdb}) {				# egg_purge
 		# xxx flex_enc_exdb $id
@@ -269,11 +268,12 @@ sub egg_purge { my( $bh, $mods, $lcmd, $formal, $id )=@_;
 		addmsg($bh, "rawidtree returned undef"),
 		return undef;
 
-	# xxx this code repeats enough -- use flex_dec_indb already?
+	#$out_id = $id ne '' ? $id : '""';
+	#$out_id =~		# "flex_dec_indb" as needed
+	#	s/\^([[:xdigit:]]{2})/chr hex $1/eg;
+
 	my $out_id;			# output ready form
-	$out_id = $id ne '' ? $id : '""';
-	$out_id =~		# "flex_dec_indb" as needed
-		s/\^([[:xdigit:]]{2})/chr hex $1/eg;
+	$out_id = flex_dec_for_display($id);
 	my $retval;
 	$om and ($retval = $om->elem('elems',		# print comment
 		" admin + user elements found to purge under $out_id: " .
@@ -312,7 +312,35 @@ sub egg_purge { my( $bh, $mods, $lcmd, $formal, $id )=@_;
 }
 
 # get element as an array of dupes
+# xxx assumes "rfs" args
 
+##====
+#		if ($sh->{fetch_exdb}) {	# if EGG_DBIE is e or ei
+#			my $result;
+#			# yyy binder belongs in $bh, NOT to $sh!
+#			#     see ebopen()
+#			my $coll = $bh->{sh}->{exdb}->{binder};	# collection
+#			my $msg;
+#			my $ok = try {
+## xxx flex_enc_exdb $id before lookup
+#				$result = $coll->find_one(
+#					{ PKEY()	=> $id },
+#				)
+#				// 0;		# 0 != undefined
+#			}
+#			catch {
+#				$msg = "error fetching id \"$id\" " .
+#					"from external database: $_";
+#				return undef;
+#				# returns from "catch", NOT from routine
+#			};
+#			! defined($ok) and # test undefined since zero is ok
+#				addmsg($bh, $msg),
+#				return undef;
+#			# yyy using $result how?
+#			#use Data::Dumper "Dumper";
+#			#print Dumper $result;
+##====
 sub exdb_get_dup { my( $bh, $id, $elem )=@_;
 
 	# yyy not error checking the args
@@ -345,69 +373,71 @@ sub exdb_get_dup { my( $bh, $id, $elem )=@_;
 	return ( $result->{$elem} );	# make array from scalar and return it
 }
 
-# xxx should split this into {in,ex}db_get_dup
-sub egg_get_dup { my( $bh, $id, $elem )=@_;
-
-	my $sh = $bh->{sh};
-	my $exdb = $sh->{exdb};
-	my (@indups, @exdups, $ret);
-	my $wantlist = wantarray();
-
-	$sh->{fetch_indb} and		# set by EggNog::Session::config
-	# xxx who calls/called flex_encode?
-		@indups = indb_get_dup($bh->{db},
-			$id . $Se . $elem);
-		# yyy if error?
-
-
-	if ($sh->{fetch_exdb}) {		# set by EggNog::Session::config
-#		try {
-#			my $coll = $bh->{sh}->{exdb}->{binder};	# collection
-#	# xxx make sure del and purge are done for exdb
-#	# xxx ALL elems should be arrays, NOT returning them
-#	# xxx who calls flex_encode?
-
-			# We could use find_id() Perl method, but there aren't
-			# parallel Perl methods for update, delete, etc., so 
-			# we preserve parallelsim with the *_one() methods.
-
-#			$ret = $coll->find_one(
-#				{ PKEY() => $id },	# query
-#				{ $elem => 1 },		# projection
-#						# _id returned by default
-#			);
-#		}
-#		catch {
-#			addmsg($bh, "exception fetching id \"$id\" from "
-#				. "external database: $@");
-#			return undef;
-#		};
-#		@exdups = ( $ret->{ $elem } );
-
-		@exdups = exdb_get_dup($bh, $id, $elem);
-		# yyy if error?
-		#use Data::Dumper "Dumper"; print Dumper $ret;
-
-	       #$sh->{ietest} and $exdups[0] ne $indups[0] and $sh->{txnlog} and
-		#	$sh->{txnlog}->out("ERROR: difference alert " .
-		#		"for id \"$id\", element \"$elem\"");
-
-		# it is not an error to call tlogger with $txnid of ''
-		$sh->{ietest} and $exdups[0] ne $indups[0] and tlogger($sh, '',
-			"ERROR: difference alert for id \"$id\", " .
-			"element \"$elem\"");
-			# yyy only checking first dupe in ietest
-			# yyy no $txnid -- ok?
-	}
-
-	$sh->{fetch_indb} and		# if ietest, indb takes precedence
-		return $wantlist ? @indups : scalar(@indups);
-	return $wantlist ? @exdups : scalar(@exdups);
-}
+## xxx should convert remaining calls to this into calls to {in,ex}db_get_dup
+## xxx assumes $id and $elem args are already encoded "rfs"
+#sub egg_get_dup { my( $bh, $id, $elem )=@_;
+#
+#	my $sh = $bh->{sh};
+#	my $exdb = $sh->{exdb};
+#	my (@indups, @exdups, $ret);
+#	my $wantlist = wantarray();
+#
+#	$sh->{fetch_indb} and		# set by EggNog::Session::config
+#	# xxx who calls/called flex_encode?
+#		@indups = indb_get_dup($bh->{db},
+#			$id . $Se . $elem);
+#		# yyy if error?
+#
+#
+#	if ($sh->{fetch_exdb}) {		# set by EggNog::Session::config
+##		try {
+##			my $coll = $bh->{sh}->{exdb}->{binder};	# collection
+##	# xxx make sure del and purge are done for exdb
+##	# xxx ALL elems should be arrays, NOT returning them
+##	# xxx who calls flex_encode?
+#
+#			# We could use find_id() Perl method, but there aren't
+#			# parallel Perl methods for update, delete, etc., so 
+#			# we preserve parallelsim with the *_one() methods.
+#
+##			$ret = $coll->find_one(
+##				{ PKEY() => $id },	# query
+##				{ $elem => 1 },		# projection
+##						# _id returned by default
+##			);
+##		}
+##		catch {
+##			addmsg($bh, "exception fetching id \"$id\" from "
+##				. "external database: $@");
+##			return undef;
+##		};
+##		@exdups = ( $ret->{ $elem } );
+#
+#		@exdups = exdb_get_dup($bh, $id, $elem);
+#		# yyy if error?
+#		#use Data::Dumper "Dumper"; print Dumper $ret;
+#
+#	       #$sh->{ietest} and $exdups[0] ne $indups[0] and $sh->{txnlog} and
+#		#	$sh->{txnlog}->out("ERROR: difference alert " .
+#		#		"for id \"$id\", element \"$elem\"");
+#
+#		# it is not an error to call tlogger with $txnid of ''
+#		$sh->{ietest} and $exdups[0] ne $indups[0] and tlogger($sh, '',
+#			"ERROR: difference alert for id \"$id\", " .
+#			"element \"$elem\"");
+#			# yyy only checking first dupe in ietest
+#			# yyy no $txnid -- ok?
+#	}
+#
+#	$sh->{fetch_indb} and		# if ietest, indb takes precedence
+#		return $wantlist ? @indups : scalar(@indups);
+#	return $wantlist ? @exdups : scalar(@exdups);
+#}
 
 #use Carp;
 # return array of dupes for $key in list context
 #     in scalar context return the number of dupes
+# xxx assumes "rfs" args
 sub indb_get_dup { my( $db, $key )=@_;
 
 	my $wantlist = wantarray();
@@ -433,6 +463,9 @@ sub indb_get_dup { my( $db, $key )=@_;
 }
 
 # yyy currently returns 0 on success (mimicking BDB-school return)
+# xxx assumes $id and $elem are already encoded "rfs"
+# xxx this is called only once, so we can easily split it into two;
+#     {ex,in}db_del_dup and pass in appropriatedly flex_encoded args
 sub egg_del_dup { my( $bh, $id, $elem )=@_;
 
 	my ($instatus, $result) = (0, 1);	# default is success
@@ -527,8 +560,8 @@ sub egg_del { my( $bh, $mods, $lcmd, $formal, $id, $elem )=@_;
 	my ($oldvalcnt, $oxum, @oldlens);
 	if ($bh->{opt}->{ack}) {
 		#@oldlens = map length, $db->get_dup($key);
-		@oldlens = map length, egg_get_dup($bh, $id, $elem);
-		#@oldlens = map length, indb_get_dup($db, $key);
+# xxx call either {ex,in}db_get_dup here, with rfs args
+		@oldlens = map length, indb_get_dup($db, $key);
 		$oldvalcnt = scalar(@oldlens);
 		my $octets = 0;
 		$octets += $_
@@ -539,8 +572,8 @@ sub egg_del { my( $bh, $mods, $lcmd, $formal, $id, $elem )=@_;
 	}
 	else {
 		#$oldvalcnt = $db->get_dup($key);
-		$oldvalcnt = egg_get_dup($bh, $id, $elem);
-		#$oldvalcnt = indb_get_dup($db, $key);
+# xxx call either {ex,in}db_get_dup here, with rfs args
+		$oldvalcnt = indb_get_dup($db, $key);
 	}
 	# XXXX is this the right message/behavior?
 	sif($bh, $elem, $oldvalcnt) or		# check "succeed if" option
@@ -698,16 +731,6 @@ sub flex_enc_indb { my ( $id, @elems )=@_;
 	return $irfs;
 }
 
-# Take encoded string and return circumflex-decoded string.  Does not
-# modify its argument.  You'll get faster execution by not calling this
-# routine and just copying its one-liner into your code where needed.
-#
-sub flex_dec_indb { my $s = shift;
-
-	$s =~ s/\^([[:xdigit:]]{2})/chr hex $1/eg;
-	return $s;
-}
-
 # Circumflex-encode, external db (exdb) version.
 # Return hash with ready-for-storage (rfs) versions of
 #   key		# for :idmap	xxx untested
@@ -740,14 +763,27 @@ sub flex_enc_exdb { my ( $id, @elems )=@_;
 
 # Take encoded string and return circumflex-decoded string.  Does not
 # modify its argument.  You'll get faster execution by not calling this
-# routine and just copying its one-liner into your code where needed.
+# routine and just copying its one-liner into your code where needed,
+# which is why it's mostly not called.
+# yyy no need for different {ex,in}db versions of this?
 #
-# XXX NOT TESTED or used
-sub flex_dec_exdb { my $s = shift;
+sub flex_dec { my $s = shift;
 
 	$s =~ s/\^([[:xdigit:]]{2})/chr hex $1/eg;
 	return $s;
 }
+
+# Take encoded string and return circumflex-decoded string suitable for
+# human display.  Does not modify its argument.
+#
+sub flex_dec_for_display { my( $s )=@_;
+
+	$s eq '' and			# make an empty string
+		$s = '""';		# a bit more visible
+	$s =~ s/\^([[:xdigit:]]{2})/chr hex $1/eg;
+	return $s;
+}
+
 
 =for removal
 
@@ -1037,14 +1073,24 @@ use MongoDB;
 # Called by egg_set.
 # First arg example:  $bh->{sh}->{exdb}->{binder}, eg, egg.ezid_s_ezid
 
-# xxx haven't thought about duplicate values
-# XXX use 'upsert: true' ??
-# XXX use _id or new "id" field?
-# XXX need uniquely indexed to avoid inserting dupes?
-# yyy big opportunity to optimize assignment of a bunch of elements in
-#     one batch (eg, from ezid).
-
 # This routine assumes $id and $elem args have been flex_encoded
+# The goal of this routine is to construct a set of hashes to submit
+# to $collection->update_one(). Here's an annotated example.
+#
+# {		# filter_doc to select what doc to update
+#	PKEY() => $id,			# primary key
+#	$elem => { '$exists' => 0 }	# in case we're not clobbering
+# }, {		# update_doc to specify actions to perform
+#	'$set' => {
+#		CTIME_EL_EX() => $optime,	# update time
+#		$elem => [ $val ],	# in case we're clobbering
+#	'$push' => { $elem => $val };	# add a dup if we're not clobbering
+# }, {		# options/flags
+#	upsert	=> ! $polite		# prevents creating duplicate document
+#	NB: we also use reserved _id, which should enforce doc uniqueness too
+# }
+
+# NB: different from indb (BDB Btree case): field names are not sorted
 
 sub exdb_set_dup { my( $bh, $id, $elem, $val, $flags )=@_;
 
@@ -1059,15 +1105,12 @@ sub exdb_set_dup { my( $bh, $id, $elem, $val, $flags )=@_;
 # rename $sh->{exdb} to $sh->{exdb_session}
 #   move ebopen artifacts to $bh->{exdb}
 # add: flex_dec_exdb on fetch and resolve!
-# add: sort on fetch to mimic indb behavior with btree
-#    NB: using _id:4 for built-in uniqueness
-#    NB: using _id for built-in uniqueness
+# add: consider sorting on fetch to mimic indb behavior with btree
+# generalize egg_del/purge
+# generalize egg_exists
+# yyy big opportunity to optimize assignment of a bunch of elements in
+#     one batch (eg, from ezid).
 
-#			{ '$set'	=> {
-#				$elem		=> $val,
-#				CTIME_EL_EX()	=> $optime,
-#			} },
-#				'$push' => { $elem => $val },
 
 	my $filter_doc = { PKEY() => $id };		# initialize
 	my $upsert = 1;					# default
@@ -1088,14 +1131,9 @@ sub exdb_set_dup { my( $bh, $id, $elem, $val, $flags )=@_;
 	my $msg;
 	my $ok = try {
 		$result = $coll->update_one(
-#			{ PKEY()	=> $id },
 			$filter_doc,
 			$update_doc,
-#			{
-#				'$set' => { $elem => [ $val ],
-#					CTIME_EL_EX() => $optime }
-#			},
-			{ upsert	=> $upsert }
+			{ upsert => $upsert }
 		)
 		// 0;		# since 0 != undefined
 	}
@@ -1323,7 +1361,9 @@ sub indb_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 # xxx requires the ready-for-storage $id
 	# an id is "created" if need be
 	#if (! egg_init_id($bh, $id, $optime)) ...
-	if (! egg_init_id($bh, $irfs->{id}, $optime)) {
+# xxx split this next into {ex,in}db cases
+	#if (! egg_init_id($bh, $irfs->{id}, $optime)) 
+	if (! egg_init_id($bh, $id, $optime)) {
 		addmsg($bh, "error: could not initialize $id");
 		return undef;
 	}
@@ -1332,32 +1372,16 @@ sub indb_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 	$slvalue =~ s/\n/%0a/g;	# xxxxx nasty, incomplete kludge
 					# xxx note NOT encoding $elem
 
-=for consideration what ezid encodes
-
-	# python"[%'\"\\\\&@|;()[\\]=]|[^!-~]"
-	#s{ ([|^]) }{ sprintf("^%02x", ord($1)) }xeg
-
-	$slvalue =~ 			# kludgy, specific to EZID encoding
-	 	s{ ([%'"\\&@|;()[\]=]|[^!-~]) }
-		 { sprintf("%%%02x", ord($1))  }xego;
-
-	my $eid = $id;			# encoded id
-	$eid =~ 			# kludgy, specific to EZID encoding
-	 	s{ ([%'"\\&@|;()[\]=:<]|[^!-~]) }	# adds : and < to above
-		 { sprintf("%%%02x", ord($1))  }xego;
-
-=cut
-
 	# Not yet a real transaction in the usual sense, but
 	# more of something that has a start and an end time.
 
 	my $txnid;		# undefined until first call to tlogger
 	$txnid = tlogger $sh, $txnid, "BEGIN $id$Se$elem.$lcmd $slvalue";
 
-	my $oldvalcnt = egg_get_dup($bh, $id, $elem);
+# xxx call either {ex,in}db_get_dup here, with rfs args
+	my $oldvalcnt = indb_get_dup($db, $key);
 	! defined($oldvalcnt) and
 		return undef;
-	#my $oldvalcnt = indb_get_dup($db, $key);
 	my $oldval;
 	# yyy make this a command modifier, not an option, and rlog it!
 	# yyy what if $elem is buried inside $id?
@@ -1372,7 +1396,6 @@ sub indb_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 			addmsg($bh, "incr/decr not allowed on element " .
 				"($elem) with duplicate values ($oldvalcnt)"),
 			return undef;
-# xxx indb-specific!
 		$oldval = $dbh->{$key} || 0;	# if unset, start with zero
 		$oldval =~ /^[-+]?\d+$/ or
 			addmsg($bh, "incr/decr not allowed unless existing " .
@@ -1451,7 +1474,6 @@ sub indb_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 	return 1;
 }
 
-
 # *** exdb: db.mycollection.count() to count docs in a collection
 sub exdb_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 						$incr_decr,
@@ -1497,15 +1519,6 @@ sub exdb_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 	# yyy UNencoded $id and $elem
 	my $txnid;		# undefined until first call to tlogger
 	$txnid = tlogger $sh, $txnid, "BEGIN $id$Se$elem.$lcmd $slvalue";
-
-#	my $oldvalcnt = egg_get_dup($bh, $id, $elem);
-#	! defined($oldvalcnt) and
-#		return undef;
-#	#my $oldvalcnt = indb_get_dup($db, $key);
-#	my $oldval;
-#	# yyy make this a command modifier, not an option, and rlog it!
-#	# yyy what if $elem is buried inside $id?
-#	# yyy shouldn't there be some sort of message with the undef??
 
 	# xxx ditch 'sif', even in indb case? or implement this
 	#    with $set operator? if with $set, how?
@@ -1596,6 +1609,7 @@ sub exdb_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 # xxx assumes being called with ready-for-storage $id
 #     at least in indb case
 #  ?? maybe not in exdb case
+# xxx split this into {ex,in}db cases
 # create id if it's not been created already
 sub egg_init_id { my( $bh, $id, $optime )=@_;
 
@@ -1612,8 +1626,9 @@ sub egg_init_id { my( $bh, $id, $optime )=@_;
 		arith_with_dups($dbh, "$A/bindings_count", +2);
 		# yyy no error check
 	}
-# XXX do we need to do egg_init_id at all in exdb case?
 	if ($sh->{exdb}) {
+# XXX do we need to do egg_init_id at all in exdb case?
+# XXXXXX arrives with wrong (indb) encoding!
 		@pkey = exdb_get_dup($bh, $id, PERMS_EL_EX);
 		scalar(@pkey) and		# it exists,
 			return 1;		# so nothing to do
@@ -2436,9 +2451,6 @@ sub egg_inflect { my ($bh, $mods, $om, $id)=@_;
 #BETTER: push flex_enc calls deep into *db_get_dup/*db_set_dup where they
 #  won't conflict
 #  done: correctly done for $id _inside_ get_rawidtree()
-# exdb_get_dup
-# indb_get_dup
-# exdb_set_dup
 # indb_set (?? doesn't exist)
 # xxx must implement exists() for exdb case
 
@@ -2532,95 +2544,6 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 	my $rrm = $bh->{rrm};		# yyy pretty sure $rrm not used here
 	my $lcmd = $rrm ? 'resolve' : 'fetch';
 
-#	# If in resolver mode and there is an array of subresolvers
-#	# (binder handlers), use them.  For now, it should usually be
-#	# true that ($bh->{resolverlist_a} and ! $bh->{subresolver})
-#	# when $rrm is in effect.  We use $bh->{subresolver} to guide
-#	# empty returns (nothing found) when there's no resolverlist.
-#	#
-#	# xxx right now there's no use of resolverlist, so we don't do txnlog
-#	#! $bh->{subresolver} and
-#	#	$xxx = '';
-#	#$xxx .= "\n>>>||| Entering e_f($bh, ..., id=$id) ";
-#	if ($rrm and $bh->{resolverlist_a}) {
-#		my @rvals;
-#		my $rmh;
-#		for $rmh (@{ $bh->{resolverlist_a} }) {
-#
-#		#$xxx .= "\n^^^ recurse with rmh=$rmh, id=$id";
-#		##$xxx .= " ^^^ list item rmh=$rmh; rlista="
-#		#	. ($bh->{resolverlist_a} || "null")." ";
-#
-#		## xxxxx this is putting out the same rmh and mh
-#		#$rmh->{xxx} .= " ^^^ rmh=$rmh; mh=$bh; rlista="
-#		#	. join(",", @{ $bh->{resolverlist_a} });
-#		#$rmh->{xxx} .= " ### pre-opened minder resolverlist_a setting:"
-#		#	. ($rmh->{resolverlist_a} || "null");
-#
-#			# Recursive call; it recurses only once because the
-#			# pre-opened minders don't have resolverlist_a set.
-#			#
-#
-#			$st = EggNog::Egg::egg_fetch($rmh, $mods, $om,
-#					undef, \@rvals, $id, @elems) or
-#			     #$rmh->{xxx} .= " *** error on recursive fetch ",
-#				return undef;
-#
-#			# We return when anything was found.  We don't need
-#			# to output anything since the subresolver's $om will
-#			# have taken care of output for us.  However, we ARE
-#			# responsible for output when nothing was found across
-#			# all subresolvers.
-#			#
-#			#$xxx .= "\n&&& recursive fetch got " . scalar(@rvals)
-#			#	. " value(s), resolverlist_a setting:"
-#			#	. ($rmh->{resolverlist_a} || "null");
-#			scalar(@rvals) and
-#				return $st;
-#			#$xxx .= "\n+++ continue after fetch ";
-#
-#			#if (scalar(@rvals)) {
-#			#	# xxx do we need the various $rmh->{rrmlog}'s?
-#			#	$bh->{rrmlog} and $bh->{rrmlog}->out(
-#			#		"N: after match in $rmh on id $id");
-#			#	return $st;
-#			#}
-#
-#			# yyy in another universe we might choose to
-#			# return only after collecting all matches found
-#			# instead of just the first
-#		}
-#		# If we get here, nothing was found in any subresolver.  We
-#		# return an empty response to satisfy the RewriteMap protocol.
-#		# yyy some parallel code below to maintain when rrm fails
-#		#     and there's no resolverlist
-#		#
-#		my @dups = ("");	# fake an empty element, forcing an
-#					# empty line to satisfy rrm protocol
-#
-#		# kludge when we're resolving: join dups to output on one line
-#		@dups = join(" ; ", @dups);
-#				# xxx this assumes ANVL and overwrites @dups
-#
-#		#$bh->{rrmlog} and
-#		#	$bh->{rrmlog}->out("P: no match for $id");
-#		# xxx right now there's no use of resolverlist,
-#		#  so we don't do txnlog
-#
-#		my $elem = '_t';	# xxx need a 'resolve' operation
-#		my @ss = map		# save strings or status after mapping
-#			$om->elem( ($elem ne '' ? $elem : '""'), $_),	# $om
-#			@dups;					# to @dups
-#
-#		# This line in the loop shows a fast and compact (if cryptic)
-#		# way to accumulate $om->method calls.  Used after each method
-#		# call, it concatenates strings or ANDs up print statuses,
-#		# depending on the outhandle setting.
-#		#
-#		$p && (($st &&= $_), 1) || ($st .= $_)		for (@ss);
-#		return $st;
-#	}
-
 	if (! $mods->{did_rawidtree}) {
 		EggNog::Cmdline::instantiate($bh, $mods->{hx}, $id, @elems) or
 			addmsg($bh, "instantiate failed from fetch"),
@@ -2637,24 +2560,31 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 		@$elemsR = ();	# that we'll be able to push values onto it.
 
 	my $txnid;		# undefined until first call to tlogger
-	if ($#elems < 0 and $om) {	# no elems specified, so find them
-					# and don't bother if no ($om) output
 
-		# NB: if we're here, we weren't called by get_rawidtree, since
-		# it would have called us with a specific element.
+	if ($#elems < 0 and $om) {	# process and return (no fall through)
+	
+		# We're here because no elems were specified, so find them.
+		# and don't bother if no ($om) output
+
+		# NB: if we're here, we weren't called by get_rawidtree,
+		# since it would have called us with a specific element.
+# xxx so ! did_rawidtree ?
 
 		$txnid = tlogger $sh, $txnid, "BEGIN $lcmd $id";
 
 		if ($sh->{fetch_exdb}) {	# if EGG_DBIE is e or ei
+
+			my $rfs = flex_enc_exdb($id, @elems);	# yyy no @elems
+
+# xxx similar to calling get_rawidtree
 			my $result;
 			# yyy binder belongs in $bh, NOT to $sh!
 			#     see ebopen()
 			my $coll = $bh->{sh}->{exdb}->{binder};	# collection
 			my $msg;
 			my $ok = try {
-# xxx flex_enc_exdb $id before lookup
 				$result = $coll->find_one(
-					{ PKEY()	=> $id },
+					{ PKEY()	=> $rfs->{id} },
 				)
 				// 0;		# 0 != undefined
 			}
@@ -2670,12 +2600,12 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 			# yyy using $result how?
 			#use Data::Dumper "Dumper";
 			#print Dumper $result;
+			#$out_id = $id ne '' ? $id : '""';
+			#$out_id =~		# "flex_dec_exdb" as needed
+			#	s/\^([[:xdigit:]]{2})/chr hex $1/eg;
 
 			my ($out_elem, $out_id);	# output ready forms
-# xxx write and call exdb_id_output()
-			$out_id = $id ne '' ? $id : '""';
-			$out_id =~		# "flex_dec_exdb" as needed
-				s/\^([[:xdigit:]]{2})/chr hex $1/eg;
+			$out_id = flex_dec_for_display($id);
 			# yyy maybe $id:\n or "id: $id\n"? or "# id: $id\n" ?
 			$s = $om->elem('id',		# print starter comment
 				" id: " . $out_id, "1#");
@@ -2696,10 +2626,10 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 					next;
 				$k eq '_id' and		# yyy peculiar to mongo
 					next;
-#				$out_elem = $k ne '' ? $k : '""';
-#				$out_elem =~	# "flex_dec_exdb" as needed
-#					s/\^([[:xdigit:]]{2})/chr hex $1/eg;
-#				$s = $om->elem($out_elem, $v);
+			#	$out_elem = $k ne '' ? $k : '""';
+			#	$out_elem =~	# "flex_dec_exdb" as needed
+			#		s/\^([[:xdigit:]]{2})/chr hex $1/eg;
+			#	$s = $om->elem($out_elem, $v);
 				$s = exdb_elem_output($om, $k, $v);
 				($p && (($st &&= $s), 1) || ($st .= $s));
 				$nelems++;
@@ -2723,25 +2653,29 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 		return $st;
 	}
 
-	# Process args in place, expanding @ and hex-encodings, unless
-	# the args originated by discovery via get_rawidtree().
-	#
-	my $key;
-	my $irfs;		# ready-for-storage versions of id, elem, ...
-	if (! $mods->{did_rawidtree}) {
-		$irfs = flex_enc_indb($id, @elems);
-#say "xxx naively called flex_enc_indb($id, $elems[0], ...)";
-		$key = $irfs->{key};
-		$id = $irfs->{id};		# need encoded $id
-		@elems = @{ $irfs->{elems} };	# need encoded @elems
-	}
-	else {
-		$key = join($Se, $id, @elems),
-	}
+#	my $key;	# xxx used?
+## xxx duplicate below and test; then drop this whole if thing from here
+#	if (! $mods->{did_rawidtree}) {
+#		$irfs = flex_enc_indb($id, @elems);
+##say "xxx naively called flex_enc_indb($id, $elems[0], ...)";
+## XXX use these from $irfs -- don't overwrite original $id and elems
+#		#$key = $irfs->{key};
+#		#$id = $irfs->{id};		# need encoded $id
+#		#@elems = @{ $irfs->{elems} };	# need encoded @elems
+#	}
+#	elsif ($sh->{fetch_indb}) {	# yyy exdb won't call get_ rawidtree
+## xxx !! useless -- drop this clause
+#		$irfs->{key} = join($Se, $id, @elems);
+#		# yyy not setting id or elems because we don't use them?
+#	}
+#	#else {		# this does no harm or good
+#	#	$key = join($Se, $id, @elems),
+#	#}
 
 	# XXX need to issue END before every error return below
 	# xxx we're starting a bit late (so timing may look a little faster)
 	#     but we get less noise from each recursive call
+	# use UNencded $id and @elems
 	$txnid = tlogger $sh, $txnid, "BEGIN $lcmd $id " . join('|', @elems);
 
 	# If we get here, elements or element sets to fetch were specified.
@@ -2753,38 +2687,48 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 	my %khash = ();		# kludge hash
 	my $msg;
 	my @newelems = ();
-	defined(&EggNog::Resolver::expand_blobs) and
-		push @newelems, EggNog::Resolver::expand_blobs
-			($db, $id, $msg, \%khash, @elems);
-	#print "newelems=@newelems\n";
+	push @newelems, EggNog::Resolver::expand_blobs
+		# using UNencoded $id and @elems (don't need "rfs" args)
+		($bh, $id, $msg, \%khash, @elems);
 	$msg and
 		addmsg($bh, $msg),
 		return undef;
 
-# xxx newelems aren't encoded
-	scalar(@newelems)	and push @elems, @newelems;
+	scalar(@newelems) and		# btw newelems aren't encoded yet
+		push @elems, @newelems;
 	#
 	# Any new elements were pushed on together with existing element
 	# set names (eg, :brief).  New elements may include special
 	# elements (eg, :id, :policy) to be processed specially.
 
-	#my $dbgpr = $bh->{opt}->{debug} ? $bh->{opt}->{dbgpr} : undef;
-	#$dbgpr	and &$dbgpr("elements=" .  join(", ", @elems) . "\n");
-	# yyy this is strange and clunky
-	$bh->{dbgpr} and
-		&{ $bh->{dbgpr} } ("elements=" . join(", ", @elems) . "\n");
-	# xxx make work for XML and ERC blobs
+	# if get_rawidtree() was called, our args are already "rfs"
+	my $rfs;
+	if (! $mods->{did_rawidtree}) {
+		$rfs = $sh->{fetch_indb}
+			? flex_enc_indb($id, @elems)
+			: flex_enc_exdb($id, @elems)
+		;
+	}
+	else {
+		$rfs = {
+			id => $id,
+			elems => \@elems,
+		};
+	}
 
-	# xxx note: returns dups mixed together with single-valued elems
+	# yyy make work for XML and ERC blobs
+
+	# yyy note: returns dups mixed together with single-valued elems
 	# By far most elements aren't duplicated, but we're prepared.
 	#
 	my (@ss, $idmapped);	# strings/statuses and rule-based mappings
 	my (@dups, @kdupix);	# dups and kludge dup indices
 	my $special;		# kludge for :id and :policy
 	my $rrmfail = 0;
-	for my $elem (@elems) {
 
-		# xxx will this be able use OM and get string output?
+	for my $elem ( @{ $rfs->{elems} } ) {
+
+		# xxx will this be able to use OM and get string output?
 		# xxx test
 
 		# Try to find some values, first by straightforward lookup
@@ -2794,6 +2738,10 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 		$special = '';
 		my $key;
 		if ($elem =~ /^:/) {		# special element like :brief
+			# use UNencoded args -- don't need "rfs" args since
+			# all special_elems will be recognized either way
+			# NB: on success, args 2 and 3 will be MODIFIED
+			# yyy? but not in a way that needs re-flex_encoding
 			EggNog::Resolver::special_elem(
 					$id, $special, $elem, \@dups) or
 				next;		# xxx error?  or what?
@@ -2803,23 +2751,10 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 			# will have been done either through get_rawidtree()
 			# or through code earlier in this routine.
 
-			# yyy next should work for either indb or exdb case
-			@dups = egg_get_dup($bh, $id, $elem);
-			#@dups = indb_get_dup($db, "$id$Se$elem");
-
-#			$rrm and $id eq RRMINFOARK and
-#				@dups = ( EggNog::Binder::rrminfo() );
-#			my $shadow;
-#			scalar(@dups) or
-#				# yyy maybe id2shadow is ONLY
-#				    # needed on resolution; shadow ARKs are
-#				    # used ONLY by EZID client, which knows
-#				    # exactly how to create the form of the
-#				    # name used for set/fetch ops
-#				$shadow = EggNog::Resolver::id2shadow($id) and
-#					@dups = egg_get_dup($bh,
-#						$shadow, $elem);
-#					#@dups = indb_get_dup($db, "$shadow$Se$elem");
+			@dups = $sh->{fetch_indb}
+				? indb_get_dup($db, $rfs->{id} . $Se . $elem)
+				: exdb_get_dup($bh, $rfs->{id}, $elem)
+			;
 		}
 
 		# yyy adds values that were hidden in blobs; presumably
@@ -2830,28 +2765,8 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 		@kdupix = $khash{$elem} && ! $special ?
 			@{ $khash{$elem} } : ();	# index into @newelems
 		scalar(@kdupix) and		# value is at index + 2
-			push @dups, @newelems[ map {$_ + 2} @kdupix ];
-
-#		scalar(@dups) or	# if none, try suffix pass thru
-#			# note that suffix pass thru might not be ready
-#			# yyy should quote Regexp chars next?
-#			#     or use substr() approach
-#			# @suffixable won't be defined if we're not using
-#			# advance resolver code
-#			@suffixable and grep(/^$elem$/, @suffixable) and
-#				@dups = EggNog::Resolver::suffix_pass($bh,
-#						$id, $elem);
-#
-#		scalar(@dups) or	# if still none, try rule-based mapping
-#			@dups = id2elemval($bh, $db, $id, $elem);
-#		
-#		$rrm and		# if in RewriteMap Resolver mode and
-#			! scalar(@dups) and		# still no values and
-#			! $bh->{subresolver} and	# not subresolving,
-#				$rrmfail = 1,
-#				@dups = ("");		# fake an empty element
-#			# to force next test to succeed to force an empty
-#			# line to satisfy the rrm protocol
+			push @dups,
+				@newelems[ map {$_ + 2} @kdupix ];
 
 		# yyy "" element value aside, this is fishy logic for
 		#     outputting when you're NOT a subresolver
@@ -2880,13 +2795,6 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 
 		# If we get here, the caller wants us to output via $om.
 
-#		$rrm and		# kludge if we're resolving: join dups
-#			@dups = join(" ; ", @dups);	# to output on one line
-#				# yyy this assumes ANVL and overwrites @dups
-#				# yyy little weird assigning a scalar to
-#				#     overwrite all array elements with just
-#				#     one element
-
 		my $out_elem = $elem ne '' ? $elem : '""';
 		$out_elem =~		# "flex_dec_indb" as needed
 			s/\^([[:xdigit:]]{2})/chr hex $1/eg;
@@ -2911,7 +2819,6 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 		#
 		$p && (($st &&= $_), 1) || ($st .= $_)		for (@ss);
 	}
-	#if ($txnlog) {
 	$msg = 'END ' . ($st ? 'SUCCESS' : 'FAIL');
 	$rrmfail and
 		$msg = 'END FAIL';
@@ -3039,10 +2946,12 @@ sub get_rawidtree { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id )=@_;
 	1 or
 		$done = 1
 	;
+	#$out_id = $id ne '' ? $id : '""';
+	#$out_id =~		# "flex_dec_indb" as needed
+	#	s/\^([[:xdigit:]]{2})/chr hex $1/eg;
+
 	my ($out_elem, $out_id);		# output ready forms
-	$out_id = $id ne '' ? $id : '""';
-	$out_id =~		# "flex_dec_indb" as needed
-		s/\^([[:xdigit:]]{2})/chr hex $1/eg;
+	$out_id = flex_dec_for_display($id);
 	# yyy should it be $id:\n or "id: $id\n"? or "# id: $id\n" ?
 	$om and ($s = $om->elem('id',			# print starter comment
 		" id: " . $out_id, "1#"));
