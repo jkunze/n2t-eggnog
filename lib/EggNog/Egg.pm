@@ -68,6 +68,7 @@ our $SL = length $separator;
 #
 my $A = EggNog::Binder::ADMIN_PREFIX;
 my $Se = EggNog::Binder::SUBELEM_SC;	# indb case
+my $So = '|';				# sub-element separator on OUTPUT
 my $EXsc = qr/(^\$|[.^])/;		# exdb special chars, mongo-specific
 
 use Fcntl qw(:DEFAULT :flock);
@@ -85,6 +86,7 @@ our $Win;			# whether we're running on Windows
 # xxxx but put "mint" back in!
 # xxx implement append and prepend or remove!
 # xxx document mkid rmid
+# xxx valid_hows is unused -- remove here and in Nog.pm?
 my @valid_hows = qw(
 	set let add another append prepend insert delete mkid rm
 );
@@ -226,17 +228,21 @@ sub egg_purge { my( $bh, $mods, $lcmd, $formal, $id )=@_;
 		return undef;
 
 	my $ret;
-	if ($sh->{exdb}) {				# egg_purge
-		# xxx flex_enc_exdb $id
+	if ($sh->{exdb}) {
+		my $erfs = flex_enc_exdb($id);		# ready-for-storage id
 		my $msg;
 		my $ok = try {
 			my $coll = $bh->{sh}->{exdb}->{binder};	# collection
 	# xxx make sure del and purge are done for exdb
 	# xxx ALL elems should be arrays, NOT returning them
 	# xxx who calls flex_enc_exdb?
-			$ret = $coll->delete_many(	# yyy delete_one
-							# should be sufficient!
-				{ PKEY() => $id },	# query
+			# in delete_many, "many" refers to records/docs,
+			# but with our uniqueness constraint, delete_one
+			# should be sufficient yyy right?
+			# yyy deleting everything as if $mods->{all} = 1;
+			$ret = $coll->delete_many(
+				#{ PKEY() => $id },	# query clause
+				{ PKEY() => $erfs->{id} },	# query clause
 			)
 			// 0;		# 0 != undefined
 		}
@@ -264,6 +270,7 @@ sub egg_purge { my( $bh, $mods, $lcmd, $formal, $id )=@_;
 	#
 	$mods->{all} = 1;			# xxx downstream side-effects?
 	# NB: arg3 undef means don't output results
+	# calling with UNencoded $id
 	get_rawidtree($bh, $mods, undef, \@elems, undef, $id) or
 		addmsg($bh, "rawidtree returned undef"),
 		return undef;
@@ -297,6 +304,7 @@ sub egg_purge { my( $bh, $mods, $lcmd, $formal, $id )=@_;
 		$elem eq $prev_elem and	# prior egg_del call deleted all dupes
 			next;		# so skip another call to avoid error
 		$retval &&= (
+			# calling with UNencoded $id and $elem
 			$delst = egg_del($bh, $mods, '', $formal, $id, $elem), 
 			($delst or outmsg($bh)),
 		$delst ? 1 : 0);
@@ -463,6 +471,74 @@ sub indb_get_dup { my( $db, $key )=@_;
 }
 
 # yyy currently returns 0 on success (mimicking BDB-school return)
+# xxx this is called only once, so we can easily split it into two;
+#     {ex,in}db_del_dup and pass in appropriatedly flex_encoded args
+
+# xxx add encoding tests for del and resolve
+# XXXXXXXXX next: call flex_encode in indb case and rerun all tests!
+
+# Assumes $id and $elem are already encoded "rfs"
+
+sub indb_del_dup { my( $bh, $id, $elem )=@_;
+
+	my ($instatus, $result) = (0, 1);	# default is success
+	my $db = $bh->{db};
+
+	# xxx check that $elem is non-empty?
+	my $key = "$id$Se$elem";
+	$instatus = $db->db_del($key);
+	$instatus != 0 and addmsg($bh,
+		# xxx these should be displaying UNencoded $id and $elem
+		"problem deleting elem \"$elem\" under id \"$id\" " .
+			"from internal database: $@");
+		#return undef;
+	# yyy check $result how?
+	! $result || $instatus != 0 and
+		return -1;
+	return 0;
+}
+
+# yyy currently returns 0 on success (mimicking BDB-school return)
+# xxx assumes $id and $elem are already encoded "rfs"
+# xxx this is called only once, so we can easily split it into two;
+#     {ex,in}db_del_dup and pass in appropriatedly flex_encoded args
+
+# Assumes $id and $elem are already encoded "rfs"
+
+sub exdb_del_dup { my( $bh, $id, $elem )=@_;
+
+	my ($instatus, $result) = (0, 1);	# default is success
+
+	# xxx check that $elem is non-empty?
+	# XXX who calls arith_with_dups?
+
+	# XXX binder belongs in $bh, NOT to $sh!
+	my $coll = $bh->{sh}->{exdb}->{binder};	# collection
+	my $msg;
+	my $ok = try {
+		$result = $coll->update_one(
+			{ PKEY()		=> $id },
+			{ '$unset'	=> { $elem => 1 } }
+		)
+		// 0;		# 0 != undefined
+	}
+	catch {
+		# xxx these should be displaying UNencoded $id and $elem
+		$msg = "error deleting elem \"$elem\" under " .
+			"id \"$id\" from external database: $_";
+		return undef;	# returns from "catch", NOT from routine
+	};
+	! defined($ok) and 	# test undefined since zero is ok
+		addmsg($bh, $msg),
+		return undef;
+
+	# yyy check $result how?
+	! $result || $instatus != 0 and
+		return -1;
+	return 0;
+}
+
+# yyy currently returns 0 on success (mimicking BDB-school return)
 # xxx assumes $id and $elem are already encoded "rfs"
 # xxx this is called only once, so we can easily split it into two;
 #     {ex,in}db_del_dup and pass in appropriatedly flex_encoded args
@@ -471,6 +547,7 @@ sub egg_del_dup { my( $bh, $id, $elem )=@_;
 	my ($instatus, $result) = (0, 1);	# default is success
 	my $db = $bh->{db};
 
+# xxx add encoding tests for del and resolve
 # XXXXXXXXX next: call flex_encode in indb case and rerun all tests!
 
 # xxx who calls flex_encode? no one?
@@ -514,7 +591,9 @@ sub egg_del_dup { my( $bh, $id, $elem )=@_;
 # $formal is true if we behave as if called by "delete" (whatever
 #   that means) -- xxx does it mean rm is as if "--quiet"?
 # xxx $elem or @elems?  yyy pluralize?
-#
+
+# This routine is called by egg_purge with UNencoded $id and $elem
+
 sub egg_del { my( $bh, $mods, $lcmd, $formal, $id, $elem )=@_;
 
 	my $sh = $bh->{sh};
@@ -529,6 +608,20 @@ sub egg_del { my( $bh, $mods, $lcmd, $formal, $id, $elem )=@_;
 		addmsg($bh, "no element name given"),
 		return undef;
 
+	if (! $mods->{did_rawidtree}) {
+		EggNog::Cmdline::instantiate($bh, $mods->{hx}, $id, $elem) or
+			addmsg($bh, "instantiate failed from fetch"),
+			return undef;
+	}
+
+	my $key = $id . $Se . $elem;		# UNencoded
+	my ($erfs, $irfs);	# ready-for-storage versions of id, elem, ...
+
+	$bh->{sh}->{exdb} and
+		$erfs = flex_enc_exdb($id, $elem);
+	$bh->{sh}->{indb} and
+		$irfs = flex_enc_indb($id, $elem);
+
 	! egg_authz_ok($bh, $id, OP_DELETE) and
 		return undef;
 
@@ -537,19 +630,17 @@ sub egg_del { my( $bh, $mods, $lcmd, $formal, $id, $elem )=@_;
 	$lcmd and
 		$txnid = tlogger $sh, $txnid, "BEGIN $id.$lcmd $elem";
 
-	my $key;
-	my $irfs;		# ready-for-storage versions of id, elem, ...
-	if (! $mods->{did_rawidtree}) {
-		EggNog::Cmdline::instantiate($bh, $mods->{hx}, $id, $elem) or
-			addmsg($bh, "instantiate failed from delete"),
-			return undef;
-		$irfs = flex_enc_indb($id, $elem);
-		($key, $id, $elem) =
-			($irfs->{key}, $irfs->{id}, $irfs->{elems}->[0]);
-	}
-	else {
-		$key = "$id$Se$elem";
-	}
+#	if (! $mods->{did_rawidtree}) {
+#		EggNog::Cmdline::instantiate($bh, $mods->{hx}, $id, $elem) or
+#			addmsg($bh, "instantiate failed from delete"),
+#			return undef;
+#		$irfs = flex_enc_indb($id, $elem);
+#		($key, $id, $elem) =
+#			($irfs->{key}, $irfs->{id}, $irfs->{elems}->[0]);
+#	}
+#	else {
+#		$key = "$id$Se$elem";
+#	}
 
 	# yyy should rawidtree call (for purge) egg_del?
 	#     -- it already does so for fetch...
@@ -560,8 +651,11 @@ sub egg_del { my( $bh, $mods, $lcmd, $formal, $id, $elem )=@_;
 	my ($oldvalcnt, $oxum, @oldlens);
 	if ($bh->{opt}->{ack}) {
 		#@oldlens = map length, $db->get_dup($key);
-# xxx call either {ex,in}db_get_dup here, with rfs args
-		@oldlens = map length, indb_get_dup($db, $key);
+		#@oldlens = map length, indb_get_dup($db, $key);
+		@oldlens = map length, $irfs
+			? indb_get_dup($db, $irfs->{key})
+			: exdb_get_dup($bh, $id, $elem)
+		;
 		$oldvalcnt = scalar(@oldlens);
 		my $octets = 0;
 		$octets += $_
@@ -572,52 +666,59 @@ sub egg_del { my( $bh, $mods, $lcmd, $formal, $id, $elem )=@_;
 	}
 	else {
 		#$oldvalcnt = $db->get_dup($key);
-# xxx call either {ex,in}db_get_dup here, with rfs args
-		$oldvalcnt = indb_get_dup($db, $key);
+		#$oldvalcnt = indb_get_dup($db, $key);
+		$oldvalcnt = $irfs
+			? indb_get_dup($db, $irfs->{key})
+			: -1		# we're ignoring it in exdb case
+		;
 	}
+	# xxx dropping this for now
 	# XXXX is this the right message/behavior?
-	sif($bh, $elem, $oldvalcnt) or		# check "succeed if" option
-		addmsg($bh, "proceed test failed"),
-		return undef;
+	#sif($bh, $elem, $oldvalcnt) or		# check "succeed if" option
+	#	addmsg($bh, "proceed test failed"),
+	#	return undef;
 
 	dblock();	# no-op
 
-	# yyy create more tests with dups
-# ZZZZZ
+# xxx test del/purge/exists with encodings
 	# Somehow we decided that rm/delete operations should succeed
 	# after this point even if there's nothing to delete. Maybe
 	# that's because our indb doesn't throw an exception, but now
 	# no longer try to delete a non-existent value because our exdb
 	# would throw an exception.
+# xxx is above comment true?
 
 	my $status = 0;		# default is success
-	$oldvalcnt and		# if there's at least one value delete it
-		$status = egg_del_dup($bh, $id, $elem);
-	#my $status = $db->db_del($key);
-	my $msg =
-		#($status == 0 ?			# no error
-		#	"" :
-		## xxx $opt->{force} is not needed -- non-existent key ok
-		#($status == 1 && ! $opt->{force} ?	# typical
-		#	"$key doesn't exist" :
-		#	#"$id$Se$elem doesn't exist" :
+	my ($emsg, $imsg);
 
-		($status != 0 && $status != DB_NOTFOUND() ?	# error
-			"couldn't remove $key ($id$Se$elem) ($status)" :
-			''	);
+	#$oldvalcnt and		# if there's at least one (even -1) value
+	#	$status = egg_del_dup($bh, $id, $elem);		# then delete
 
-	$msg and 
-		addmsg($bh, $msg),
+	# if there's at least one (even -1) value, then delete
+	if ($oldvalcnt and $erfs) { 
+		$status = exdb_del_dup($bh, $erfs->{id}, $erfs->{elems}->[0]);
+		$emsg = ($status != 0				# error
+			? "couldn't remove key ($erfs->{key}) ($status)"
+			: '');
+		$emsg and 
+			addmsg($bh, $emsg);
+	}
+	if ($oldvalcnt and $irfs) { 
+		$status = indb_del_dup($bh, $irfs->{id}, $irfs->{elems}->[0]);
+		$imsg = ($status != 0 && $status != DB_NOTFOUND()	# error
+			? "couldn't remove key ($irfs->{key}) ($status)"
+			: '');
+		$imsg and 
+			addmsg($bh, $imsg);
+	}
+	$emsg || $imsg and 
 		dbunlock(),
 		return undef;
-	#$dbh->{"$A/bindings_count"} -= $oldvalcnt;
 	if ($status == 0) {		# if element both found and removed
-# ZZZZZ
-		# XXX not doing arith_with_dups for exdb case
-		$bh->{sh}->{indb} and
+		$irfs and
 			arith_with_dups($dbh, "$A/bindings_count", -$oldvalcnt),
 			($dbh->{"$A/bindings_count"} < 0 and addmsg($bh,
-				"bindings count went negative on $key"),
+				"bindings count went negative on $irfs->{key}"),
 				return undef),
 		;
 		# Note that if a problem shows up and you fix it, you won't
@@ -642,12 +743,6 @@ sub egg_del { my( $bh, $mods, $lcmd, $formal, $id, $elem )=@_;
 	$lcmd and
 		tlogger $sh, $txnid, "END SUCCESS $id.$lcmd $elem";
 
-	# xxx find replacement or stop calling this,
-	#     as it only works for indb case
-	#$lcmd and $msg = $bh->{rlog}->out("C: $key.$lcmd") and
-	#	addmsg($bh, $msg),
-	#	return undef;
-
 	# xxx document that "delete" means "rm" but with echo
 	$formal or		# silence is golden
 		return 1;
@@ -656,12 +751,16 @@ sub egg_del { my( $bh, $mods, $lcmd, $formal, $id, $elem )=@_;
 	# xxx do something with the $status, $oxstatus, $omstatus return!
 	# XXX change "element" to "dupe"
 	# XXX where does --ack fit in?
+# xxx $key??
 	my $omstatus = $om->elem("ok", ($oldvalcnt == 1 ?
-		#"element removed: $id$Se$elem" :
-		"element removed: $key" :
+		# XXX need way to DISPLAY id + elem, and this next looks like a
+		#     mistake but it's not
+		#"element removed: $key" :
+		"element removed: $id$So$elem" :
 		($status == 1 ? "element doesn't exist" :
-			"$oldvalcnt elements removed: $key")));
-			#"$oldvalcnt elements removed: $id$Se$elem")));
+# xxx display these properly or not at all?
+			"$oldvalcnt elements removed: $id$So$elem")));
+			#"$oldvalcnt elements removed: $key")));
 	return 1;
 }
 
@@ -773,11 +872,14 @@ sub flex_dec { my $s = shift;
 	return $s;
 }
 
-# Take encoded string and return circumflex-decoded string suitable for
-# human display.  Does not modify its argument.
+# Take encoded string (eg, identifier or element name) and return
+# a circumflex-decoded string suitable for human display.
+# Does not modify its argument.
 #
 sub flex_dec_for_display { my( $s )=@_;
 
+# XXX do a version that takes multiple args and inserts '|' between them
+#     suitable for calling with $id, $elem --> foo|bar
 	$s eq '' and			# make an empty string
 		$s = '""';		# a bit more visible
 	$s =~ s/\^([[:xdigit:]]{2})/chr hex $1/eg;
@@ -1386,8 +1488,8 @@ sub indb_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 	# yyy make this a command modifier, not an option, and rlog it!
 	# yyy what if $elem is buried inside $id?
 	# yyy shouldn't there be some sort of message with the undef??
-	sif($bh, $elem, $oldvalcnt) or		# check "succeed if" option
-		return undef;
+#	sif($bh, $elem, $oldvalcnt) or		# check "succeed if" option
+#		return undef;
 
 	# yyy to add: possibly other ops (* + - / **)
 	if ($incr_decr) {
@@ -2586,7 +2688,7 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 				$result = $coll->find_one(
 					{ PKEY()	=> $rfs->{id} },
 				)
-				// 0;		# 0 != undefined
+				// {};	# valid hash {} != undefined
 			}
 			catch {
 				$msg = "error fetching id \"$id\" " .
@@ -2641,9 +2743,13 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 			# xxx unused at the moment
 		}
 		if ($sh->{fetch_indb}) {	# if EGG_DBIE is i or ie
+
 			# Unlike the call from within egg_purge(), this call to
 			# get_rawidtree() does our work itself by outputing as
 			# a SIDE-EFFECT, instead of returning a list to process.
+			# We pass in the UNencoded $id, and it takes care of
+			# element handling for us.
+
 			$st = get_rawidtree($bh, $mods, $om,	# $om defined
 				$elemsR, $valsR, $id);
 		}
@@ -2971,6 +3077,7 @@ sub get_rawidtree { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id )=@_;
 			#
 			$elem = ($key =~ /^[^|]*\|(.*)/s ? $1 : $key);
 
+# xxx ??? $out_id = flex_dec_for_display($id);
 			$out_elem = $elem ne '' ? $elem : '""';
 			$out_elem =~		# "flex_dec_indb" as needed
 				s/\^([[:xdigit:]]{2})/chr hex $1/eg;

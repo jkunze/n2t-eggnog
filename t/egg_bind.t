@@ -75,7 +75,7 @@ like $x, qr/^zaf$/m, "get simple binding with -d";
 $x = `$cmd -d $td/foo foo.add bar xaf`;
 like $x, qr/^$/, "add duplicate binding";
 
-$x = `$cmd -d $td/foo --format anvl --ack foo.another bar yaf`;
+$x = `$cmd -d $td/foo --format anvl --ack foo.add bar yaf`;
 like $x, qr/oxum: 3.1/, "another 3rd duplicate binding";
 
 $x = `$cmd -d $td/foo foo.insert bar daf`;
@@ -107,6 +107,8 @@ $x = `$cmd -d $td/foo -f -m anvl --ack foo.let bar aaa`;
 like $x, qr/oxum: 3.1/,
 	"let proceeds and --ack talks when a value isn't already set";
 
+#say "xxxxxx premature end"; exit;
+
 $x = `$cmd -d $td/foo -m anvl foo.rm eel cow`;
 like $x, qr/^$/s, "'rm foo cow' operation with ANVL";
 
@@ -115,8 +117,9 @@ unlike $x, qr/[zxy]af/s, "old element values wiped out";
 
 like $x, qr/aaa/, "new values in place";
 
-$x = `$cmd -d $td/foo --sif n foo.set bar that`;
-like $x, qr/error.*exists/s, "op to succeed only if elem doesn't exist";
+# yyy dropping --sif until we think it through more
+#$x = `$cmd -d $td/foo --sif n foo.set bar that`;
+#like $x, qr/error.*exists/s, "op to succeed only if elem doesn't exist";
 
 $x = `$cmd -d $td/foo foo.delete that`;
 like $x, qr/^0 elements removed/s, "delete reports non-existent element";
@@ -134,9 +137,10 @@ like $x, qr/^#.*foo\n# elements.*: 0\n\n$/s, "now no element values";
 $x = `$cmd -d $td/foo foo.xyzzy bar`;
 like $x, qr/xyzzy.*Usage/s, "unknown method produces method list";
 
-# this is the old 'replace'
-$x = `$cmd --verbose -d $td/foo --sif X foo.set this that`;
-like $x, qr/error.*doesn.t exist/s, "op to succeed only if elem exists";
+# yyy dropping --sif until we think it through more
+## this is the old 'replace'
+#$x = `$cmd --verbose -d $td/foo --sif X foo.set this that`;
+#like $x, qr/error.*doesn.t exist/s, "op to succeed only if elem exists";
 
 $x = `$cmd --verbose -d $td/foo goo.add star tar`;
 $x = `$cmd --verbose -d $td/foo goo.get star`;

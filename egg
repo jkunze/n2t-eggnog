@@ -969,6 +969,7 @@ sub bdx_cullrlog { my( $destfile )=@_;	# arg is optional
 sub bdx_set	{ bdx_assign( "set", 1, 0, EggNog::Egg::HOW_SET, @_ ) }
 sub bdx_let	{ bdx_assign( "let", 1, 1, EggNog::Egg::HOW_SET, @_ ) }
 sub bdx_add	{ bdx_assign( "add", 0, 0, EggNog::Egg::HOW_ADD, @_ ) }
+# xxx dropped test for "another" -- too tricky for exdb -- drop whole thing?
 sub bdx_another	{ bdx_assign( "another", 0, 1, EggNog::Egg::HOW_ADD, @_ ) }	# xxx needed?
 sub bdx_insert	{ bdx_assign( "insert", 0, 0, EggNog::Egg::HOW_INSERT, @_ ) }
 sub bdx_vinsert	{ bdx_assign( "vinsert", 0, 1, EggNog::Egg::HOW_INSERT, @_ ) }
