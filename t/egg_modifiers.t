@@ -5,7 +5,7 @@ use Test::More qw( no_plan );
 use strict;
 use warnings;
 
-use File::ValueTester ':all';
+use EggNog::ValueTester ':all';
 use File::Value ':all';
 
 my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "egg";
@@ -59,8 +59,8 @@ like $x, qr/^bar:\s*z\^0aa%250af r\n/,
 # '
 #     doesn't match '(?^:^bar:\s*z\^0aa%250af r\n)'
 
-use File::Binder 'SUPPORT_ELEMS_RE';
-my $spat = File::Binder::SUPPORT_ELEMS_RE;
+use EggNog::Binder 'SUPPORT_ELEMS_RE';
+my $spat = EggNog::Binder::SUPPORT_ELEMS_RE;
 
 $x = `$cmd -d $td/foo :all id.fetch`;
 like $x, qr{$spat:.*$spat:}si,

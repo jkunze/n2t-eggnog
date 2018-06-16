@@ -14,9 +14,9 @@ use Test::More;
 use strict;
 use warnings;
 
-use File::ValueTester ':all';
+use EggNog::ValueTester ':all';
 use File::Value ':all';
-use File::ApacheTester ':all';
+use EggNog::ApacheTester ':all';
 
 #my ($td, $cmd) = script_tester "egg";		# yyy needed?
 #my ($td2, $cmd2) = script_tester "nog";		# yyy needed?

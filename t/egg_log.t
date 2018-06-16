@@ -7,7 +7,7 @@ use Test::More qw( no_plan );
 use strict;
 use warnings;
 
-use File::ValueTester ':all';
+use EggNog::ValueTester ':all';
 use File::Value ':all';
 
 my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "egg";
@@ -88,7 +88,7 @@ like $x, qr/created.*foo/, 'make binder named foo';
 #like $x, qr/H: .*rlog.*M: mkbinder/si,
 #	'creation reflected in binder log file';
 
-#use File::Temper ':all';
+#use EggNog::Temper ':all';
 #while (my ($key, $value) = each %c64i) {
 #	print "key=$key, value=$value\n";
 #}

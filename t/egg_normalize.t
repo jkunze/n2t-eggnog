@@ -6,7 +6,7 @@ plan 'no_plan';		# how we usually roll -- freedom to test whatever
 use strict;
 use warnings;
 
-use File::ValueTester ':all';
+use EggNog::ValueTester ':all';
 use File::Value ':all';
 
 my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "egg";
@@ -17,7 +17,7 @@ $ENV{EGG} = $hgbase;		# initialize basic --home and --bgroup values
 {		# some simple ? and ?? tests
 remake_td($td);
 
-use File::Resolver ':all';
+use EggNog::Resolver ':all';
 my $pfx = {};
 my $x;
 
@@ -72,7 +72,7 @@ like $x->{checkstring}, qr|^b2345/3bladepart$|,
 #
 my ($i, $q) = ('987AbCd654', '-z-?');
 ($full_id, $scheme, $naan, $shoulder, $id, $query, $slid, $pinfo) =
-$x = id_normalize($pfx, " $File::Resolver::scheme_test:$i?$q ");
+$x = id_normalize($pfx, " $EggNog::Resolver::scheme_test:$i?$q ");
 
 # PFX_TABLE PFX_RRULE PFX_XFORM PFX_LOOK PFX_REDIR PFX_REDIRNOQ
 
@@ -83,7 +83,7 @@ $x = id_normalize($pfx, " $File::Resolver::scheme_test:$i?$q ");
 my ($targetquery);
 my ($target, $xform) = ($pinfo->{PFX_REDIR}, $pinfo->{PFX_XFORM});
 
-$target = $File::Resolver::scheme_target;
+$target = $EggNog::Resolver::scheme_target;
 $xform =~ /2U/ and
 	$i = uc $i;
 $xform =~ /2L/ and
@@ -158,7 +158,7 @@ like $x, qr|ark:/97721/f81d4fae7dec11d0a76500a0c91e6bf6\.FOo\?NO-W|,
 #like $x, qr|ark:/97720/f81d4fae7dec11d0a76500a0c91e6bf6/bar\?NO-W|,
 #  '2shadow urn:uuid drops - except in query, keeps extension case';
 
-use File::Resolver 'uuid_normalize';
+use EggNog::Resolver 'uuid_normalize';
 use MIME::Base64 ();
 # take uuidgen hex output: $hexstring
 my $hexstring = lc '509F11E1597442E692F1684AA7846877';

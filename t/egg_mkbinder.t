@@ -4,7 +4,7 @@ use Test::More qw( no_plan );
 use strict;
 use warnings;
 
-use File::ValueTester ':all';
+use EggNog::ValueTester ':all';
 use File::Value ':all';
 
 my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "egg";
@@ -12,7 +12,7 @@ $td or			# if error
 	exit 1;
 $ENV{EGG} = $hgbase;		# initialize basic --home and --bgroup values
 
-use File::Egg;
+use EggNog::Egg;
 {
 remake_td($td);
 my $x;
@@ -29,7 +29,7 @@ is +(-f "$td/foo/egg_README" && -f "$td/foo/egg_lock"), 1,
 # xxx create routine to auto-verify health of a binder, add namaste tags, etc
 use File::Namaste;
 (undef, $x, undef) = File::Namaste::nam_get("$td/foo", 0);
-is $x, "$td/foo/0=egg_$File::Egg::VERSION",
+is $x, "$td/foo/0=egg_$EggNog::Egg::VERSION",
 	"namaste dirtype tag created";
 
 $x = `$cmd --verbose -p $td mkbinder foo/bar`;

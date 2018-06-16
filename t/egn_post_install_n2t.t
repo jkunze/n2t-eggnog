@@ -14,9 +14,9 @@ use Test::More;
 use strict;
 use warnings;
 
-use File::ValueTester ':all';
+use EggNog::ValueTester ':all';
 use File::Value ':all';
-use File::Temper 'etemper';
+use EggNog::Temper 'etemper';
 
 my $which = `which wegn`;
 $which =~ /wegn/ or plan skip_all => "why: web client \"wegn\" not found";
@@ -32,7 +32,7 @@ my ($x, $y, $n);
 
 my $ark1 = 'ark:/99999/fk8n2test1';
 my $tgt1 = 'http://www.cdlib.org/';
-my $tgt2 = 'http://www.cdlib.org/' . File::Temper::etemper();
+my $tgt2 = 'http://www.cdlib.org/' . EggNog::Temper::etemper();
 my $eoi = 'doi:10.5072/EOITEST';	# MUST register in normalized uppercase
 my $eoi_tgt = 'http://crossref.org/';
 my $eoi_ref = 'eoi:10.5072/EOITEST';	# normalized reference
@@ -281,7 +281,7 @@ my $prd = 'n2t.net';
 #$x = `wegn -s $stg@@ ark:/99999/fk8n2test1.set foo bar`;
 #like $x, qr@egg-status: 0@, "signed cert check on stage permits binding";
 
-use File::Binder ':all';
+use EggNog::Binder ':all';
 my $rrminfo = RRMINFOARK;
 
 my $hgid = `hg identify | sed 's/ .*//'`;
@@ -297,18 +297,18 @@ $x =~ qr{Location:.*dvcsid=\Q$hgid\E&rmap=}i or say STDERR
 # see Resolver.pm for these, ($scheme_test, $scheme_target), something like
 #      'xyzzytestertesty' => 'http://example.org/foo?gene=$id.zaf'
 #
-use File::Resolver ':all';
+use EggNog::Resolver ':all';
 my ($i, $q, $target);
 
 #($i, $q) = ('987654', '-z-?');
-#$target = $File::Resolver::scheme_target;
+#$target = $EggNog::Resolver::scheme_target;
 #$target =~ s/\$id\b/$i/g;
 #
 # yyy this was meant to be an artificial test that didn't rely on actual
 #     real prefix data, which is volatile and sort of unsuitable for
 #     controlled testing
-##$x = `wegn -v locate "$File::Resolver::scheme_test:$i?$q"`;
-#$x = `wegn -v locate "$File::Resolver::scheme_test:$i"`;
+##$x = `wegn -v locate "$EggNog::Resolver::scheme_test:$i?$q"`;
+#$x = `wegn -v locate "$EggNog::Resolver::scheme_test:$i"`;
 ##like $x, qr/response.*302 .*\nLocation: \Q$target?$q/,
 #like $x, qr/response.*302 .*\nLocation: \Q$target/,
 #	"test rule -- rule-based target redirect";
@@ -469,8 +469,8 @@ like $x, qr/^Location: \Q$eoi_tgt/m, "bound EOI target value resolved";
 #like $x, qr|^Location: \Q$eoi_tgt/xxxmdata|m,
 #	"xxx default EOI CN target resolution triggered by Accept header";
 
-my $rp = File::Binder::RSRVD_PFIX;
-my $Tm = File::Binder::TRGT_METADATA;	# actually content negotiation
+my $rp = EggNog::Binder::RSRVD_PFIX;
+my $Tm = EggNog::Binder::TRGT_METADATA;	# actually content negotiation
 
 #$x = `wegn loc\@xref\@xref $eoi.set __mTm. $eoi_tgt/mdata`;
 #$x = `wegn loc\@xref\@xref $eoi.fetch __mTm.`;

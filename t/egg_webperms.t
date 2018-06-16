@@ -5,7 +5,7 @@ use Test::More qw( no_plan );
 use strict;
 use warnings;
 
-use File::ValueTester ':all';
+use EggNog::ValueTester ':all';
 use File::Value ':all';
 
 my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "egg";
@@ -49,7 +49,7 @@ like $x, qr{egg-status: 0},
 
 # yyy we no longer use per-binder config files -- is that a good thing?
 #my $cf = "$td/betty/egg_conf_default";
-#$x = `2>&1 $File::ValueTester::perl -pi -e "s,P/2.*\\D+40\$,P/2||61," $cf`;
+#$x = `2>&1 $EggNog::ValueTester::perl -pi -e "s,P/2.*\\D+40\$,P/2||61," $cf`;
 #my $m = flvl("< $cf", $x);
 #is $m, '',
 #	"edited permission default in config file";

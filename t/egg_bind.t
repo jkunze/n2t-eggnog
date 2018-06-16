@@ -5,7 +5,7 @@ use Test::More qw( no_plan );
 use strict;
 use warnings;
 
-use File::ValueTester ':all';
+use EggNog::ValueTester ':all';
 use File::Value ':all';
 
 # Do "export EGG_DBIE=e" (=ie) to test exdb (both) paths,

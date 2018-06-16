@@ -4,9 +4,9 @@ use Test::More;
 use strict;
 use warnings;
 
-use File::ValueTester ':all';
+use EggNog::ValueTester ':all';
 use File::Value ':all';
-use File::ApacheTester ':all';
+use EggNog::ApacheTester ':all';
 
 #my ($td, $cmd) = script_tester "egg";		# yyy needed?
 #my ($td2, $cmd2) = script_tester "nog";		# yyy needed?
@@ -175,7 +175,7 @@ $x = `$webcl $pps "$ssvbase_u/a/ezid/b? $a1.set _t http://b.example.com"`;
 like $x, qr{HTTP/\S+\s+200\s+.*egg-status: 0}si,
 	'set resolution target';
 
-use File::Binder ':all';
+use EggNog::Binder ':all';
 my $rrminfo = RRMINFOARK;
 
 # this test won't work in resolve.t, as it needs a running server
@@ -200,9 +200,9 @@ $x = `$webcl $pps "$ssvbase_u/a/ezid/b? $a1.fetch"`;
 like $x, qr{HTTP/\S+\s+200\s+.*_t: http://b.example.com}si,
 	'fetch the resolution target that was just bound';
 
-use File::Resolver;
+use EggNog::Resolver;
 my $urn = "urn:uuid:430c5f08-017e-11e1-858f-0025bce7cc84";
-my $urn_shadow = File::Resolver::id2shadow($urn);
+my $urn_shadow = EggNog::Resolver::id2shadow($urn);
 
 #$x = apachectl('graceful-stop'); #	and print("$x\n");
 #print "######### temporary testing stop #########\n"; exit;
@@ -396,8 +396,8 @@ $x = run_cmdz_in_body($cfgdir, $td, "oca", "oca_test", $cmdblock);
 like $x, qr{<binder> prefix.*\nthis: th.*\nthis: }si,
 	"web bulk commands in request body, binder prefix turned down";
 
-use File::Binder 'SUPPORT_ELEMS_RE';
-my $spat = File::Binder::SUPPORT_ELEMS_RE;
+use EggNog::Binder 'SUPPORT_ELEMS_RE';
+my $spat = EggNog::Binder::SUPPORT_ELEMS_RE;
 
 like $x, qr{$spat:.*$spat:}si,
 	"admin elements present in fetch of all elements (due to --all)";

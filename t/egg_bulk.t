@@ -4,7 +4,7 @@ use Test::More qw( no_plan );
 use strict;
 use warnings;
 
-use File::ValueTester ':all';
+use EggNog::ValueTester ':all';
 use File::Value ':all';
 
 my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "egg";
@@ -136,8 +136,8 @@ like $x, qr/aaa: ccc\n.*bar: zaf\ncat: dog\n/s,
 like $x, qr,(?:\nclosing.*$td/foo/egg.bdb\n.*){2},s,
 	"different open modes means closing persistent mopen at least twice";
 
-use File::Binder;
-my $pmax = $File::Binder::PERSISTOMAX;
+use EggNog::Binder;
+my $pmax = $EggNog::Binder::PERSISTOMAX;
 my ($n, $m, $p);
 $cmdblock = "";
 $n = 2 * $pmax + 3;		# times 2 should mean two close/re-opens

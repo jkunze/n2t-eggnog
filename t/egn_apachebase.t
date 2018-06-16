@@ -4,9 +4,9 @@ use Test::More;
 use strict;
 use warnings;
 
-use File::ValueTester ':all';
+use EggNog::ValueTester ':all';
 use File::Value ':all';
-use File::ApacheTester ':all';
+use EggNog::ApacheTester ':all';
 
 # the web server, creates binders and minters (see make_populator), etc.
 #
@@ -274,8 +274,8 @@ $x = run_cmds_in_body($td, $pps, "pesty", $cmdblock);
 like $x, qr{<binder> prefix.*\nthis: th.*\nthis: .*$ssvbase_u/e}si,
 	"web bulk commands in request body, binder prefix turned down";
 
-use File::Binder 'SUPPORT_ELEMS_RE';
-my $spat = File::Binder::SUPPORT_ELEMS_RE;
+use EggNog::Binder 'SUPPORT_ELEMS_RE';
+my $spat = EggNog::Binder::SUPPORT_ELEMS_RE;
 
 like $x, qr{$spat:.*$spat:}si,
 	"admin elements present in fetch of all elements (due to --all)";

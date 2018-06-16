@@ -12,9 +12,9 @@ plan 'no_plan';		# how we usually roll -- freedom to test whatever
 use strict;
 use warnings;
 
-use File::ValueTester ':all';
+use EggNog::ValueTester ':all';
 use File::Value ':all';
-use File::Binder ':all';
+use EggNog::Binder ':all';
 
 my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "egg";
 $td or			# if error
@@ -268,9 +268,9 @@ like $x, qr|^inflect.*suffix=/|, "script called for / inflection";
 $x =~ s/^.*\n//;				# remove top line
 like $x, qr|^inflect.*suffix=\./|, "script called for ./ inflection";
 
-my $Rp = File::Binder::RSRVD_PFIX;	# reserved sub-element prefix
-my $Tm = File::Binder::TRGT_METADATA;	# actually content negotiation
-my $Ti = File::Binder::TRGT_INFLECTION;	# target for inflection
+my $Rp = EggNog::Binder::RSRVD_PFIX;	# reserved sub-element prefix
+my $Tm = EggNog::Binder::TRGT_METADATA;	# actually content negotiation
+my $Ti = EggNog::Binder::TRGT_INFLECTION;	# target for inflection
 
 $x = `$cmd -d $td/fon $url.set ${Rp}${Ti} newt`;
 $x = resolve_stdin("-d $td/fon", "$url\?");
@@ -314,9 +314,9 @@ my $rrminfo = RRMINFOARK;
 
 $ENV{EGG} = "$hgbase -d $td/foo";
 
-use File::Resolver;
+use EggNog::Resolver;
 my $urn = "urn:uuid:430c5f08-017e-11e1-858f-0025bce7cc84";
-my $urn_shadow = File::Resolver::id2shadow($urn);
+my $urn_shadow = EggNog::Resolver::id2shadow($urn);
 
 $x = `$cmd $urn_shadow.set this that`;
 # vanilla binder doesn't supports shadow ids; use resolve() for that
