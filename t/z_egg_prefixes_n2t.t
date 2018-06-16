@@ -284,7 +284,7 @@ isnt index($x, '302 https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GDS1234')
 	'biorxiv article scheme redirect -- geo'; 
 isnt index($x, '302 http://www.ebi.ac.uk/ena/data/view/BN000065'), -1,
 	'biorxiv article scheme redirect -- ena'; 
-isnt index($x, '302 http://www.ebi.ac.uk/ena/data/view/BN000066'), -1,
+isnt index($x, '302 https://www.ncbi.nlm.nih.gov/nuccore/BN000066'), -1,
 	'biorxiv article scheme redirect -- ena.embl';
 isnt index($x, '302 https://tools.ietf.org/rfc/rfc2413'), -1,
 	'IETF RFC number -- rfc';
@@ -301,9 +301,9 @@ isnt index($x, '302 https://goo.gl/forms/'), -1,
 isnt index($x, '302 https://bit.ly/'), -1,
 	'pre-binder-lookup redirect for ARKs in the Open EOI form';
 
-#print "xxx x=$x\n";
-#$x = apachectl('graceful-stop'); #	and print("$x\n");
-#print "######### temporary testing stop #########\n"; exit;
+#say "xxx x=$x";
+#$x = apachectl('graceful-stop'); #	and say "$x";
+#say "######### temporary testing stop #########"; exit;
 
 $x = apachectl('graceful-stop')	and print("$x\n");
 
