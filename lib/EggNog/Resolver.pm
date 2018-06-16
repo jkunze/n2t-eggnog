@@ -23,7 +23,7 @@ our @EXPORT_OK = qw(
 our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
 
 use File::Value ":all";
-use File::Binder ':all';	# xxx be more restricitve
+use EggNog::Binder ':all';	# xxx be more restricitve
 use EggNog::Egg ':all';
 use EggNog::Log qw(tlogger);
 #use EggNog::Session qw(tlogger);
