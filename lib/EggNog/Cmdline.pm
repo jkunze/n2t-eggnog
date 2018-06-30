@@ -8,7 +8,7 @@ package EggNog::Cmdline;
 #     put pointer to cmdstream object in $mh
 #     updated pointer from instantiate
 
-use 5.010;
+use 5.10.1;
 use strict;
 use warnings;
 

@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # NB: this part of the eggnog source DEPENDS on wegn,
 #     defined in another source code repo (n2t_create)
@@ -8,7 +8,7 @@
 # xxx add princeton test/NAAN check to redirect rules?
 # xxx add test that inflection->cgi rewrite is working
 
-use 5.010;
+use 5.10.1;
 use Test::More;
 
 use strict;

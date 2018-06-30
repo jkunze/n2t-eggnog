@@ -5,7 +5,7 @@ package EggNog::Egg;
 # 
 # Copyright 2008-2012 UC Regents.  Open source BSD license.
 
-use 5.010;
+use 5.10.1;
 use strict;
 use warnings;
 

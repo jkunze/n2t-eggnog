@@ -1,4 +1,4 @@
-use 5.010;
+use 5.10.1;
 use Test::More;
 
 plan 'no_plan';		# how we usually roll -- freedom to test whatever

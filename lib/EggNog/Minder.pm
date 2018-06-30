@@ -2,7 +2,7 @@ package EggNog::Minder;
 
 # XXX XXX need to add authz to noid!
 
-use 5.010;
+use 5.10.1;
 use strict;
 use warnings;
 

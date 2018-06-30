@@ -40,7 +40,7 @@
 
 package EggNog::Nog;
 
-use 5.010;
+use 5.10.1;
 use strict;
 use warnings;
 

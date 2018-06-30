@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # NB: this filename starts with 'z' so that it's more likely the last
 #     test suite to use the td_egnapa directory when "make test" is run,
@@ -8,7 +8,7 @@
 # NB: this part of the eggnog source DEPENDS on pfx,
 #     defined in another source code repo (n2t_create)
 
-use 5.010;
+use 5.10.1;
 use Test::More;
 
 use strict;

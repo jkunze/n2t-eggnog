@@ -794,7 +794,7 @@ inflect=$buildout_root/htdocs/e/x/inflect
 
 	#!/usr/bin/env perl
 
-	use 5.010;
+	use 5.10.1;
 	use strict;
 	use warnings;
 

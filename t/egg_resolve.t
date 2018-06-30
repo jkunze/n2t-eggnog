@@ -1,4 +1,4 @@
-use 5.010;
+use 5.10.1;
 use Test::More;
 
 # NB: there's no dependency on build_server_tree because some server

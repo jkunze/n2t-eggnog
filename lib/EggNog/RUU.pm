@@ -6,7 +6,7 @@ package EggNog::RUU;
 #   if that's how it has to be, how to reflect that in
 #   the $ruu struct?  special "user" named "admin"?
 
-use 5.010;
+use 5.10.1;
 use strict;
 use warnings;
 

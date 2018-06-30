@@ -1,5 +1,5 @@
 # XXX change file_value to flvl?
-use 5.010;
+use 5.10.1;
 use Test::More qw( no_plan );
 
 use strict;

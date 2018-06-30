@@ -1,5 +1,5 @@
 # xxx should do a version of this for noid
-use 5.010;
+use 5.10.1;
 use Test::More qw( no_plan );
 
 use strict;
