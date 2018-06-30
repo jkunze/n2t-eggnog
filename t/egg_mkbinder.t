@@ -224,6 +224,46 @@ if ($indb) {
   
   $x = `$cmd --force --verbose mkbinder foo `;
   like $x, qr|created.*foo|, "make complaint disappear with --force";
+
+  # XXX bug when using -d and rmbinder
+  
+  # xxx retest after snag_dir used and test for first no terminal version number
+  #     and again later for terminal version num ber
+  my $trashmdr = "$minderhome/trash/foo1";	# xxx change foo1->foo
+  
+  $x = `$cmd bshow`;
+  like $x, qr|^#.*\n($td/[^\n]*\n){5}#|s, "show exactly 5 known binders";
+  
+  #say "xxx premature end"; exit;
+  
+  # yyy exdb case: doesn't support binders in trash
+  $x = `$cmd rmbinder foo`;
+  like $x, qr|moved.*trash.*$trashmdr|s, "removed binder by renaming to trash";
+  
+  $x = `$cmd -d $trashmdr a.set b c`;
+  $x = `$cmd -d $trashmdr a.get b`;
+  like $x, qr|^c$|m, "get value from still functioning binder sitting in trash";
+  
+  $x = `$cmd -d $trashmdr rmbinder`;
+  like $x, qr|removed.*$trashmdr.*from trash|s, "removed binder from trash";
+  
+  $x = `$cmd bshow`;
+  like $x, qr|^#.*\n($td/[^\n]*\n){4}#|s, "show exactly 4 known binders";
+  
+  $x = `$cmd mkbinder -d $td/c/e/zaf`;
+  $x = `$cmd -d $td/c/e/zaf idx.set elemy valz`;
+  $x = `$cmd --minder e/zaf idx.get elemy`;
+  like $x, qr|valz|, "--minder searches for binder at bottom of path";
+  
+  #$x = `$cmd --minder e/zaf idx.bring elemy`;
+  #like $x, qr|valz|, "--minder searches for binder at bottom of path";
+
+  # xxx exdb case: no error message because mongodb just creates a binder
+  $x = `$cmd -d ghost i.set a b`;
+  like $x, qr|cannot find binder|, "error message for non-existent binder";
+
+  $x = `$cmd "<ghost>i.set" a b`;
+  like $x, qr|cannot find binder|, "error message for non-existent binder";
 }
 
 # XXX bug when using -d and rmbinder
@@ -234,42 +274,6 @@ like $x, qr|error:.*exist|, "removing a non-existent binder";
 $x = `$cmd --force rmbinder xyzzy`;
 like $x, qr|^$|s,
 	"remove complaint for non-existent binder disappears with --force";
-
-# xxx retest after snag_dir used and test for first no terminal version number
-#     and again later for terminal version num ber
-my $trashmdr = "$minderhome/trash/foo1";	# xxx change foo1->foo
-
-$x = `$cmd bshow`;
-like $x, qr|^#.*\n($td/[^\n]*\n){5}#|s, "show exactly 5 known binders";
-
-#say "xxx premature end"; exit;
-
-$x = `$cmd rmbinder foo`;
-like $x, qr|moved.*trash.*$trashmdr|s, "removed binder by renaming to trash";
-
-$x = `$cmd -d $trashmdr a.set b c`;
-$x = `$cmd -d $trashmdr a.get b`;
-like $x, qr|^c$|m, "get value from still functioning binder sitting in trash";
-
-$x = `$cmd -d $trashmdr rmbinder`;
-like $x, qr|removed.*$trashmdr.*from trash|s, "removed binder from trash";
-
-$x = `$cmd bshow`;
-like $x, qr|^#.*\n($td/[^\n]*\n){4}#|s, "show exactly 4 known binders";
-
-$x = `$cmd mkbinder -d $td/c/e/zaf`;
-$x = `$cmd -d $td/c/e/zaf idx.set elemy valz`;
-$x = `$cmd --minder e/zaf idx.get elemy`;
-like $x, qr|valz|, "--minder searches for binder at bottom of path";
-
-#$x = `$cmd --minder e/zaf idx.bring elemy`;
-#like $x, qr|valz|, "--minder searches for binder at bottom of path";
-
-$x = `$cmd -d ghost i.set a b`;
-like $x, qr|cannot find binder|, "error message for non-existent binder";
-
-$x = `$cmd "<ghost>i.set" a b`;
-like $x, qr|cannot find binder|, "error message for non-existent binder";
 
 # yyy keep pace with mkminter
 remove_td($td, $bgroup);
