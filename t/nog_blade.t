@@ -13,7 +13,7 @@ $td or			# if error
 $ENV{NOG} = $hgbase;		# initialize basic --home and --bgroup values
 
 {
-remake_td($td);
+remake_td($td, $bgroup);
 my ($x, $y);
 
 $x = `$cmd --verbose -p $td mkminter fk`;
@@ -25,7 +25,7 @@ is 1, (-f "$td/fk/nog.bdb"),
 $x = `$cmd --verbose -d $td/fk mint 1`;
 shellst_is 0, $x, "mint status ok with -d";
 
-remake_td($td);
+remake_td($td, $bgroup);
 $x = `$cmd --verbose -p $td mkminter -t rand foo de`;
 shellst_is 0, $x, "make minter with blade and -t rand";
 
@@ -34,7 +34,7 @@ shellst_is 0, $x, "mint one id";
 
 like $x, qr/^foo\d\w$/m, "form of identifier";
 
-remake_td($td);
+remake_td($td, $bgroup);
 $x = `$cmd -p $td mkminter --type seq --atlast stop m1 d`;
 $y = flvl("< $td/m1/nog_README", $x);
 like $x, qr/Size:\s*10\n/, 'single digit sequential stopping template';
@@ -58,7 +58,7 @@ like $x, qr/Size:\s*1000\n/, 'prefix vowels ok in general';
 # template errors
 
 # XXX should be able to do this without always setting --atlast
-remake_td($td);
+remake_td($td, $bgroup);
 $x = `$cmd -p $td mkminter -t rand --atlast stop ab dxdk`;
 like $x, qr/parse_template: the mask .* may contain only the letters/,
 	'bad mask char';
@@ -68,14 +68,14 @@ like $x, qr/parse_template:.*check character.*reduced/,
 	'bad shoulder char';
 # xxx error message doesn't mention shoulder
 
-remake_td($td);
+remake_td($td, $bgroup);
 $x = `$cmd -p $td mkminter --type rand --atlast stop ab dddk`;
 #$y = flvl("< $td/ab/nog_README", $x);
 #$x =~ s/\n/ /g;		# undo text wrap done by OM
 like $x, qr/warning:.*check char.*reduced/s,
 	'prefix vowels with check char produce warning';
 
-remove_td($td);
+remove_td($td, $bgroup);
 }
 
 {	# Set up a generator that we will test
@@ -98,7 +98,7 @@ like $x, qr/8r999/, 'sequential mint test last';
 #$x = `$cmd -p $td 8r9.mint 1`;
 #like $x, qr/8r900/, 'sequential mint test wraps back around to first id';
 
-#remake_td($td);
+#remake_td($td, $bgroup);
 #$x = `$cmd -p $td mkminter --type seq --atlast add1 99152/h{ddd}`;
 #shellst_is 0, $x, "make --type 'seq' minter with 'add1'";
 #
@@ -110,7 +110,7 @@ like $x, qr/8r999/, 'sequential mint test last';
 #print("xxxx x=$x done\n");
 #exit;
 
-remake_td($td);
+remake_td($td, $bgroup);
 $x = `$cmd -p $td mkminter --type rand --atlast stop foo de`;
 shellst_is 0, $x, "make minter with blade and --type rand";
 
@@ -128,7 +128,7 @@ shellst_is 1, $x, "correct status for minting beyond capacity";
 # xxx bug to fix; repeat by removing --atlast stop in mkminter above
 like $x, qr/exhausted/, "minter ran out";
 
-remake_td($td);
+remake_td($td, $bgroup);
 $x = `$cmd -p $td mkminter --type rand foo de`;
 shellst_is 0, $x, "make minter with blade, --type rand, and non-stopping";
 
@@ -139,7 +139,7 @@ my %hash;
 %hash = map {$_ => ($hash{$_} || 0) + 1} @xarray;
 is grep(/^1$/, %hash), $n, "$n unique ids minted";
 
-remake_td($td);
+remake_td($td, $bgroup);
 my @zarray;
 $x = `$cmd -p $td mkminter --type rand --oklz 0 foo de`;
 shellst_is 0, $x, "make minter --type rand --oklz 0";
@@ -148,7 +148,7 @@ $x = `$cmd -p $td foo.mint 291`;
 @zarray = $x =~ m/^foo[^0]/mg;
 is scalar(@zarray), 291, "that minter produces no leading zeroes";
 
-remake_td($td);
+remake_td($td, $bgroup);
 $x = `$cmd -p $td mkminter --type rand --atlast add1 foo f`;
 shellst_is 0, $x, "make minter --type rand with 'f' mask char (no digits)";
 
@@ -161,11 +161,11 @@ $x = `$cmd -p $td foo.mstat`;
 like $x, qr/skipped.*mask.*: $nskipped/,
 	"$nskipped spings skipped due to 'f' mask char";
 
-#remake_td($td);
+#remake_td($td, $bgroup);
 # XXX should be able to specify shoulder separate from minter name?
 #$x = `$cmd -p $td br mkminter --type rand foo de`;
 
-remake_td($td);
+remake_td($td, $bgroup);
 $x = `$cmd -p $td mkminter --type rand --atlast stop foo de`;
 $x = `$cmd -m anvl -p $td foo mint $n`;
 @yarray = grep(/^s: foo\d\w$/, split "\n", $x);
@@ -176,7 +176,7 @@ is scalar(@yarray), $n,
 is scalar(@yarray), 0,
 	'remaking same minter produces identical quasi-random order';
 
-remake_td($td);
+remake_td($td, $bgroup);
 #$x = `$cmd -p $td mkminter --type rand --atlast add2 foo dek`;
 $x = `$cmd -p $td mkminter --type rand --atlast add1 foo ek`;
 shellst_is 0, $x, "make random minter with --atlast add1";
@@ -204,7 +204,7 @@ my ($spings) = $y =~ m@spings minted: *(\d+)@;
 is $spings, ($m + $n),
 	"total minted correct after blade expansion";
 
-remake_td($td);
+remake_td($td, $bgroup);
 $x = `$cmd -p $td mkminter --type rand --atlast add1 foo eek`;
 $x = `$cmd -p $td -m anvl foo.mint $m`;		# mint on fresh minter
 undef @yarray;
@@ -234,5 +234,5 @@ is $matches, $top,
 #%hash = map {$_ => ($hash{$_} || 0) + 1} @xarray;
 #is grep(/^1$/, %hash), $n, "$n unique ids minted";
 
-remove_td($td);
+remove_td($td, $bgroup);
 }

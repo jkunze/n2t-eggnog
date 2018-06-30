@@ -30,7 +30,7 @@ sub run_cmds_on_stdin { my( $cmdblock, $flags )=@_;
 # yyy? check mstat command ?
 
 SKIP: {
-remake_td($td);
+remake_td($td, $bgroup);
 $ENV{EGG} = "$hgbase -p $td -d $td/bar";
 my ($cmdblock, $x, $y, $ark);
 
@@ -139,5 +139,5 @@ while (1) {
 like $list, qr|^((#[^\n]*\n)?ark:[^\n]+\n(#[^\n]+\n\n)?){14}#[^\n]+\n\n$|s,
 	"documented algorithm: list plus next to collect all ids";
 
-remove_td($td);
+remove_td($td, $bgroup);
 }

@@ -57,8 +57,8 @@ $bgroup and
 $ENV{EGG} = $hgbase;		# initialize basic --home and --bgroup values
 #$ENV{EGG} = "--home $buildout_root";	# wrt default config and prefixes
 
-remake_td($td);
-remake_td($td2);
+remake_td($td, $bgroup);
+remake_td($td2, $bgroup);
 
 
 #sub catch_int {
@@ -238,8 +238,8 @@ $x = `$webcl $pps "$ssvbase_u/a/pesty/b? i.fetch hello"`;
 like $x, qr{Authorization Required.*hello:\s*th\+ere}si,
 	"noid's old '+'-to-space decoding is no longer in effect";
 
-remove_td($td);
-remove_td($td2);
+remove_td($td, $bgroup);
+remove_td($td2, $bgroup);
 
 $x = apachectl('graceful-stop')	and print("$x\n");
 exit;	#########
@@ -362,8 +362,8 @@ like $x, qr{HTTP/\S+\s+404\s.*Not Found}si,
 # xxx test with and without password, and with open populator
 
 $x = apachectl('graceful-stop')	and print("$x\n");
-#remove_td($td);
-#remove_td($td2);
+#remove_td($td, $bgroup);
+#remove_td($td2, $bgroup);
 }
 #
 #my $shdr = "99999/fk6";

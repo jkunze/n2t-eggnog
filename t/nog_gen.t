@@ -13,7 +13,7 @@ $td or			# if error
 $ENV{NOG} = $hgbase;		# initialize basic --home and --bgroup values
 
 {
-remake_td($td);
+remake_td($td, $bgroup);
 my $x;
 
 $x = `$cmd`;
@@ -41,5 +41,5 @@ like $x, qr/^([a-z0-9_~]{22}\n){4}\s*$/si,
 #like $x, qr/^([a-z][a-z0-9_]){21}\n\s*$/si,
 #	'nice level 1 means id starts with letter and has no ~';
 
-remove_td($td);
+remove_td($td, $bgroup);
 }

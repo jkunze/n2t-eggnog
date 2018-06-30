@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-use 5.010;
+use 5.10.1;
 use strict;
 use warnings;
 
@@ -564,26 +564,29 @@ sub bdx_bmake { my( $name, $bgroup, $user )=@_;
 	$name ||= "";
 
 	# yyy deprecate this feature?: being able to do mkbinder without
-	#     a named binder that feature adds lots of complicated code
+	#     a named binder is a feature that adds lots of complicated code
 
 	my $msg;
-	my $sh = $bh->{sh};
+#my $sh = $bh->{sh};
 	# yyy need to configure so we can test $sh->{exdb} below
 	if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {
 		outmsg($sh, $msg);      # failed to configure
 		return 1;
 	}
 
-	# yyy this next clause should be pushed into lower library routine
+	# yyy this next clause should be pushed into lower library routine?
 	my $err = 0;
 	if ($sh->{exdb}) {	# need to be configured before testing {exdb}
 		$cmdr = catfile($name, 'dummy');
 		$cmdr_from_d_flag = 0;
 	}
-	elsif ($name and $sh->{indb}) {
+	# yyy if both exdb and indb are in effect, binder name must be given
+	elsif ($name and $sh->{indb}) {		# not exdb case
 		($mdr, $cmdr, $cmdr_from_d_flag, $err) =
+			# NB: this call uses $bh instead of $sh
 			EggNog::Cmdline::def_mdr($bh, $name, 0);
 		$err and
+			# NB: this call uses $bh instead of $sh
 			outmsg($bh),
 			return 1;
 	}
@@ -614,14 +617,16 @@ sub bdx_brm { my( $name, $bgroup, $user )=@_;
 	}
 
 	# yyy this next clause should be pushed into lower library routine
+	# yyy still using mdr-type (minder) var names instead of bdr (binder)
 	my $err = 0;
 	if ($sh->{exdb}) {	# need to be configured before testing {exdb}
 		$cmdr = catfile($name, 'dummy');	# yyy
 		$cmdr_from_d_flag = 0;
 	}
-	elsif ($name and $sh->{indb}) {
+	# xxx !! if both exdb and indb are in effect, binder name must be given
+	elsif ($name and $sh->{indb}) {		# not exdb case
 		($mdr, $cmdr, $cmdr_from_d_flag, $err) =
-			EggNog::Cmdline::def_mdr($bh, $name, 1);	# yyy $sh?
+			EggNog::Cmdline::def_mdr($bh, $name, 1);
 		$err and
 			outmsg($bh),	# yyy $sh?
 			return 1;
@@ -981,6 +986,15 @@ sub bdx_assign { my( $lcmd, $delete, $polite, $how )=( shift, shift, shift, shif
 	my $minderpath = $cmdr_from_d_flag ?
 		"" : $bh->{minderpath};		# search unless -d used
 
+	# yyy need to configure so we can test $sh->{exdb} below
+	my $msg;
+	if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {
+		outmsg($sh, $msg);      # failed to configure
+		return 1;
+	}
+	$sh->{exdb} and $cmdr_from_d_flag and
+		$cmdr = '';			# don't accept binder from -d
+
 	bopen($bh, $cmdr, DB_RDWR, $minderpath) or
 		outmsg($bh), return 1;
 
@@ -999,6 +1013,17 @@ sub bdx_getfetch { my( $formal, @elems )=@_;
 
 	my $minderpath = $cmdr_from_d_flag ?
 		"" : $bh->{minderpath};		# search unless -d used
+
+	# yyy need to configure so we can test $sh->{exdb} below
+	my $msg;
+	if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {
+		outmsg($sh, $msg);      # failed to configure
+		return 1;
+	}
+	$sh->{exdb} and $cmdr_from_d_flag and
+		$cmdr = '';			# don't accept binder from -d
+
+#say "xxx cmdr=$cmdr, cmdr_from_d_flag=$cmdr_from_d_flag";
 	bopen($bh, $cmdr, DB_RDONLY, $minderpath) or
 		outmsg($bh), return 1;
 
@@ -1040,6 +1065,15 @@ sub bdx_show { my( @elemsets )=@_;	# acts on ELEMENTS, eg, "show :brief"
 
 sub bdx_exists {	# might have an element name argument
 	
+	# yyy need to configure so we can test $sh->{exdb} below
+	my $msg;
+	if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {
+		outmsg($sh, $msg);      # failed to configure
+		return 1;
+	}
+	$sh->{exdb} and $cmdr_from_d_flag and
+		$cmdr = '';			# don't accept binder from -d
+
 	my $minderpath = $cmdr_from_d_flag ?
 		"" : $bh->{minderpath};		# search unless -d used
 	bopen($bh, $cmdr, DB_RDONLY, $minderpath) or
@@ -1053,9 +1087,18 @@ sub bdx_exists {	# might have an element name argument
 
 
 sub bdx_rm	{ bdx_del("rm", 0, @_) }
-sub bdx_delete	{ bdx_del("delete", 1, @_) }
+sub bdx_delete	{ bdx_del("delete", 1, @_) }	# yyy not supported in exdb
 sub bdx_del { my( $lcmd, $formal )=( shift, shift );
 	
+	# yyy need to configure so we can test $sh->{exdb} below
+	my $msg;
+	if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {
+		outmsg($sh, $msg);      # failed to configure
+		return 1;
+	}
+	$sh->{exdb} and $cmdr_from_d_flag and
+		$cmdr = '';			# don't accept binder from -d
+
 	my $minderpath = $cmdr_from_d_flag ?
 		"" : $bh->{minderpath};		# search unless -d used
 	bopen($bh, $cmdr, DB_RDWR, $minderpath) or
@@ -1073,6 +1116,17 @@ sub bdx_purge { my( $formal )=shift;
 	$bindelem and
 		outmsg($bh, "why did you specify an element ($bindelem)?"),
 		return 1;
+# xxx should disallow no binder in other cases (status, list), which all
+#     can create mongo tables as side-effects
+	# yyy need to configure so we can test $sh->{exdb} below
+	my $msg;
+	if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {
+		outmsg($sh, $msg);      # failed to configure
+		return 1;
+	}
+	$sh->{exdb} and $cmdr_from_d_flag and
+		$cmdr = '';			# don't accept binder from -d
+
 	my $minderpath = $cmdr_from_d_flag ?
 		"" : $bh->{minderpath};		# search unless -d used
 	bopen($bh, $cmdr, DB_RDWR, $minderpath) or

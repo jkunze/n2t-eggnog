@@ -22,7 +22,7 @@ sub run_cmds_on_stdin { my( $cmdblock )=@_;
 }
 
 {
-remake_td($td);
+remake_td($td, $bgroup);
 my $x;
 $ENV{NOG} = "$hgbase -p $td";
 
@@ -76,5 +76,5 @@ $x = run_cmds_on_stdin($cmdblock);
 like $x, qr/^(?:.*opening.*\n.*previously.*\n.*opening.*\n){2}$/s,
 	'that command block called opened 6 times, re-using twice';
 
-remove_td($td);
+remove_td($td, $bgroup);
 }

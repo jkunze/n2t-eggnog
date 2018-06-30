@@ -15,7 +15,7 @@ $ENV{EGG} = $hgbase;		# initialize basic --home and --bgroup values
 
 # Basic protections tests, shell vs web mode
 {
-remake_td($td);
+remake_td($td, $bgroup);
 my $x;
 
 $x = `$cmd -p $td mkbinder betty`;
@@ -114,5 +114,5 @@ like $x, qr{egg-version: .*egg-status: 1}s,
 
 # XXX do version, help, and man for noid too
 
-remove_td($td);
+remove_td($td, $bgroup);
 }

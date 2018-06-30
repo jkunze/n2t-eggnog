@@ -1,4 +1,4 @@
-use 5.010;
+use 5.10.1;
 use strict;
 use warnings;
 use ExtUtils::MakeMaker;
@@ -34,6 +34,7 @@ WriteMakefile(
      : ()),
     PM			=> $pm,
     PREREQ_PM		=> {
+	'perl'			=> '5.10.1',
 	'Fcntl'			=> '0',
 	'BerkeleyDB'		=> '0',
 	'MongoDB'		=> '0',

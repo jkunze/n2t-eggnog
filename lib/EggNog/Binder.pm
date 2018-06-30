@@ -64,7 +64,29 @@ use File::Basename;
 use constant FS_OBJECT_TYPE	=> 'egg';	# a Namaste object type
 use constant FS_DB_NAME		=> 'egg.bdb';	# database filename
 
-use constant DEFAULT_BINDER	=> 'binder1';
+# These next two are really constants, but Perl constants are a pain.
+
+our $DEFAULT_BINDER    = 'binder1';	# user's binder name default
+our $DEFAULT_BINDER_RE = qr/^egg_.*\..*_s_\Q$DEFAULT_BINDER\E$/o;
+					# eg, egg_default.jak_s_binder1
+
+# xxx document
+# Here's how our hierarchical mongodb namespaces are structured.
+# A record/document corresponds to an identifier.
+# A table/collection corresponds to a binder.
+# Eggnog users aren't aware of binder names, but Eggnog admin users should know:
+#   An admin user's binder has a short name, as in "egg mkbinder mystuff".
+#   The full name of an eggnog binder, as stored in mongodb, looks like
+#
+#       egg_bgdflt.jak_s_mystuff
+#
+#   which breaks down into <database>.<collection>, where
+#
+#       egg_     begins mongodb databases for eggnog
+#       bgdflt   is the default "binder group"
+#       jak      is the admin user/owner of the binder (from Unix creds)
+#       _s_      separates the user name from their binder name
+#       mystuff  is user jak's chosen "binder name" (default binder1)
 
 our %o;					# yyy global pairtree options
 
@@ -198,7 +220,7 @@ sub new { # call with $sh, type, WeAreOnWeb, om, optref
 	}
 	elsif ($self->{type} eq ND_BINDER) {
 		#$self->{default_minder} = "binder1";
-		$self->{default_minder} = DEFAULT_BINDER;
+		$self->{default_minder} = $DEFAULT_BINDER;
 		$self->{evarname} = "EGG";
 		$self->{cmdname} = "egg";
 		$self->{objname} = "egg";	# used in making filenames
@@ -302,6 +324,71 @@ sub DESTROY {
 		print "destroying binder handler: $self\n";
 	undef $self;
 }
+
+## Define binder and candidate binder
+## returns ($bdr, $cbdr, $cbdr_from_d_flag, $err)
+## always zeroes $cbdr_from_d_flag and always clobbers $cbdr, even on err
+#sub def_bdr { my( $sh, $binder, $expected )=@_;
+#
+#	$expected ||= 0;	# default assumes we're making, not removing
+#	# yyy check for $expected being non-negative integer?
+#
+#	my $err = 0;
+#	# these two are returned for global side-effect (not because of this
+#	#   subroutine, but by our own calling convention protocol -- dumb)
+#	my $cmdr = fiso_dname($minder, $mh->{dbname});
+#		# global side-effect when assigned to global upon return
+#	my $cmdr_from_d_flag = 0;
+#		# global side-effect when assigned to global upon return
+#
+## XXXXXXXXXX NOT
+#	my @mdrs = EggNog::Minder::exists_in_path($cmdr, $mh->{minderpath});
+#	my $n = scalar(@mdrs);
+#
+#	my $mdr = $n ? $mdrs[0] : "";			# global side-effect
+#
+#	# Generally $n will be 0 or 1.
+#	$n == $expected and
+#		return ($mdr, $cmdr, $cmdr_from_d_flag, $err);	# normal
+#
+#	# If we get here, it must hold that $n != $expected and $n > 0.
+#	# Dispense with the remove minder case ($exected > 0) by falling
+#	# through and letting errors be caught by EggNog::Egg::rmminder().
+#	#
+#	$expected > 0 and			# remove minder case
+#		return ($mdr, $cmdr, $cmdr_from_d_flag, $err);	# normal
+#
+#	# If we get here, we were called from a routine creating a minder.
+#	# If the minder we would create coincides exactly with one of
+#	# the existing minders, refuse to proceed.
+#	#
+#	my $wouldcreate = catfile($mh->{minderhome}, $cmdr);
+#	my ($oops) = grep(/^$wouldcreate$/, @mdrs);
+#	my $hname = $mh->{humname};
+#	if ($oops) {
+#		$err = 1;
+#		addmsg($mh, 
+#		    "given $hname '$minder' already exists as $hname: $oops");
+#		return ($mdr, $cmdr, $cmdr_from_d_flag, $err);
+#	}
+#
+#	# If we get here, $n > 0 and we're about to make a minder that
+#	# doesn't clobber an existing minder; however, if $mdr is set,
+#	# a minder of the same name exists in the path, and one minder
+#	# might occlude the other, in which case we warn people.
+#
+#	if (! $mh->{opt}->{force}) {
+#		addmsg($mh, ($n > 1 ?
+#			"there are $n instances of '$minder' in path: " .
+#				join(", ", @mdrs)
+#			:
+#			"there is another instance of '$minder' in path: $mdr"
+#			) . "; use --force to ignore");
+#		$err = 1;
+#		return ($mdr, $cmdr, $cmdr_from_d_flag, $err);
+#	}
+#	return ($mdr, $cmdr, $cmdr_from_d_flag, $err);	# normal return
+#}
 
 sub ebclose { my( $bh )=@_;
 
@@ -1232,7 +1319,13 @@ sub ibopen { my( $bh, $mdr, $flags, $minderpath, $mindergen )=@_;
 sub ebopen { my( $bh, $exbrname, $flags )=@_;
 
 	! $exbrname and
-		(undef, $exbrname) = str2brnames($bh->{sh}, DEFAULT_BINDER);
+		(undef, $exbrname) = str2brnames($bh->{sh}, $DEFAULT_BINDER);
+
+		# NB: this $DEFAULT_BINDER is created implicitly by the first
+		# mongodb attempt to write a record/document, so it is not the
+		# product of mkbinder and therefore has no "$A/erc" record,
+		# which we special-case ignore when doing brmgroup().
+
 		# yyy indb case might adopt something closer to this
 		#     simple approach to default binder naming
 
@@ -1279,7 +1372,7 @@ sub bopen { my( $bh, $bdr, $flags, $minderpath, $mindergen )=@_;
 	}
 	my ($inbrname, $exbrname) =
 		str2brnames($sh, $bdr);
-#say "xxx bdr=$bdr, exbrname=$exbrname, inbrname=$inbrname";
+#say "xxx bopen: bdr=$bdr";
 	$sh->{exdb} and
 		ebopen($bh, $exbrname) || return undef;
 	$sh->{indb} and
@@ -1391,6 +1484,8 @@ sub version_match { my( $bh )=@_;
 # database name uses to distinguish temporary, personal, and production
 # names (eg, ./td_egnapa/..., ~/.eggnog/..., ~/sv/cur/apache2/...), so we
 # prepend info from $sh->{home} for external db names.
+# NB: We convert binder name '/' into the empty string in the external case
+# where we don't support generating binder names (unlike the internal case).
 # yyy this doesn't do the fiso_db... stuff for internal database names
 # 
 sub str2brnames { my( $sh, $binder, $bgroup, $user )=@_;
@@ -1400,15 +1495,15 @@ sub str2brnames { my( $sh, $binder, $bgroup, $user )=@_;
 		return ($inbrname, $exbrname);
 	$binder =~ s/^[\W_]+//;		# drop leading and trailing non-word,
 	$binder =~ s/[\W_]+$//;		# non-_ characters from requested name
-	$sh->{indb} and			# eg, BerkeleyDB
-		$inbrname = $binder;
+	#$sh->{indb} and			# eg, BerkeleyDB
+	$inbrname = $binder;		# we still need this for exdb case
 		# $inbrname = ($sh->{ruu}->{WeAreOnWeb} ?
 		#		$sh->{ruu}->{who} : '')
 		#	. $binder;
 	! $sh->{exdb} || ! $sh->{cfgd} and
 		return ($inbrname, $exbrname);
 
-	# if we get here, we're dealing with an external binder, eg, MongoDB
+	# If we get here, we're dealing with an external binder, eg, MongoDB.
 
 	# to be safe, since fiso_uname isn't idempotent, ...
 	my $mdrd = fiso_dname($binder, FS_DB_NAME);	# first extend
@@ -1416,12 +1511,16 @@ sub str2brnames { my( $sh, $binder, $bgroup, $user )=@_;
 	my $bname = basename $mdru;	# user's binder name
 	#my $bname = basename $binder;	# user's binder name
 	$bname =~ s/^[\W_]+//;		# drop leading and trailing non-word,
-	$bname =~ s/[\W_]+$//;		# non-_ characters from item name
+	$bname =~ s/[\W_]+$//;		# and non-_ characters from item name
 	my (undef, undef, $ns_root, $clean_ubname) =
 		EggNog::Session::ebinder_names($sh, $bgroup, $user, $bname);
 	#$exbrname = $sh->{exdb}->{ns_root_name} . $bname;
 	#return ($inbrname, $exbrname);
-	return ($inbrname, "$ns_root$clean_ubname");
+	$exbrname = $inbrname
+		? "$ns_root$clean_ubname"
+		: '';
+	return ($inbrname, $exbrname);
+	#return ($inbrname, "$ns_root$clean_ubname");
 
 	#my $homebase = basename($sh->{home}) || 'unknown';
 	#my $who = $sh->{ruu}->{who};
@@ -1435,6 +1534,9 @@ sub str2brnames { my( $sh, $binder, $bgroup, $user )=@_;
 # calls, but with the empty string for any component that either
 # str2brnames returned empty or that does NOT exist (or whose existence
 # could not be verified, eg, because the external db wasn't available).
+# NB: because MongoDB creates binders/collections simply be trying to
+#     read from them, if "show collections" comes up with a default binder
+#     name we'll just assume it is a binder that was NOT created by mkbinder
 
 sub binder_exists { my( $sh, $mods, $binder, $bgroup, $user, $minderdir )=@_;
 
@@ -1449,10 +1551,10 @@ sub binder_exists { my( $sh, $mods, $binder, $bgroup, $user, $minderdir )=@_;
 		addmsg($sh, $msg);	# failed to configure
 		return undef;
 	}
+
 	my ($inbrname, $exbrname) =		# yyy not using $inbrname
 		str2brnames($sh, $binder, $bgroup, $user);
 		# yyy how should we contruct username-sensitive indbnames?
-
 	if ($inbrname) {
 		my $dirname = $binder;	# yyy assume it names a directory
 		$minderdir ||= $sh->{minderhome};
@@ -1464,27 +1566,81 @@ sub binder_exists { my( $sh, $mods, $binder, $bgroup, $user, $minderdir )=@_;
 		! -e $dirname and		# if it does NOT exist, then
 			$inbrname = '';		# change to communicate that
 	}
+
+	# In the exdb case, check if collection list contains the name, for
+	# if we attempt to open a non-existent mongo database, we inadvertently
+	# create it.
+
 	if ($exbrname) {
-		my $bh = newnew($sh) or
-			addmsg($sh,
-				"binder_exists couldn't create binder handler"),
+# the system.namespaces collection for {name : "dbname.analyticsCachedResult"}
+
+my $NSNS = 'system.namespaces';	# namespace of all namespaces
+
+		$exbrname =~ m/^([^.].*)\.(.+)/ or
+			$msg = "exbrname \"$exbrname\" must be of the form " .
+				"<database>.<collection>",
 			return undef;
-		my $ret;
-		if (ebopen( $bh, $exbrname )) {		# yyy other args unused
-			require EggNog::Egg;
-			$ret = EggNog::Egg::exdb_find_one( $bh,
-				$sh->{exdb}->{binder}, "$A/");
-			! $ret || ! $ret->{ "erc" } and	# not a binder
-				addmsg($sh, "$exbrname is not a binder"),
-				$exbrname = '';		# then say so
-				# yyy maybe return set to undef ?
+		my ($dbname, $collname) = ($1, $2);
+#		my $db = $sh->{exdb}->{client}->get_database($dbname) or
+#			$msg = "could not create database object from name " .
+#				"\"$dbname\" (from exbrname \"$exbrname\")",
+#			return undef;
+		my ($db, $result, @collections);
+		my $ok = try {				# exdb_get_dup
+			$db = $sh->{exdb}->{client}->get_database($dbname);
+			@collections = $db->collection_names;
+#			my $nscoll = $sh->{exdb}->{client}->ns($NSNS);
+#				# namespace namespace
+#			$result = $nscoll->find_one(
+#				{ name => $exbrname },	# query for binder name
+#			$result = $nscoll->find(
+#			)
+#			// 0;		# 0 != undefined
 		}
-		else {
-			# yyy how often do we get here, given mongodb's
-			#     create-always policy?
-			$exbrname = '';		# ordinary non-existence
-		}
+		catch {
+			$msg = "error looking up database name \"$dbname\" " .
+				"(from exbrname \"$exbrname\")";
+			return undef;	# returns from "catch", NOT from routine
+		};
+		! defined($ok) and 	# test for undefined since zero is ok
+			addmsg($sh, $msg),
+			return undef;
+#say "xxx result=$result, exbrname=$exbrname";
+#say "xxx collections=", join(', ', @collections);
+		grep( { $_ eq $collname } @collections ) or
+			$exbrname = '';	# set return name to empty string
 	}
+# xxx can drop $DEFAULT_BINDER_RE
+
+
+#	if ($exbrname and $exbrname !~ $DEFAULT_BINDER_RE) {
+#		my $bh = newnew($sh) or
+#			addmsg($sh, "couldn't create binder handler"),
+#			return undef;
+#		if (ebopen( $bh, $exbrname )) {		# yyy other args unused
+#			require EggNog::Egg;
+#			my $rfs = EggNog::Egg::flex_enc_exdb("$A/", 'erc');
+#			my @dups = EggNog::Egg::exdb_get_dup($bh,
+#				$rfs->{id}, $rfs->{elems}->[0]);
+#			#$ret = EggNog::Egg::exdb_find_one( $bh,
+#			#	$sh->{exdb}->{binder}, "$A/");	# yyy no 'erc'?
+#			#! $ret || ! $ret->{ "erc" } and	# not a binder
+#			scalar(@dups) or
+#				addmsg($sh, "$exbrname is a collection/table "
+#					. "but does not appear to be a binder"),
+#				$exbrname = '';		# then say so
+#				# yyy maybe return set to undef ?
+#			ebclose($bh);
+#		}
+#		else {
+#			# yyy how often do we get here, given mongodb's
+#			#     create-always policy?
+#			$exbrname = '';		# ordinary non-existence
+#		}
+#	}
+#	# else do nothing if $exbrname corresponds to a default binder for the
+#	# binder group, which for mongodb we consider to _always_ exist
+
 	return ($inbrname, $exbrname);
 }
 
@@ -1813,13 +1969,13 @@ sub brmgroup { my( $sh, $mods, $bgroup, $user )=@_;
 		my ($indbexists, $exdbexists) =
 			binder_exists($sh, $mods, $rootless, $bgroup,
 				$user, undef);
+		($inbrname, $exbrname) =
+			str2brnames($sh, $rootless, $bgroup, $user);
 		! $exdbexists and ! $sh->{opt}->{force} and
 			addmsg($sh, "brmgroup: not removing $rootless"),
 			$errs++,
 			next,
 		;
-		($inbrname, $exbrname) =
-			str2brnames($sh, $rootless, $bgroup, $user);
 		rmebinder($sh, $mods, $exbrname, $bgroup, $user) or
 			addmsg($sh, "brmgroup: error removing binder $rootless "
 				. "($exbrname)"),
@@ -1875,7 +2031,10 @@ sub rmbinder { my( $sh, $mods, $binder, $bgroup, $user, $minderpath )=@_;
 		! $binder and
 			addmsg($sh, "no binder specified"),
 			return undef;
-		! $exdbexists and ! $sh->{opt}->{force} and addmsg($sh,
+		my $dflt_binder = ($exbrname and
+			$exbrname =~ $DEFAULT_BINDER_RE);
+		! $exdbexists and ! $sh->{opt}->{force} and ! $dflt_binder and
+			addmsg($sh,
 				"external binder \"$exbrname\" doesn't exist"),
 			return undef;
 		rmebinder($sh, $mods, $exbrname, $bgroup, $user) or
@@ -2171,8 +2330,8 @@ sub ebshow { my( $sh, $mods, $om, $bgroup, $user, $ubname )=@_;
 		EggNog::Session::ebinder_names($sh, $bgroup, $user, $ubname);
 	my ($msg, $db, @cns);
 	my $ok = try {
-		$db = $exdb->{client}->db( $edatabase_name );
 		#$db = $exdb->{client}->db( $exdb->{database_name} );
+		$db = $exdb->{client}->db( $edatabase_name );
 		@cns = $db->collection_names;
 		1;		# else empty list would look like an error
 	}
@@ -2193,7 +2352,8 @@ sub ebshow { my( $sh, $mods, $om, $bgroup, $user, $ubname )=@_;
 	my $root_re =			# filter to just list user's binders
 		qr/^\Q$ebinder_root_name$clean_ubname/;
 
-	my @ret_binders = grep m/$root_re/, @cns;
+	my @ret_binders = grep m/$root_re/,	# get binder names
+		@cns;				# from collection names
 	! $om and			# if $om == 0, suppress output
 		return @ret_binders;		# yyy is there a better way?
 
@@ -2377,7 +2537,7 @@ sub prep_default_binder { my( $sh, $ie, $flags, $minderpath, $mindergen )=@_;
 	defined($flags)		or $flags = 0;
 	my $om = $sh->{om};
 
-	my $mdr = DEFAULT_BINDER;
+	my $mdr = $DEFAULT_BINDER;
 	$mdr or
 		addmsg($sh, "no known default binder"),
 		return undef;
@@ -2410,7 +2570,7 @@ sub prep_default_binder { my( $sh, $ie, $flags, $minderpath, $mindergen )=@_;
 			EggNog::Nog::mkminter($submh, undef, $mdr,
 				$sh->{default_template}, $sh->{minderhome})
 			:
-			# yyy should there be an exdb case for this?
+# XXX NO:should there be an exdb case for this?
 			mkibinder($submh, undef, $mdr, undef, undef,
 				"default binder", $sh->{minderhome});
 		$dbname or
@@ -2456,13 +2616,13 @@ sub gen_minder { my( $sh, $minderpath )=@_;
 	#if ($bh->{type} ne ND_MINTER) {
 		my ($n, $msg) = File::Value::snag_version(
 			#catfile($bh->{minderhome}, $bh->{default_minder}),
-			catfile($sh->{minderhome}, DEFAULT_BINDER),
+			catfile($sh->{minderhome}, $DEFAULT_BINDER),
 				{ as_dir => 1 });
 		$n < 0 and
 			addmsg($sh, "problem generating new binder name: " .
 				$msg),
 			return undef;
-		$mdr = DEFAULT_BINDER;
+		$mdr = $DEFAULT_BINDER;
 		# yyy drop default_minder attribute?
 		#$mdr = $bh->{default_minder};
 		$mdr =~ s/\d+$/$n/;	# xxx assumes it ends in a number

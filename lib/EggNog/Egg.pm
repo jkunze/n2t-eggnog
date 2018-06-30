@@ -1259,11 +1259,11 @@ sub exdb_set_dup { my( $bh, $id, $elem, $val, $flags )=@_;
 }
 
 # Called by egg_fetch.
-# First arg example:  $bh->{sh}->{exdb}->{binder}, eg, n2t.idz
 # xxx haven't thought about duplicate values
 # returns undef on error, empty string on "not found" yyy ?
 
-sub exdb_find_one { my( $bh, $coll, $id, $elem, $val )=@_;
+# XXX is this needed?
+sub xxxexdb_find_one { my( $bh, $coll, $id, $elem, $val )=@_;
 
 	my $query = {
 		PKEY()	=> $id,

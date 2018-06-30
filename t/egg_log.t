@@ -37,7 +37,7 @@ sub resolve_stdin { my( $opt_string, @ids )=@_;
 
 
 {	# check mstat command
-remake_td($td);
+remake_td($td, $bgroup);
 $ENV{EGG} = "$hgbase -p $td -d $td/bar --txnlog $txnlog";
 my ($cmdblock, $x, $y);
 
@@ -66,12 +66,12 @@ $x = `$cmd mstat`;
 like $x, qr/bindings: 7/s,
 	'down to 3 (+4) bindings after replacing 4 bindings with 1 binding';
 
-remove_td($td);
+remove_td($td, $bgroup);
 }
 
 # stub log checker
 {
-remake_td($td);
+remake_td($td, $bgroup);
 $ENV{EGG} = "$hgbase -d $td/foo --txnlog $txnlog";
 my ($x, $y);
 
@@ -329,12 +329,12 @@ $x = run_cmds_on_stdin($cmdblock);
 like $x, qr/^a: jklkkkkkkkkk kkkkkkkkkkk eeeeeeeeeeee rrrrrrrrrrrrrrrr tttttttttttt uuuuuuu ddddddddd wwwwwwwwwww ddddddddddddd$/m,
 	"on fetch, long value doesn't text wrap";
 
-remove_td($td);
+remove_td($td, $bgroup);
 }
 
 # null txnlog checker
 {
-remake_td($td);
+remake_td($td, $bgroup);
 $ENV{EGG} = "$hgbase -d $td/foo --txnlog ''";
 my ($x, $y);
 
@@ -349,5 +349,5 @@ $x = (! -e $txnlog ? 'nope' : 'exists');
 
 is $x, 'nope', 'txnlog file not created when logging is turned off';
 
-remove_td($td);
+remove_td($td, $bgroup);
 }

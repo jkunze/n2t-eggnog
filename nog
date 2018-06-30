@@ -21,7 +21,7 @@
 # xxx fix: don't report binder creation for the default case
 #        unless --verbose (compares better to quiet "nog nab" experience)
 
-use 5.010;
+use 5.10.1;
 use strict;
 use warnings;
 

@@ -14,7 +14,7 @@ $td or			# if error
 $ENV{EGG} = $hgbase;		# initialize basic --home and --bgroup values
 
 {
-remake_td($td);
+remake_td($td, $bgroup);
 my $x;
 
 $x = `$cmd -p $td mkbinder foo`;
@@ -25,7 +25,7 @@ shellst_is 0, $x, "make binder named foo";
 #like $x, qr/^z\na\nf\n/,
 #	"hex modifier puts newlines globally into a value";
 #
-#say "xxxxxxx premature end";
+#say "xxxxxxx premature end x=$x";
 #exit;
 
 $x = `$cmd -d $td/foo :hx id.set bar "z^0aa^0af"`;
@@ -88,7 +88,7 @@ like $x, qr/^bigelem: # Creation record.*doesn't begin with ':' --\n$/s,
 
 	"big data value with hex modifier";
 
-remove_td($td);
+remove_td($td, $bgroup);
 }
 
 # Use this subroutine to get actual commands onto STDIN (eg, bulkcmd).
@@ -104,7 +104,7 @@ sub run_cmds_on_stdin { my( $cmdblock, $flags )=@_;
 # yyy? check mstat command ?
 
 {
-remake_td($td);
+remake_td($td, $bgroup);
 $ENV{EGG} = "$hgbase -p $td -d $td/bar";
 my ($cmdblock, $x, $y);
 
@@ -215,5 +215,5 @@ is length($x), $n + 2,
 #exit; ######
 #print "x=$x\n"; exit;   ##################
 
-remove_td($td);
+remove_td($td, $bgroup);
 }

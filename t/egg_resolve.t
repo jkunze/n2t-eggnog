@@ -53,7 +53,7 @@ sub resolve_stdin_hdr {
 
 #=for later
 {		# some simple ? and ?? tests
-remake_td($td);
+remake_td($td, $bgroup);
 
 $ENV{EGG} = "$hgbase -p $td -m anvl";
 my $x;
@@ -84,7 +84,7 @@ $ENV{EGG} = $hgbase;
 #=cut
 
 {
-remake_td($td);
+remake_td($td, $bgroup);
 my $x;
 
 $x = `$cmd --version`;
@@ -202,13 +202,13 @@ like $x, qr/\nredir302 doi1_target\n.*doi2_target/,
 
 my $host = '';	# yyy was $host meant to be empty?
 
-$x = `$cmd -d $td/foo "$host".delete _t`;		# delete target
+$x = `$cmd -d $td/foo "$host".rm _t`;		# delete target
 $x = `$cmd -d $td/foo ":idmap//ft([^x]+)x(.*)".set _t "\\\$2/g7h/\\\$1"`;
 my $rurl = "http://g.h.i/ft89xr2t";
 $x = resolve_stdin("-d $td/foo", $rurl);
 like $x, qr,r2t/g7h/89,, "rule-based idmap substitution";
 
-$x = `$cmd -d $td/foo "$host".delete _t`;		# delete target
+$x = `$cmd -d $td/foo "$host".rm _t`;		# delete target
 my $nurl = 'http://www.ncbi.nlm.nih.gov/pubmed/';
 $x = `$cmd -d $td/foo ":idmap/http://n2t.net/pmid:".set _t "$nurl"`;
 $rurl = "http://n2t.net/pmid:1234567";
@@ -463,14 +463,14 @@ like $x, qr,^redir302 \n$,,
 
 # test that chopping doesn't back up past the object
 $x = `$cmd "$host$obj".set _t ""`;		# "removes" intermediate target
-$x = `$cmd "$host$obj/chap3".delete _t`;		# delete target
-$x = `$cmd "$host$obj/chap3/sect5".delete _t`;	# delete target
+$x = `$cmd "$host$obj/chap3".rm _t`;		# delete target
+$x = `$cmd "$host$obj/chap3/sect5".rm _t`;	# delete target
 #$x = `$cmd set "$host$obj/chap3/sect5" _t ""`;	# delete target
 $x = `$cmd "$host".set _t "$ht"`;		# shouldn't chop back here
 $x = resolve_stdin('', $url);
 like $x, qr,^redir302 \n$,, "no chopping back past object name";
 
-#$x = `$cmd "$host".delete _t`;			# delete target
+#$x = `$cmd "$host".rm _t`;			# delete target
 #$x = `$cmd ":idmap//ft([^x]+)x(.*)".set _t "\\\$2/g7h/\\\$1"`;
 #$url = "http://g.h.i/ft89xr2t";
 #$x = resolve_stdin('', $url);
@@ -491,5 +491,5 @@ else {
 }
 
 $ENV{EGG} = $hgbase;
-remove_td($td);
+remove_td($td, $bgroup);
 }

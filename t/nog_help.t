@@ -13,7 +13,7 @@ $td or			# if error
 $ENV{NOG} = $hgbase;		# initialize basic --home and --bgroup values
 
 {
-remake_td($td);
+remake_td($td, $bgroup);
 my $x;
 
 $x = `$cmd help`;
@@ -35,5 +35,5 @@ $x = `$cmd help usag`;
 my $y = `$cmd usage`;
 is $x, $y, 'help usage like usage';
 
-remove_td($td);
+remove_td($td, $bgroup);
 }

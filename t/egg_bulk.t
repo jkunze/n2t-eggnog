@@ -23,7 +23,7 @@ sub run_cmds_on_stdin { my( $cmdblock )=@_;
 
 =for later
 {
-remake_td($td);
+remake_td($td, $bgroup);
 $ENV{MINDERPATH} = $td;
 my ($x, $cmdblock);
 
@@ -43,7 +43,7 @@ like $x, qr|xxx creating.*binder1|, "multiple mkbinders in one stream";
 =cut
 
 {
-remake_td($td);
+remake_td($td, $bgroup);
 my $x;
 $ENV{EGG} = "$hgbase -d $td/foo";
 
@@ -230,5 +230,5 @@ like $x, qr/(?:bigelement){$n}:(?:\s*$bigvalue){$p}/,
          5: <you>
 =cut
 
-remove_td($td);
+remove_td($td, $bgroup);
 }

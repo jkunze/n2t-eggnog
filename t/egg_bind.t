@@ -121,8 +121,12 @@ like $x, qr/aaa/, "new values in place";
 #$x = `$cmd -d $td/foo --sif n foo.set bar that`;
 #like $x, qr/error.*exists/s, "op to succeed only if elem doesn't exist";
 
-$x = `$cmd -d $td/foo foo.delete that`;
-like $x, qr/^0 elements removed/s, "delete reports non-existent element";
+# yyy dropping support for delete while doing exdb case (since it involves an
+#     extra network roundtrip)
+#$x = `$cmd -d $td/foo foo.delete that`;
+#like $x, qr/^0 elements removed/s, "delete reports non-existent element";
+$x = `$cmd -d $td/foo --ack foo.rm that`;
+like $x, qr/^0\.0\n/s, "--ack detects non-existent element";
 
 #xxx what should -f mean, if anything?
 #$x = `$cmd -d $td/foo -f foo.delete that`;

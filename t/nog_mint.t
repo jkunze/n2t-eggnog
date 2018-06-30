@@ -13,7 +13,7 @@ $td or			# if error
 $ENV{NOG} = $hgbase;		# initialize basic --home and --bgroup values
 
 {
-remake_td($td);
+remake_td($td, $bgroup);
 my ($x, $y, $n);
 
 $x = `$cmd -p $td mkminter zk`;
@@ -38,7 +38,7 @@ shellst_is 0, $x, "mkminter for compound minter name 99999/br";
 $x = `$cmd -d $td/99999/br mint 1`;
 shellst_is 0, $x, "mint status ok for compound minter";
 
-remake_td($td);
+remake_td($td, $bgroup);
 $x = `$cmd -p $td mkminter 99999/br`;
 shellst_is 0, $x, 'mkminter for compound minter name 99999/br';
 
@@ -73,11 +73,11 @@ $y =~ s|.\s*$||s;
 is $x, $y,
 	"caught-up minter's next value the same, minus check char and shoulder";
 
-remove_td($td);
+remove_td($td, $bgroup);
 }
 
 {
-remake_td($td);		# rand stop with bad start
+remake_td($td, $bgroup);		# rand stop with bad start
 
 $ENV{NOG} = "$hgbase -p $td";
 my ($x, $y);
@@ -89,7 +89,7 @@ my ($x, $y);
 #
 #like $x, qr/would exceed/, "start exceeds total with bounded minter";
 
-#remake_td($td);		# rand stop
+#remake_td($td, $bgroup);		# rand stop
 $x = `$cmd mkminter --type rand --atlast stop zk d`;
 shellst_is 0, $x, "mkminter rand stop 1-digit";
 
@@ -99,14 +99,14 @@ shellst_is 1, $x, "overmint status complaint";
 like $x, qr/(s: zk\d\n){10}.*exhausted/s,
 	"minted 10 with overmint message complaint";
 
-remake_td($td);		# rand stop with status
+remake_td($td, $bgroup);		# rand stop with status
 $x = `$cmd mkminter --type rand --atlast stop7 zk d`;
 shellst_is 0, $x, "mkminter rand stop with user-specified status";
 
 $x = `$cmd zk.mint 15`;
 shellst_is 7, $x, "overmint status complaint";
 
-remake_td($td);		# rand wrap
+remake_td($td, $bgroup);		# rand wrap
 $x = `$cmd mkminter --type rand --atlast wrap5 zk d`;
 shellst_is 0, $x, "mkminter rand wrap 1-digit";
 
@@ -122,7 +122,7 @@ like $x, qr/^(s: zk\d\n){22}\s*$/s, "minted 22, no complaints";
 
 like $x, qr/zk4.*zk4/s, 'minted at least 2 of a given id';
 
-remake_td($td);		# rand add1
+remake_td($td, $bgroup);		# rand add1
 $x = `$cmd mkminter --type rand --atlast add1 zk d`;
 shellst_is 0, $x, "mkminter rand add1 1-digit";
 
@@ -136,7 +136,7 @@ like $x, qr/^(s: zk\d\n){10}(s: zk\d\d\n){10}\s*$/s,
 	"minted 20, no complaints, last id has 2 digits";
 
 $y = $x;	# save sequence to test against different germ (8 not 0)
-remake_td($td);		# rand8 add1
+remake_td($td, $bgroup);		# rand8 add1
 $x = `$cmd mkminter --germ 9 --type rand --atlast add1 zk d`;
 shellst_is 0, $x, "mkminter germ 9 rand add1 1-digit";
 
@@ -146,7 +146,7 @@ shellst_is 0, $x, "overmint status non-complaint (again)";
 isnt $x, $y, "rand (germ 9) sequence differs from rand (germ 0) sequence";
 
 $y = $x;	# save sequence to test against different seed (99 not 8)
-remake_td($td);		# rand99 add1
+remake_td($td, $bgroup);		# rand99 add1
 $x = `$cmd mkminter --type rand --germ 99 --atlast add1 zk d`;
 shellst_is 0, $x, "mkminter rand (germ 99) add1 1-digit";
 
@@ -155,7 +155,7 @@ shellst_is 0, $x, "again overmint status non-complaint";
 
 isnt $x, $y, "germ 99 sequence differs from germ 9 sequence";
 
-#remake_td($td);		# seq start 5 add1
+#remake_td($td, $bgroup);		# seq start 5 add1
 #$x = `$cmd mkminter --type seq --start 5 --atlast add1 zk d`;
 #shellst_is 0, $x, "mkminter seq start 5 add1 1-digit";
 #
@@ -164,7 +164,7 @@ isnt $x, $y, "germ 99 sequence differs from germ 9 sequence";
 #
 #like $x, qr/^s:\s*zk5/, "sequence starts at 5";
 #
-#remake_td($td);		# seq start 135 add1
+#remake_td($td, $bgroup);		# seq start 135 add1
 ##$x = `$cmd mkminter --type seq --start 135 --atlast add1 zk d`;
 #shellst_is 0, $x, "mkminter seq start 135 add1 1-digit";
 #
@@ -177,7 +177,7 @@ isnt $x, $y, "germ 99 sequence differs from germ 9 sequence";
 #     -1 def for 'deal'
 # xxx test stop and wrap status settings
 
-	remove_td($td);
+	remove_td($td, $bgroup);
 	exit;
 
 # XXXXXXXXXXXXXXXXXXXX incorporate these tests below
@@ -208,7 +208,7 @@ shellst_is 0, $x, "mint with MINDERPATH env var";
 
 unlike $x, qr/implicit/, "same minter as before";
 
-remake_td($td);
+remake_td($td, $bgroup);
 
 # cleared out existing minter, but $ENV{MINDERPATH} = "/tmp:$td:/usr";
 $x = `$cmd mint 1`;
@@ -229,6 +229,6 @@ shellst_is 2, $x, "complaint with mint for non-existent named minter";
 
 #like $x, qr/implicit.* \.\/fooble/, "implicit creation in current dir";
 
-remove_td($td);
+remove_td($td, $bgroup);
 }
 

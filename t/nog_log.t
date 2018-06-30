@@ -13,7 +13,7 @@ $td or			# if error
 $ENV{NOG} = $hgbase;		# initialize basic --home and --bgroup values
 
 {	# check mstat command
-remake_td($td);
+remake_td($td, $bgroup);
 $ENV{MINDERPATH} = $td;
 my ($x, $y);
 
@@ -45,11 +45,11 @@ $x = `$cmd c2.mstat`;
 like $x, qr,$td/c2.*status: disabled.*left: unlimited.*expansion.*8407,s,
 	'mstat reflects disablement';
 
-remove_td($td);
+remove_td($td, $bgroup);
 }
 
 {	# stub log checker
-remake_td($td);
+remake_td($td, $bgroup);
 #$ENV{MINDERPATH} = $td;
 $ENV{NOG} = "$hgbase -p $td --txnlog $td/txnlog";
 my ($x, $y);
@@ -76,6 +76,6 @@ like $y, qr/^$/, 'read txnlog file';
 like $x, qr/(?:BEGIN[^\n]*mint.*END SUCCESS[^\n]*mint: .*){3}/s,
 	'txnlog file records 3 mint BEGIN/END pairs';
 
-remove_td($td);
+remove_td($td, $bgroup);
 }
 

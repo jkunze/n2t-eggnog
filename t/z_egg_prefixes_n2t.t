@@ -99,8 +99,8 @@ my $binders_root = $ENV{EGNAPA_BINDERS_ROOT};
 my $minters_root = $ENV{EGNAPA_MINTERS_ROOT};
 my ($ntd, $ntd2) = ($binders_root, $minters_root);
 
-remake_td($td);
-remake_td($td2);
+remake_td($td, $bgroup);
+remake_td($td2, $bgroup);
 
 my ($x, $y);
 $x = apachectl('start');
@@ -314,6 +314,6 @@ else {
 	diag 'at least one prefix test failed';	# from Test::More
 }
 
-remove_td($td);
-remove_td($td2);
+remove_td($td, $bgroup);
+remove_td($td2, $bgroup);
 }

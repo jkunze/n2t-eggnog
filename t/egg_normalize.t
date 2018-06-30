@@ -15,7 +15,7 @@ $td or			# if error
 $ENV{EGG} = $hgbase;		# initialize basic --home and --bgroup values
 
 {		# some simple ? and ?? tests
-remake_td($td);
+remake_td($td, $bgroup);
 
 use EggNog::Resolver ':all';
 my $pfx = {};
@@ -194,5 +194,5 @@ my $y = lc $uu;
 $y =~ s/-//g;
 like $x, qr|ark:/97720/$y|, 'command line shadow';
 
-remove_td($td);
+remove_td($td, $bgroup);
 }

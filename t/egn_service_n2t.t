@@ -86,8 +86,8 @@ my $binders_root = $ENV{EGNAPA_BINDERS_ROOT};
 my $minters_root = $ENV{EGNAPA_MINTERS_ROOT};
 my ($ntd, $ntd2) = ($binders_root, $minters_root);
 
-remake_td($td);
-remake_td($td2);
+remake_td($td, $bgroup);
+remake_td($td2, $bgroup);
 
 # This script calls egg, and we want the latest -Mblib and cleanest, eg,
 #$ENV{EGG} = "--home $buildout_root";	# wrt default config and prefixes
@@ -491,6 +491,6 @@ purge_test_realms($cfgdir, $td, \@cleanup_ids, 'ezid', 'oca', 'yamz');
 
 $x = apachectl('graceful-stop')	and print("$x\n");
 
-remove_td($td);
-remove_td($td2);
+remove_td($td, $bgroup);
+remove_td($td2, $bgroup);
 }

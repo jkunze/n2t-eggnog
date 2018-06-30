@@ -13,7 +13,7 @@ $td or			# if error
 $ENV{NOG} = $hgbase;		# initialize basic --home and --bgroup values
 
 {	# Validate tests -- short
-remake_td($td);
+remake_td($td, $bgroup);
 $ENV{MINDERPATH} = $td;
 $ENV{NOG} = "$hgbase --format ANVL";
 my ($x, $y);
@@ -48,5 +48,5 @@ like $x, qr/12345.*spingerr:\s*b3th54.*b3th5/s,
 $x = `$cmd validate "x{edeed}y" 12345`;
 like $x, qr/error:.*template/s, 'bad template';
 
-remove_td($td);
+remove_td($td, $bgroup);
 }

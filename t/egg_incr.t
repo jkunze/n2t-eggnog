@@ -18,7 +18,7 @@ $exdb and plan skip_all =>
 plan 'no_plan';		# how we usually roll -- freedom to test whatever
 
 {
-remake_td($td);
+remake_td($td, $bgroup);
 my $x;
 
 $x = `$cmd --version`;
@@ -89,5 +89,5 @@ $x = `$cmd foo.incr b +9976`;
 $x = `$cmd foo.get b`;
 like $x, qr/^106\n$/, 'incremented by +9876 to result in 106';
 
-remove_td($td);
+remove_td($td, $bgroup);
 }

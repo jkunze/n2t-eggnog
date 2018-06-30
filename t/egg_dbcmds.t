@@ -22,7 +22,7 @@ sub run_cmds_on_stdin { my( $cmdblock )=@_;
 }
 
 {
-remake_td($td);
+remake_td($td, $bgroup);
 $ENV{EGG} = "$hgbase -d $td/foo";
 my ($x, $y, $cmdblock);
 
@@ -83,5 +83,5 @@ $x = `$cmd dbload $td/dummysaved.bdb`;
 
 #exit; #############
 
-remove_td($td);
+remove_td($td, $bgroup);
 }

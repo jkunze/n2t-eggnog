@@ -41,7 +41,7 @@ use constant EXDB_ITGT_PX 	=> '_,eTi,';	# inflection target prefix
 use constant EXDB_MTGT_PX 	=> '_,eTm,';	# metadata tgt. prefix (conneg)
 
 use constant EGGNOG_DIR_DEFAULT		=> '.eggnog';
-use constant BGROUP_DEFAULT		=> 'default';	# binder group
+use constant BGROUP_DEFAULT		=> 'bgdflt';	# binder group default
 use constant CONFIG_FILE_DEFAULT	=> 'eggnog_conf_default';
 use constant CONFIG_FILE		=> 'eggnog_conf';
 use constant PFX_FILE_DEFAULT		=> 'prefixes_default.yaml';
@@ -237,6 +237,11 @@ sub config { my( $sh )=@_;
 			$sh->{conf_flags}->{resolver_ignore_redirect_host} or
 		return "xxx temporary check: unset resolver_ignore_redirect_host in config file";
 
+
+
+# xxx can we move this into "new" ??
+#     depends on opts and (currently) conf_db dbie setting
+#     depends on ENV var
 	# $dbie: whether to use internal or external database, or both
 	# precedence: in order, check
 	# 1. command line ops (in $sh->{opt})

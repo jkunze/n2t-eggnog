@@ -17,7 +17,7 @@ $ENV{NOG} = $hgbase;		# initialize basic --home and --bgroup values
 $ENV{NOG} = "$hgbase -p $td";
 my ($x, $y);
 
-remake_td($td);		# seq stop
+remake_td($td, $bgroup);		# seq stop
 $x = `$cmd mkminter --type seq --oklz 1 --atlast stop zk d`;
 shellst_is 0, $x, "mkminter seq stop 1-digit oklz";
 
@@ -27,7 +27,7 @@ shellst_is 1, $x, "overmint status complaint";
 like $x, qr/(zk\d\n){10}.*exhausted/s,
 	"minted 10 with overmint message complaint";
 
-remake_td($td);		# seq wrap
+remake_td($td, $bgroup);		# seq wrap
 $x = `$cmd mkminter --type seq --oklz 1 --atlast wrap zk d`;
 shellst_is 0, $x, "mkminter seq wrap 1-digit, --oklz 1";
 
@@ -43,7 +43,7 @@ like $x, qr/^(zk\d\n){15}\s*$/s,
 
 like $x, qr/zk4.*zk4\s*$/s, 'final id minted was minted before';
 
-remake_td($td);		# seq add1, oklz 1
+remake_td($td, $bgroup);		# seq add1, oklz 1
 $x = `$cmd mkminter --type seq --oklz 1 --atlast add1 zk d`;
 $x = `$cmd zk.mint 15`;
 shellst_is 0, $x, "overmint status non-complaint";
@@ -51,7 +51,7 @@ shellst_is 0, $x, "overmint status non-complaint";
 my $cadded = ($x =~ s/^.*chars added.*\n//gm);
 is $cadded, 1, 'template expansion occurred';
 
-remake_td($td);		# seq add1
+remake_td($td, $bgroup);		# seq add1
 $x = `$cmd mkminter --type seq --atlast add1 zk d`;
 shellst_is 0, $x, "mkminter seq add1 1-digit, implied --oklz 0";
 
@@ -63,28 +63,28 @@ like $x, qr/^(zk[1-9]\n){9}(zk[1-9]\d\n){6}\s*$/s,
 
 like $x, qr/zk1\n.*zk15\s*$/s, 'final id minted has 2 digits';
 
-remake_td($td);		# seq add (default: add1)
+remake_td($td, $bgroup);		# seq add (default: add1)
 $x = `$cmd mkminter --type seq --atlast add zk d`;
 shellst_is 0, $x, "mkminter seq add 1-digit";
 
 $y = flvl("< $td/zk/nog_README", $x);
 like $x, qr/^Atlast:\s*add1$/m, 'add defaulted to add1';
 
-remake_td($td);		# seq (default: add1)
+remake_td($td, $bgroup);		# seq (default: add1)
 $x = `$cmd mkminter --type seq zk d`;
 shellst_is 0, $x, "mkminter seq 1-digit";
 
 $y = flvl("< $td/zk/nog_README", $x);
 like $x, qr/^Atlast:\s*add1$/m, 'seq mask and no atlast defaulted to add1';
 
-remake_td($td);		# rand (default: add3)
+remake_td($td, $bgroup);		# rand (default: add3)
 $x = `$cmd mkminter --type rand zk`;
 shellst_is 0, $x, "mkminter rand 1-digit";
 
 $y = flvl("< $td/zk/nog_README", $x);
 like $x, qr/^Atlast:\s*add3$/m, 'rand no mask and no atlast defaulted to add3';
 
-remake_td($td);		# type default: rand
+remake_td($td, $bgroup);		# type default: rand
 $x = `$cmd mkminter zk2`;
 shellst_is 0, $x, "mkminter, nought but shoulder given";
 

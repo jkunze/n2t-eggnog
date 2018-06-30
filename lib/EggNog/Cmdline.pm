@@ -1276,8 +1276,10 @@ sub def_cmdr { my( $pname_mdr, $smdr, $m_dbbase, $optR )=@_;
 
 use File::Spec::Functions;
 
+# Define minder and candidate minder
 # returns ($mdr, $cmdr, $cmdr_from_d_flag, $err)
 # always zeroes $cmdr_from_d_flag and always clobbers $cmdr, even on err
+
 sub def_mdr { my( $mh, $minder, $expected )=@_;
 
 	$expected ||= 0;	# default assumes we're making, not removing
@@ -1286,8 +1288,10 @@ sub def_mdr { my( $mh, $minder, $expected )=@_;
 	my $err = 0;
 	# these two are returned for global side-effect (not because of this
 	#   subroutine, but by our own calling convention protocol -- dumb)
-	my $cmdr = fiso_dname($minder, $mh->{dbname});	# global side-effect
-	my $cmdr_from_d_flag = 0;			# global side-effect
+	my $cmdr = fiso_dname($minder, $mh->{dbname});
+		# global side-effect when assigned to global upon return
+	my $cmdr_from_d_flag = 0;
+		# global side-effect when assigned to global upon return
 
 	my @mdrs = EggNog::Minder::exists_in_path($cmdr, $mh->{minderpath});
 	my $n = scalar(@mdrs);
@@ -1312,88 +1316,80 @@ sub def_mdr { my( $mh, $minder, $expected )=@_;
 	my $wouldcreate = catfile($mh->{minderhome}, $cmdr);
 	my ($oops) = grep(/^$wouldcreate$/, @mdrs);
 	my $hname = $mh->{humname};
-	$oops and
-		$err = 1,
+	if ($oops) {
+		$err = 1;
 		addmsg($mh, 
-		"given $hname '$minder' would clobber existing $hname: $oops"),
+		    "given $hname '$minder' already exists as $hname: $oops");
 		return ($mdr, $cmdr, $cmdr_from_d_flag, $err);
+	}
 
 	# If we get here, $n > 0 and we're about to make a minder that
 	# doesn't clobber an existing minder; however, if $mdr is set,
 	# a minder of the same name exists in the path, and one minder
 	# might occlude the other, in which case we warn people.
-	#
-	$mh->{opt}->{force} or
+
+	if (! $mh->{opt}->{force}) {
 		addmsg($mh, ($n > 1 ?
 			"there are $n instances of '$minder' in path: " .
 				join(", ", @mdrs)
 			:
 			"there is another instance of '$minder' in path: $mdr"
-			) . "; use --force to ignore"),
-		$err = 1,
+			) . "; use --force to ignore");
+		$err = 1;
 		return ($mdr, $cmdr, $cmdr_from_d_flag, $err);
-=for later
-	    return ($mdr, $cmdr, $cmdr_from_d_flag, (($n > 1 ?
-	
-		"there are $n instances of '$minder' in path: " .
-			join(", ", @mdrs)
-		:
-		"there is another instance of '$minder' in path: $mdr"
-		) . "; use --force to ignore"));
-=cut
-
+	}
 	return ($mdr, $cmdr, $cmdr_from_d_flag, $err);	# normal return
 }
 
-=for later
-
-sub dx_rmminder { my( $mh, $name )=@_;	# yyy works for noid and bind
-
-	$name ||= "";
-	my $retval = def_mdr($mh, $name, 1);	# 0 or '' is a normal return
-	# yyy that should have returned our candidate minder, right?
-	$retval	and				# bail if non-null
-		return $retval;
-
-	my $minderpath = $cmdr_from_d_flag ?	# if user specified -d
-		"" :			# ignore minderpath setting
-		$mh->{minderpath};	# else use $mh->{minderpath}
-# xxx these EggNog::Egg::* routines should take a name that is either a
-#     fiso_dname or fiso_uname (which is easier on the caller/user)
-	EggNog::Minder::rmminder($mh, fiso_uname($cmdr), $minderpath) or
-		return err1 outmsg($mh);
-	return 0;
-}
-
-# Context and Stats (show minders, minder stats, minder ping)
-#   pt mshow       "pairtree show known minders"
-# bind mshow       "egg show known minders"
-# noid mshow       "minder show known minders"
-#   pt mstat mdr   "pairtree show stats for minder 'mdr'"
-# bind mstat mdr   "egg show stats for minder 'mdr'"
-# noid mstat mdr   "minder show stats for minder 'mdr'"
-#   pt mping mdr   "pairtree ping minder 'mdr'"
-# bind mping mdr   "egg ping minder 'mdr'"
-# noid mping mdr   "minder ping minder 'mdr'"
-# XXX implement!!
-
-# show known binders
-sub dx_mshow { my( $mh )=@_;
-
-	EggNog::Minder::mshow($mh)	or return 1;
-	return 0;
-}
-
-## show stats of minder
-#sub ndx_mstat { my( $x )=@_; }
-## return pulse check
-#sub ndx_mping { }
-## show stats of minder
-#sub bdx_mstat { my( $x )=@_; }
-## return pulse check
-#sub bdx_mping { }
-
-=cut
+#=for later
+#
+#sub dx_rmminder { my( $mh, $name )=@_;	# yyy works for noid and bind
+#
+#	$name ||= "";
+#	my $retval = def_mdr($mh, $name, 1);	# 0 or '' is a normal return
+#	# yyy that should have returned our candidate minder, right?
+#	$retval	and				# bail if non-null
+#		return $retval;
+#
+#	my $minderpath = $cmdr_from_d_flag ?	# if user specified -d
+#		"" :			# ignore minderpath setting
+#		$mh->{minderpath};	# else use $mh->{minderpath}
+## xxx these EggNog::Egg::* routines should take a name that is either a
+##     fiso_dname or fiso_uname (which is easier on the caller/user)
+#	EggNog::Minder::rmminder($mh, fiso_uname($cmdr), $minderpath) or
+#		return err1 outmsg($mh);
+#	return 0;
+#}
+#
+## Context and Stats (show minders, minder stats, minder ping)
+##   pt mshow       "pairtree show known minders"
+## bind mshow       "egg show known minders"
+## noid mshow       "minder show known minders"
+##   pt mstat mdr   "pairtree show stats for minder 'mdr'"
+## bind mstat mdr   "egg show stats for minder 'mdr'"
+## noid mstat mdr   "minder show stats for minder 'mdr'"
+##   pt mping mdr   "pairtree ping minder 'mdr'"
+## bind mping mdr   "egg ping minder 'mdr'"
+## noid mping mdr   "minder ping minder 'mdr'"
+## XXX implement!!
+#
+## show known binders
+#sub dx_mshow { my( $mh )=@_;
+#
+#	EggNog::Minder::mshow($mh)	or return 1;
+#	return 0;
+#}
+#
+### show stats of minder
+##sub ndx_mstat { my( $x )=@_; }
+### return pulse check
+##sub ndx_mping { }
+### show stats of minder
+##sub bdx_mstat { my( $x )=@_; }
+### return pulse check
+##sub bdx_mping { }
+#
+#=cut
 
 1;
 

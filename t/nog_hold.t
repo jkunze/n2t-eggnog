@@ -13,7 +13,7 @@ $td or			# if error
 $ENV{NOG} = $hgbase;		# initialize basic --home and --bgroup values
 
 {
-remake_td($td);
+remake_td($td, $bgroup);
 $ENV{MINDERPATH} = $td;
 my ($x, $y);
 
@@ -96,5 +96,5 @@ like $x, qr/bar97/, 'queue delete';
 $x = `$cmd bar.mint 3`;
 like $x, qr/bar96\s+bar98\s+bar0/s, 'mint next 3 skips deleted';
 
-remove_td($td);
+remove_td($td, $bgroup);
 }

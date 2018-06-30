@@ -1924,6 +1924,7 @@ sub prep_default_minder { my( $mh, $flags, $minderpath, $mindergen )=@_;
 				$mh->{default_template}, $mh->{minderhome})
 			:
 			EggNog::Egg::mkbinder($submh, undef, $mdr,
+# xxx	$bgroup, $user,		# xxx if this code is ever run
 				"default binder", $mh->{minderhome});
 		$dbname or
 			addmsg($mh, getmsg($submh)),
@@ -1976,6 +1977,7 @@ sub gen_minder { my( $mh, $minderpath )=@_;
 		# xxx shouldn't we be using name returned in $msg?
 		# XXX this _assumes_ only other type is ND_BINDER!!
 		my $dbname = EggNog::Egg::mkbinder($mh, undef, $mdr,
+# xxx	$bgroup, $user,		# xxx if this code is ever run
 			"Auto-generated binder", $mh->{minderhome});
 		$dbname or
 			addmsg($mh, "couldn't create snagged name ($mdr)"),
