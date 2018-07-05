@@ -567,7 +567,6 @@ sub bdx_bmake { my( $name, $bgroup, $user )=@_;
 	#     a named binder is a feature that adds lots of complicated code
 
 	my $msg;
-#my $sh = $bh->{sh};
 	# yyy need to configure so we can test $sh->{exdb} below
 	if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {
 		outmsg($sh, $msg);      # failed to configure
@@ -697,6 +696,7 @@ sub bdx_mstat { my( $level )=@_;
 
 # list at most $max ids that are matching ("in") @inkeys (all by default)
 # if $nextkey set, start listing with first next key NON-matching key
+
 sub bdx_next { my( $max, $nextkey )=( shift, shift );
 	defined($nextkey) or
 		outmsg($bh, "must specify next key"),
@@ -1116,8 +1116,8 @@ sub bdx_purge { my( $formal )=shift;
 	$bindelem and
 		outmsg($bh, "why did you specify an element ($bindelem)?"),
 		return 1;
-# xxx should disallow no binder in other cases (status, list), which all
-#     can create mongo tables as side-effects
+	# xxx should disallow no binder in other cases (status, list),
+	#     which all can create mongo tables as side-effects
 	# yyy need to configure so we can test $sh->{exdb} below
 	my $msg;
 	if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {

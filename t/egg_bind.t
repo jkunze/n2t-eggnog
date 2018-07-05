@@ -170,6 +170,38 @@ $x = `$cmd -d $td/foo foo.1.fetch`;
 unlike $x, qr/slash/,
 	"fetch against id with regex char '.' no longer retrieves other ids";
 
+$x = `$cmd -d $td/foo '\$t.^x.exists' '\$u.|e'`;
+like $x, qr/^0\n/, "id|elem with nasty chars does not yet exist";
+
+$x = `$cmd -d $td/foo '\$t.^x.set' '\$u.|e' nasty`;
+$x = `$cmd -d $td/foo '\$t.^x.exists' '\$u.|e'`;
+like $x, qr/^1\n/, "id|elem with nasty chars now exists";
+
+$x = `$cmd -d $td/foo '\$t.^x.exists'`;
+like $x, qr/^1\n/, "and so does its parent id";
+
+#$x = `$cmd -d $td/foo '\$t.^x.get' '\$u.|e'`;
+#like $x, qr/^nasty\n/s, "'set/get' op with nasty chars";
+
+$x = `$cmd -d $td/foo '\$t.^x.fetch'`;
+like $x, qr/\n\$u\.|e: nasty\n/, "'fetch' op with nasty chars";
+
+$x = `$cmd -d $td/foo '\$t.^x.rm' '\$u.|e'`;
+$x = `$cmd -d $td/foo '\$t.^x.get' '\$u.|e'`;
+like $x, qr/^$/s, "'rm' op with nasty chars";
+
+$x = `$cmd -d $td/foo '\$t.^x.set' '\$u.|e' nasty`;
+$x = `$cmd -d $td/foo '\$t.^x.purge'`;
+
+$indb and
+like $x, qr/under \$t\.\^x: 3\n/s, "'purge' op with nasty chars";
+
+$exdb and	# yyy no message, as that would require extra roundtrip
+like $x, qr/^$/s, "'purge' op with nasty chars";
+
+$x = `$cmd -d $td/foo '\$t.^x.exists'`;
+like $x, qr/^0\n/, "and 'exists' agrees that it's gone";
+
 remove_td($td, $bgroup);
 }
 

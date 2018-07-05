@@ -132,45 +132,60 @@ sub mkid {
 # MUCH FASTER way to query mongo for existence
 # https://blog.serverdensity.com/checking-if-a-document-exists-mongodb-slow-findone-vs-find/
 
-# XXX exdb version of this?
-
-# calls flex_enc_indb
-
 sub egg_exists { my( $bh, $mods, $id, $elem )=@_;
 
 	my $db = $bh->{db};
 	my $opt = $bh->{opt};
 	my $om = $bh->{om};
+	my $sh = $bh->{sh};
 
 	defined($id) or
 		addmsg($bh, "no identifier name given"),
 		return undef;
 
-	my ($exists, $key);
-	my $irfs;		# ready-for-storage versions of id, elem, ...
-	if (defined $elem) {	# do "defined $elem" since it might match /^0+/
+	my $defelem = defined $elem;		# since it might match /^0+/
+	my ($erfs, $irfs);	# ready-for-storage versions of id, elem, ...
+	$sh->{exdb} and
+		$erfs = $defelem ? flex_enc_exdb($id, $elem)
+			: flex_enc_exdb($id);
+	$sh->{indb} and
+		$irfs = $defelem ? flex_enc_indb($id, $elem)
+			: flex_enc_indb($id);
+
+	my ($exists, $key, @dups);
+	if ($defelem) {		# does element exist?
 		# xxx are there situations (eg, from_rawidtree that
 		#     should prevent us calling this?
 		EggNog::Cmdline::instantiate($bh, $mods->{hx}, $id, $elem) or
 			addmsg($bh, "instantiate failed from exists"),
 			return undef;
-# xxx indb-specific
-		$irfs = flex_enc_indb($id, $elem);
-		$key = $irfs->{key};		# only need encoded key
-		$exists = defined( $bh->{tied_hash_ref}->{$key} )
-				? 1 : 0;
+		if ($sh->{exdb}) {
+			@dups = exdb_get_dup($bh, $erfs->{id},
+					$erfs->{elems}->[0]);
+			$exists = scalar(@dups);
+		}
+		if ($sh->{indb}) {		# yyy if ie, i answer wins
+			$key = $irfs->{key};		# only need encoded key
+			$exists = defined( $bh->{tied_hash_ref}->{$key} )
+					? 1 : 0;
+		}
 	}
-	else {					# else no element was given
+	else {			# does id exist?
 		# xxx are there situations (eg, from_rawidtree that
 		#     should prevent us calling this?
 		EggNog::Cmdline::instantiate($bh, $mods->{hx}, $id) or
 			addmsg($bh, "instantiate failed from exists no elem"),
 			return undef;
-# xxx indb-specific
-		$irfs = flex_enc_indb($id);
-		$key = $irfs->{key};		# only need encoded key
-		$exists = defined( $bh->{tied_hash_ref}->{$key . PERMS_ELEM} )
+		if ($sh->{exdb}) {
+			@dups = exdb_get_id($bh, $erfs->{id});
+			$exists = scalar(@dups);
+		}
+		if ($sh->{indb}) {		# yyy if ie, i answer wins
+			$key = $irfs->{key};		# only need encoded key
+			$exists = defined( $bh->{tied_hash_ref}->{$key
+					. PERMS_ELEM} )
 				? 1 : 0;
+		}
 	# xxxx need policy on protocol-breaking deletions, eg, to permkey
 	}
 
@@ -349,6 +364,7 @@ sub egg_purge { my( $bh, $mods, $lcmd, $formal, $id )=@_;
 #			#use Data::Dumper "Dumper";
 #			#print Dumper $result;
 ##====
+
 sub exdb_get_dup { my( $bh, $id, $elem )=@_;
 
 	# yyy not error checking the args
@@ -369,6 +385,16 @@ sub exdb_get_dup { my( $bh, $id, $elem )=@_;
 	! defined($ok) and 	# test for undefined since zero is ok
 		addmsg($bh, $msg),
 		return undef;
+# make exdb_get_dup do double duty? fetch element or document, depending on
+#     whether $elem is defined (that way we can use it for egg_exists())
+# my @find_args = ( { PKEY() => $id } );
+# defined $elem and
+#	push @find_args, { $elem => 1 };	# add projection arg
+# ... $coll->find_one( @find_args );
+# ...
+# ! defined($elem) and
+#	return defined($result) ? ( $result ) : ();
+
 	$result && $result->{$elem} or	# if nothing found, return empty array
 		return ();
 #say STDERR "xxx result->elem($elem): $result->{$elem}";
@@ -379,6 +405,37 @@ sub exdb_get_dup { my( $bh, $id, $elem )=@_;
 		addmsg($bh, "unexpected element reference type: $ref"),
 		return undef;
 	return ( $result->{$elem} );	# make array from scalar and return it
+}
+
+sub exdb_get_id { my( $bh, $id )=@_;
+	# yyy shares much code with previous sub -- collapse to one sub?
+
+	# yyy not error checking the args
+	my ($result, $msg);
+	my $ok = try {				# exdb_get_dup
+		my $coll = $bh->{sh}->{exdb}->{binder};	# collection
+		$result = $coll->find_one(
+			{ PKEY() => $id },	# query
+					# _id returned by default
+		)
+		// 0;		# 0 != undefined
+	}
+	catch {
+		$msg = "error fetching id \"$id\" from external database: $_";
+		return undef;	# returns from "catch", NOT from routine
+	};
+	! defined($ok) and 	# test for undefined since zero is ok
+		addmsg($bh, $msg),
+		return undef;
+	$result or		# if nothing found, return empty array
+		return ();
+	my $ref = ref $result;
+	$ref eq 'ARRAY' and		# already is array ref, so return array
+		return @{ $result };
+	$ref ne '' and
+		addmsg($bh, "unexpected element reference type: $ref"),
+		return undef;
+	return ( $result );	# make array from scalar and return it
 }
 
 ## xxx should convert remaining calls to this into calls to {in,ex}db_get_dup
@@ -654,7 +711,7 @@ sub egg_del { my( $bh, $mods, $lcmd, $formal, $id, $elem )=@_;
 		#@oldlens = map length, indb_get_dup($db, $key);
 		@oldlens = map length, $irfs
 			? indb_get_dup($db, $irfs->{key})
-			: exdb_get_dup($bh, $id, $elem)
+			: exdb_get_dup($bh, $erfs->{id}, $erfs->{elems}->[0])
 		;
 		$oldvalcnt = scalar(@oldlens);
 		my $octets = 0;
@@ -805,6 +862,8 @@ sub sif { my( $bh, $elem, $oldvalcnt )=@_;
 #   key		# for storage
 #   id		# identifier
 #   elems	# array: elem, subelem, subsubelem, ...
+# For our use of BerkeleyDB, the characters to watch out for during
+# storage are $Se (sub-element separator char, eg, | or \t) and ^ (circumflex)
 
 sub flex_enc_indb { my ( $id, @elems )=@_;
 
@@ -835,6 +894,8 @@ sub flex_enc_indb { my ( $id, @elems )=@_;
 #   key		# for :idmap	xxx untested
 #   id		# identifier
 #   elems	# array: elem, subelem, subsubelem, ...
+# For our use of MongoDB, the characters to watch out for during
+# storage are $EXsc (special chars: '.', '^' and initial '$')
 
 sub flex_enc_exdb { my ( $id, @elems )=@_;
 
@@ -1449,29 +1510,24 @@ sub indb_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 	# yyy document default values for element and value
 
 	# ready-for-storage versions of id, elem, ...
-	# yyy rename $irfs -> $rfs?
-	my $irfs = flex_enc_indb($id, $elem);
+	my $rfs = flex_enc_indb($id, $elem);
 	my $key;
-# xxx consider dropping this assignment and using $irfs->* as needed
-	($key, $id, $elem) = ($irfs->{key}, $irfs->{id}, $irfs->{elems}->[0]);
+	($key, $id, $elem) = ($rfs->{key}, $rfs->{id}, $rfs->{elems}->[0]);
 
 	! egg_authz_ok($bh, $id, OP_WRITE) and
 		return undef;
 
 	my $optime = time();
 
-# xxx requires the ready-for-storage $id
 	# an id is "created" if need be
-	#if (! egg_init_id($bh, $id, $optime)) ...
-# xxx split this next into {ex,in}db cases
-	#if (! egg_init_id($bh, $irfs->{id}, $optime)) 
-	if (! egg_init_id($bh, $id, $optime)) {
+	#if (! egg_init_id($bh, $id, $optime))
+	if (! egg_init_id($bh, $rfs->{id}, $optime)) {
 		addmsg($bh, "error: could not initialize $id");
 		return undef;
 	}
 
 	my $slvalue = $value;		# single-line log encoding of $value
-	$slvalue =~ s/\n/%0a/g;	# xxxxx nasty, incomplete kludge
+	$slvalue =~ s/\n/%0a/g;		# xxxxx nasty, incomplete kludge
 					# xxx note NOT encoding $elem
 
 	# Not yet a real transaction in the usual sense, but
@@ -1480,7 +1536,6 @@ sub indb_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 	my $txnid;		# undefined until first call to tlogger
 	$txnid = tlogger $sh, $txnid, "BEGIN $id$Se$elem.$lcmd $slvalue";
 
-# xxx call either {ex,in}db_get_dup here, with rfs args
 	my $oldvalcnt = indb_get_dup($db, $key);
 	! defined($oldvalcnt) and
 		return undef;
@@ -1604,10 +1659,7 @@ sub exdb_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 	my $optime = time();
 
 	# an id is "created" if need be
-	#if (! egg_init_id($bh, $id, $optime)) ...
-	# yyy pass in encoded $id
 	if (! egg_init_id($bh, $rfs->{id}, $optime)) {
-		# xxx do we need to call egg_init_id for exdb case at all?
 		addmsg($bh, "error: could not initialize $id");
 		return undef;
 	}
@@ -1708,11 +1760,10 @@ sub exdb_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 	return 1;
 }
 
-# xxx assumes being called with ready-for-storage $id
-#     at least in indb case
-#  ?? maybe not in exdb case
-# xxx split this into {ex,in}db cases
-# create id if it's not been created already
+# This routine assumes it's been called with ready-for-storage $id.
+# It creates/initializes an id. In the indb case (but NOT in the exdb case),
+# it won't create an id if it already appears to have an $id_permkey.
+
 sub egg_init_id { my( $bh, $id, $optime )=@_;
 
 	my ($dbh, @pkey);
@@ -1729,8 +1780,6 @@ sub egg_init_id { my( $bh, $id, $optime )=@_;
 		# yyy no error check
 	}
 	if ($sh->{exdb}) {
-# XXX do we need to do egg_init_id at all in exdb case?
-# XXXXXX arrives with wrong (indb) encoding!
 		@pkey = exdb_get_dup($bh, $id, PERMS_EL_EX);
 		scalar(@pkey) and		# it exists,
 			return 1;		# so nothing to do
@@ -1741,9 +1790,6 @@ sub egg_init_id { my( $bh, $id, $optime )=@_;
 			return undef;
 	}
 	return 1;
-}
-
-sub get_id_record { my( $db ) = shift;
 }
 
 # This routine returns a two element array consisting of the total
@@ -2832,6 +2878,9 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 	my $special;		# kludge for :id and :policy
 	my $rrmfail = 0;
 
+	# NB: this next loop should only be run under indb, so it assumes
+	#     indb-specific encodings.
+
 	for my $elem ( @{ $rfs->{elems} } ) {
 
 		# xxx will this be able to use OM and get string output?
@@ -2860,6 +2909,7 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 			@dups = $sh->{fetch_indb}
 				? indb_get_dup($db, $rfs->{id} . $Se . $elem)
 				: exdb_get_dup($bh, $rfs->{id}, $elem)
+# xxx why not using encoded form?
 			;
 		}
 
@@ -2956,7 +3006,9 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 # yyy This is perhaps strange -- maybe egg_del() should be called from
 #     get_rawidtree.
 
-# XXX this is indb-specific!
+# NB: this routine is very indb-specific, which may be ok given that we may
+#     never need it for exdb-specific work (eg, for mongodb we fetch or
+#     purge all elements with mongodb calls).
 
 sub get_rawidtree { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id )=@_;
 		      #( shift, shift, shift,   shift,  shift, shift );
@@ -2974,7 +3026,6 @@ sub get_rawidtree { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id )=@_;
 	$mods->{did_rawidtree} = 1;	# xxx kludgish; side-effects?? of
 				# setting a $mods entry for downstream calls?
 
-# xxx indb-specific!
 	my $irfs = flex_enc_indb($id);
 	$id = $irfs->{id};		# because we need $id ready-for-storage
 
