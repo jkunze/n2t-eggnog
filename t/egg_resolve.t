@@ -76,9 +76,6 @@ like $x, qr/Smith.*Victory.*1998.*Calif.*support-what:.*cdlib.org/s,
 $x = `$cmd -m anvl $ark.show :brief`;
 like $x, qr/,\s*"Victory.*:\s*Victory/s, 'citation support';
 
-#say "xxx premature exit x=$x";
-#exit;
-
 $ENV{EGG} = $hgbase;
 }
 #=cut
@@ -92,6 +89,20 @@ my $v1bdb = ($x =~ /DB version 1/);
 
 $x = `$cmd -p $td mkbinder foo`;
 shellst_is 0, $x, "make binder named foo";
+
+my $wrl;
+$wrl = 'ark:/12345/b.c^d';	# yyy not a well-named variable?
+# xxx try putting literal space in there?
+
+$x = `$cmd -d $td/foo $wrl.set _t waf`;
+shellst_is 0, $x, "set _t with nasty id chars";
+
+#$x = resolve_stdin("-d $td/foo", $wrl);
+#like $x, qr|"op=partial".*"partial=\*/pdb"|,
+#	"partial id detected because of * in scheme";
+#
+#say "xxx premature exit x=$x";
+#exit;
 
 $x = resolve_stdin("-d $td/foo",
 "*/pdb:1234",
@@ -314,19 +325,22 @@ my $rrminfo = RRMINFOARK;
 
 $ENV{EGG} = "$hgbase -d $td/foo";
 
-use EggNog::Resolver;
-my $urn = "urn:uuid:430c5f08-017e-11e1-858f-0025bce7cc84";
-my $urn_shadow = EggNog::Resolver::id2shadow($urn);
+# July 2018 dropping support for _stored_ shadow ARKs
+# (still support shadow ARKs submitted for resolution)
 
-$x = `$cmd $urn_shadow.set this that`;
-# vanilla binder doesn't supports shadow ids; use resolve() for that
-#$x = `$cmd $urn.get this`;
-#like $x, qr/^that\n\n$/, 'URN shadow takes an element';
-
-my $urn_t = 'http://www.cdlib.org/';
-$x = `$cmd $urn_shadow.set _t $urn_t`;
-$x = resolve_stdin('', $urn);
-like $x, qr/^redir302 $urn_t\n/, 'URN shadow does URN resolution';
+#use EggNog::Resolver;
+#my $urn = "urn:uuid:430c5f08-017e-11e1-858f-0025bce7cc84";
+#my $urn_shadow = EggNog::Resolver::id2shadow($urn);
+#
+#$x = `$cmd $urn_shadow.set this that`;
+## vanilla binder doesn't supports shadow ids; use resolve() for that
+##$x = `$cmd $urn.get this`;
+##like $x, qr/^that\n\n$/, 'URN shadow takes an element';
+#
+#my $urn_t = 'http://www.cdlib.org/';
+#$x = `$cmd $urn_shadow.set _t $urn_t`;
+#$x = resolve_stdin('', $urn);
+#like $x, qr/^redir302 $urn_t\n/, 'URN shadow does URN resolution';
 
 my $arkbase = "ark:/00224/foo";
 $x = `$cmd -d $td/foo $arkbase.set _t zaf`;

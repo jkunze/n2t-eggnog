@@ -500,9 +500,10 @@ sub exdb_get_id { my( $bh, $id )=@_;
 #}
 
 #use Carp;
-# return array of dupes for $key in list context
+# Return array of dupes for $key in list context
 #     in scalar context return the number of dupes
-# xxx assumes "rfs" args
+# Assumes $key is ready for storage
+
 sub indb_get_dup { my( $db, $key )=@_;
 
 	my $wantlist = wantarray();
@@ -531,8 +532,7 @@ sub indb_get_dup { my( $db, $key )=@_;
 # xxx this is called only once, so we can easily split it into two;
 #     {ex,in}db_del_dup and pass in appropriatedly flex_encoded args
 
-# xxx add encoding tests for del and resolve
-# XXXXXXXXX next: call flex_encode in indb case and rerun all tests!
+# xxxxxxxxx add encoding tests for resolve
 
 # Assumes $id and $elem are already encoded "rfs"
 
@@ -556,7 +556,6 @@ sub indb_del_dup { my( $bh, $id, $elem )=@_;
 }
 
 # yyy currently returns 0 on success (mimicking BDB-school return)
-# xxx assumes $id and $elem are already encoded "rfs"
 # xxx this is called only once, so we can easily split it into two;
 #     {ex,in}db_del_dup and pass in appropriatedly flex_encoded args
 
@@ -596,16 +595,14 @@ sub exdb_del_dup { my( $bh, $id, $elem )=@_;
 }
 
 # yyy currently returns 0 on success (mimicking BDB-school return)
-# xxx assumes $id and $elem are already encoded "rfs"
 # xxx this is called only once, so we can easily split it into two;
 #     {ex,in}db_del_dup and pass in appropriatedly flex_encoded args
+# Assumes $id and $elem are already encoded "rfs".
+
 sub egg_del_dup { my( $bh, $id, $elem )=@_;
 
 	my ($instatus, $result) = (0, 1);	# default is success
 	my $db = $bh->{db};
-
-# xxx add encoding tests for del and resolve
-# XXXXXXXXX next: call flex_encode in indb case and rerun all tests!
 
 # xxx who calls flex_encode? no one?
 	# xxx check that $elem is non-empty?
@@ -737,7 +734,6 @@ sub egg_del { my( $bh, $mods, $lcmd, $formal, $id, $elem )=@_;
 
 	dblock();	# no-op
 
-# xxx test del/purge/exists with encodings
 	# Somehow we decided that rm/delete operations should succeed
 	# after this point even if there's nothing to delete. Maybe
 	# that's because our indb doesn't throw an exception, but now
@@ -1264,16 +1260,14 @@ sub exdb_set_dup { my( $bh, $id, $elem, $val, $flags )=@_;
 
 	my $result;
 	my $coll = $bh->{sh}->{exdb}->{binder};		# collection
+
 # xxx to do:
 # rename $sh->{exdb} to $sh->{exdb_session}
 #   move ebopen artifacts to $bh->{exdb}
-# add: flex_dec_exdb on fetch and resolve!
+# add: flex_dec_exdb on resolve!
 # add: consider sorting on fetch to mimic indb behavior with btree
-# generalize egg_del/purge
-# generalize egg_exists
 # yyy big opportunity to optimize assignment of a bunch of elements in
 #     one batch (eg, from ezid).
-
 
 	my $filter_doc = { PKEY() => $id };		# initialize
 	my $upsert = 1;					# default
@@ -1317,37 +1311,6 @@ sub exdb_set_dup { my( $bh, $id, $elem, $val, $flags )=@_;
 
 #use Data::Dumper "Dumper"; print Dumper $result;
 #use Data::Dumper "Dumper"; print Dumper $bh;
-}
-
-# Called by egg_fetch.
-# xxx haven't thought about duplicate values
-# returns undef on error, empty string on "not found" yyy ?
-
-# XXX is this needed?
-sub xxxexdb_find_one { my( $bh, $coll, $id, $elem, $val )=@_;
-
-	my $query = {
-		PKEY()	=> $id,
-	};
-	#defined($id) and
-	#	$query->{PKEY()} = $id;
-	defined($elem) and defined($val) and
-		$query->{"'$elem'"} = $val;
-
-	my ($result, $msg);
-	my $ok = try {
-		$result = $coll->find_one( $query )
-		// 0;		# 0 != undefined; we're ok if nothing found
-	}
-	catch {
-		$msg = "error looking up id \"$id\" in external database: $_";
-		return undef;	# returns from "catch", NOT from routine
-	};
-	! defined($ok) and 	# test undefined since zero is ok
-		addmsg($bh, $msg),
-		return undef;
-	$result //= '';			# converts undef to empty string
-	return $result;			# yyy is this a good return status?
 }
 
 # dummy (for now) Egg auth check
@@ -2593,15 +2556,6 @@ sub egg_inflect { my ($bh, $mods, $om, $id)=@_;
 	return $p ? $st : ($s, $briefblob);
 }
 
-#XXXXXXXXXX; TODO;
-#Regularize flex_enc_... across exdb and indb
-#so that indb doesn't pollute $id and $elem for the exdb case
-#BETTER: push flex_enc calls deep into *db_get_dup/*db_set_dup where they
-#  won't conflict
-#  done: correctly done for $id _inside_ get_rawidtree()
-# indb_set (?? doesn't exist)
-# xxx must implement exists() for exdb case
-
 sub exdb_elem_output { my( $om, $key, $val )=@_;
 
 	my $p = $om ? $om->{outhandle} : 0;  # whether 'print' status or small
@@ -2716,7 +2670,6 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 
 		# NB: if we're here, we weren't called by get_rawidtree,
 		# since it would have called us with a specific element.
-# xxx so ! did_rawidtree ?
 
 		$txnid = tlogger $sh, $txnid, "BEGIN $lcmd $id";
 
@@ -2724,7 +2677,7 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 
 			my $rfs = flex_enc_exdb($id, @elems);	# yyy no @elems
 
-# xxx similar to calling get_rawidtree
+			# yyy similar to calling get_rawidtree
 			my $result;
 			# yyy binder belongs in $bh, NOT to $sh!
 			#     see ebopen()
@@ -2909,7 +2862,6 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 			@dups = $sh->{fetch_indb}
 				? indb_get_dup($db, $rfs->{id} . $Se . $elem)
 				: exdb_get_dup($bh, $rfs->{id}, $elem)
-# xxx why not using encoded form?
 			;
 		}
 

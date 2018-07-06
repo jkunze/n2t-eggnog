@@ -200,32 +200,6 @@ $x = `$webcl $pps "$ssvbase_u/a/ezid/b? $a1.fetch"`;
 like $x, qr{HTTP/\S+\s+200\s+.*_t: http://b.example.com}si,
 	'fetch the resolution target that was just bound';
 
-use EggNog::Resolver;
-my $urn = "urn:uuid:430c5f08-017e-11e1-858f-0025bce7cc84";
-my $urn_shadow = EggNog::Resolver::id2shadow($urn);
-
-#$x = apachectl('graceful-stop'); #	and print("$x\n");
-#print "######### temporary testing stop #########\n"; exit;
-
-$x = `$webcl $pps "$ssvbase_u/a/ezid/b? $urn_shadow.set this that"`;
-# vanilla binder doesn't supports shadow ids; use resolve() for that
-#$x = `$webcl $pps "$ssvbase_u/a/ezid/b? $urn.get this"`;
-#like $x, qr/^this: that$/m, 'URN shadow takes an element';
-
-my $urn_t = 'http://www.cdlib.org/';
-$x = `$webcl $pps "$ssvbase_u/a/ezid/b? $urn_shadow.set _t $urn_t"`;
-
-## xxx don't test resolution until after server restart
-#$x = apachectl('graceful');	# xxx remove this when using native BDB
-#like $x, qr/^$/,
-#	'XXX kludge restart to make resolution work with DB_File';
-
-$x = `$webcl "$srvbase_u/$urn"`;
-like $x, qr{Location:.*$urn_t}, 'URN shadow does URN resolution';
-
-#$x = apachectl('graceful-stop'); #	and print("$x\n");
-#print "######### temporary testing stop #########\n"; exit;
-
 # xxx do separate normalization test
 # xxx sometimes these tests hang when the network connection is poor
 $x = `$webcl "$srvbase_u/$a1"`;

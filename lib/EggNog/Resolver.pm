@@ -1414,20 +1414,22 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 	# ARKs, but people still resolve shadow arks found in the wild.
 
 # xxx remove this 2a code after all shadow ARKs are gone from the binder
-	# if still not found...
-	#### Step 2a. ... and we might store a shadow ARK for it (eg, doi:...)
+#	# if still not found...
+#	#### Step 2a. ... and we might store a shadow ARK for it (eg, doi:...)
+#
+#	if ($idx->{scheme} ne 'ark') {
+#		my $shadow = id2shadow($id);
+#		defined($shadow) and @dups =
+#			indb_get_dup($db, $shadow . TSUBEL);
+#		scalar(@dups) and
+#			return cnflect( $bh, $txnid, $db, $rpinfo, $accept,
+#				$shadow, \@dups, $idx, "doi2shadow" );
+#	}
 
-	if ($idx->{scheme} ne 'ark') {
-		my $shadow = id2shadow($id);
-		defined($shadow) and @dups =
-			indb_get_dup($db, $shadow . TSUBEL);
-		scalar(@dups) and
-			return cnflect( $bh, $txnid, $db, $rpinfo, $accept,
-				$shadow, \@dups, $idx, "doi2shadow" );
-	}
-
 	# if still not found...
-	#### Step 2b. ... and it might be a shadow ARK for it (eg, ark:/b...)
+	#### Step 2. ... and it might be a "shadow ARK" for it (eg, ark:/b...)
+	# NB: EZID once supported this as a kind of alias for non-ARK ids,
+	#     so we try to honor these
 
 	if ($idx->{scheme} eq 'ark' and $idx->{naan} =~ /^[b-z]\d\d\d\d$/) {
 		my $real_id = shadow2id($id);
