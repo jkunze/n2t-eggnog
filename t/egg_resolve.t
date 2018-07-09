@@ -91,18 +91,16 @@ $x = `$cmd -p $td mkbinder foo`;
 shellst_is 0, $x, "make binder named foo";
 
 my $wrl;
-$wrl = 'ark:/12345/b.c^d';	# yyy not a well-named variable?
-# xxx try putting literal space in there?
+$wrl = 'ark:/12345/b.c^d\ e';	# yyy not a well-named variable?
 
 $x = `$cmd -d $td/foo $wrl.set _t waf`;
 shellst_is 0, $x, "set _t with nasty id chars";
 
-#$x = resolve_stdin("-d $td/foo", $wrl);
-#like $x, qr|"op=partial".*"partial=\*/pdb"|,
-#	"partial id detected because of * in scheme";
-#
-#say "xxx premature exit x=$x";
-#exit;
+$x = `$cmd -d $td/foo $wrl.get _t`;
+
+$x = resolve_stdin("-d $td/foo", $wrl);
+like $x, qr/^redir302 waf\n/,
+	"resolution for id with nasty chars";
 
 $x = resolve_stdin("-d $td/foo",
 "*/pdb:1234",
@@ -116,6 +114,8 @@ $x = resolve_stdin("-d $td/foo",
 );
 like $x, qr|"op=partial".*"partial=\*/pdb"|,
 	"partial id detected because of * in scheme";
+
+#say "xxx premature exit x=$x"; exit;
 
 like $x, qr|"op=partial".*"partial=ark:"|,
 	"partial id detected for ark";

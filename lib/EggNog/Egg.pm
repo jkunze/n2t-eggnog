@@ -17,7 +17,7 @@ our @ISA = qw(Exporter);
 
 our @EXPORT = qw();
 our @EXPORT_OK = qw(
-	exdb_get_dup indb_get_dup id2elemval egg_inflect
+	exdb_get_dup indb_get_dup egg_inflect
 	flex_enc_exdb flex_enc_indb
 	PERMS_ELEM OP_READ
 );
@@ -397,7 +397,6 @@ sub exdb_get_dup { my( $bh, $id, $elem )=@_;
 
 	$result && $result->{$elem} or	# if nothing found, return empty array
 		return ();
-#say STDERR "xxx result->elem($elem): $result->{$elem}";
 	my $ref = ref $result->{$elem};
 	$ref eq 'ARRAY' and		# already is array ref, so return array
 		return @{ $result->{$elem} };
@@ -2741,6 +2740,7 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 			# yyy $st contains return value
 			# xxx unused at the moment
 		}
+		# yyy isn't this an "else"?
 		if ($sh->{fetch_indb}) {	# if EGG_DBIE is i or ie
 
 			# Unlike the call from within egg_purge(), this call to
@@ -3141,86 +3141,6 @@ sub get_rawidtree { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id )=@_;
 	undef($cursor);
 	return $om ? $st : 1;		# $valsR, if set, return values
 	#return $st;
-}
-
-# XXXXX feature from EZID UI redesign: list ids, eg, by user
-# XXXXX feature from EZID UI redesign: sort, eg, by creation date
-
-# Return $val constructed by mapping the element
-# returns () if nothing found, or (undef) on error
-
-sub id2elemval { my( $bh, $db, $id, $elem )=@_;
-
-	my $first = "$A/idmap/$elem|";
-	my $key = $first;
-	my $value = 0;
-	#my $status = $db->seq($key, $value, R_CURSOR);
-	my $cursor = $db->db_cursor();
-	my $status = $cursor->c_get($key, $value, DB_SET_RANGE);
-	# yyy no error check, assume non-zero == DB_NOTFOUND
-	$status and
-		$cursor->c_close(),
-		undef($cursor),
-		addmsg($bh, "id2elemval: $status"),
-		return (undef);
-	#$key !~ /^\Q$first/ and
-	$first ne substr($key, 0, length($first)) and
-		$cursor->c_close(),
-		undef($cursor),
-		return ();
-
-	# This loop exhaustively visits all patterns for this element.
-	# Prepare eventually for dups, but for now we only do first.
-	# XXX document that only the first dup works $cursor->c_get. (& fix?)
-	#
-	my ($pattern, $newval, @dups);
-	while (1) {
-
-		# The substitution $pattern is extracted from the part of
-		# $key that follows the |.
-		#
-		# We don't do the substr() version of the /^\Q.../
-		# test since we actually need a regexp match.
-		($pattern) = ($key =~ m|\Q$first\E(.+)|);
-		$newval = $id;
-
-		# xxxxxx this next line is producing a taint error!
-		# xxx optimize(?) for probable use case of shoulder
-		#   forwarding (eg, btree search instead of exhaustive),
-		#   which would work if the patterns are left anchored
-		defined($pattern) and
-			# yyy kludgy use of unlikely delimiters
-		# XXX check $pattern and $value for presence of delims
-		# XXX!! important to untaint because of 'eval'
-
-			# The first successful substitution stops the
-			# search, which may be at the first dup.
-			#
-			(eval '$newval =~ ' . qq@s$pattern$value@ and
-				$cursor->c_close(),
-				undef($cursor),
-				return ($newval)),	# succeeded, so return
-			($@ and			# unusual error failure
-				$cursor->c_close(),
-				undef($cursor),
-				addmsg($bh, "id2elemval eval: $@"),
-				return (undef))
-			;
-		#$db->seq($key, $value, R_NEXT) != 0 and
-		# yyy no error check, assume non-zero == DB_NOTFOUND
-		$cursor->c_get($key, $value, DB_NEXT) != 0 and
-			$cursor->c_close(),
-			undef($cursor),
-			return ();
-		# no match and ran out of rules
-		$first ne substr($key, 0, length($first)) and
-		#$key !~ /^\Q$first/ and	# no match and ran out of rules
-			$cursor->c_close(),
-			undef($cursor),
-			return ();
-	}
-	$cursor->c_close();
-	undef($cursor);
 }
 
 1;

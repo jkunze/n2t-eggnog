@@ -30,6 +30,7 @@ use EggNog::Log qw(tlogger);
 
 use constant TSUBEL	=> EggNog::Binder::TRGT_MAIN_SUBELEM;	# shorthand
 
+my $ANCESTOR_MATCH_ELEM = '_am';  # "ancestor match" elem name (pseudo-constant)
 my $SCHEMELESS = ':unkn';	# xxx -> :unkn
 
 # elems for which we call suffix_pass
@@ -430,6 +431,7 @@ use MongoDB;
 # dummy (for now) authorization check
 sub authz_ok { my( $bh, $id, $op ) =@_;
 
+# XXXXXX totally assumes indb case!
 	my $dbh = $bh->{tied_hash_ref};		# speed by $bh arg check
 	my $WeNeed = $op;			# operation requested
 	#my $id_permkey = $id . PERMS_ELEM;
@@ -905,7 +907,7 @@ sub id_decompose { my( $pfxs, $id )=@_;
 	my ($base, $extension) = ($id, '');
 	$base =~ s|[^\w_~].*|| and
 		$extension = $&;
-	# yyy this exact same [^\w_~] regex snippet is used in chopback
+	# yyy this exact same [^\w_~] regex snippet is used in ??db_chopback
 	$idx->{base_id} = $foundation . $base;
 	$idx->{extension} = $extension;
 	$idx->{checkstring} = $idx->{naan} . $idx->{naan_sep} . $base;
@@ -1254,8 +1256,6 @@ sub load_prefixes { my( $sh )=@_;
 
 sub resolve { my( $bh, $mods, $id, @headers )=@_;
 
-# XXXXXX is flex_enc_* being called at all? add test for both {ex,in}db
-
 	defined($id) or
 		addmsg($bh, "no identifier specified to fetch"),
 		return undef;
@@ -1329,16 +1329,24 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 	$id =~ s|^t-||i;	# remove pattern from resolver-directed tests
 	$id =~ s|^eoi:|doi:|i;	# xxx big kludge: temporary support for EOI
 
+	my $exget = $sh->{fetch_exdb} // 0;
+	my $rfs = $exget
+		? flex_enc_exdb($id)
+		: flex_enc_indb($id)
+	;
+	$id = $rfs->{id};
+
+	my $tg = EggNog::Binder::TRGT_MAIN;	# name of target element ('_t')
 	my $idx = id_decompose($sh->{pfxs}, $id);
 	if (! $idx or $idx->{errmsg}) {
 		$msg = $idx ? $idx->{errmsg} : '';
 		return undef;
 	}
-	$idx->{ ur_origid } = $ur_origid;
+	$idx->{ur_origid} = $ur_origid;
 
 	#### Step 0 Redirect directives to look for _before_ binder lookup
 	#  yyy as Last Step look up $SCHEMELESS ids post-binder-lookup
-	# Also check flag $idx{ partial } to detect cases such as
+	# Also check flag $idx{partial} to detect cases such as
 	# PARTIAL_SO scheme only
 	# PARTIAL_SC scheme plus colon only
 	# PARTIAL_SN scheme plus naan or prefix only
@@ -1370,8 +1378,11 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 	$id eq RRMINFOARK and
 		@dups = ( EggNog::Binder::rrminfo() ),		# easter egg
 		# yyy move to after consulting $rpinfo?
-	1 or
-		@dups = indb_get_dup($db, $id . TSUBEL),	# usual case
+	1 or							# or usual case
+		@dups = ($exget
+			? exdb_get_dup($bh, $id, $tg)
+			: indb_get_dup($db, ($id . TSUBEL))
+		),
 	;
 	#$tag = "aftereaster id=$id, origid=$origid";	# debug
 
@@ -1405,7 +1416,10 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 	$id = $idx->{full_id} || '';	# normalized id or defined empty string
 			# any suffix or query string will still be attached
 
-	@dups = indb_get_dup($db, $id . TSUBEL);		# usual case
+	@dups = $exget
+		? exdb_get_dup($bh, $id, $tg)
+		: indb_get_dup($db, $id . TSUBEL)
+	;
 	scalar(@dups) and
 		return cnflect( $bh, $txnid, $db, $rpinfo, $accept,
 			$id, \@dups, $idx, "normalized" );
@@ -1433,8 +1447,11 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 
 	if ($idx->{scheme} eq 'ark' and $idx->{naan} =~ /^[b-z]\d\d\d\d$/) {
 		my $real_id = shadow2id($id);
-		defined($real_id) and @dups =
-			indb_get_dup($db, $real_id . TSUBEL);
+		defined($real_id) and @dups = ($exget
+			? exdb_get_dup($bh, $real_id, $tg)
+			: indb_get_dup($db, $real_id . TSUBEL)
+		)
+	;
 		scalar(@dups) and
 			return cnflect( $bh, $txnid, $db, $rpinfo, $accept,
 				$real_id, \@dups, $idx, "doi2shadow" );
@@ -1597,7 +1614,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 	# From here on, $idx->{suffix} is defined iff suffix_pass() was called.
 
 	# if still nothing, try ancient noid-born rule-based mapping
-	@dups = EggNog::Egg::id2elemval($bh, $db, $id, EggNog::Binder::TRGT_MAIN);
+	@dups = id2elemval($bh, $db, $id, EggNog::Binder::TRGT_MAIN);
 	scalar(@dups) and
 		return cnflect( $bh, $txnid, $db, $rpinfo, $accept,
 			$id, \@dups, $idx, "id2elemval" );
@@ -1921,6 +1938,88 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 		$txnid = tlogger $sh, $txnid, $msg;
 	}
 	return $st;	# return code rarely correlates with failed lookup
+}
+
+# XXXXX feature from EZID UI redesign: list ids, eg, by user
+# XXXXX feature from EZID UI redesign: sort, eg, by creation date
+
+# Return $val constructed by mapping the element
+# returns () if nothing found, or (undef) on error
+
+sub id2elemval { my( $bh, $db, $id, $elem )=@_;
+
+# XXXXX convert away from pure indb!
+
+	my $first = "$A/idmap/$elem|";
+	my $key = $first;
+	my $value = 0;
+	#my $status = $db->seq($key, $value, R_CURSOR);
+	my $cursor = $db->db_cursor();
+	my $status = $cursor->c_get($key, $value, DB_SET_RANGE);
+	# yyy no error check, assume non-zero == DB_NOTFOUND
+	$status and
+		$cursor->c_close(),
+		undef($cursor),
+		addmsg($bh, "id2elemval: $status"),
+		return (undef);
+	#$key !~ /^\Q$first/ and
+	$first ne substr($key, 0, length($first)) and
+		$cursor->c_close(),
+		undef($cursor),
+		return ();
+
+	# This loop exhaustively visits all patterns for this element.
+	# Prepare eventually for dups, but for now we only do first.
+	# XXX document that only the first dup works $cursor->c_get. (& fix?)
+	#
+	my ($pattern, $newval, @dups);
+	while (1) {
+
+		# The substitution $pattern is extracted from the part of
+		# $key that follows the |.
+		#
+		# We don't do the substr() version of the /^\Q.../
+		# test since we actually need a regexp match.
+		($pattern) = ($key =~ m|\Q$first\E(.+)|);
+		$newval = $id;
+
+		# xxxxxx this next line is producing a taint error!
+		# xxx optimize(?) for probable use case of shoulder
+		#   forwarding (eg, btree search instead of exhaustive),
+		#   which would work if the patterns are left anchored
+		defined($pattern) and
+			# yyy kludgy use of unlikely delimiters
+		# XXX check $pattern and $value for presence of delims
+		# XXX!! important to untaint because of 'eval'
+
+			# The first successful substitution stops the
+			# search, which may be at the first dup.
+			#
+			(eval '$newval =~ ' . qq@s$pattern$value@ and
+				$cursor->c_close(),
+				undef($cursor),
+				return ($newval)),	# succeeded, so return
+			($@ and			# unusual error failure
+				$cursor->c_close(),
+				undef($cursor),
+				addmsg($bh, "id2elemval eval: $@"),
+				return (undef))
+			;
+		#$db->seq($key, $value, R_NEXT) != 0 and
+		# yyy no error check, assume non-zero == DB_NOTFOUND
+		$cursor->c_get($key, $value, DB_NEXT) != 0 and
+			$cursor->c_close(),
+			undef($cursor),
+			return ();
+		# no match and ran out of rules
+		$first ne substr($key, 0, length($first)) and
+		#$key !~ /^\Q$first/ and	# no match and ran out of rules
+			$cursor->c_close(),
+			undef($cursor),
+			return ();
+	}
+	$cursor->c_close();
+	undef($cursor);
 }
 
 ########### Code with special knowledge of DOIs and ARKs ############
@@ -2263,26 +2362,31 @@ qq@
 #        the key's lookup value eq $value))
 #    AND we haven't run out of id"
 #
-sub chopback { my( $bh, $verbose, $id, $stopchop, $element, $value )=@_;
+# This routine assumes $id arg arrives already flexencoded.
 
-# If this routine is called, $id has already been flexencoded.
+sub indb_chopback { my( $bh, $verbose, $id, $stopchop, $element, $value )=@_;
 
 # XXXXX the resolver MUST start enforcing ARK normalization, eg, no '-'s!
-#       especially as '-'s in, eg, uuids, will really slow chopback down
+#       especially as '-'s in, eg, uuids, will really slow ??db_chopback down
 
+	my $exget = $bh->{sh}->{fetch_exdb} // 0;
 	my $dbh = $bh->{tied_hash_ref};
 
 	$id ||= "";
 	$stopchop ||= 0;
 	my $tail = "";
 	defined($element) and
-		$tail .= "|$element";
+# xxx assumes indb
+# XXX try this with $Se instead of '|'
+		$tail .= "$Se$element";
+		#$tail .= "|$element";
+# xxx assumes indb
 	my $key = $id . $tail;
 	my $valcheck = defined($value);
 	# yyy what if $value defined but $element undefined?
 	#$element ||= "";		# yyy edge case avoiding undef error
 
-	# xxx allow opt to define its own chopback algorithm,
+	# xxx allow opt to define its own ??db_chopback algorithm,
 	# xxx allow opt to carry verbose and debug flags
 
 	# Note that qr/\w_~/ matches c64 identifiers
@@ -2295,10 +2399,16 @@ sub chopback { my( $bh, $verbose, $id, $stopchop, $element, $value )=@_;
 	#    code and should be turned into a variable that we compile
 	#    once and use standard in every instance
 	#
-	#$id =~ s/[^\w_~]*$//;		# trim any terminal non-word chars
-	$id =~ s/[^\w_~]+$// and	# if terminal non-word chars trimmed
+	#$id =~ s/[^\w_~]*$//;	    # trim any terminal non-word chars
+	$id =~ s/[^\w_~]+$// and    # if terminal non-word chars got trimmed
+
+# XXXX need this for exdb! not $dbh
+# xxx for exdb, we do NOT modify and lookup a key created by appending $tail
+#     to the chopped back $id; instead we just look up the chopped back
+#     $id for element $element
+
 		exists($dbh->{ $key=$id . $tail }) and	# and new key exists
-		($verbose && print("id:$id\n")) and	# (optional chatter)
+		($verbose && say("id:$id")) and		# (optional chatter)
 		! ($valcheck 				# we're checking values
 			&&				# and
 		    $dbh->{$key} eq $value) and		# it's the wrong value
@@ -2314,7 +2424,92 @@ sub chopback { my( $bh, $verbose, $id, $stopchop, $element, $value )=@_;
 	# xxx document: not checking for dups
 			$dbh->{$key} eq $value)		# it's the wrong value
 		and					# and if, after
-		($verbose and print("id=$id\n")),	# (optional chatter)
+		($verbose and say("id=$id")),		# (optional chatter)
+		($id =~ s/[^\w_~]*[\w_~]+$//),		# we chop off the tail
+		# xxx is this next the most efficient way?
+		#     maybe use substr as lval with replacement part?
+		# any necessary $key encoding was already done
+		($key = $id . $tail),			# and update our key,
+		length($id) > $stopchop			# something's left
+	);
+	#
+	# If we get here, we either ran out of $id or we found something.
+	#
+	# The caller gets the empty string when we ran out, and they have
+	# to deal with what exactly that means.  Running out means the
+	# boundary chopping algorithm chopped back (a) to before $stopchop
+	# or (b) to when length($id) == $stopchop.  Case (a) is more
+	# likely since we'll usually be called with $stopchop pointing to
+	# the shoulder end (eg, to the 8 in ark:/12345/pq8xr6...), which
+	# is not a chopping boundary.
+
+	return length($id) > $stopchop ? $id : "";
+}
+
+# See comment block before indb_chopback() (above).
+# This routine assumes $id arg arrives already flexencoded.
+
+sub exdb_chopback { my( $bh, $verbose, $id, $stopchop, $element, $value )=@_;
+
+# XXXXX the resolver MUST start enforcing ARK normalization, eg, no '-'s!
+#       especially as '-'s in, eg, uuids, will really slow ??db_chopback down
+
+	my $exget = $bh->{sh}->{fetch_exdb} // 0;
+	my $dbh = $bh->{tied_hash_ref};
+
+	$id ||= "";
+	$stopchop ||= 0;
+	my $tail = "";
+	defined($element) and
+# xxx assumes indb
+# XXX try this with $Se instead of '|'
+		$tail .= "$Se$element";
+		#$tail .= "|$element";
+# xxx assumes indb
+	my $key = $id . $tail;
+	my $valcheck = defined($value);
+	# yyy what if $value defined but $element undefined?
+	#$element ||= "";		# yyy edge case avoiding undef error
+
+	# xxx allow opt to define its own ??db_chopback algorithm,
+	# xxx allow opt to carry verbose and debug flags
+
+	# Note that qr/\w_~/ matches c64 identifiers
+	# In order for the loop below to terminate (to not be infinite),
+	# $id must always end in word chars; this works in tandem with
+	# $key (= $id . $tail).  But the first chop is handled specially
+	# so we don't inadvertently drop an inflection (which is when $id
+	# ends in non-word chars).
+	# yyy these [^\w_~] regex strings are used several places in the
+	#    code and should be turned into a variable that we compile
+	#    once and use standard in every instance
+	#
+	#$id =~ s/[^\w_~]*$//;	    # trim any terminal non-word chars
+	$id =~ s/[^\w_~]+$// and    # if terminal non-word chars got trimmed
+
+# XXXX need this for exdb! not $dbh
+# xxx for exdb, we do NOT modify and lookup a key created by appending $tail
+#     to the chopped back $id; instead we just look up the chopped back
+#     $id for element $element
+
+		exists($dbh->{ $key=$id . $tail }) and	# and new key exists
+		($verbose && say("id:$id")) and		# (optional chatter)
+		! ($valcheck 				# we're checking values
+			&&				# and
+		    $dbh->{$key} eq $value) and		# it's the wrong value
+			return (length($id) > $stopchop ? $id : "")
+	;
+
+	# See loop logic comments above.
+	1 while (					# continue while
+		! exists($dbh->{$key}) ||		# key doesn't exist or
+		# XXX is there a faster way to check than calling exists()?
+			($valcheck 			# we're checking values
+				&&			# and
+	# xxx document: not checking for dups
+			$dbh->{$key} eq $value)		# it's the wrong value
+		and					# and if, after
+		($verbose and say("id=$id")),		# (optional chatter)
 		($id =~ s/[^\w_~]*[\w_~]+$//),		# we chop off the tail
 		# xxx is this next the most efficient way?
 		#     maybe use substr as lval with replacement part?
@@ -2387,7 +2582,9 @@ sub meta_inherit { my( $noid, $verbose, $id, $element, $value )=@_;
 
 # Returns 1 if any key starts with string, s, 0 if not, else a message.
 # xxx how to return a msg?
-sub any_key_starting { my( $db, $s ) = ( shift, shift );
+
+sub any_key_starting { my( $db, $s )=@_;
+# ( shift, shift );
 
 	#! defined($s) and
 	#	print("XXXs undefined\n"),
@@ -2411,13 +2608,15 @@ sub any_key_starting { my( $db, $s ) = ( shift, shift );
 	#	return "any_key_starting: seq status/errno ($status/$!)";
 }
 
-sub check_naan { my( $db, $naan, $id, $element ) =
-		(  shift, shift, shift, shift );
+sub check_naan { my( $bh, $naan, $id, $element )=@_;
+#		(  shift, shift, shift, shift );
+# xxx do away with these shifts
 
+	my $db = $bh->{db};
 	my $remainder =			# get this BEFORE normalization
 		substr $id, length($naan);
 	$naan =~ s|/*$||;		# do some light normalization
-	my @dups = indb_get_dup($db, "$naan|$element");
+	my @dups = indb_get_dup($db, "$naan$Se$element");
 	scalar(@dups) or
 		return '';		# NAAN not found; can't help here
 
@@ -2432,7 +2631,10 @@ sub check_naan { my( $db, $naan, $id, $element ) =
 
 	# If we get here, $qs is ? or ??.  Now check ..._inflect element.
 	#
-	@dups = indb_get_dup($db, "$naan|$element" . "_inflect");
+	@dups = $bh->{sh}->{fetch_exdb}
+		? exdb_get_dup($bh, $naan, ($element . '_inflect'))
+		: indb_get_dup($db, ("$naan$Se$element" . '_inflect'))
+	;
 	my $ifl = scalar(@dups) ? $dups[0] : '';
 	#$ifl eq 'cgi' || $ifl eq 'thump' || $ifl eq 'noexpand' or
 	$ifl eq 'thump' || $ifl eq 'noexpand' or
@@ -2472,10 +2674,14 @@ sub check_naan { my( $db, $naan, $id, $element ) =
 # This routine tries to be generalized for any $element, but it's
 # definitely warped (in thinking and in testing) towards the "_t"
 # element.  Proceed with caution if you intend more general use.
+# Assumes $id is already encoded, ready for lookup in storage.
 #
 # XXX should pass in results of normalization to save time in reparsing id
-#
+
 sub suffix_pass { my( $bh, $id, $element, $suffix_return )=@_;
+
+# XXX test id2elemval (should break in exdb case)
+# xxx convert check_naan and suffix_pass and chopback
 
 	$_[3] = '';			# initialize $suffix_return
 	my $raw_id = $id;		# save in case needed (not yet)
@@ -2490,18 +2696,19 @@ sub suffix_pass { my( $bh, $id, $element, $suffix_return )=@_;
 	my $db = $bh->{db};
 	my $opt = $bh->{opt};	# xxx needed?
 	my $st;
+	my $exget = $bh->{sh}->{fetch_exdb} // 0;
 
 	my $verbose = $opt->{verbose};
 
 	$verbose and print "start suffix passthrough (spt) on $id\n";
-	#my $element = "_t";	# element to give to chopback()
+	#my $element = "_t";	# element to give to ??db_chopback()
 	my $value = "";			# because we want a non-empty value
 
-	# We prepare to call chopback() to see if an ancestor (substring)
+	# We prepare to call ??db_chopback() to see if an ancestor (substring)
 	# of the submitted $id exists in our db.  This is expensive, so
 	# we optimize a little (a) by a pre-check (a kind of big pre-chop
 	# to see if a bunch of little chops are worth it) to see if
-	# the root is present at all and (b) by stopping the chopback when
+	# the root is present at all and (b) by stopping the ??db_chopback when
 	# we've reached into an uninteresting portion of the identifier,
 	# eg, scheme, host, etc.  Use $stop to hold the substring that
 	# will be subject to chopping.
@@ -2573,14 +2780,14 @@ sub suffix_pass { my( $bh, $id, $element, $suffix_return )=@_;
 # For _t the affected behavior concerns suffix passthrough (SPT).
 #
 # _t_am n	# (none) don't do SPT at all; check this
-#		# BEFORE calling chopback on a shoulder, but DISCOURAGE
+#		# BEFORE calling ??db_chopback on a shoulder, but DISCOURAGE
 #		# as spt is cool and paranoia spoils it for all
 #		# ? can be applied to an id or to an entire shoulder
 #		# (note: only for first-digit convention shoulders)
 # _t_am q	# (query) go to T but with suffix in query string
-#		# check after calling chopback
+#		# check after calling ??db_chopback
 # _t_am t	# (truncate) go to T but without suffix
-#		# check after calling chopback
+#		# check after calling ??db_chopback
 
 # XXX add shoulder element tag that permits us to search shoulder AND
 #     then, failing that, continue searching redirecting to a given NAAN
@@ -2599,7 +2806,7 @@ sub suffix_pass { my( $bh, $id, $element, $suffix_return )=@_;
 #			# rule at the receiving server that routes back,
 #			# or just suffer the 404.
 
-	# The next call to chopback() is potentially expensive, so let's
+	# The next call to ??db_chopback() is potentially expensive, so let's
 	# see if there are any easy reasons to avoid it.  First, see if
 	# our database has any ids at all under (that start with) the
 	# (fully-qualified) shoulder that starts the identifier.
@@ -2630,6 +2837,7 @@ sub suffix_pass { my( $bh, $id, $element, $suffix_return )=@_;
 	# If we get here, there is at least one relevant id-like thing in
 	# the database.
 
+# XXXXXX convert any_key_starting
 	$st = $shoulder ? any_key_starting($db, $shoulder)
 		: 1;	# for edge case where $id doesn't look like a URL
 
@@ -2638,20 +2846,23 @@ sub suffix_pass { my( $bh, $id, $element, $suffix_return )=@_;
 	! $st and		# no shoulder matched; check NAAN match
 		# xxx if OCA/IA binder is in resolver list, won't this
 		# next check bypass that (or be redundant with it)?
-		($newid = check_naan($db, $naan, $id, $element)) and
+# XXXXXX convert check_naan
+		($newid = check_naan($bh, $naan, $id, $element)) and
 			return $newid;
 
 	# XXXX need a very important shoulder optimization to deal with
 	#	millions of long ids stored MOSTLY elsewhere, that we want to
-	#	avoid calling chopback() on, eg, Biocode  -- how to implement?
+	#	avoid calling ??db_chopback() on, eg, Biocode  -- how to implement?
 
 	! $st and	# no shoulder match, or external NAAN opportunity
 		($verbose and print
 			"skipping chopback; no keys start with $shoulder\n"),
 		return ();
 
-	my $am = $element . '_am';	# the "ancestor match" element
-	@dups = indb_get_dup($db, "$shoulder|$am");
+	my $am = $element . $ANCESTOR_MATCH_ELEM;
+	@dups = $exget
+		? exdb_get_dup($bh, $shoulder, $am)
+		: indb_get_dup($db, "$shoulder$Se$am");
 	my $amflag = scalar(@dups) ?
 		$dups[0] : '';		# yyy safe to ignore other dups?
 	$verbose and print "shoulder amflag=$amflag for $shoulder|$am\n";
@@ -2661,18 +2872,24 @@ sub suffix_pass { my( $bh, $id, $element, $suffix_return )=@_;
 				', eg, no suffix passthrough' : '', "\n")),
 		return ();
 
-	$verbose and
-		print "aim to stop before $stopchop chars in $id (before $stop)\n";
+	$verbose and print
+		"aim to stop before $stopchop chars in $id (before $stop)\n";
 
-	# The main event.
-	#
-	$newid = chopback($bh, $verbose, $id, $stopchop, $element, $value);
+	#### The main event. ####
+
+	$newid = $exget
+		? exdb_chopback($bh, $verbose, $id, $stopchop, $element, $value)
+		: indb_chopback($bh, $verbose, $id, $stopchop, $element, $value)
+	;
 
 	#$verbose and
 	#	print "chopback id was $id\n";
 	! $newid and
 		# yyy are we over-doing this checking of dups thing?
-		@dups = indb_get_dup($db, "$shoulder|$element"),
+		@dups = ($exget
+			? exdb_get_dup($bh, $shoulder, $element)
+			: indb_get_dup($db, "$shoulder$Se$element")
+		),
 		scalar(@dups) and
 			$newid = $shoulder;
 
@@ -2682,7 +2899,10 @@ sub suffix_pass { my( $bh, $id, $element, $suffix_return )=@_;
 	! $newid and
 		return ();
 
-	@dups = indb_get_dup($db, "$newid|$am");	# check flag for $newid
+	@dups = $exget				# check flag for $newid
+		? exdb_get_dup($bh, $newid, $am)
+		: indb_get_dup($db, "$newid$Se$am")
+	;
 	$amflag = scalar(@dups) ?	$dups[0] : '';
 	$verbose and print "id amflag=$amflag for $newid|$am\n";
 	$amflag eq 'n' and
@@ -2709,7 +2929,10 @@ sub suffix_pass { my( $bh, $id, $element, $suffix_return )=@_;
 	# 
 # XXXXXX did we encode $newid chars here and for chopback?? eg, any |'s?
 
-	@dups = indb_get_dup($db, "$newid|$element");
+	@dups = $exget
+		? exdb_get_dup($bh, $newid, $element)
+		: indb_get_dup($db, "$newid$Se$element")
+	;
 # XXX @dups now has base target, but no appended or substituted suffix !!!
 
 	$verbose	and print "spt to: ", join(", ", @dups), "\n";

@@ -686,6 +686,16 @@ sub bdx_mstat { my( $level )=@_;
 
 	my $minderpath = $cmdr_from_d_flag ?
 		"" : $bh->{minderpath};		# search unless -d used
+
+	# yyy need to configure so we can test $sh->{exdb} below
+	my $msg;
+	if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {
+		outmsg($sh, $msg);      # failed to configure
+		return 1;
+	}
+	$sh->{exdb} and $cmdr_from_d_flag and
+		$cmdr = '';	# binder name _is_ -d arg, not inside it
+
 	bopen($bh, $cmdr, DB_RDONLY, $minderpath) or
 		outmsg($bh), return 1;
 
@@ -713,6 +723,16 @@ sub bdx_next_list { my( $max, $nextkey, @inkeys )=@_;
 
 	my $minderpath = $cmdr_from_d_flag ?
 		"" : $bh->{minderpath};		# search unless -d used
+
+	# yyy need to configure so we can test $sh->{exdb} below
+	my $msg;
+	if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {
+		outmsg($sh, $msg);      # failed to configure
+		return 1;
+	}
+	$sh->{exdb} and $cmdr_from_d_flag and
+		$cmdr = '';	# binder name _is_ -d arg, not inside it
+
 	bopen($bh, $cmdr, DB_RDONLY, $minderpath) or
 		outmsg($bh), return 1;
 
@@ -743,6 +763,16 @@ sub bdx_resolve {	# any args are optional headers, passed to Egg::resolve
 
 	my $minderpath = $cmdr_from_d_flag ?
 		"" : $bh->{minderpath};		# search unless -d used
+
+	# yyy need to configure so we can test $sh->{exdb} below
+	my $msg;
+	if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {
+		outmsg($sh, $msg);      # failed to configure
+		return 1;
+	}
+	$sh->{exdb} and $cmdr_from_d_flag and
+		$cmdr = '';	# binder name _is_ -d arg, not inside it
+
 	bopen($bh, $cmdr, DB_RDONLY, $minderpath) or
 		print("could not open binder $cmdr\n"), return 1;
 		#outmsg($bh), return 1;
@@ -837,6 +867,16 @@ sub bdx_mstatus { my( $status )=@_;
 		outmsg($bh, $status), return 1;
 	my $minderpath = $cmdr_from_d_flag ?
 		"" : $bh->{minderpath};		# search unless -d used
+
+	# yyy need to configure so we can test $sh->{exdb} below
+	my $msg;
+	if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {
+		outmsg($sh, $msg);      # failed to configure
+		return 1;
+	}
+	$sh->{exdb} and $cmdr_from_d_flag and
+		$cmdr = '';	# binder name _is_ -d arg, not inside it
+
 	bopen($bh, $cmdr, $flag, $minderpath) or
 		outmsg($bh), return 1;
 
@@ -993,7 +1033,7 @@ sub bdx_assign { my( $lcmd, $delete, $polite, $how )=( shift, shift, shift, shif
 		return 1;
 	}
 	$sh->{exdb} and $cmdr_from_d_flag and
-		$cmdr = '';			# don't accept binder from -d
+		$cmdr = '';	# binder name _is_ -d arg, not inside it
 
 	bopen($bh, $cmdr, DB_RDWR, $minderpath) or
 		outmsg($bh), return 1;
@@ -1021,7 +1061,7 @@ sub bdx_getfetch { my( $formal, @elems )=@_;
 		return 1;
 	}
 	$sh->{exdb} and $cmdr_from_d_flag and
-		$cmdr = '';			# don't accept binder from -d
+		$cmdr = '';	# binder name _is_ -d arg, not inside it
 
 #say "xxx cmdr=$cmdr, cmdr_from_d_flag=$cmdr_from_d_flag";
 	bopen($bh, $cmdr, DB_RDONLY, $minderpath) or
@@ -1054,6 +1094,16 @@ sub bdx_show { my( @elemsets )=@_;	# acts on ELEMENTS, eg, "show :brief"
 
 	my $minderpath = $cmdr_from_d_flag ?
 		"" : $bh->{minderpath};		# search unless -d used
+
+	# yyy need to configure so we can test $sh->{exdb} below
+	my $msg;
+	if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {
+		outmsg($sh, $msg);      # failed to configure
+		return 1;
+	}
+	$sh->{exdb} and $cmdr_from_d_flag and
+		$cmdr = '';	# binder name _is_ -d arg, not inside it
+
 	bopen($bh, $cmdr, DB_RDONLY, $minderpath) or
 		outmsg($bh), return 1;
 
@@ -1072,7 +1122,7 @@ sub bdx_exists {	# might have an element name argument
 		return 1;
 	}
 	$sh->{exdb} and $cmdr_from_d_flag and
-		$cmdr = '';			# don't accept binder from -d
+		$cmdr = '';	# binder name _is_ -d arg, not inside it
 
 	my $minderpath = $cmdr_from_d_flag ?
 		"" : $bh->{minderpath};		# search unless -d used
@@ -1097,7 +1147,7 @@ sub bdx_del { my( $lcmd, $formal )=( shift, shift );
 		return 1;
 	}
 	$sh->{exdb} and $cmdr_from_d_flag and
-		$cmdr = '';			# don't accept binder from -d
+		$cmdr = '';	# binder name _is_ -d arg, not inside it
 
 	my $minderpath = $cmdr_from_d_flag ?
 		"" : $bh->{minderpath};		# search unless -d used
@@ -1125,7 +1175,7 @@ sub bdx_purge { my( $formal )=shift;
 		return 1;
 	}
 	$sh->{exdb} and $cmdr_from_d_flag and
-		$cmdr = '';			# don't accept binder from -d
+		$cmdr = '';	# binder name _is_ -d arg, not inside it
 
 	my $minderpath = $cmdr_from_d_flag ?
 		"" : $bh->{minderpath};		# search unless -d used

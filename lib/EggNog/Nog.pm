@@ -1507,64 +1507,64 @@ sub hold_release { my( $mh, $id )=@_;
 	return 1;
 }
 
-# XXXXX feature from EZID UI redesign: list ids, eg, by user
-# XXXXX feature from EZID UI redesign: sort, eg, by creation date
-
-# Return $val constructed by mapping the element
-# returns () if nothing found, or (undef) on error
-# XXX so how does a return() differ from return(undef) ?
-
-sub id2elemval { my( $mh, $db, $id, $elem )=@_;
-
-	my $first = "$A/idmap/$elem\t";
-	my ($key, $value) = ($first, 0);
-	my $status = $db->seq($key, $value, R_CURSOR);
-	$status and
-		addmsg($mh, "id2elemval: seq status/errno ($status/$!)"),
-		return (undef);
-	$key !~ /^\Q$first/ and
-		return ();
-	# untaint $id
-	$id =~ m|^(.*)$| and
-		$id = $1;
-
-	# This loop exhaustively visits all patterns for this element.
-	# Prepare eventually for dups, but for now we only do first.
-	# XXX document that only the first dup works $db->seq. (& fix?)
-	#
-	my ($pattern, $newval, @dups);
-	while (1) {
-
-		# The substitution $pattern is extracted from the part of
-		# $key that follows the \t.
-		#
-		($pattern) = ($key =~ m|\Q$first\E(.+)|);
-		$newval = $id;
-
-		# xxxxxx this next line is producing a taint error!
-		# xxx optimize(?) for probable use case of shoulder
-		#   forwarding (eg, btree search instead of exhaustive),
-		#   which would work if the patterns are left anchored
-		defined($pattern) and
-			# yyy kludgy use of unlikely delimiters
-		# XXX check $pattern and $value for presence of delims
-		# XXX!! important to untaint because of 'eval'
-
-			# The first successful substitution stops the
-			# search, which may be at the first dup.
-			#
-			(eval '$newval =~ ' . qq@s$pattern$value@ and
-				return ($newval)),	# succeeded, so return
-			($@ and			# unusual error failure
-				addmsg($mh, "id2elemval eval: $@"),
-				return (undef))
-			;
-		db->seq($key, $value, R_NEXT) != 0 and
-			return ();
-		$key !~ /^\Q$first/ and		# no match and ran out of rules
-			return ();
-	}
-}
+## XXXXX feature from EZID UI redesign: list ids, eg, by user
+## XXXXX feature from EZID UI redesign: sort, eg, by creation date
+#
+## Return $val constructed by mapping the element
+## returns () if nothing found, or (undef) on error
+## XXX so how does a return() differ from return(undef) ?
+#
+#sub id2elemval { my( $mh, $db, $id, $elem )=@_;
+#
+#	my $first = "$A/idmap/$elem\t";
+#	my ($key, $value) = ($first, 0);
+#	my $status = $db->seq($key, $value, R_CURSOR);
+#	$status and
+#		addmsg($mh, "id2elemval: seq status/errno ($status/$!)"),
+#		return (undef);
+#	$key !~ /^\Q$first/ and
+#		return ();
+#	# untaint $id
+#	$id =~ m|^(.*)$| and
+#		$id = $1;
+#
+#	# This loop exhaustively visits all patterns for this element.
+#	# Prepare eventually for dups, but for now we only do first.
+#	# XXX document that only the first dup works $db->seq. (& fix?)
+#	#
+#	my ($pattern, $newval, @dups);
+#	while (1) {
+#
+#		# The substitution $pattern is extracted from the part of
+#		# $key that follows the \t.
+#		#
+#		($pattern) = ($key =~ m|\Q$first\E(.+)|);
+#		$newval = $id;
+#
+#		# xxxxxx this next line is producing a taint error!
+#		# xxx optimize(?) for probable use case of shoulder
+#		#   forwarding (eg, btree search instead of exhaustive),
+#		#   which would work if the patterns are left anchored
+#		defined($pattern) and
+#			# yyy kludgy use of unlikely delimiters
+#		# XXX check $pattern and $value for presence of delims
+#		# XXX!! important to untaint because of 'eval'
+#
+#			# The first successful substitution stops the
+#			# search, which may be at the first dup.
+#			#
+#			(eval '$newval =~ ' . qq@s$pattern$value@ and
+#				return ($newval)),	# succeeded, so return
+#			($@ and			# unusual error failure
+#				addmsg($mh, "id2elemval eval: $@"),
+#				return (undef))
+#			;
+#		db->seq($key, $value, R_NEXT) != 0 and
+#			return ();
+#		$key !~ /^\Q$first/ and		# no match and ran out of rules
+#			return ();
+#	}
+#}
 
 # Initialize sub-counters.
 #

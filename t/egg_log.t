@@ -150,6 +150,8 @@ like $x, qr/mline.*%0athis.*%0athis/s,
 like $x, qr/BEGIN resolve $dummyid.*end FAIL.*$dummyid/si,
 	'BEGIN/END (fail) resolve pairs record same original form of id';
 
+#say STDERR "xxx premature exit"; exit;
+
 # we don't have proof its hardwired, but the resolver is started without
 #     a --pfxfile filename, therefore it should fall back to hardwired
 # yyy could use a less crude test
