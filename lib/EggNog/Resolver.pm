@@ -32,6 +32,9 @@ use constant TSUBEL	=> EggNog::Binder::TRGT_MAIN_SUBELEM;	# shorthand
 
 my $ANCESTOR_MATCH_ELEM = '_am';  # "ancestor match" elem name (pseudo-constant)
 my $SCHEMELESS = ':unkn';	# xxx -> :unkn
+my $EXsc = $EggNog::Egg::EXsc;
+my $PKEY = $EggNog::Egg::PKEY;
+#my $fdfd = \&EggNog::Egg::flex_dec_for_display;			# shorthand
 
 # elems for which we call suffix_pass
 our @suffixable = ( EggNog::Binder::TRGT_MAIN );
@@ -431,7 +434,8 @@ use MongoDB;
 # dummy (for now) authorization check
 sub authz_ok { my( $bh, $id, $op ) =@_;
 
-# XXXXXX totally assumes indb case!
+# XXXXX convert away from pure indb!
+
 	my $dbh = $bh->{tied_hash_ref};		# speed by $bh arg check
 	my $WeNeed = $op;			# operation requested
 	#my $id_permkey = $id . PERMS_ELEM;
@@ -1334,7 +1338,11 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 		? flex_enc_exdb($id)
 		: flex_enc_indb($id)
 	;
-	$id = $rfs->{id};
+
+	# We have to encode multiple times, since we gradually alter the input
+	# id as we try different strategies. Once encoded, we lose some
+	# structural chars, such as '.' in the compact id "foo.bar:zaf".
+	# This was the first time.
 
 	my $tg = EggNog::Binder::TRGT_MAIN;	# name of target element ('_t')
 	my $idx = id_decompose($sh->{pfxs}, $id);
@@ -1380,8 +1388,8 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 		# yyy move to after consulting $rpinfo?
 	1 or							# or usual case
 		@dups = ($exget
-			? exdb_get_dup($bh, $id, $tg)
-			: indb_get_dup($db, ($id . TSUBEL))
+			? exdb_get_dup($bh, $rfs->{id}, $tg)
+			: indb_get_dup($db, ($rfs->{id} . TSUBEL))
 		),
 	;
 	#$tag = "aftereaster id=$id, origid=$origid";	# debug
@@ -1412,13 +1420,18 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 # yyy Julie M: when scheme is unknown, produce message (log?) to that effect for
 #   resolution
 
-	# Here comes the second lookup.
+	# Here comes the second lookup. First try another form of the id and
+	# re-encode it.
+
 	$id = $idx->{full_id} || '';	# normalized id or defined empty string
 			# any suffix or query string will still be attached
-
+	$rfs = $exget
+		? flex_enc_exdb($id)
+		: flex_enc_indb($id)
+	;
 	@dups = $exget
-		? exdb_get_dup($bh, $id, $tg)
-		: indb_get_dup($db, $id . TSUBEL)
+		? exdb_get_dup($bh, $rfs->{id}, $tg)
+		: indb_get_dup($db, $rfs->{id} . TSUBEL)
 	;
 	scalar(@dups) and
 		return cnflect( $bh, $txnid, $db, $rpinfo, $accept,
@@ -1447,11 +1460,14 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 
 	if ($idx->{scheme} eq 'ark' and $idx->{naan} =~ /^[b-z]\d\d\d\d$/) {
 		my $real_id = shadow2id($id);
+		my $real_rfs = $exget
+			? flex_enc_exdb($real_id)
+			: flex_enc_indb($real_id)
+		;
 		defined($real_id) and @dups = ($exget
-			? exdb_get_dup($bh, $real_id, $tg)
-			: indb_get_dup($db, $real_id . TSUBEL)
-		)
-	;
+			? exdb_get_dup($bh, $real_rfs->{id}, $tg)
+			: indb_get_dup($db, $real_rfs->{id} . TSUBEL)
+		);
 		scalar(@dups) and
 			return cnflect( $bh, $txnid, $db, $rpinfo, $accept,
 				$real_id, \@dups, $idx, "doi2shadow" );
@@ -1595,6 +1611,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 #	# it rather than bother to check for each resolution.
 #	#
 # yyy isn't the test @suffixable deprecated; use scalar(@suffixable) instead?
+
 	if (@suffixable) {
 		my ($suffix, $rid);		# rid = root id + suffix
 		# NB: next call alters the $suffix argument (a return param)
@@ -1614,7 +1631,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 	# From here on, $idx->{suffix} is defined iff suffix_pass() was called.
 
 	# if still nothing, try ancient noid-born rule-based mapping
-	@dups = id2elemval($bh, $db, $id, EggNog::Binder::TRGT_MAIN);
+	@dups = id2elemval($bh, $id, EggNog::Binder::TRGT_MAIN);
 	scalar(@dups) and
 		return cnflect( $bh, $txnid, $db, $rpinfo, $accept,
 			$id, \@dups, $idx, "id2elemval" );
@@ -1706,8 +1723,9 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 
 # returns list consisting of inflection command plus args
 # $idx->{rid} is the $id/$rid
+
 sub inflect_cmd { my(   $bh, $eset, $format,  $idx )=
-		     ( shift, shift,   shift, shift );	# plus other params
+		    ( shift, shift,   shift, shift );	# plus other params
 
 	$eset ||= 'brief';	# yyy may be input by user; check for validity 
 				#     unused for the moment
@@ -1720,13 +1738,21 @@ sub inflect_cmd { my(   $bh, $eset, $format,  $idx )=
 		EggNog::Egg::egg_inflect(
 			$bh, { all => 1 },		# $mods->{all} = 1
 			$om, $idx->{rid} );
+# xxx final arg must not be encoded?
+#     because it goes out in order to come back in via script?
+#     where it would then be double-encoded?
 
 	my @args = ( 'inflect',
 			"id=$idx->{rid}",
+# xxx arg must not be encoded?
 			"eset=$eset",
 			"format=$format",
 			"metablob=$metablob",
 			"briefblob=$briefblob",
+			#"scheme=$idx->{scheme}",
+			#"naan=$idx->{naan}",
+			#"shoulder=$idx->{shoulder}",
+			#"ac=$idx->{slid}",
 			"scheme=$idx->{scheme}",
 			"naan=$idx->{naan}",
 			"shoulder=$idx->{shoulder}",
@@ -1751,8 +1777,30 @@ sub quote_args {			# quote args
 	return $argline;
 }
 
+# Return single target given $bh, $id, $element
+
+sub exdb_get_one {
+	my @dups = exdb_get_dup(@_);
+	return scalar(@dups)
+		? $dups[0]
+		: ''
+	;
+}
+
+# Return single target given $bh, $id, $element
+
+sub indb_get_one { my( $bh, $id, $element )=@_;
+	my $db = $bh->{db};
+	my $target;
+	return $db->db_get("$id$Se$element", $target)
+		? ''				# non-zero means not found
+		: $target			# zero means success
+	;
+}
+
 # Some globals to set once and use below, which are really constants. yyy
-my $Rs = EggNog::Binder::SUBELEM_SC	# reserved sub-element
+my $Rp = EggNog::Binder::RSRVD_PFIX;	# reserved sub-element prefix
+my $Rs = EggNog::Binder::SUBELEM_SC	# reserved sub-element separator prefix
 	. EggNog::Binder::RSRVD_PFIX;
 my $Tm = EggNog::Binder::TRGT_METADATA;   # actually content negotiation
 my $Ti = EggNog::Binder::TRGT_INFLECTION; # target for inflection
@@ -1810,7 +1858,7 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 		my $partial = $1;
 		$returnline = quote_args(
 			inflect_cmd( $bh, $eset, $format, $idx,
-				"op=partial", "partial=$partial"))
+				"op=partial", "partial=$partial" ))
 	}
 
 	# yyy shouldn't this be checking $idx->{query}, not $suffix?
@@ -1818,12 +1866,24 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 	# if no returnline yet and we didn't fail the lookup and if SPT was
 	# called and returned a non-empty suffix that contains no word char...
 
+	my $get_one = $bh->{sh}->{fetch_exdb}	# {ex,in}db-agnostic get 1 elem
+		? \&exdb_get_one
+		: \&indb_get_one
+	;
+
 	if (! $returnline and ! $fail and $suffix and $suffix !~ /\w/) {
+		# recall: $Rp is reserved sub-element prefix
+		#     and $Rs is reserved sub-element separator prefix
+		#     and $Ti is target for inflection
+		#     and $Tm is target for metadata (actually, conneg)
 
 		# now check the root id
-		$db->db_get("$rid$Rs$Ti$suffix", $target) and	# unless found
-			$db->db_get("$rid$Rs$Ti", $target) and	# unless found
-				$target = '';			# not found
+		$target =
+			&$get_one($bh, $rid, $Rp.$Ti.$suffix) ||
+			&$get_one($bh, $rid, $Rp.$Ti) || '';
+#		$db->db_get("$rid$Rs$Ti$suffix", $target) and	# unless found
+#			$db->db_get("$rid$Rs$Ti", $target) and	# unless found
+#				$target = '';			# not found
 
 		$target and		# if $target found, redirect to it
 		# xxx conneg uses redir303, but inflections are different
@@ -1848,9 +1908,13 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 
 		# yyy old xref binder element names use _mT* not ._eT*
 
-		$db->db_get("$id$Rs$Tm$accept", $target) and	# unless found
-			$db->db_get("$id$Rs$Tm", $target) and	# unless found
-				$target = '';
+# xxx exdb NOT FINISHED!
+		$target =
+			&$get_one($bh, $id, $Rp.$Tm.$accept) ||
+			&$get_one($bh, $id, $Rp.$Tm) || '';
+#		$db->db_get("$id$Rs$Tm$accept", $target) and	# unless found
+#			$db->db_get("$id$Rs$Tm", $target) and	# unless found
+#				$target = '';
 		$target and		# if $target found, redirect to it
 			$returnline = "redir303 $target",	# http range-14!
 		1 or		# else check if "inflect" script handles it
@@ -1946,11 +2010,16 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 # Return $val constructed by mapping the element
 # returns () if nothing found, or (undef) on error
 
-sub id2elemval { my( $bh, $db, $id, $elem )=@_;
+sub id2elemval { my( $bh, $id, $elem )=@_;
 
 # XXXXX convert away from pure indb!
+# xxx cheap way out for now:
+	$bh->{sh}->{fetch_exdb} and
+		return ();		# xxx exdb unsupported for now!
 
-	my $first = "$A/idmap/$elem|";
+	my $db = $bh->{db};
+	#my $first = "$A/idmap/$elem|";
+	my $first = "$A/idmap/$elem$Se";
 	my $key = $first;
 	my $value = 0;
 	#my $status = $db->seq($key, $value, R_CURSOR);
@@ -1976,7 +2045,7 @@ sub id2elemval { my( $bh, $db, $id, $elem )=@_;
 	while (1) {
 
 		# The substitution $pattern is extracted from the part of
-		# $key that follows the |.
+		# $key that follows the $Se.
 		#
 		# We don't do the substr() version of the /^\Q.../
 		# test since we actually need a regexp match.
@@ -2376,11 +2445,7 @@ sub indb_chopback { my( $bh, $verbose, $id, $stopchop, $element, $value )=@_;
 	$stopchop ||= 0;
 	my $tail = "";
 	defined($element) and
-# xxx assumes indb
-# XXX try this with $Se instead of '|'
 		$tail .= "$Se$element";
-		#$tail .= "|$element";
-# xxx assumes indb
 	my $key = $id . $tail;
 	my $valcheck = defined($value);
 	# yyy what if $value defined but $element undefined?
@@ -2401,12 +2466,6 @@ sub indb_chopback { my( $bh, $verbose, $id, $stopchop, $element, $value )=@_;
 	#
 	#$id =~ s/[^\w_~]*$//;	    # trim any terminal non-word chars
 	$id =~ s/[^\w_~]+$// and    # if terminal non-word chars got trimmed
-
-# XXXX need this for exdb! not $dbh
-# xxx for exdb, we do NOT modify and lookup a key created by appending $tail
-#     to the chopped back $id; instead we just look up the chopped back
-#     $id for element $element
-
 		exists($dbh->{ $key=$id . $tail }) and	# and new key exists
 		($verbose && say("id:$id")) and		# (optional chatter)
 		! ($valcheck 				# we're checking values
@@ -2448,28 +2507,16 @@ sub indb_chopback { my( $bh, $verbose, $id, $stopchop, $element, $value )=@_;
 
 # See comment block before indb_chopback() (above).
 # This routine assumes $id arg arrives already flexencoded.
+# We also assume $element is defined.
 
-sub exdb_chopback { my( $bh, $verbose, $id, $stopchop, $element, $value )=@_;
+sub exdb_chopback { my( $bh, $verbose, $id, $stopchop, $elem, $value )=@_;
 
 # XXXXX the resolver MUST start enforcing ARK normalization, eg, no '-'s!
 #       especially as '-'s in, eg, uuids, will really slow ??db_chopback down
 
-	my $exget = $bh->{sh}->{fetch_exdb} // 0;
-	my $dbh = $bh->{tied_hash_ref};
-
 	$id ||= "";
 	$stopchop ||= 0;
-	my $tail = "";
-	defined($element) and
-# xxx assumes indb
-# XXX try this with $Se instead of '|'
-		$tail .= "$Se$element";
-		#$tail .= "|$element";
-# xxx assumes indb
-	my $key = $id . $tail;
 	my $valcheck = defined($value);
-	# yyy what if $value defined but $element undefined?
-	#$element ||= "";		# yyy edge case avoiding undef error
 
 	# xxx allow opt to define its own ??db_chopback algorithm,
 	# xxx allow opt to carry verbose and debug flags
@@ -2485,36 +2532,35 @@ sub exdb_chopback { my( $bh, $verbose, $id, $stopchop, $element, $value )=@_;
 	#    once and use standard in every instance
 	#
 	#$id =~ s/[^\w_~]*$//;	    # trim any terminal non-word chars
-	$id =~ s/[^\w_~]+$// and    # if terminal non-word chars got trimmed
 
-# XXXX need this for exdb! not $dbh
-# xxx for exdb, we do NOT modify and lookup a key created by appending $tail
-#     to the chopped back $id; instead we just look up the chopped back
-#     $id for element $element
-
-		exists($dbh->{ $key=$id . $tail }) and	# and new key exists
-		($verbose && say("id:$id")) and		# (optional chatter)
-		! ($valcheck 				# we're checking values
+	my @dups;
+	if ($id =~ s/[^\w_~]+$//) { # if terminal non-word chars got trimmed
+		$verbose and
+			say("id:$id");			# optional chatter
+		@dups = exdb_get_dup($bh, $id, $elem);
+		scalar(@dups) and			# if the new key exists
+		  ! ($valcheck 				# we're checking values
 			&&				# and
-		    $dbh->{$key} eq $value) and		# it's the wrong value
-			return (length($id) > $stopchop ? $id : "")
-	;
+		    $dups[0] eq $value) and		# it's the wrong value
+			return (length($id) > $stopchop ? $id : "");
+	}
 
 	# See loop logic comments above.
 	1 while (					# continue while
-		! exists($dbh->{$key}) ||		# key doesn't exist or
-		# XXX is there a faster way to check than calling exists()?
+		! scalar(@dups = exdb_get_dup(		# key doesn't exist or
+			$bh, $id, $elem)) ||
+#		! exists($dbh->{$key}) ||		# key doesn't exist or
 			($valcheck 			# we're checking values
 				&&			# and
 	# xxx document: not checking for dups
-			$dbh->{$key} eq $value)		# it's the wrong value
+			$dups[0] eq $value)		# it's the wrong value
+#			$dbh->{$key} eq $value)		# it's the wrong value
 		and					# and if, after
 		($verbose and say("id=$id")),		# (optional chatter)
 		($id =~ s/[^\w_~]*[\w_~]+$//),		# we chop off the tail
 		# xxx is this next the most efficient way?
 		#     maybe use substr as lval with replacement part?
 		# any necessary $key encoding was already done
-		($key = $id . $tail),			# and update our key,
 		length($id) > $stopchop			# something's left
 	);
 	#
@@ -2582,15 +2628,37 @@ sub meta_inherit { my( $noid, $verbose, $id, $element, $value )=@_;
 
 # Returns 1 if any key starts with string, s, 0 if not, else a message.
 # xxx how to return a msg?
+# try mongo: { <field>: { $regex: /pattern/<options> } }
 
-sub any_key_starting { my( $db, $s )=@_;
-# ( shift, shift );
+sub any_key_starting { my( $bh, $s )=@_;
 
-	#! defined($s) and
-	#	print("XXXs undefined\n"),
-	#	return 0;
+	if ($bh->{sh}->{fetch_exdb}) {
+		my ($result, $msg);
+		my $ok = try {				# exdb_get_dup
+			my $coll = $bh->{sh}->{exdb}->{binder};	# collection
+say STDERR "xxx s=$s, PKEY=", $PKEY;
+			$result = $coll->find(
+				{ $PKEY => qr/^\Q$s/ }
+			)
+			// 0;		# 0 != undefined
+		}
+		catch {
+			$msg = "error fetching pattern \"/^$s/\": $_";
+			return undef;	# returns from "catch", NOT from routine
+		};
+		! defined($ok) and 	# test for undefined since zero is ok
+			addmsg($bh, $msg),
+			return undef;
+say "xxx in mongo any_key, result=$result";
+#my @xxx = $result->all;
+my $x = $result->next;
+say "xxx xxx=x->id=$x->{'_id'}";
+#say "xxx xxx=$xxx[0], x->id=$x->{'_id'}";
+		return
+			($result ? 1 : 0);
+	}
+	my $db = $bh->{db};
 	my ($key, $value) = ($s, 0);
-	#my $status = $db->seq($key, $value, R_CURSOR);
 	my $cursor = $db->db_cursor();
 	my $status = $cursor->c_get($key, $value, DB_SET_RANGE);
 	# yyy no error check, assume non-zero == DB_NOTFOUND
@@ -2609,14 +2677,22 @@ sub any_key_starting { my( $db, $s )=@_;
 }
 
 sub check_naan { my( $bh, $naan, $id, $element )=@_;
-#		(  shift, shift, shift, shift );
-# xxx do away with these shifts
 
+	my $exget = $bh->{sh}->{fetch_exdb} // 0;
 	my $db = $bh->{db};
 	my $remainder =			# get this BEFORE normalization
 		substr $id, length($naan);
 	$naan =~ s|/*$||;		# do some light normalization
-	my @dups = indb_get_dup($db, "$naan$Se$element");
+	my $enc_naan = $naan;		# to hold the encoded naan
+	my @dups;
+	if ($exget) {
+		$enc_naan =~ s{ $EXsc    }{ sprintf("^%02x", ord($1)) }xoeg;
+		@dups = exdb_get_dup($bh, $enc_naan, $element);
+	}
+	else {
+		$enc_naan =~ s{ ([$Se^]) }{ sprintf("^%02x", ord($1)) }xoeg;
+		@dups = indb_get_dup($db, "$enc_naan$Se$element");
+	}
 	scalar(@dups) or
 		return '';		# NAAN not found; can't help here
 
@@ -2631,9 +2707,9 @@ sub check_naan { my( $bh, $naan, $id, $element )=@_;
 
 	# If we get here, $qs is ? or ??.  Now check ..._inflect element.
 	#
-	@dups = $bh->{sh}->{fetch_exdb}
-		? exdb_get_dup($bh, $naan, ($element . '_inflect'))
-		: indb_get_dup($db, ("$naan$Se$element" . '_inflect'))
+	@dups = $exget
+		? exdb_get_dup($bh, $enc_naan, ($element . '_inflect'))
+		: indb_get_dup($db, ("$enc_naan$Se$element" . '_inflect'))
 	;
 	my $ifl = scalar(@dups) ? $dups[0] : '';
 	#$ifl eq 'cgi' || $ifl eq 'thump' || $ifl eq 'noexpand' or
@@ -2682,6 +2758,12 @@ sub suffix_pass { my( $bh, $id, $element, $suffix_return )=@_;
 
 # XXX test id2elemval (should break in exdb case)
 # xxx convert check_naan and suffix_pass and chopback
+
+# xxx need flex_get() routine that ...
+#      flex_get( $exget, $from, $arg1, [ $arg2 ] )
+#       where if ($exget) then ($bh, $id, $elem) = ($from, $arg1, $arg2)
+#			  else ($db, $key) = ($from, $arg1, $arg2)
+# xxx maybe need flex_gete($bh, $id, $elem) and flex_geti($db, $key)
 
 	$_[3] = '';			# initialize $suffix_return
 	my $raw_id = $id;		# save in case needed (not yet)
@@ -2838,7 +2920,8 @@ sub suffix_pass { my( $bh, $id, $element, $suffix_return )=@_;
 	# the database.
 
 # XXXXXX convert any_key_starting
-	$st = $shoulder ? any_key_starting($db, $shoulder)
+say STDERR "xxx shoulder=$shoulder, PKEY=", $PKEY;
+	$st = $shoulder ? any_key_starting($bh, $shoulder)
 		: 1;	# for edge case where $id doesn't look like a URL
 
 	my (@dups, $newid);	# yyy over-doing this checking of dups thing?

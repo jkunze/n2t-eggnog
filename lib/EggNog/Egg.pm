@@ -20,6 +20,7 @@ our @EXPORT_OK = qw(
 	exdb_get_dup indb_get_dup egg_inflect
 	flex_enc_exdb flex_enc_indb
 	PERMS_ELEM OP_READ
+	EXsc PKEY
 );
 our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
 
@@ -45,7 +46,7 @@ use constant HOW_DECR		=>  6;
 
 use constant NEXT_LIST_CMD_MAX	=>  1000;	# enough? too many?
 
-use constant PKEY		=>  '_id';	# exdb primary key, which
+our $PKEY =  '_id';	# exdb primary key, which
 	# happens to be a MongoDB reserved key that enforces uniqueness
 
 our %md_kernel_map;
@@ -69,7 +70,7 @@ our $SL = length $separator;
 my $A = EggNog::Binder::ADMIN_PREFIX;
 my $Se = EggNog::Binder::SUBELEM_SC;	# indb case
 my $So = '|';				# sub-element separator on OUTPUT
-my $EXsc = qr/(^\$|[.^])/;		# exdb special chars, mongo-specific
+our $EXsc = qr/(^\$|[.^])/;		# exdb special chars, mongo-specific
 
 use Fcntl qw(:DEFAULT :flock);
 use File::Spec::Functions;
@@ -256,8 +257,8 @@ sub egg_purge { my( $bh, $mods, $lcmd, $formal, $id )=@_;
 			# should be sufficient yyy right?
 			# yyy deleting everything as if $mods->{all} = 1;
 			$ret = $coll->delete_many(
-				#{ PKEY() => $id },	# query clause
-				{ PKEY() => $erfs->{id} },	# query clause
+				#{ $PKEY => $id },	# query clause
+				{ $PKEY => $erfs->{id} },	# query clause
 			)
 			// 0;		# 0 != undefined
 		}
@@ -347,7 +348,7 @@ sub egg_purge { my( $bh, $mods, $lcmd, $formal, $id )=@_;
 #			my $ok = try {
 ## xxx flex_enc_exdb $id before lookup
 #				$result = $coll->find_one(
-#					{ PKEY()	=> $id },
+#					{ $PKEY	=> $id },
 #				)
 #				// 0;		# 0 != undefined
 #			}
@@ -372,7 +373,7 @@ sub exdb_get_dup { my( $bh, $id, $elem )=@_;
 	my $ok = try {				# exdb_get_dup
 		my $coll = $bh->{sh}->{exdb}->{binder};	# collection
 		$result = $coll->find_one(
-			{ PKEY() => $id },	# query
+			{ $PKEY => $id },	# query
 			{ $elem => 1 },		# projection
 					# _id returned by default
 		)
@@ -387,7 +388,7 @@ sub exdb_get_dup { my( $bh, $id, $elem )=@_;
 		return undef;
 # make exdb_get_dup do double duty? fetch element or document, depending on
 #     whether $elem is defined (that way we can use it for egg_exists())
-# my @find_args = ( { PKEY() => $id } );
+# my @find_args = ( { $PKEY => $id } );
 # defined $elem and
 #	push @find_args, { $elem => 1 };	# add projection arg
 # ... $coll->find_one( @find_args );
@@ -414,7 +415,7 @@ sub exdb_get_id { my( $bh, $id )=@_;
 	my $ok = try {				# exdb_get_dup
 		my $coll = $bh->{sh}->{exdb}->{binder};	# collection
 		$result = $coll->find_one(
-			{ PKEY() => $id },	# query
+			{ $PKEY => $id },	# query
 					# _id returned by default
 		)
 		// 0;		# 0 != undefined
@@ -465,7 +466,7 @@ sub exdb_get_id { my( $bh, $id )=@_;
 #			# we preserve parallelsim with the *_one() methods.
 #
 ##			$ret = $coll->find_one(
-##				{ PKEY() => $id },	# query
+##				{ $PKEY => $id },	# query
 ##				{ $elem => 1 },		# projection
 ##						# _id returned by default
 ##			);
@@ -572,7 +573,7 @@ sub exdb_del_dup { my( $bh, $id, $elem )=@_;
 	my $msg;
 	my $ok = try {
 		$result = $coll->update_one(
-			{ PKEY()		=> $id },
+			{ $PKEY		=> $id },
 			{ '$unset'	=> { $elem => 1 } }
 		)
 		// 0;		# 0 != undefined
@@ -620,7 +621,7 @@ sub egg_del_dup { my( $bh, $id, $elem )=@_;
 		my $msg;
 		my $ok = try {
 			$result = $coll->update_one(
-				{ PKEY()		=> $id },
+				{ $PKEY		=> $id },
 				{ '$unset'	=> { $elem => 1 } }
 			)
 			// 0;		# 0 != undefined
@@ -852,6 +853,8 @@ sub sif { my( $bh, $elem, $oldvalcnt )=@_;
 
 =cut
 
+# xxx need flex_get() routine that 
+
 # Circumflex-encode, internal db (indb) version.
 # Return hash with ready-for-storage (efs) versions of
 #   key		# for storage
@@ -929,7 +932,10 @@ sub flex_dec { my $s = shift;
 }
 
 # Take encoded string (eg, identifier or element name) and return
-# a circumflex-decoded string suitable for human display.
+# a circumflex-decoded string suitable for human display _and_ for
+# doing handing to scripts (eg, to support inflections) that expect
+# un-encoded inputs (eg, 10.5072 encodes to 10^2e5072, but the scripts
+# need to be given it in decoded form).
 # Does not modify its argument.
 #
 sub flex_dec_for_display { my( $s )=@_;
@@ -1236,7 +1242,7 @@ use MongoDB;
 # to $collection->update_one(). Here's an annotated example.
 #
 # {		# filter_doc to select what doc to update
-#	PKEY() => $id,			# primary key
+#	$PKEY => $id,			# primary key
 #	$elem => { '$exists' => 0 }	# in case we're not clobbering
 # }, {		# update_doc to specify actions to perform
 #	'$set' => {
@@ -1268,7 +1274,7 @@ sub exdb_set_dup { my( $bh, $id, $elem, $val, $flags )=@_;
 # yyy big opportunity to optimize assignment of a bunch of elements in
 #     one batch (eg, from ezid).
 
-	my $filter_doc = { PKEY() => $id };		# initialize
+	my $filter_doc = { $PKEY => $id };		# initialize
 	my $upsert = 1;					# default
 	if ($polite) {
 		$filter_doc->{$elem} = { '$exists' => 0 };
@@ -2337,7 +2343,7 @@ sub show { my( $bh, $mods, $id, @elems )=@_;
 # delete first key found in $h from $keylist and
 # return corresponding key and value as 2-element list
 
-sub pop_meta { my ($h )=(shift);	# remaining args are keys
+sub pop_meta { my ( $h )=( shift );	# remaining args are keys
 	my ($val, $key);
 	foreach $key (@_) {
 		say "xxx pop $key";
@@ -2352,7 +2358,7 @@ sub pop_meta { my ($h )=(shift);	# remaining args are keys
 	return ($key, $unav);
 }
 
-sub format_metablob { my($rawblob, $h, $om, $profile, $target)=@_;
+sub format_metablob { my( $rawblob, $h, $om, $profile, $target )=@_;
 
 	# yyy ignoring $profile, assume $rawblob is ANVL lines
 	my ($key, $val);
@@ -2392,8 +2398,9 @@ sub md_map_init {
 # If $om->{outhandle} is defined, just use it for output, otherwise
 # return a list of two strings with (a) formatted kernel elements and
 # (b) formatted and sorted non-kernel elements.
+# Assumes $id is already encoded ready for storage.
 
-sub egg_inflect { my ($bh, $mods, $om, $id)=@_;
+sub egg_inflect { my ( $bh, $mods, $om, $id )=@_;
 
 	defined($id) or
 		addmsg($bh, "no identifier specified to inflect"),
@@ -2414,9 +2421,43 @@ sub egg_inflect { my ($bh, $mods, $om, $id)=@_;
 	# 3rd arg below (OM) is undefined because, unlike egg_fetch,
 	# we only want the results in $elemsR and $valsR for now
 
-	my $rawblob = get_rawidtree($bh, $mods, undef,	# undefined OM
-			$elemsR, $valsR, $id) or
-		return '';
+	if ($bh->{sh}->{fetch_exdb}) {
+		my @dups = exdb_get_id($bh, $id);
+		scalar(@dups) or
+			return ('', '');	# nothing found
+
+# xxx exdb NOT FINISHED!
+		# xxx this last bit duplicates code in egg_fetch; consolidate?
+
+		my $all = $mods->{all} // $bh->{opt}->{all} // '';
+		my $skipregex = '';
+		my $spat = '';
+		if (! $all) {	# case 1: skip usual support elements
+			$spat = SUPPORT_ELEMS_RE;
+			$skipregex = qr/^$spat/o;
+		}
+		#my $nelems = 0;
+		while (my ($k, $v) = each %{ $dups[0] }) {
+			$skipregex and $k =~ $skipregex and
+				next;
+			$k eq '_id' and		# yyy peculiar to mongo
+				next;
+			push @$elemsR, $k;
+			push @$valsR, $v;
+			#$s = exdb_elem_output($om, $k, $v);
+			#($p && (($st &&= $s), 1) || ($st .= $s));
+			#$nelems++;
+		}
+	}
+	else {
+		#my $rawblob = get_rawidtree($bh, $mods,...)
+		get_rawidtree($bh, $mods,
+			undef,		# here OM arg undefined because
+			$elemsR,	# here we want element names returned
+			$valsR,		# and here we want values returned
+				$id) or
+			return '';
+	}
 
 	my ($profile, $idstatus);	# _p, _s
 	my ($key, $val);
@@ -2684,7 +2725,7 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 			my $msg;
 			my $ok = try {
 				$result = $coll->find_one(
-					{ PKEY()	=> $rfs->{id} },
+					{ $PKEY	=> $rfs->{id} },
 				)
 				// {};	# valid hash {} != undefined
 			}
@@ -2963,7 +3004,6 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 #     purge all elements with mongodb calls).
 
 sub get_rawidtree { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id )=@_;
-		      #( shift, shift, shift,   shift,  shift, shift );
 
 	my $p = $om ? $om->{outhandle} : 0; # whether 'print' status or small
 	my $s = '';                     # output strings are returned to $s

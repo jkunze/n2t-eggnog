@@ -7,7 +7,7 @@ ark_ids.html: ark_ids.rst makehtml.py
 	./makehtml.py ark_ids.rst "ARK"
 
 compact_ids.html: compact_ids.rst makehtml.py
-	./makehtml.py compact_ids.rst "Compact prefixed identifiers at N2T.net"
+	./makehtml.py compact_ids.rst "Compact Identifiers"
 
 noid.html: noid.rst makehtml.py
 	./makehtml.py noid.rst "NOID"

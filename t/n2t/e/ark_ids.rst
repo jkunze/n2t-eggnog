@@ -12,6 +12,7 @@
 .. _DOI: https://www.doi.org
 .. _EZID.cdlib.org: https://ezid.cdlib.org
 .. _DataCite: https://www.datacite.org
+.. _ARKs in the Open: https://wiki.duraspace.org/display/ARKs/ARKs+in+the+Open+Project
 .. _California Digital Library: https://www.cdlib.org
 .. _N2T Partners: /e/partners.html
 .. _N2T API Documentation: /e/n2t_apidoc.html
@@ -25,6 +26,7 @@
 .. _Noid (Nice Opaque Identifiers): /e/noid.html
 .. _Noid: /e/noid.html
 .. _ARK plugin for Omeka: https://github.com/Daniel-KM/ArkAndNoid4Omeka
+.. _ARK module for Drupal: https://www.drupal.org/project/ark
 .. _EZID service: https://ezid.cdlib.org
 .. _N2T.net resolver: /
 .. _NAAN request form: https://goo.gl/forms/bmckLSPpbzpZ5dix1
@@ -93,13 +95,17 @@ There is a discussion group for ARKs (Archival Resource Keys) at
 
   https://groups.google.com/group/arks-forum
 
-The group is intended as a public forum for people interested in sharing with
-and learning from others about how ARKs have been or could be used in
+as well as a French-language ARKs discussion group at
+
+  https://framalistes.org/sympa/info/arks-forum-fr
+
+These groups are intended as public forums for people interested in sharing
+with and learning from others about how ARKs have been or could be used in
 identifier applications.
 
-The forum is also intended as a mechanism for the CDL, in its role as the ARK
-scheme maintenance agency, to seek community feedback on a number of longer
-term issues and activities, including
+The groups are also intended as a mechanism for the `ARKs in the Open`_ project
+and the CDL, in its role as the ARK scheme maintenance agency, to seek
+community feedback on a number of longer term issues and activities, including
 
 - finalizing the ARK specification as an Internet RFC,
 - clarifying local and global resolution options, and
@@ -111,8 +117,9 @@ Here is a brief summary of other resources relevant to ARKs.
 - `Towards Electronic Persistence Using ARK Identifiers`_ (July 2003)
 - `ARK and CDL Identifier conventions`_
 - `Archival Resource Key - Wikipedia`_
-- `Noid (Nice Opaque Identifiers)`_ open source software for minting and resolving ARKs on your own
-- `ARK plugin for Omeka`_ that creates and manages ARKs for the Omeka open source web-publishing platform
+- `Noid (Nice Opaque Identifiers)`_, open source software for minting and resolving ARKs on your own
+- `ARK plugin for Omeka`_, which creates and manages ARKs for the Omeka open source web-publishing platform
+- `ARK module for Drupal`_, which allows your Drupal site to act as a Name Mapping Authority (NMA)
 - `EZID service`_: long term identifiers made easy, if you would rather not install and maintain those services yourself
 - `N2T.net resolver`_: Name-to-Thing, a single global resolver at n2t.net
 
