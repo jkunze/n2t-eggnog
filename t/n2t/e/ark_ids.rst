@@ -30,6 +30,7 @@
 .. _EZID service: https://ezid.cdlib.org
 .. _N2T.net resolver: /
 .. _NAAN request form: https://goo.gl/forms/bmckLSPpbzpZ5dix1
+.. _The registry: http://www.cdlib.org/services/uc3/naan_registry.txt
 .. _Identifier conventions: http://ezid.cdlib.org/learn/id_concepts
 
 //BEGIN//
@@ -77,9 +78,10 @@ Some advantages of ARKs:
   ORCID researcher profiles
 
 Since 2001 over 550 organizations spread across fifteen countries registered
-to assign ARKs.  Registrants include libraries, archives, museums (Smithsonian)
-, publishers, government agencies, academic institutions (Princeton), and
-technology companies (Google). Some of the major users are
+to assign ARKs. `The registry`_ includes libraries, archives, museums
+(Smithsonian), publishers, government agencies, academic institutions
+(Princeton), and technology companies (Google). To have your institution
+registered, use the `NAAN request form`_. Some of the major users are
 
 - The California Digital Library
 - The Internet Archive
@@ -87,6 +89,7 @@ technology companies (Google). Some of the major users are
 - Portico Digital Preservation Service
 - University of California Berkeley
 - University of North Texas
+- FamilySearch.org
 - University of Chicago
 - University College Dublin
 - The British Library

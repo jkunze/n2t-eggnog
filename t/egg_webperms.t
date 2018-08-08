@@ -36,7 +36,7 @@ like $x, qr{^$},
 # xxxxxx don't worry if these tests fail
 
 $x = `$cmd -d $td/betty --qs "--ua foo.get bar"`;
-like $x, qr{Content-Type: text/plain\n.*zaf}s,
+like $x, qr{Content-Type: text/plain; charset=UTF-8\n.*zaf}s,
 	"in webmode, get that id value with default 'public' permission";
 
 $x = `$cmd -d $td/betty --qs "--ua foo.set moodle cow"`;
@@ -90,7 +90,7 @@ unlike $x, qr/moodle/,
 	"binding gone from next webmode fetch";
 
 $x = `$cmd -d $td/betty --qs "--ua version"`;
-like $x, qr{Content-Type: text/plain\n.*\nversion:}s,
+like $x, qr{Content-Type: text/plain; charset=UTF-8\n.*\nversion:}s,
 	"webmode version command";
 
 # XXXXXX why does the error message for this next print some podded-out code??
@@ -98,14 +98,14 @@ like $x, qr{Content-Type: text/plain\n.*\nversion:}s,
 
 $x = `$cmd -d $td/betty --qs "--ua help"`;
 $x =~ s/\n\n.+/\n/s;	# isolate a header block that is followed by content
-like $x, qr{^Content-Type: text/plain\n}m,
+like $x, qr{^Content-Type: text/plain; charset=UTF-8\n}m,
 	"webmode help command";
 
 $x = `$cmd -d $td/betty --qs "--ua man"`;
 #$x =~ s/\n\n.+POD ERRORS.+/\n/s;	# isolate header followed by manpage-like stuff
 
 $x =~ s/\n\nEGG\(1\).*//s;	# isolate header followed by manpage-like stuff
-like $x, qr{^Content-Type: text/plain$}m,
+like $x, qr{^Content-Type: text/plain; charset=UTF-8$}m,
 	"webmode man command";
 
 $x = `$cmd -d $td/betty --qs "--ua xyzzy"`;

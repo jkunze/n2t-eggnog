@@ -337,7 +337,7 @@ HTTP/1.1 200 OK
 Date: Wed, 05 Sep 2012 22:57:20 GMT
 Server: Apache/2.2.22 (Unix)
 Transfer-Encoding: chunked
-Content-Type: text/plain
+Content-Type: text/plain; charset=UTF-8
 
 id: 99999/fk4bg370v
 
@@ -549,7 +549,7 @@ sub get_execution_context { my( $m_cmd, $version, $getoptlistR, $optR )=@_;
 	my $cgih = $WeAreOnWeb ?
 		CGI::Head->new( {
 			#'Status'  => '200 OK',		# optimistic
-			'Content-Type'  => 'text/plain',
+			'Content-Type'  => 'text/plain; charset=UTF-8',
 			"$m_cmd-version" => $version, } )
 		: undef;
 	my $om_optR = {

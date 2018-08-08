@@ -180,9 +180,6 @@ like $x, qr{redir302 zaf.*redir302 zaf}s,
 like $x, qr{redir302 zafD245/67},
 	"SPT on shoulder-as-id target";
 
-say "xxx premature exit"; exit;
-say "xxxxxx depends on any_key_starting -- unfinished";
-
 $url = 'ark:/98765/f3';
 $x = `$cmd -d $td/foo $url.set _t 'bar\${suffix}zaf\${suffix}foo'`;
 $x = `$cmd -d $td/foo $url.get _t`;
@@ -221,6 +218,9 @@ $rurl = "http://n2t.net/pmid:1234567";
 $x = resolve_stdin("-d $td/foo", $rurl);
 like $x, qr,\b\Q${nurl}1234567,, "rule-based pmid mapping";
 
+#say "xxx premature exit"; exit;
+#say "xxxxxx depends on any_key_starting -- unfinished";
+
 $x = `$cmd -d $td/foo $url.set _t "301 zaf"`;
 $x = resolve_stdin("-d $td/foo", $url);
 like $x, qr/^redir301 zaf\n$/,
@@ -235,8 +235,6 @@ $x = `$cmd -d $td/foo $url.set _t "410 zaf"`;
 $x = resolve_stdin("-d $td/foo", $url);
 like $x, qr/^redir410 zaf\n$/,
 	"got _t value with local 410 redirect code";
-
-say "xxx premature exit"; exit;
 
 $x = `$cmd -p $td mkbinder fon`;
 shellst_is 0, $x, "make binder named fon";

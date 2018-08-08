@@ -495,6 +495,11 @@ like $x, qr|^Location: http://digital\.library\.unt\.edu/.*foo|m,
 $x = `wegn locate ark:/76951/foo`;
 like $x, qr|^Location: http://ark\.spmcpapers\.com/.*foo|m, "SPMC redirect";
 
+# xxx document this naked prefix resolution
+$x = `wegn resolve 'ark:/12148:'`;
+like $x, qr/Bibliothèque nationale de France/i,
+	'prefix fetch on well-known NAAN preserves UTF-8';
+
 exit;
 
 # XXX bug: https://n2t.net/ark:/99999/fk8testn2t gets Forbidden

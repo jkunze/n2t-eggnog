@@ -1613,12 +1613,15 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 # yyy isn't the test @suffixable deprecated; use scalar(@suffixable) instead?
 
 	if (@suffixable) {
-		my ($suffix, $rid);		# rid = root id + suffix
-		# NB: next call alters the $suffix argument (a return param)
+		my $suffix;
+		# NB: next call defines $suffix (via a return parameter)
 		@dups = suffix_pass($bh, $id,
 				EggNog::Binder::TRGT_MAIN, $suffix);
+# xxx is $suffix flex_encoded or not? IMPORTANT, esp. length calculation
 		# suffix has NOT yet been added to target
+		my $rid;			# rid = root id + suffix
 		$rid = substr($id, 0, - length($suffix));
+# xxx if $suffix is flex_encoded, then we NEED to decode before output!
 		($idx->{suffix}, $idx->{rid}) = ($suffix, $rid);
 		# At this point, $id includes the suffix, and $rid does not.
 
@@ -2626,21 +2629,25 @@ sub exdb_chopback { my( $bh, $verbose, $id, $stopchop, $elem, $value )=@_;
 sub meta_inherit { my( $noid, $verbose, $id, $element, $value )=@_;
 }
 
-# Returns 1 if any key starts with string, s, 0 if not, else a message.
-# xxx how to return a msg?
-# try mongo: { <field>: { $regex: /pattern/<options> } }
+# Returns true if any key starts with the string, s, false if not.
+# Returns a message on error. yyy how best to return a msg?
+# Assumes that $s is already flex_encoded ready-for-storage.
 
 sub any_key_starting { my( $bh, $s )=@_;
 
 	if ($bh->{sh}->{fetch_exdb}) {
 		my ($result, $msg);
+		#my $rfs = flex_enc_exdb($s);	# we want $rfs->{id}
 		my $ok = try {				# exdb_get_dup
 			my $coll = $bh->{sh}->{exdb}->{binder};	# collection
-say STDERR "xxx s=$s, PKEY=", $PKEY;
+#				{ $PKEY => qr/^\Q$rfs->{id}/ }
 			$result = $coll->find(
 				{ $PKEY => qr/^\Q$s/ }
 			)
 			// 0;		# 0 != undefined
+			# find returns non-empty cursor, even if nothing found
+			return	# return 1 from "catch" if at least one result
+				($result && $result->next ? 1 : 0);
 		}
 		catch {
 			$msg = "error fetching pattern \"/^$s/\": $_";
@@ -2649,15 +2656,11 @@ say STDERR "xxx s=$s, PKEY=", $PKEY;
 		! defined($ok) and 	# test for undefined since zero is ok
 			addmsg($bh, $msg),
 			return undef;
-say "xxx in mongo any_key, result=$result";
-#my @xxx = $result->all;
-my $x = $result->next;
-say "xxx xxx=x->id=$x->{'_id'}";
-#say "xxx xxx=$xxx[0], x->id=$x->{'_id'}";
-		return
-			($result ? 1 : 0);
+		return $ok;		# return from sub with "caught" value
 	}
 	my $db = $bh->{db};
+	#my $rfs = flex_enc_indb($s);
+	#$s = $rfs->{id};		# clobber original $s yyy
 	my ($key, $value) = ($s, 0);
 	my $cursor = $db->db_cursor();
 	my $status = $cursor->c_get($key, $value, DB_SET_RANGE);
@@ -2676,23 +2679,30 @@ say "xxx xxx=x->id=$x->{'_id'}";
 	#	return "any_key_starting: seq status/errno ($status/$!)";
 }
 
+# XXX consider dropping this routine! does anyone call it?
+
+# Meant to be called if we know the binder has no individual ids stored
+# under the apparent shoulder for $id, this routine looks at the $id's NAAN
+# to see if the NAAN itself has stored redirection/inflection target(s),
+# and if so appends the post-NAAN part of $id to the target, unless there's
+# some inflection stuff happening.
+# Assumes args are encoded ready-for-storage
+# xxx returns ready-for-storage encoded value?
+# yyy not sure what purpose this serves any more
+# yyy does any part of resolver use/test this code?
+
 sub check_naan { my( $bh, $naan, $id, $element )=@_;
 
 	my $exget = $bh->{sh}->{fetch_exdb} // 0;
 	my $db = $bh->{db};
-	my $remainder =			# get this BEFORE normalization
+	my $remainder =			# get this BEFORE next normalization
 		substr $id, length($naan);
 	$naan =~ s|/*$||;		# do some light normalization
-	my $enc_naan = $naan;		# to hold the encoded naan
 	my @dups;
-	if ($exget) {
-		$enc_naan =~ s{ $EXsc    }{ sprintf("^%02x", ord($1)) }xoeg;
-		@dups = exdb_get_dup($bh, $enc_naan, $element);
-	}
-	else {
-		$enc_naan =~ s{ ([$Se^]) }{ sprintf("^%02x", ord($1)) }xoeg;
-		@dups = indb_get_dup($db, "$enc_naan$Se$element");
-	}
+	@dups = $exget
+		? exdb_get_dup($bh, $naan, $element)
+		: indb_get_dup($db, "$naan$Se$element")
+	;
 	scalar(@dups) or
 		return '';		# NAAN not found; can't help here
 
@@ -2708,8 +2718,8 @@ sub check_naan { my( $bh, $naan, $id, $element )=@_;
 	# If we get here, $qs is ? or ??.  Now check ..._inflect element.
 	#
 	@dups = $exget
-		? exdb_get_dup($bh, $enc_naan, ($element . '_inflect'))
-		: indb_get_dup($db, ("$enc_naan$Se$element" . '_inflect'))
+		? exdb_get_dup($bh, $naan, ($element . '_inflect'))
+		: indb_get_dup($db, ("$naan$Se$element" . '_inflect'))
 	;
 	my $ifl = scalar(@dups) ? $dups[0] : '';
 	#$ifl eq 'cgi' || $ifl eq 'thump' || $ifl eq 'noexpand' or
@@ -2723,119 +2733,16 @@ sub check_naan { my( $bh, $naan, $id, $element )=@_;
 
 	# If we get here, all that's left is 'thump' for this NAAN.
 
-	return ( $newbase . ( $qs eq '?'
+	return ( $newbase . ( $qs eq '?'    # yyy why both branches the same?
 		? "?show(brief)as(anvl/erc)"
 		: "?show(brief)as(anvl/erc)" )
 	);
-
-#
-#	return (
-#		$newbase . ( $qs eq '?'
-#			? "?show(brief)as(anvl/erc)"
-#			: "?show(brief)as(anvl/erc)" )
-#	);
 }
 
-# xxx dups!
-# xxx stop chopping at after a certain point, eg, after base object
-#     name reached and before backing into NAAN, "ark:/"
-#     (means manually asking for something like n2t.net/ark:/13030? )
-
-# xxx don't call this routine except for ARKs (initially, to illustrate)
-#     maybe later call it for other schemes
-
-
-# returns array of values, and returns $suffix_ret ($_[3]) (if any, or '')
-# !!! assumes $valsR has been initialized to {}
-# This routine tries to be generalized for any $element, but it's
-# definitely warped (in thinking and in testing) towards the "_t"
-# element.  Proceed with caution if you intend more general use.
-# Assumes $id is already encoded, ready for lookup in storage.
+# ========== documentation support for "_t_am n" ==========
+# ... on the shoulder or on the id no support yet for "q" or "t"
 #
-# XXX should pass in results of normalization to save time in reparsing id
-
-sub suffix_pass { my( $bh, $id, $element, $suffix_return )=@_;
-
-# XXX test id2elemval (should break in exdb case)
-# xxx convert check_naan and suffix_pass and chopback
-
-# xxx need flex_get() routine that ...
-#      flex_get( $exget, $from, $arg1, [ $arg2 ] )
-#       where if ($exget) then ($bh, $id, $elem) = ($from, $arg1, $arg2)
-#			  else ($db, $key) = ($from, $arg1, $arg2)
-# xxx maybe need flex_gete($bh, $id, $elem) and flex_geti($db, $key)
-
-	$_[3] = '';			# initialize $suffix_return
-	my $raw_id = $id;		# save in case needed (not yet)
-
-	## A little risky, we do very light, fast normalization for the
-	## common ARK error situation of an omited / (plus lower case).
-	##
-	#$id =~ s|\bark:/*|ark:/|i;	# add one if none; squeeze 1+ to 1
-
-	my $origlen = length($id);
-
-	my $db = $bh->{db};
-	my $opt = $bh->{opt};	# xxx needed?
-	my $st;
-	my $exget = $bh->{sh}->{fetch_exdb} // 0;
-
-	my $verbose = $opt->{verbose};
-
-	$verbose and print "start suffix passthrough (spt) on $id\n";
-	#my $element = "_t";	# element to give to ??db_chopback()
-	my $value = "";			# because we want a non-empty value
-
-	# We prepare to call ??db_chopback() to see if an ancestor (substring)
-	# of the submitted $id exists in our db.  This is expensive, so
-	# we optimize a little (a) by a pre-check (a kind of big pre-chop
-	# to see if a bunch of little chops are worth it) to see if
-	# the root is present at all and (b) by stopping the ??db_chopback when
-	# we've reached into an uninteresting portion of the identifier,
-	# eg, scheme, host, etc.  Use $stop to hold the substring that
-	# will be subject to chopping.
-	#
-	my $stop = $id;		# initialize choppable portion
-
-	# yyy what about ssh://, rsync://, etc?
-	# yyy what about mailto:? eg, should we allow mail forwarding
-	#     when you send to foo@n2t.net ?
-	# yyy what's needed to support URLs?
-
-	$stop =~ s|^\w+:///?||	and	# http://, https://, etc.
-		$stop =~ s|^[^/]*/*||	# host, port, ie, NMA
-	;
-
-	$stop =~ s|^(?:urn:)?uuid:||i	and	# urn:uuid: or just uuid:
-		$stop =~ s|^[^:]+:+||,	# NAA
-	1
-	or
-	$stop =~ s|^\w+:/*||	and	# ark, doi, purl, hdl, etc.
-		$stop =~ s|^[^/]+/||,	# NAAN
-	;
-	# xxx normalize id before this all started?
-	#    eg, DOI->doi  ark:12345->ark:/12345
-
-	# Record where we are, which will normally be at the end of
-	# the NAAN (or NAA in URN case), just before the shoulder.
-	#
-	my $naan = substr $id, 0, $origlen - length($stop);
-
-	# Then eliminate shoulder, if any, assuming the "first digit
-	# convention".  Examples:  bcd4, fk5, t8, 7; but NOT t or "".
-	#
-	$stop =~ s|^[A-Za-z]*\d||;	# first-digit shoulder
-
-	# Record where we are now in $stopchop, which is really the
-	# length of the portion of the original id that we don't want to
-	# chop back into.
-	#
-	my $stopchop = $origlen - length($stop);
-	my $shoulder = substr $id, 0, $stopchop;
-
-# XXX document support for "_t_am n" on the shoulder or on the id
-#     no support yet for "q" or "t"
-# DRAFT
+# DRAFT (xxx don't know if this is accurate any more (at all))
 # This is the base target element "_t" used for resolution:
 #
 # _t T		# go to T for identical match AND "spt match"
@@ -2874,12 +2781,10 @@ sub suffix_pass { my( $bh, $id, $element, $suffix_return )=@_;
 # XXX add shoulder element tag that permits us to search shoulder AND
 #     then, failing that, continue searching redirecting to a given NAAN
 
-# XXXXX work with Hank Bromley at IA
-
 # XXXX suffix_pass routine should probably be called ancestor_match_spt
 #      or something similar
 
-# XXXXXXXX Work with John Deck on alternative to this!!
+# XXX Work with John Deck and Hank Bromley on these
 # _t_am_equals X	# NO: go to T only on "proper" AM match"; go to X
 #			# on identical match (requires checking on every
 #			# sucessful lookup to see if _t_am_equals exists,
@@ -2887,40 +2792,134 @@ sub suffix_pass { my( $bh, $id, $element, $suffix_return )=@_;
 #			# NOT A GOOD IDEA -- better to install a rewrite
 #			# rule at the receiving server that routes back,
 #			# or just suffer the 404.
+# =========== end doc support =====================
+
+# xxx dups!
+# xxx stop chopping at after a certain point, eg, after base object
+#     name reached and before backing into NAAN, "ark:/"
+#     (means manually asking for something like n2t.net/ark:/13030? )
+
+# xxx don't call this routine except for ARKs (initially, to illustrate)
+#     maybe later call it for other schemes
+
+
+# returns array of values, and returns $suffix_ret ($_[3]) (if any, or '')
+# !!! assumes $valsR has been initialized to {}
+# This routine tries to be generalized for any $element, but it's
+# definitely warped (in thinking and in testing) towards the "_t"
+# element.  Proceed with caution if you intend more general use.
+
+# ???
+# Assumes $id is already encoded, ready for lookup in storage.
+
+
+
+#
+# XXX should pass in results of normalization to save time in reparsing id
+
+sub suffix_pass { my( $bh, $id, $element, $suffix_return )=@_;
+
+# XXX test id2elemval (should break in exdb case)
+# xxx convert check_naan and suffix_pass and chopback
+
+# xxx need flex_get() routine that ...
+#      flex_get( $exget, $from, $arg1, [ $arg2 ] )
+#       where if ($exget) then ($bh, $id, $elem) = ($from, $arg1, $arg2)
+#			  else ($db, $key) = ($from, $arg1, $arg2)
+# xxx maybe need flex_gete($bh, $id, $elem) and flex_geti($db, $key)
+
+	$_[3] = '';			# initialize $suffix_return
+	my $raw_id = $id;		# save in case needed (not yet)
+
+	my $exget = $bh->{sh}->{fetch_exdb} // 0;
+	my $rfs;
+	if ($exget) {
+		$rfs = flex_enc_exdb($id);
+		$id = $rfs->{id};
+		$rfs = flex_enc_exdb($element);
+		$element = $rfs->{id};		# unchanged for vanilla target
+	}
+	else {
+		$rfs = flex_enc_indb($id);
+		$id = $rfs->{id};
+		$rfs = flex_enc_indb($element);
+		$element = $rfs->{id};		# unchanged for vanilla target
+	}
+
+	my $origlen = length($id);
+	my $db = $bh->{db};
+	my $opt = $bh->{opt};	# xxx needed?
+	my $st;
+	my $verbose = $opt->{verbose};
+	$verbose and
+		print "start suffix passthrough (spt) on $id\n";
+
+	#my $element = "_t";	# element to give to ??db_chopback()
+	my $value = "";			# because we want a non-empty value
+
+	# We prepare to call ??db_chopback() to see if an ancestor (substring)
+	# of the submitted $id exists in our db. Recall that we chopback from
+	# right-hand end and move left towards the start. This is expensive,
+	# so we optimize a little (a) by a pre-check (a kind of big pre-chop
+	# to see if a bunch of little chops are worth it) to see if
+	# the root is present at all and (b) by stopping the ??db_chopback when
+	# we've reached (going right-to-left) into an uninteresting portion of
+	# the identifier, eg, scheme, host, etc.  Use $stop to hold the
+	# substring (minus some initial portion of the id) that will be
+	# subject to chopping (when we reach back to the start of $stop, we're
+	# done).
+
+	my $stop = $id;		# initialize choppable portion
+
+	# yyy what about ssh://, rsync://, etc?
+	# yyy what about mailto:? eg, should we allow mail forwarding
+	#     when you send to foo@n2t.net ?
+	# yyy what's needed to support URLs?
+
+	# If we can remove http://, https://, etc., also remove the NMA.
+	# Allow flex_encoded chars in protocol. yyy needed?
+
+	$stop =~ s|^[\w^]+:///?||	and	# http://, https://, etc.
+		$stop =~ s|^[^/]*/*||	# host, port, ie, NMA
+	;
+
+	# If we can remove a uuid: label, also remove the NAA. xxx?
+	$stop =~ s|^(?:urn:)?uuid:||i	and	# urn:uuid: or just uuid:
+		$stop =~ s|^[^:]+:+||,	# the uuid: _was_ the NAA xxx!
+	1
+	or
+	# If we can remove "ark:", "doi:", etc., also remove the NAA.
+	# Allow flex_encoded chars in scheme (needed for compact id prefixes).
+
+	$stop =~ s|^[\w^]+:/*||	and	# ark, doi, purl, hdl, etc.
+		$stop =~ s|^[^/]+/||,	# NAAN
+	;
+	# xxx normalize id before this all started?
+	#    eg, DOI->doi  ark:12345->ark:/12345
+
+	# Record where we are, which will normally be at the end of
+	# the NAAN (or NAA in URN case), just before the shoulder.
+
+	my $naan = substr $id, 0, $origlen - length($stop);
+
+	# Then eliminate shoulder, if any, assuming the "first digit
+	# convention" (1st digit preceded by zero or more pure alphabetics).
+	# Examples:  bcd4, fk5, t8, 7; but NOT t or "".
+
+	$stop =~ s|^[A-Za-z]*\d||;	# first-digit shoulder
+
+	# Record where we are now in $stopchop, which is really the
+	# length of the portion of the original id that we don't want to
+	# chop back into.
+
+	my $stopchop = $origlen - length($stop);
+	my $shoulder = substr $id, 0, $stopchop;
 
 	# The next call to ??db_chopback() is potentially expensive, so let's
 	# see if there are any easy reasons to avoid it.  First, see if
 	# our database has any ids at all under (that start with) the
 	# (fully-qualified) shoulder that starts the identifier.
-	#
-	# $st = any_key_starting($db, substr($id, 0, $stopchop));
-	# $st eq ZERO and
-	#	$st = any_key_starting($db, substr($id, 0, $len_up_to_shdr));
-	# $st eq ZERO
-	# if and $st ne '1' and
-	#	addmsg($bh, $st),
-	#	return ();		# yyy will caller notice the error?
 
-	# If nothing, then see if our database has any ids at all under
-	# (that start with) this NAAN.
-	#
-	# if ($st eq '0') {	# nothing starts with $fqshoulder, so check naa
-	#	my $fqnaan = $proto_nam . $scheme_naa;
-	#	$st = any_key_starting($fqnaan) and $st ne '1' and
-	#		addmsg($bh, $st),
-	#		return ();	# yyy will caller notice the error?
-	#	$st eq '0' and
-	#		# XXXXX but here is where we should check
-	#		#       shoulder registry for broad redirects!!!
-	#		#    xxx use return from any_key_starting???
-	#		return ();	# fail fast
-	# }
-	#
-	# If we get here, there is at least one relevant id-like thing in
-	# the database.
-
-# XXXXXX convert any_key_starting
-say STDERR "xxx shoulder=$shoulder, PKEY=", $PKEY;
 	$st = $shoulder ? any_key_starting($bh, $shoulder)
 		: 1;	# for edge case where $id doesn't look like a URL
 
@@ -2929,13 +2928,13 @@ say STDERR "xxx shoulder=$shoulder, PKEY=", $PKEY;
 	! $st and		# no shoulder matched; check NAAN match
 		# xxx if OCA/IA binder is in resolver list, won't this
 		# next check bypass that (or be redundant with it)?
-# XXXXXX convert check_naan
+		# xxx is check_naan code tested/used in real life?
 		($newid = check_naan($bh, $naan, $id, $element)) and
 			return $newid;
 
 	# XXXX need a very important shoulder optimization to deal with
-	#	millions of long ids stored MOSTLY elsewhere, that we want to
-	#	avoid calling ??db_chopback() on, eg, Biocode  -- how to implement?
+	#   millions of long ids stored MOSTLY elsewhere, that we want to
+	#   avoid calling ??db_chopback() on, eg, Biocode  -- how to implement?
 
 	! $st and	# no shoulder match, or external NAAN opportunity
 		($verbose and print
@@ -2944,6 +2943,7 @@ say STDERR "xxx shoulder=$shoulder, PKEY=", $PKEY;
 
 	my $am = $element . $ANCESTOR_MATCH_ELEM;
 	@dups = $exget
+# XXX bug: $shoulder not encoded
 		? exdb_get_dup($bh, $shoulder, $am)
 		: indb_get_dup($db, "$shoulder$Se$am");
 	my $amflag = scalar(@dups) ?
@@ -2999,10 +2999,13 @@ say STDERR "xxx shoulder=$shoulder, PKEY=", $PKEY;
 
 	# Found something.  Isolate the suffix by giving the original
 	# id and a negative offset to substr().
-	#
+
 	my $suffix = substr $id, length($newid) - $origlen;
+# xxx test!
+	$suffix =~ s/\^([[:xdigit:]]{2})/chr hex $1/eg;		# flex_dec
 	$_[3] = $suffix;		# set $suffix_return
-	$verbose and	# xxx this $verbose is more like $debug
+
+	$verbose and	# yyy this $verbose is more like $debug
 		print "suffix for newid ($newid) is $suffix\n";
 		# yyy shouldn't this use STDERR?
 

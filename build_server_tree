@@ -788,7 +788,8 @@ inflect=$buildout_root/htdocs/e/x/inflect
 
 	PERL5LIB=$PERL5LIB
 	PATH=/usr/local/bin:$egpath
-	export PERL5LIB PATH
+	LANG=en_US.UTF-8
+	export PERL5LIB PATH LANG
 
 	exec perl << 'EOS'
 
@@ -1234,8 +1235,9 @@ Header set Access-Control-Allow-Origin "*" env=GET_REQUEST
 </Directory>
 
 
-# Turn on Server Side Includes for HTML pages served from htdocs/e.
+# Turn on UTF-8 and Server Side Includes for HTML pages served from htdocs/e.
 #
+AddDefaultCharset utf-8
 AddType text/html .html
 AddOutputFilter INCLUDES .html
 

@@ -2013,6 +2013,8 @@ The I<How> argument specifies one of the following kinds of binding.
 Of these, the B<set>, B<add>, B<insert>, and B<purge> kinds "don't care"
 if there is no current binding.
 
+=back
+
 =head3 new
 
 =over 4
@@ -2108,8 +2110,6 @@ and peppermint a new Id first.
 
 The RULEZ<>-Z<>BASED MAPPING section explains how to set up retrieval
 using non-stored values.
-
-=back
 
 =head2 bind fetch I<Id> [ I<Element> ... ]
 
