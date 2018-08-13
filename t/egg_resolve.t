@@ -84,6 +84,40 @@ $ENV{EGG} = $hgbase;
 remake_td($td, $bgroup);
 my $x;
 
+=for earlytesting
+
+$x = `$cmd -p $td mkbinder foo`;
+shellst_is 0, $x, "make binder named foo";
+
+my $host = '';	# yyy was $host meant to be empty?
+
+#$x = `$cmd -d $td/foo ":idmap/foo".set _t "\\\$2/g7h/\\\$1"`;
+#$x = `$cmd -d $td/foo ":idmap/foo".fetch _t`;
+
+$x = `$cmd -d $td/foo ":idmap//ft([^x]+)x(.*)".set _t "\\\$2/g7h/\\\$1"`;
+$x = `$cmd -d $td/foo ":idmap//ft([^x]+)x(.*)".fetch _t`;
+
+$x = `$cmd -d $td/foo "$host".rm _t`;		# delete target
+$x = `$cmd -d $td/foo ":idmap//ft([^x]+)x(.*)".set _t "\\\$2/g7h/\\\$1"`;
+
+my $rurl = "http://g.h.i/ft89xr2t";
+$x = resolve_stdin("-d $td/foo", $rurl);
+like $x, qr,r2t/g7h/89,, "rule-based idmap substitution";
+
+#say "xxx x=$x";
+#say "xxx premature exit"; exit;
+
+$x = `$cmd -d $td/foo "$host".rm _t`;		# delete target
+my $nurl = 'http://www.ncbi.nlm.nih.gov/pubmed/';
+$x = `$cmd -d $td/foo ":idmap/http://n2t.net/pmid:".set _t "$nurl"`;
+$rurl = "http://n2t.net/pmid:1234567";
+$x = resolve_stdin("-d $td/foo", $rurl);
+like $x, qr,\b\Q${nurl}1234567,, "rule-based pmid mapping";
+
+say "xxx premature exit"; exit;
+
+=cut
+
 $x = `$cmd --version`;
 my $v1bdb = ($x =~ /DB version 1/);
 
@@ -203,6 +237,8 @@ like $x, qr/^redir302 barzaffoo\n.*barabczafabcfoo/,
 like $x, qr/\nredir302 doi1_target\n.*doi2_target/,
 	"legacy shadow ARKs resolve to their DOI counterparts";
 
+#=for later
+
 my $host = '';	# yyy was $host meant to be empty?
 
 $x = `$cmd -d $td/foo "$host".rm _t`;		# delete target
@@ -218,8 +254,9 @@ $rurl = "http://n2t.net/pmid:1234567";
 $x = resolve_stdin("-d $td/foo", $rurl);
 like $x, qr,\b\Q${nurl}1234567,, "rule-based pmid mapping";
 
+#=cut
+
 #say "xxx premature exit"; exit;
-#say "xxxxxx depends on any_key_starting -- unfinished";
 
 $x = `$cmd -d $td/foo $url.set _t "301 zaf"`;
 $x = resolve_stdin("-d $td/foo", $url);

@@ -17,7 +17,7 @@ our @ISA = qw(Exporter);
 
 our @EXPORT = qw();
 our @EXPORT_OK = qw(
-	exdb_get_dup indb_get_dup egg_inflect
+	exdb_get_dup indb_get_dup exdb_get_id egg_inflect
 	flex_enc_exdb flex_enc_indb
 	PERMS_ELEM OP_READ
 	EXsc PKEY
@@ -178,8 +178,8 @@ sub egg_exists { my( $bh, $mods, $id, $elem )=@_;
 			addmsg($bh, "instantiate failed from exists no elem"),
 			return undef;
 		if ($sh->{exdb}) {
-			@dups = exdb_get_id($bh, $erfs->{id});
-			$exists = scalar(@dups);
+			my $rech = exdb_get_id($bh, $erfs->{id});
+			$exists = scalar(%$rech) ? 1 : 0;
 		}
 		if ($sh->{indb}) {		# yyy if ie, i answer wins
 			$key = $irfs->{key};		# only need encoded key
@@ -427,15 +427,12 @@ sub exdb_get_id { my( $bh, $id )=@_;
 	! defined($ok) and 	# test for undefined since zero is ok
 		addmsg($bh, $msg),
 		return undef;
-	$result or		# if nothing found, return empty array
-		return ();
-	my $ref = ref $result;
-	$ref eq 'ARRAY' and		# already is array ref, so return array
-		return @{ $result };
-	$ref ne '' and
-		addmsg($bh, "unexpected element reference type: $ref"),
-		return undef;
-	return ( $result );	# make array from scalar and return it
+	$result or		# if nothing found, return empty hash
+		return {};
+# xxx should just return scalar
+		#return ();
+	return $result;
+	#return ( $result );	# make array from scalar and return it
 }
 
 ## xxx should convert remaining calls to this into calls to {in,ex}db_get_dup
@@ -868,6 +865,8 @@ sub flex_enc_indb { my ( $id, @elems )=@_;
 	my $irfs = {};	# hash that we'll return with ready-for-storage stuff
 	if ($id =~ m|^:idmap/(.+)|) {
 		my $pattern = $1;	# note: we don't encode $pattern
+# xxx wait, why not encode $pattern, then later decode?
+#     xxx test
 					# xxx document
 		my $elem = $elems[0];
 		$elem =~ s{ ([$Se^]) }{ sprintf("^%02x", ord($1)) }xeg;
@@ -899,13 +898,24 @@ sub flex_enc_exdb { my ( $id, @elems )=@_;
 
 	my $erfs = {};	# hash that we'll return with ready-for-storage stuff
 	if ($id =~ m|^:idmap/(.+)|) {
+		# form: :idmap/pattern, where pattern becomes element name
 		my $pattern = $1;	# note: we don't encode $pattern
 					# xxx document
-		my $elem = $elems[0];
-		$elem =~ s{ $EXsc }{ sprintf("^%02x", ord($1)) }xeg;
-		$erfs->{key} = "$A/idmap/$elem$Se$pattern";
-		$erfs->{id} = $id;		# unprocessed
-		$erfs->{elems} = [ $elem ];	# subelems not supported
+		$pattern =~ s{ $EXsc }{ sprintf("^%02x", ord($1)) }xeg;
+# xxx wait, why not encode $pattern, then later decode?
+#     xxx test
+		#my $elem = $elems[0];
+		#$elem =~ s{ $EXsc }{ sprintf("^%02x", ord($1)) }xeg;
+# xxx should encode whole schmear, not just $elem
+		#$erfs->{id} = "$A/idmap/$elem";
+
+		$erfs->{id} = "$A/idmap/$elems[0]";
+		$erfs->{id} =~ s{ $EXsc }{ sprintf("^%02x", ord($1)) }xeg;
+
+		#$erfs->{key} = "$A/idmap/$elem$Se$pattern";
+		$erfs->{key} = '';		# yyy undefined really
+		#$erfs->{id} = $id;		# unprocessed
+		$erfs->{elems} = [ $pattern ];	# subelems not supported
 		return $erfs;
 	} # XXX untested!
 	# if we get here we don't have an :idmap case
@@ -2422,11 +2432,14 @@ sub egg_inflect { my ( $bh, $mods, $om, $id )=@_;
 	# we only want the results in $elemsR and $valsR for now
 
 	if ($bh->{sh}->{fetch_exdb}) {
-		my @dups = exdb_get_id($bh, $id);
-		scalar(@dups) or
+# xxx flex encoded?
+		#my @dups = exdb_get_id($bh, $id);
+		my $rech = exdb_get_id($bh, $id);	# record hash
+		#$rech or
+		scalar(%$rech) or
 			return ('', '');	# nothing found
 
-# xxx exdb NOT FINISHED!
+# XXXXXXXXXXXXxxx exdb NOT FINISHED!
 		# xxx this last bit duplicates code in egg_fetch; consolidate?
 
 		my $all = $mods->{all} // $bh->{opt}->{all} // '';
@@ -2437,7 +2450,7 @@ sub egg_inflect { my ( $bh, $mods, $om, $id )=@_;
 			$skipregex = qr/^$spat/o;
 		}
 		#my $nelems = 0;
-		while (my ($k, $v) = each %{ $dups[0] }) {
+		while (my ($k, $v) = each %$rech) {
 			$skipregex and $k =~ $skipregex and
 				next;
 			$k eq '_id' and		# yyy peculiar to mongo

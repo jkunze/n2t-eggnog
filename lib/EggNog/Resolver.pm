@@ -2013,38 +2013,101 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 # Return $val constructed by mapping the element
 # returns () if nothing found, or (undef) on error
 
+# NB: rule creation is a privileged operation, since it has broad impact and
+# should be reviewed for security implications. xxx document
+
 sub id2elemval { my( $bh, $id, $elem )=@_;
 
-# XXXXX convert away from pure indb!
-# xxx cheap way out for now:
-	$bh->{sh}->{fetch_exdb} and
-		return ();		# xxx exdb unsupported for now!
+	# NB: we don't look up $id in this routine, we only transform it.
+	# We do use $elem for look up, so we do flex_encode it via $rfs.
+
+	my $clean_id = $id;			# make a mutable copy
+	$clean_id =~ tr |||d;		# drop delimiters
+	if ($clean_id =~ m|^([-\@\w./:+]+)$|) { # try to untaint
+		$clean_id = $1;		# removes taint flag
+	}
+	else {				# may be tainted
+		addmsg($bh,
+			"id2elemval id ($id) tainted");
+		return ();
+	}
+
+	my $rfs;
+	if ($bh->{sh}->{fetch_exdb}) {		# no fall through beyond
+
+		my $recid = ":idmap/$elem";	# id for rules based on $elem
+		$rfs = flex_enc_exdb($recid, $elem);
+		my $encid = $rfs->{id};
+
+		# Look for the rules record under id, $A/idmap/$elem, and
+		# visit all element names(patterns) and values (substitutions)
+		# until we succeed with a substitution.
+
+		my $rech = exdb_get_id($bh, $encid);	# record hash
+
+		# This loop visits each stored pattern for this element,
+		# attempts a substition, and stops when either a substitution
+		# was successful or we run out of stored patterns.
+
+		my $pattern;
+		my $va;				# value array (for dupes)
+		#while (my ($pattern, $va) = each %{ $dups[0] }) 
+		while (my ($pattern, $va) = each %$rech) {
+
+			# The substitution $pattern is just the element name.
+			# The replacement strings are in value array ($va).
+
+			# Due to kludgy use of unlikely delimiters, crudely
+			# remove any occurrences in the things we're going to
+			# submit to eval. Also, $pattern was stored as an
+			# element name, so we need to decode it.
+
+			$pattern =~ s/\^([[:xdigit:]]{2})/chr hex $1/eg;
+			$pattern =~ tr |||d;
+			ref($va) ne 'ARRAY' and		# eg, _id elem not array
+				next;
+			while (my $val = pop @$va) {
+				# First successful substitution stops search.
+				# Need the eval below (and thus the untainting)
+				# because the $va contain $N references to
+				# captured regex sub-expressions.
+
+				my $newval = $clean_id;
+				eval '$newval =~ ' . qq@s$pattern$val@ and
+					return ($newval);	# ok, so return
+				$@ and				# unusual error
+					addmsg($bh, "id2elemval eval: $@"),
+					return (undef);
+			}
+		}
+		return ();				# nothing found
+	}
 
 	my $db = $bh->{db};
-	#my $first = "$A/idmap/$elem|";
-	my $first = "$A/idmap/$elem$Se";
+	my $first = "$A/idmap/$elem";		# key to initialize cursor
+	$rfs = flex_enc_indb($first);
+	$first = $rfs->{id} . $Se;
 	my $key = $first;
 	my $value = 0;
-	#my $status = $db->seq($key, $value, R_CURSOR);
 	my $cursor = $db->db_cursor();
-	my $status = $cursor->c_get($key, $value, DB_SET_RANGE);
-	# yyy no error check, assume non-zero == DB_NOTFOUND
-	$status and
+	my $status =				# set cursor to start of rules
+		$cursor->c_get($key, $value, DB_SET_RANGE);
+	$status and				# not found or error, so bail
 		$cursor->c_close(),
 		undef($cursor),
 		addmsg($bh, "id2elemval: $status"),
 		return (undef);
-	#$key !~ /^\Q$first/ and
-	$first ne substr($key, 0, length($first)) and
+	$first ne substr($key, 0, length($first)) and	# if no rules, bail
 		$cursor->c_close(),
 		undef($cursor),
 		return ();
 
-	# This loop exhaustively visits all patterns for this element.
-	# Prepare eventually for dups, but for now we only do first.
+	# This loop visits each stored pattern for this element, attempts a
+	# substition, and stops when either a substitution was successful or
+	# we run out of stored patterns. yyy we only do first dupe
 	# XXX document that only the first dup works $cursor->c_get. (& fix?)
-	#
-	my ($pattern, $newval, @dups);
+
+	my ($pattern, @dups);
 	while (1) {
 
 		# The substitution $pattern is extracted from the part of
@@ -2052,41 +2115,43 @@ sub id2elemval { my( $bh, $id, $elem )=@_;
 		#
 		# We don't do the substr() version of the /^\Q.../
 		# test since we actually need a regexp match.
+
 		($pattern) = ($key =~ m|\Q$first\E(.+)|);
-		$newval = $id;
+		if (defined $pattern) {			# if matched
 
-		# xxxxxx this next line is producing a taint error!
-		# xxx optimize(?) for probable use case of shoulder
-		#   forwarding (eg, btree search instead of exhaustive),
-		#   which would work if the patterns are left anchored
-		defined($pattern) and
-			# yyy kludgy use of unlikely delimiters
-		# XXX check $pattern and $value for presence of delims
-		# XXX!! important to untaint because of 'eval'
+			# Due to kludgy use of unlikely delimiters, crudely
+			# remove any occurrences in the things we're going to
+			# submit to eval.
 
-			# The first successful substitution stops the
-			# search, which may be at the first dup.
-			#
-			(eval '$newval =~ ' . qq@s$pattern$value@ and
+			# $pattern was an element name, so we need to decode it.
+
+			$pattern =~ s/\^([[:xdigit:]]{2})/chr hex $1/eg;
+			$pattern =~ tr |||d;
+
+			$value =~ tr |||d;
+			my $newval = $clean_id;
+
+			# The first successful substitution stops the search.
+			# We need the eval below (and thus the untainting)
+			# because the $value may contain $N references to
+			# captured regex sub-expressions.
+
+			eval '$newval =~ ' . qq@s$pattern$value@ and
 				$cursor->c_close(),
 				undef($cursor),
-				return ($newval)),	# succeeded, so return
-			($@ and			# unusual error failure
+				return ($newval);	# succeeded, so return
+			$@ and				# unusual error failure
 				$cursor->c_close(),
 				undef($cursor),
 				addmsg($bh, "id2elemval eval: $@"),
-				return (undef))
-			;
-		#$db->seq($key, $value, R_NEXT) != 0 and
-		# yyy no error check, assume non-zero == DB_NOTFOUND
-		$cursor->c_get($key, $value, DB_NEXT) != 0 and
+				return (undef);
+		}
+		$cursor->c_get($key, $value, DB_NEXT) != 0 and	# none, so bail
 			$cursor->c_close(),
 			undef($cursor),
 			return ();
-		# no match and ran out of rules
-		$first ne substr($key, 0, length($first)) and
-		#$key !~ /^\Q$first/ and	# no match and ran out of rules
-			$cursor->c_close(),
+		$first ne substr($key, 0, length($first)) and	# if no match
+			$cursor->c_close(),		# and ran out of rules
 			undef($cursor),
 			return ();
 	}
