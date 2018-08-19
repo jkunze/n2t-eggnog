@@ -14,6 +14,7 @@
 .. _Archive.org: https://archive.org
 .. _YAMZ.net metadictionary: https://yamz.net
 .. _DataCite: https://www.datacite.org
+.. _Compact identifiers: /e/compact_ids.html
 .. _Crossref: https://crossref.org
 .. _European Bioinformatics Institute: https://www.ebi.ac.uk
 .. _California Digital Library: https://www.cdlib.org
@@ -40,7 +41,7 @@ Individual identifiers are stored in N2T.net by a number of partners.
 - `Archive.org`_ - the Internet Archive
 - `YAMZ.net metadictionary`_ - open vocabulary of metadata terms (CDL)
 
-Scheme (prefix) forwarding records are stored in N2T.net in partnership with
+`Compact identifiers`_ are implemented with scheme (prefix) records stored in N2T.net in partnership with
 
 - `European Bioinformatics Institute`_ - identifiers.org
 - `Prefix Commons`_ - prefixcommons.org

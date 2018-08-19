@@ -66,6 +66,21 @@ $x = `$cmd mstat`;
 like $x, qr/bindings: 7/s,
 	'down to 3 (+4) bindings after replacing 4 bindings with 1 binding';
 
+$cmdblock = "
+k.set c 11
+k.add c 12
+k.add c 13
+k.add c 14
+mstat
+k.purge
+mstat
+";
+$x = run_cmds_on_stdin($cmdblock);
+like $x, qr/bindings: 10.*bindings: 4/s,
+	'bindings count tracks adds and purges';
+
+#say STDERR "xxx premature exit"; exit;
+
 remove_td($td, $bgroup);
 }
 
@@ -78,7 +93,7 @@ my ($x, $y);
 $x = `$cmd --version`;
 my $v1bdb = ($x =~ /DB version 1/);
 
-$x = `$cmd --verbose mkbinder`;
+$x = `$cmd --verbose mkbinder foo`;
 like $x, qr/created.*foo/, 'make binder named foo';
 
 # yyy mkbinder doesn't create per-binder rlog file
@@ -103,9 +118,12 @@ i.add b e
 i.purge
 ";
 $x = run_cmds_on_stdin($cmdblock);
+
+if ($indb) {	# phasing out rlog means not doing it for exdb
 $y = file_value("< $td/foo/egg.rlog", $x);
 like $x, qr/ H: .* C: i\|a.set 3.*(?: C: .*){4}i.purge/s,
 	'bind value reflected in binder log file';
+}
 
 # NOTE: must precede @ in "" if it looks like possible array ref
 $cmdblock = "
@@ -127,9 +145,11 @@ $x = resolve_stdin('', $doi);	# do a prefix-based resolution; ignore return
 
 # now check effects of those commands on the log
 
+if ($indb) {
 $y = file_value("< $td/foo/egg.rlog", $x);
 like $x, qr/mline.*%0athis.*%0athis/s,
 	'multi-line bind correctly encoded in logfile (for EDINA replication)';
+}
 
 #$y = file_value("< $txnlog.rlog", $x);
 $y = file_value("< $txnlog", $x);
@@ -149,8 +169,6 @@ like $x, qr/mline.*%0athis.*%0athis/s,
 
 like $x, qr/BEGIN resolve $dummyid.*end FAIL.*$dummyid/si,
 	'BEGIN/END (fail) resolve pairs record same original form of id';
-
-#say STDERR "xxx premature exit"; exit;
 
 # we don't have proof its hardwired, but the resolver is started without
 #     a --pfxfile filename, therefore it should fall back to hardwired
@@ -237,6 +255,7 @@ $x = run_cmds_on_stdin($cmdblock);
 like $x, qr/a:   b  .*under j: 5.*under j: 4.*user.*under j: 6.*under j: 0/s,
 	"add, rm, and purge using modifiers";
 
+if ($indb) {
 $cmdblock = "
 .purge
 :hx |.set b
@@ -250,6 +269,7 @@ $cmdblock = "
 $x = run_cmds_on_stdin($cmdblock);
 like $x, qr/"": b.*under "": 2.*"": b.*id: "".*under "": 0/s,
 	"add, rm, and purge using empty identifier and element names";
+}
 
 $cmdblock = "
 @.set @ x
@@ -263,6 +283,7 @@ i^j|k%l
 @.purge
 i^j|k%l
 ";
+
 $x = run_cmds_on_stdin($cmdblock);
 is $x, "a^b|c%25d: x
 # id: i^j|k%l
@@ -316,10 +337,10 @@ set f g
 get f
 exists
 |f.exists
-|.exists
+#|.exists	# empty element name not supported in exdb case
 ";
 $x = run_cmds_on_stdin($cmdblock);
-like $x, qr/0.0.b.1.1.0.0.0.y.1.1.0.1.1.g.1.1.0.\n$/s,
+like $x, qr/0.0.b.1.1.0.0.0.y.1.1.0.1.1.g.1.1.\n$/s,
 	"various 'exists' tests: id|elem combos, empty ids, etc";
 
 $cmdblock = "
@@ -340,7 +361,7 @@ remake_td($td, $bgroup);
 $ENV{EGG} = "$hgbase -d $td/foo --txnlog ''";
 my ($x, $y);
 
-$x = `$cmd --verbose mkbinder`;
+$x = `$cmd --verbose mkbinder foo`;
 like $x, qr/created.*foo/, 'make another binder named foo';
 
 $x = `$cmd k.set a boggle`;		# overwrites 4 bindings

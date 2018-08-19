@@ -30,7 +30,7 @@ use File::Value ":all";
 use File::Copy;
 use File::Find;
 use EggNog::Temper ':all';
-use EggNog::Binder ':all';	# xxx be more restricitve
+use EggNog::Binder ':all';	# xxx be more restrictive?
 use EggNog::Log qw(tlogger);
 use Try::Tiny;			# to use try/catch as safer than eval
 use Safe::Isa;
@@ -55,6 +55,8 @@ our $unav = '(:unav)';
 our $reserved = 'reserved';		# yyy ezid; yyy global
 our $separator = '; ';			# yyy anvl separator
 our $SL = length $separator;
+
+our $BSTATS;	# flex_encoded exdb record id/elem hash for binder stats
 
 # xxx test bulk commands at scale -- 2011.04.24 Greg sez it bombed
 #     out with a 1000 commands at a time; maybe lock timed out?
@@ -124,6 +126,40 @@ my @valid_hows = qw(
 	#		return(undef);
 	#}
 	# We don't care about bound/unbound for:  set, add, insert, purge
+
+# Increment or decrement bindings_count by $amount, return non-zero on error.
+# Instantiates with $amount if field doesn't yet exist.
+# NB: this routine ASSUMES exdb
+
+sub bcount { my( $bh, $amount )=@_;
+
+# xxx when exactly should we NOT update bindings count?
+	# XXX binder belongs in $bh, NOT to $sh!
+	my $coll = $bh->{sh}->{exdb}->{binder};	# collection
+	my ($result, $msg);
+	my $ok = try {
+		$result = $coll->update_one(
+			{ $PKEY	  => $BSTATS->{id} },
+			{ '$inc'  => { $BSTATS->{elems}->[0] => $amount } },
+			{ upsert  => 1 },	# create if it doesn't exist
+		)
+		// 0;		# 0 != undefined
+	}
+	catch {
+		# xxx these should be displaying UNencoded $id and $elem
+		$msg = "error updating bindings_count elem under " .
+			"id \"$BSTATS->{id}\" from external database: $_";
+		return undef;	# returns from "catch", NOT from routine
+	};
+	! defined($ok) and 	# test undefined since zero is ok
+		addmsg($bh, $msg),
+		return undef;
+#say "xxx query={ $PKEY => $BSTATS->{id} }, { \$inc => { $BSTATS->{elems}->[0] => $amount } } ===> result=$result";
+
+#say "xxx matched_count=$result->{matched_count}, modified_count=$result->{modified_count}, upserted_id=$result->{upserted_id}";
+
+	return $result;
+}
 
 # XXXX want mkid and mkbud to be soft if exists, like open WRITE|CREAT
 #  xxx and rlog it
@@ -243,21 +279,45 @@ sub egg_purge { my( $bh, $mods, $lcmd, $formal, $id )=@_;
 		addmsg($bh, "instantiate failed from purge"),
 		return undef;
 
-	my $ret;
+	# Set "all" flag so we act even on admin elements, eg, get_rawidtree().
+	#
+	$mods->{all} = 1;			# xxx downstream side-effects?
+
+	my $num_elems;
+	my $retval = 1;
 	if ($sh->{exdb}) {
+
 		my $erfs = flex_enc_exdb($id);		# ready-for-storage id
 		my $msg;
 		my $ok = try {
 			my $coll = $bh->{sh}->{exdb}->{binder};	# collection
-	# xxx make sure del and purge are done for exdb
-	# xxx ALL elems should be arrays, NOT returning them
-	# xxx who calls flex_enc_exdb?
-			# in delete_many, "many" refers to records/docs,
+
+			# In delete_many, "many" refers to records/docs,
 			# but with our uniqueness constraint, delete_one
 			# should be sufficient yyy right?
 			# yyy deleting everything as if $mods->{all} = 1;
-			$ret = $coll->delete_many(
-				#{ $PKEY => $id },	# query clause
+
+			my $rech = $coll->find_one(
+				{ $PKEY => $erfs->{id} },	# query clause
+			)
+			// {};
+
+			# Count elements and dupes except the $PKEY element,
+			# which we never count. If we found a record for it
+			# (non-empty hash), we know it's there, so we can
+			# pre-subtact 1 instead of bothering to test for it.
+
+			$num_elems = %$rech ? -1 : 0;
+			my $elval;			# element's value
+			while ((undef, $elval) = each %$rech) {
+				$num_elems += ref($elval) eq 'ARRAY' ?
+					scalar(@$elval)	# number of dupes
+					: 1;		# just one element
+			}
+			# Could do delete_many, but we assume uniqueness
+			# constraint on $PKEY is enforced already.
+
+			$retval = $coll->delete_one(
 				{ $PKEY => $erfs->{id} },	# query clause
 			)
 			// 0;		# 0 != undefined
@@ -268,71 +328,55 @@ sub egg_purge { my( $bh, $mods, $lcmd, $formal, $id )=@_;
 			return undef;	# returns from "catch", NOT from routine
 		};
 		! defined($ok) and 	# test undefined since zero is ok
+			addmsg($bh, $msg);	# just report, don't abort
+			#return undef;
+		bcount($bh, -$num_elems);	# updates bindings_count
+	}
+
+	if ($sh->{indb}) {
+
+		# NB: arg3 undef means don't output results; instead we're
+		# generating a list of elements that we'll later delete
+		# individually.  We're calling this with UNencoded $id.
+
+		get_rawidtree($bh, $mods, undef, \@elems, undef, $id) or
+			addmsg($bh, "rawidtree returned undef"),
+			return undef;
+		$num_elems = scalar(@elems);
+
+		my $msg;	# NB: no rlog for exdb case
+		$msg = $bh->{rlog}->out("C: $id.$lcmd") and
 			addmsg($bh, $msg),
 			return undef;
-		# xxx do we check $ret for return?
-	}
-	if (! $sh->{indb}) {
-		# xxx leave now
-		tlogger $sh, $txnid, "END SUCCESS $id.$lcmd";
-		return $ret;
-	}
-# no longer need to flex_enc_indb before get_rawidtree
-#	my $irfs;		# ready-for-storage versions of id, elem, ...
-#	$irfs = flex_enc_indb($id);			# we want side-effect
-#	$id = $irfs->{id};		# need encoded $id
 
-	# Set "all" flag so get_rawidtree() returns even admin elements.
-	#
-	$mods->{all} = 1;			# xxx downstream side-effects?
-	# NB: arg3 undef means don't output results
-	# calling with UNencoded $id
-	get_rawidtree($bh, $mods, undef, \@elems, undef, $id) or
-		addmsg($bh, "rawidtree returned undef"),
-		return undef;
+		# Give '' instead of $lcmd so that egg_del won't create multiple
+		# log events (for each element), as we just logged one 'purge'.
 
-	#$out_id = $id ne '' ? $id : '""';
-	#$out_id =~		# "flex_dec_indb" as needed
-	#	s/\^([[:xdigit:]]{2})/chr hex $1/eg;
+		my $delst;			# delete status
+		my $prev_elem = "";	# init to something unlikely
+		for my $elem (@elems) {
+			# previous element dupes deleted by egg_del already
+			$elem eq $prev_elem and
+				next;	# so skip another call to avoid error
+			$retval &&= (
+				# calling with UNencoded $id and $elem
+				$delst = egg_del($bh, $mods, '', $formal,
+					$id, $elem), 
+				($delst or outmsg($bh)),
+			$delst ? 1 : 0);
+		}
+	}
 
 	my $out_id;			# output ready form
 	$out_id = flex_dec_for_display($id);
-	my $retval;
 	$om and ($retval = $om->elem('elems',		# print comment
-		" admin + user elements found to purge under $out_id: " .
-			scalar(@elems), "1#"));
-		#" admin + unique elements found to purge under " .
-		#($id ne '' ? $id : '""') . ": " . scalar(@elems), "1#"));
+		" admin + user elements found to purge under $out_id: "
+			. $num_elems, "1#"));
 
 	tlogger $sh, $txnid, "END SUCCESS $id.$lcmd";
-	my $msg;
-	$msg = $bh->{rlog}->out("C: $id.$lcmd") and
-		addmsg($bh, $msg),
-		return undef;
 
-	# Give '' instead of $lcmd so that egg_del won't create multiple
-	# log events (for each element), as we just logged one 'purge'.
-	#
-	my $delst;
-
-	my $prev_elem = "";	# initialize to something unlikely
-	for my $elem (@elems) {
-		$elem eq $prev_elem and	# prior egg_del call deleted all dupes
-			next;		# so skip another call to avoid error
-		$retval &&= (
-			# calling with UNencoded $id and $elem
-			$delst = egg_del($bh, $mods, '', $formal, $id, $elem), 
-			($delst or outmsg($bh)),
-		$delst ? 1 : 0);
-	}
-	## begin loop: control (by statement modifier) at the bottom
-	#	$retval &&= (
-	#		$delst = egg_del($bh, $mods, '', $formal, $id, $_), 
-	#		($delst or outmsg($bh)),
-	#	$delst ? 1 : 0)
-	#for (@elems);
-
-	return $retval;
+	#return $retval;	# yyy should we check $retval for return?
+	return 1;		# what the heck do we return, from which case?
 }
 
 # get element as an array of dupes
@@ -535,7 +579,7 @@ sub indb_get_dup { my( $db, $key )=@_;
 
 sub indb_del_dup { my( $bh, $id, $elem )=@_;
 
-	my ($instatus, $result) = (0, 1);	# default is success
+	my $instatus = 0;	# indb status; default is success
 	my $db = $bh->{db};
 
 	# xxx check that $elem is non-empty?
@@ -546,8 +590,7 @@ sub indb_del_dup { my( $bh, $id, $elem )=@_;
 		"problem deleting elem \"$elem\" under id \"$id\" " .
 			"from internal database: $@");
 		#return undef;
-	# yyy check $result how?
-	! $result || $instatus != 0 and
+	$instatus != 0 and
 		return -1;
 	return 0;
 }
@@ -556,14 +599,17 @@ sub indb_del_dup { my( $bh, $id, $elem )=@_;
 # xxx this is called only once, so we can easily split it into two;
 #     {ex,in}db_del_dup and pass in appropriatedly flex_encoded args
 
+# yyy NB: inconsistency: unlike exdb_set_dup, we don't call bcount()
+#     from within exdb_del_dup; instead it's the caller's responsibility.
+#     -> consider making these two routines more consistent
+
 # Assumes $id and $elem are already encoded "rfs"
+# An empty $id or $elem should generate exdb exception.
+# yyy Caller is responsible for updating bindings_count
 
 sub exdb_del_dup { my( $bh, $id, $elem )=@_;
 
-	my ($instatus, $result) = (0, 1);	# default is success
-
-	# xxx check that $elem is non-empty?
-	# XXX who calls arith_with_dups?
+	my $result = 1;		# default is success
 
 	# XXX binder belongs in $bh, NOT to $sh!
 	my $coll = $bh->{sh}->{exdb}->{binder};	# collection
@@ -586,10 +632,12 @@ sub exdb_del_dup { my( $bh, $id, $elem )=@_;
 		return undef;
 
 	# yyy check $result how?
-	! $result || $instatus != 0 and
+	! $result and
 		return -1;
 	return 0;
 }
+
+=for delete
 
 # yyy currently returns 0 on success (mimicking BDB-school return)
 # xxx this is called only once, so we can easily split it into two;
@@ -606,7 +654,7 @@ sub egg_del_dup { my( $bh, $id, $elem )=@_;
 	# XXX who calls arith_with_dups?
 	if ($bh->{sh}->{indb}) {
 		my $key = "$id$Se$elem";
-		$instatus = $db->db_del($key);
+		$instatus = $db->db_del($key);		# indb del status
 		$instatus != 0 and addmsg($bh,
 			"problem deleting elem \"$elem\" under id \"$id\" " .
 				"from internal database: $@");
@@ -633,10 +681,12 @@ sub egg_del_dup { my( $bh, $id, $elem )=@_;
 			return undef;
 	}
 	# yyy check $result how?
-	! $result || $instatus != 0 and
+	! $result || $instatus != 0 and		# if exdb or indb status bad
 		return -1;
 	return 0;
 }
+
+=cut
 
 # Remove an element (bind=bind).
 # $formal is true if we behave as if called by "delete" (whatever
@@ -720,6 +770,7 @@ sub egg_del { my( $bh, $mods, $lcmd, $formal, $id, $elem )=@_;
 		#$oldvalcnt = indb_get_dup($db, $key);
 		$oldvalcnt = $irfs
 			? indb_get_dup($db, $irfs->{key})
+# xxx exdb fix next line?
 			: -1		# we're ignoring it in exdb case
 		;
 	}
@@ -765,16 +816,23 @@ sub egg_del { my( $bh, $mods, $lcmd, $formal, $id, $elem )=@_;
 		dbunlock(),
 		return undef;
 	if ($status == 0) {		# if element both found and removed
+		# Note that if a problem shows up and you fix it, you won't
+		# likely enjoy the results until you recreate the binder
+		# to re-initialise the bindings_count.
+
 		$irfs and
 			arith_with_dups($dbh, "$A/bindings_count", -$oldvalcnt),
 			($dbh->{"$A/bindings_count"} < 0 and addmsg($bh,
 				"bindings count went negative on $irfs->{key}"),
-				return undef),
-		;
-		# Note that if a problem shows up and you fix it, you won't
-		# likely enjoy the results until you recreate the binder
-		# to re-initialise the bindings_count.
+				return undef);
+		$erfs and
+			bcount($bh, -$oldvalcnt) || (addmsg($bh,
+				"bindings count update failed on $erfs->{key}"),
+				return undef);
 	}
+#{ my @dups = exdb_get_dup($bh, $BSTATS->{id}, $BSTATS->{elem});
+#say "xxx del bindings=", $dups[0]; }
+
 	dbunlock();
 
 	my $oxstatus;
@@ -873,6 +931,7 @@ sub flex_enc_indb { my ( $id, @elems )=@_;
 		$irfs->{key} = "$A/idmap/$elem$Se$pattern";
 		$irfs->{id} = $id;		# unprocessed
 		$irfs->{elems} = [ $elem ];	# subelems not supported
+		$irfs->{elem} = $elem;		# shortcut to first element
 		return $irfs;
 	}
 	# if we get here we don't have an :idmap case
@@ -883,6 +942,7 @@ sub flex_enc_indb { my ( $id, @elems )=@_;
 		$id, @elems;
 	$irfs->{id} = $id;		# modified
 	$irfs->{elems} = \@elems;	# modified
+	$irfs->{elem} = $elems[0];	# shortcut to first element
 	return $irfs;
 }
 
@@ -902,13 +962,6 @@ sub flex_enc_exdb { my ( $id, @elems )=@_;
 		my $pattern = $1;	# note: we don't encode $pattern
 					# xxx document
 		$pattern =~ s{ $EXsc }{ sprintf("^%02x", ord($1)) }xeg;
-# xxx wait, why not encode $pattern, then later decode?
-#     xxx test
-		#my $elem = $elems[0];
-		#$elem =~ s{ $EXsc }{ sprintf("^%02x", ord($1)) }xeg;
-# xxx should encode whole schmear, not just $elem
-		#$erfs->{id} = "$A/idmap/$elem";
-
 		$erfs->{id} = "$A/idmap/$elems[0]";
 		$erfs->{id} =~ s{ $EXsc }{ sprintf("^%02x", ord($1)) }xeg;
 
@@ -916,16 +969,18 @@ sub flex_enc_exdb { my ( $id, @elems )=@_;
 		$erfs->{key} = '';		# yyy undefined really
 		#$erfs->{id} = $id;		# unprocessed
 		$erfs->{elems} = [ $pattern ];	# subelems not supported
+		$erfs->{elem} = $pattern;	# shortcut to first element
 		return $erfs;
-	} # XXX untested!
+	}
 	# if we get here we don't have an :idmap case
 
 	$erfs->{key} =
 		join $Se, grep
 		s{ $EXsc }{ sprintf("^%02x", ord($1)) }xoeg || 1,
 		$id, @elems;
-	$erfs->{id} = $id;		# modified
-	$erfs->{elems} = \@elems;	# modified
+	$erfs->{id} = $id;		# modified by grep
+	$erfs->{elems} = \@elems;	# modified by grep
+	$erfs->{elem} = $elems[0];	# shortcut to first element
 	return $erfs;
 }
 
@@ -1269,11 +1324,21 @@ use MongoDB;
 sub exdb_set_dup { my( $bh, $id, $elem, $val, $flags )=@_;
 
 	$flags ||= {};
-	my $optime = $flags->{optime} || time();
-	my $delete = $flags->{delete} || 0;		# default
-	my $polite = $flags->{polite} || 0;		# default
+	my $no_bcount = $flags->{no_bcount} || 0;	# update bindings_count?
+	my $optime = $flags->{optime} || time();	# for setting modtime
+	my $delete = $flags->{delete} || 0;		# delete old val first?
+	my $polite = $flags->{polite} || 0;		# noclobber?
+	my $init = 0;
 
+	# NB: if this test is true, we assume a special case of init_id
+	$elem eq PERMS_EL_EX and		# to force binding_count update
+		($init, $delete) = (1, 1);	# and to delete old val
+				
+	#my ($result, $presult);		# current op and prior value
 	my $result;
+	#my ($oldvalR, $oldval);		# yyy unused
+	my $fetch_oldval = 1;		# usually we find old val count first
+	my $oldvalcnt = 0;
 	my $coll = $bh->{sh}->{exdb}->{binder};		# collection
 
 # xxx to do:
@@ -1293,15 +1358,47 @@ sub exdb_set_dup { my( $bh, $id, $elem, $val, $flags )=@_;
 
 	my $update_doc = {};
 	my $to_set = { CTIME_EL_EX() => $optime };	# initialize
-	if ($delete) {
+	if ($delete) {				# eg, "set" overwrites
+		$no_bcount and		# if we're not updating bindings_count,
+			$fetch_oldval = 0;	# no need to first fetch oldval
+#{ my @dups = exdb_get_dup($bh, $BSTATS->{id}, $BSTATS->{elem});
+#say "xxx after init bindings=", $dups[0]; }
 		$to_set->{$elem} = [ $val ];		# to be set
 	}
-	else {
+	else {					# eg, "add" not "set"
+		$fetch_oldval = 0;	# adding, so no need to fetch oldval
 		$update_doc->{'$push'} = { $elem => $val };
 	}
 	$update_doc->{'$set'} = $to_set;
 	my $msg;
 	my $ok = try {
+#say "xxx ELEM=$elem, fetch_oldval=$fetch_oldval, no_bcount=$no_bcount";
+		if ($fetch_oldval) {	# so we can update bindings_count
+			my $presult;
+			$presult = $coll->find_one(
+				{ $PKEY => $id },	# query
+				{ $elem => 1 },		# projection
+			)
+			// 0;		# 0 != undefined
+			#my $ref = $presult ? ref($presult->{$elem}) : undef;
+			my $ref = $presult && defined($presult->{$elem})
+				? ref($presult->{$elem})
+				: undef;
+			$ref && $ref eq 'ARRAY' and	# if there was an array
+				#$oldvalR = $presult->{$elem},
+				#$oldvalcnt = @$oldvalR,  # old bindings_count
+				$oldvalcnt =		# old bindings_count
+					scalar(@{ $presult->{$elem} }),
+			1 or		# else if there was still some result
+			#$presult and $ref and
+			defined($ref) and
+				#$oldval = $presult->{$elem},
+#say("xxx presult->{$elem}=$presult->{$elem}, exists{$elem}=", exists($presult->{$elem}), ", defined=", defined($presult->{$elem})),
+				$oldvalcnt = 1,		# old bindings_count=1
+			;
+			# yyy we're not currently using $oldval or $oldvalR
+#say "xxx ref=$ref, elem=$elem, oldvalcnt=$oldvalcnt";
+		}
 		$result = $coll->update_one(
 			$filter_doc,
 			$update_doc,
@@ -1322,6 +1419,16 @@ sub exdb_set_dup { my( $bh, $id, $elem, $val, $flags )=@_;
 			"already has a value");
 		return undef;
 	}
+	# if we get here, an update occurred
+
+	$init and	# on init_id we set PERMS_EL_EX, plus CTIME_EL_EX
+		bcount($bh, +2),	# as a side-effect, hence +2
+	1 or
+	! $no_bcount and	# if we're updating the bindings_count and not
+		$oldvalcnt != 1 and	# swapping one-for-one (optimization)
+			bcount($bh, 1 - $oldvalcnt),
+#say("xxx bcount ELEM, oldvalcnt=$oldvalcnt"),
+			;	# call to update
 	return $result;		# yyy is this a good return status?
 
 #use Data::Dumper "Dumper"; print Dumper $result;
@@ -1384,8 +1491,10 @@ sub egg_authz_ok { my( $bh, $id, $op )=@_;
 		# yyy should call time() only once per op? and share,
 		#     eg, with rlog?
 		$bh->{sh}->{indb} and
-			# XXX NOT setting arith_with_dups numbers in external db
 			arith_with_dups($dbh, "$A/bindings_count", +2);
+		$bh->{sh}->{exdb} and
+			bcount($bh, +2);
+
 		# If we get here, we're authorized.
 	}
 	elsif (! $bh->{remote}) {	# only need to do authz if on web
@@ -1467,6 +1576,8 @@ sub egg_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 		exdb_set( $bh, $mods, $lcmd, $delete,
 			$polite, $how, $incr_decr, $id, $elem, $value ) ||
 				return undef;
+#{ my @dups = exdb_get_dup($bh, $BSTATS->{id}, $BSTATS->{elem});
+#say "xxx set bindings=", $dups[0]; }
 	$bh->{sh}->{indb} and
 		indb_set( $bh, $mods, $lcmd, $delete,
 			$polite, $how, $incr_decr, $id, $elem, $value ) ||
@@ -1609,7 +1720,6 @@ sub indb_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 	return 1;
 }
 
-# *** exdb: db.mycollection.count() to count docs in a collection
 sub exdb_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 						$incr_decr,
 						$id, $elem, $value )=@_;
@@ -1673,29 +1783,6 @@ sub exdb_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 		#   if element exists, then incr by amount
 	}
 
-#	$polite and $oldvalcnt > 0 and $how eq HOW_SET and
-#		addmsg($bh, "cannot proceed on an element ($elem) that " .
-#			"already has a value"),
-#		return undef;
-#
-#	# yyy do more tests with dups
-#	# with "bind set" need first to delete, including any dups
-#
-#	# Delete value (and dups) if called for (eg, by "bind set").
-#	#   delete() is a convenient way of stomping on all dups
-#	#
-#	if ($delete and $oldvalcnt > 0) {
-#		if ($bh->{sh}->{indb}) {
-#			$db->db_del($key) and
-#				addmsg($bh, "del failed"),
-#				return undef;
-#			arith_with_dups($dbh, "$A/bindings_count", -$oldvalcnt);
-#			#$dbh->{"$A/bindings_count"} < 0 and addmsg($bh,
-#			#	"bindings count went negative on $key"),
-#			#	return undef;
-#		}
-#	}
-
 	# The main event.
 
 	dblock();	# no-op
@@ -1703,7 +1790,8 @@ sub exdb_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 	# permit 'set' to overwrite dups, but don't permit 'let' unless
 	#    there is no value set
 
-	#if (! exdb_set_dup($bh, $id, $elem, $slvalue, $optime)) 
+	# NB: exdb_set_dup updates bindings_count by default
+
 	if (! exdb_set_dup($bh, $rfs->{id}, $rfs->{elems}->[0], $slvalue, {
 			optime => $optime,
 			delete => $delete,
@@ -1724,7 +1812,7 @@ sub exdb_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 
 		# XXX NOT setting doing this for external db. DROP for indb?
 		#$bh->{sh}->{indb} and
-		#	$msg = $bh->{rlog}->out("C: $id$Se$elem.$lcmd $slvalue");
+		#    $msg = $bh->{rlog}->out("C: $id$Se$elem.$lcmd $slvalue");
 		tlogger $sh, $txnid, "END SUCCESS $id$Se$elem.$lcmd ...";
 
 		#$msg and
@@ -1758,14 +1846,18 @@ sub egg_init_id { my( $bh, $id, $optime )=@_;
 		# yyy no error check
 	}
 	if ($sh->{exdb}) {
+#{ my @dups = exdb_get_dup($bh, $BSTATS->{id}, $BSTATS->{elem});
+#say "xxx before init bindings=", $dups[0]; }
 		@pkey = exdb_get_dup($bh, $id, PERMS_EL_EX);
+		# bindings_count updated by exdb_get_dup
 		scalar(@pkey) and		# it exists,
 			return 1;		# so nothing to do
-		# XXX NOT setting arith_with_dups numbers in external db
-		# xxx do I need to normalize elem name & value?
+		# yyy do I need to flex_encode elem name & value?
 		! exdb_set_dup($bh, $id, PERMS_EL_EX, $id_value, {
 				optime => $optime, delete => 1 }) and
 			return undef;
+#{ my @dups = exdb_get_dup($bh, $BSTATS->{id}, $BSTATS->{elem});
+#say "xxx after init bindings=", $dups[0]; }
 	}
 	return 1;
 }
@@ -1996,15 +2088,47 @@ sub list_ids_from_key { my( $bh, $mods, $max, $nextkey, $inkey )=@_;
 	return (undef, undef);
 }
 
+sub exdb_count { my( $bh )=@_;
+	my ($count, $coll, $msg);
+	my $ok = try {
+		$coll = $bh->{sh}->{exdb}->{binder};	# collection
+		$count = $coll->count();
+	}
+	catch {
+		$count = "error in estimated_document_count for \"$coll\: $_";
+		return undef;	# returns from "catch", NOT from routine
+	};
+	! defined($ok) and 	# test undefined since zero is ok
+		addmsg($bh, $count);
+	return $count;
+}
+
 sub mstat { my( $bh, $mods, $om, $cmdr, $level )=@_;
 
 	$om ||= $bh->{om};
+	my $hname = $bh->{humname};		# name as humans know it
+	$level ||= "brief";
+
+	my $sh = $bh->{sh};
+	if ($sh->{exdb}) {
+
+		my ($mtime, $size, @dups);
+		if ($level eq "brief") {
+
+			$om->elem("External binder", $sh->{exdb}->{exdbname});
+			my $count = exdb_count($bh);
+			$count //= "error in fetching document count";
+			$om->elem("record count", $count);
+			my @dups = exdb_get_dup($bh,
+				$BSTATS->{id}, $BSTATS->{elem});
+			$om->elem("bindings", $dups[0]);
+		}
+		return 1;
+	}
 	my $db = $bh->{db};
 	my $dbh = $bh->{tied_hash_ref};
-	my $hname = $bh->{humname};		# name as humans know it
 	my ($mtime, $size);
 
-	$level ||= "brief";
 	if ($level eq "brief") {
 		$om->elem("binder", $bh->{minder_file_name});
 		(undef,undef,undef,undef,undef,undef,undef,
@@ -2014,10 +2138,10 @@ sub mstat { my( $bh, $mods, $om, $cmdr, $level )=@_;
 		$om->elem("size in octets", $size);
 		# xxx next ok?
 		#$om->elem("binder", which_minder($cmdr, $bh->{minderpath}));
-		$om->elem("status", minder_status($dbh));
+		#$om->elem("status", minder_status($dbh));
 		$om->elem("bindings", $dbh->{"$A/bindings_count"});
-		return 1;
 	}
+	return 1;
 }
 
 # xxx bind list [pattern]
@@ -2408,7 +2532,7 @@ sub md_map_init {
 # If $om->{outhandle} is defined, just use it for output, otherwise
 # return a list of two strings with (a) formatted kernel elements and
 # (b) formatted and sorted non-kernel elements.
-# Assumes $id is already encoded ready for storage.
+# Assumes $id ($rid actually) is NOT already encoded ready for storage.
 
 sub egg_inflect { my ( $bh, $mods, $om, $id )=@_;
 
@@ -2431,16 +2555,15 @@ sub egg_inflect { my ( $bh, $mods, $om, $id )=@_;
 	# 3rd arg below (OM) is undefined because, unlike egg_fetch,
 	# we only want the results in $elemsR and $valsR for now
 
+	my $rfs;
 	if ($bh->{sh}->{fetch_exdb}) {
-# xxx flex encoded?
-		#my @dups = exdb_get_id($bh, $id);
+		$rfs = flex_enc_exdb($id);	# flex_encode for exdb_get_id
 		my $rech = exdb_get_id($bh, $id);	# record hash
-		#$rech or
 		scalar(%$rech) or
 			return ('', '');	# nothing found
 
-# XXXXXXXXXXXXxxx exdb NOT FINISHED!
-		# xxx this last bit duplicates code in egg_fetch; consolidate?
+		# Go through all elements in $rech, creating parallel lists
+		# of element names and values, and otherwise no output.
 
 		my $all = $mods->{all} // $bh->{opt}->{all} // '';
 		my $skipregex = '';
@@ -2449,26 +2572,24 @@ sub egg_inflect { my ( $bh, $mods, $om, $id )=@_;
 			$spat = SUPPORT_ELEMS_RE;
 			$skipregex = qr/^$spat/o;
 		}
-		#my $nelems = 0;
 		while (my ($k, $v) = each %$rech) {
 			$skipregex and $k =~ $skipregex and
 				next;
-			$k eq '_id' and		# yyy peculiar to mongo
+			$k eq $PKEY and		# yyy peculiar to mongo
 				next;
 			push @$elemsR, $k;
 			push @$valsR, $v;
-			#$s = exdb_elem_output($om, $k, $v);
-			#($p && (($st &&= $s), 1) || ($st .= $s));
-			#$nelems++;
 		}
 	}
 	else {
 		#my $rawblob = get_rawidtree($bh, $mods,...)
+		$rfs = flex_enc_indb($id);	# flex_encode for get_rawidtree
 		get_rawidtree($bh, $mods,
 			undef,		# here OM arg undefined because
 			$elemsR,	# here we want element names returned
 			$valsR,		# and here we want values returned
-				$id) or
+				$rfs->{id}) or
+				#$id) or
 			return '';
 	}
 
@@ -2532,15 +2653,14 @@ sub egg_inflect { my ( $bh, $mods, $om, $id )=@_;
 # use XML::LibXSLT;
 # use XML::LibXML;
 #
-# my $parser = XML::LibXML->new();
-# my $xslt = XML::LibXSLT->new();
+# once  my $parser = XML::LibXML->new();
 #
-# my $source = $parser->parse_file('foo.xml');
-# my $style_doc = $parser->parse_file('bar.xsl');
-#
-# my $stylesheet = $xslt->parse_stylesheet($style_doc);
-#
-# my $results = $stylesheet->transform($source);
+# once  my $style_doc = $parser->parse_file('bar.xsl');
+# once  my $xslt = XML::LibXSLT->new();
+# once  my $stylesheet = $xslt->parse_stylesheet($style_doc);
+
+# MANY  my $source = $parser->parse_file('foo.xml');
+# MANY  my $results = $stylesheet->transform($source);
 #
 # print $stylesheet->output_string($results);
 
@@ -2609,7 +2729,9 @@ sub egg_inflect { my ( $bh, $mods, $om, $id )=@_;
 	return $p ? $st : ($s, $briefblob);
 }
 
-sub exdb_elem_output { my( $om, $key, $val )=@_;
+# returns triple: number of elements, accumulated status, and string (if any)
+
+sub elems_output { my( $om, $key, $val )=@_;
 
 	my $p = $om ? $om->{outhandle} : 0;  # whether 'print' status or small
 	my $s = '';                     # output strings are returned to $s
@@ -2623,7 +2745,8 @@ sub exdb_elem_output { my( $om, $key, $val )=@_;
 		$s = $om->elem($out_elem, $val);
 		($p && (($st &&= $s), 1) || ($st .= $s));
 	}
-	return $st;	# yyy verify if this is the correct thing to return
+	#return $st;
+	return (scalar(@vals), $st, $s);
 }
 
 # ? get/fetch [-r] ... gets values?
@@ -2766,6 +2889,7 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 				# yyy use _id not id
 			($p && (($st &&= $s), 1) || ($st .= $s));
 
+############
 			my $all = $mods->{all} // $bh->{opt}->{all} // '';
 			my $skipregex = '';
 			my $spat = '';
@@ -2774,20 +2898,26 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 				$skipregex = qr/^$spat/o;
 			}
 
+			my $ast;	# accumulated status from elems_output
+			my $ndups;		# number of dupes in an element
 			my $nelems = 0;
 			while (my ($k, $v) = each %$result) {
 				$skipregex and $k =~ $skipregex and
 					next;
-				$k eq '_id' and		# yyy peculiar to mongo
+				$k eq $PKEY and		# yyy peculiar to mongo
 					next;
 			#	$out_elem = $k ne '' ? $k : '""';
 			#	$out_elem =~	# "flex_dec_exdb" as needed
 			#		s/\^([[:xdigit:]]{2})/chr hex $1/eg;
 			#	$s = $om->elem($out_elem, $v);
-				$s = exdb_elem_output($om, $k, $v);
-				($p && (($st &&= $s), 1) || ($st .= $s));
-				$nelems++;
+				#$s = elems_output($om, $k, $v);
+				#($p && (($st &&= $s), 1) || ($st .= $s));
+				($ndups, $ast, $s) = elems_output($om, $k, $v);
+				($p && (($st &&= $ast), 1) || ($st .= $s));
+				$nelems += $ndups;
+				#$nelems++;
 			}
+################
 			$s = $om->elem('elems',		# print ending comment
 				" elements bound under $out_id: $nelems", "1#");
 			($p && (($st &&= $s), 1) || ($st .= $s));
@@ -3003,7 +3133,7 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 # !! assume $elemsR and $valsR, if defined, are ready to push onto
 # xxx maybe we should have a special (faster) call just to get names
 #
-# NB: discovered id and element names are already encoded ready-for-storage,
+# NB: input id and element names are already encoded ready-for-storage,
 # (eg, | and ^), which means (a) beware not to encode them again and
 # (b) you will probably want to decode before output.
 #

@@ -108,6 +108,14 @@ Some options:
   --home=Dir   eggnog home directory (~/.eggnog), containing configuration,
                logs, binders, minters, prefixes, etc.
 
+EXDB Notes (external database):
+  unsupported commands:
+   - incr, decr, list, next
+  unsupported features:
+   - implicit binder names for bmake/mkbinder
+   - empty element name (empty id name ok)
+   - rlog (phasing out in favor of native replication)
+
 EOF
 
 my ($WeAreOnWeb, $WeAreResolver) = (0, 0);

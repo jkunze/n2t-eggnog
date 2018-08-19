@@ -1726,6 +1726,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 
 # returns list consisting of inflection command plus args
 # $idx->{rid} is the $id/$rid
+# NB: elements in %$idx are not flex_encoded
 
 sub inflect_cmd { my(   $bh, $eset, $format,  $idx )=
 		    ( shift, shift,   shift, shift );	# plus other params
@@ -1783,6 +1784,7 @@ sub quote_args {			# quote args
 # Return single target given $bh, $id, $element
 
 sub exdb_get_one {
+# xxx flex_encode $id!?
 	my @dups = exdb_get_dup(@_);
 	return scalar(@dups)
 		? $dups[0]
@@ -1795,6 +1797,7 @@ sub exdb_get_one {
 sub indb_get_one { my( $bh, $id, $element )=@_;
 	my $db = $bh->{db};
 	my $target;
+# xxx flex_encode $id!?
 	return $db->db_get("$id$Se$element", $target)
 		? ''				# non-zero means not found
 		: $target			# zero means success
@@ -1911,6 +1914,7 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 
 		# yyy old xref binder element names use _mT* not ._eT*
 
+# XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX not finished
 # xxx exdb NOT FINISHED!
 		$target =
 			&$get_one($bh, $id, $Rp.$Tm.$accept) ||
@@ -2702,10 +2706,8 @@ sub any_key_starting { my( $bh, $s )=@_;
 
 	if ($bh->{sh}->{fetch_exdb}) {
 		my ($result, $msg);
-		#my $rfs = flex_enc_exdb($s);	# we want $rfs->{id}
 		my $ok = try {				# exdb_get_dup
 			my $coll = $bh->{sh}->{exdb}->{binder};	# collection
-#				{ $PKEY => qr/^\Q$rfs->{id}/ }
 			$result = $coll->find(
 				{ $PKEY => qr/^\Q$s/ }
 			)
@@ -2724,8 +2726,6 @@ sub any_key_starting { my( $bh, $s )=@_;
 		return $ok;		# return from sub with "caught" value
 	}
 	my $db = $bh->{db};
-	#my $rfs = flex_enc_indb($s);
-	#$s = $rfs->{id};		# clobber original $s yyy
 	my ($key, $value) = ($s, 0);
 	my $cursor = $db->db_cursor();
 	my $status = $cursor->c_get($key, $value, DB_SET_RANGE);
@@ -2877,14 +2877,11 @@ sub check_naan { my( $bh, $naan, $id, $element )=@_;
 # ???
 # Assumes $id is already encoded, ready for lookup in storage.
 
-
-
 #
 # XXX should pass in results of normalization to save time in reparsing id
 
 sub suffix_pass { my( $bh, $id, $element, $suffix_return )=@_;
 
-# XXX test id2elemval (should break in exdb case)
 # xxx convert check_naan and suffix_pass and chopback
 
 # xxx need flex_get() routine that ...
@@ -2919,7 +2916,6 @@ sub suffix_pass { my( $bh, $id, $element, $suffix_return )=@_;
 	$verbose and
 		print "start suffix passthrough (spt) on $id\n";
 
-	#my $element = "_t";	# element to give to ??db_chopback()
 	my $value = "";			# because we want a non-empty value
 
 	# We prepare to call ??db_chopback() to see if an ancestor (substring)
@@ -2980,6 +2976,8 @@ sub suffix_pass { my( $bh, $id, $element, $suffix_return )=@_;
 	my $stopchop = $origlen - length($stop);
 	my $shoulder = substr $id, 0, $stopchop;
 
+	# If we get here, $shoulder and $naan are properly encoded.
+
 	# The next call to ??db_chopback() is potentially expensive, so let's
 	# see if there are any easy reasons to avoid it.  First, see if
 	# our database has any ids at all under (that start with) the
@@ -2993,7 +2991,7 @@ sub suffix_pass { my( $bh, $id, $element, $suffix_return )=@_;
 	! $st and		# no shoulder matched; check NAAN match
 		# xxx if OCA/IA binder is in resolver list, won't this
 		# next check bypass that (or be redundant with it)?
-		# xxx is check_naan code tested/used in real life?
+		# yyy is check_naan code tested/used in real life?
 		($newid = check_naan($bh, $naan, $id, $element)) and
 			return $newid;
 
@@ -3008,7 +3006,6 @@ sub suffix_pass { my( $bh, $id, $element, $suffix_return )=@_;
 
 	my $am = $element . $ANCESTOR_MATCH_ELEM;
 	@dups = $exget
-# XXX bug: $shoulder not encoded
 		? exdb_get_dup($bh, $shoulder, $am)
 		: indb_get_dup($db, "$shoulder$Se$am");
 	my $amflag = scalar(@dups) ?
@@ -3025,7 +3022,7 @@ sub suffix_pass { my( $bh, $id, $element, $suffix_return )=@_;
 
 	#### The main event. ####
 
-	$newid = $exget
+	$newid = $exget		# NB: returned $newid is already flex_encoded
 		? exdb_chopback($bh, $verbose, $id, $stopchop, $element, $value)
 		: indb_chopback($bh, $verbose, $id, $stopchop, $element, $value)
 	;
@@ -3074,17 +3071,14 @@ sub suffix_pass { my( $bh, $id, $element, $suffix_return )=@_;
 		print "suffix for newid ($newid) is $suffix\n";
 		# yyy shouldn't this use STDERR?
 
-	# yyy flexencode considerations?
 	# note that chopback looked this up, but not dup-sensitive;
 	# so we look it up again, this time passing dups back
-	# 
-# XXXXXX did we encode $newid chars here and for chopback?? eg, any |'s?
 
 	@dups = $exget
 		? exdb_get_dup($bh, $newid, $element)
 		: indb_get_dup($db, "$newid$Se$element")
 	;
-# XXX @dups now has base target, but no appended or substituted suffix !!!
+	# @dups now has base target, but no appended or substituted suffix
 
 	$verbose	and print "spt to: ", join(", ", @dups), "\n";
 

@@ -69,6 +69,7 @@ use constant FS_DB_NAME		=> 'egg.bdb';	# database filename
 our $DEFAULT_BINDER    = 'binder1';	# user's binder name default
 our $DEFAULT_BINDER_RE = qr/^egg_.*\..*_s_\Q$DEFAULT_BINDER\E$/o;
 					# eg, egg_default.jak_s_binder1
+our $EGG_DB_CREATE	= 1;
 
 # xxx document
 # Here's how our hierarchical mongodb namespaces are structured.
@@ -1318,6 +1319,12 @@ sub ibopen { my( $bh, $mdr, $flags, $minderpath, $mindergen )=@_;
 # ebopen = external binder open (new)
 sub ebopen { my( $bh, $exbrname, $flags )=@_;
 
+	$EggNog::Egg::BSTATS //=		# lazy, one-time evaluation
+		EggNog::Egg::flex_enc_exdb(
+			"$A/binder_stats",		# _id name
+			"bindings_count",		# element name
+		);
+	$flags //= 0;
 	! $exbrname and
 		(undef, $exbrname) = str2brnames($bh->{sh}, $DEFAULT_BINDER);
 
@@ -1334,8 +1341,8 @@ sub ebopen { my( $bh, $exbrname, $flags )=@_;
 	# you don't really know if you have a connection until the first
 	# access attempt.)  NB: Consquently, it almost always "succeeds".
 
-
 	my $exdb = $bh->{sh}->{exdb};
+	my $om = $bh->{om};
 	#my $open_exdb = {};
 	my $msg;
 	my $ok = try {
@@ -1355,6 +1362,12 @@ sub ebopen { my( $bh, $exbrname, $flags )=@_;
 					# and stop with $sh->{exdb}->{binder}
 	$exdb->{exdbname} = $exbrname;
 	#$bh->{open_exdb} = $open_exdb;
+
+	my $creating = $flags & $EGG_DB_CREATE;
+	$bh->{opt}->{verbose} and $om and $om->elem("note",
+		($creating ? "created" : "opened") . " binder $exbrname"),
+			# XXX this next is really a debug message
+			$om->elem("note", "ibopen $bh");
 	return 1;
 }
 
@@ -1373,8 +1386,11 @@ sub bopen { my( $bh, $bdr, $flags, $minderpath, $mindergen )=@_;
 	my ($inbrname, $exbrname) =
 		str2brnames($sh, $bdr);
 #say "xxx bopen: bdr=$bdr";
-	$sh->{exdb} and
-		ebopen($bh, $exbrname) || return undef;
+	if ($sh->{exdb}) {
+		($flags & DB_CREATE) and
+			$flags = $EGG_DB_CREATE;	# yyy dumb kludge
+		ebopen($bh, $exbrname, $flags) || return undef;
+	}
 	$sh->{indb} and
 		ibopen(@_) || return undef;
 	return 1;
@@ -1704,7 +1720,7 @@ sub mkebinder { my( $sh, $mods, $exbrname, $bgroup, $user, $what, $minderdir )=@
 	my $bh = newnew($sh) or
 		addmsg($sh, "mkebinder couldn't create binder handler"),
 		return undef;
-	! ebopen( $bh, $exbrname ) and		# yyy other args unused
+	! ebopen($bh, $exbrname, $EGG_DB_CREATE) and	# yyy some args unused
 		addmsg($sh, "could not open external binder \"$exbrname\""),
 		return undef;
 
@@ -2403,6 +2419,7 @@ sub bshow { my( $sh, $mods, $om, $bgroup, $user, $ubname )=@_;
 # return human readable word representing minder status
 # first arg is pointer to tied hash ref
 # optional second argument sets status
+
 sub minder_status { my( $dbh, $status )=@_;
 
 	my $cur_status;
@@ -2412,7 +2429,7 @@ sub minder_status { my( $dbh, $status )=@_;
 	# XXXX!!! check $dbh->{authz} to see if authorized!
 		$dbh->{"$A/status"} eq 's'	and return
 			("cannot change status of a 'shoulderonly' minter");
-		delete($dbh->{"$A/status"});		# precaution if dups enabled
+		delete($dbh->{"$A/status"});	# precaution if dups enabled
 		$dbh->{"$A/status"} = $status;
 	}
 	$cur_status = $dbh->{"$A/status"};

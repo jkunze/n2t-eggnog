@@ -8,7 +8,6 @@ lib/EggNog/Help.pm
 lib/EggNog/Resolver.pm
 lib/EggNog/Rlog.pm
 lib/EggNog/RUU.pm
-lib/EggNog/StubResolver.pm
 lib/EggNog/ApacheTester.pm
 lib/EggNog/ValueTester.pm
 Makefile.PL
@@ -23,7 +22,6 @@ README
 t/egg_bind.t
 t/egg_bulk.t
 t/egg_dbcmds.t
-t/egg_exdb.t
 t/egg_help.t
 t/egg_incr.t
 t/egg_list.t
@@ -36,7 +34,6 @@ t/egg_webperms.t
 t/egn_apachebase.t
 t/egn_post_install_n2t.t
 t/egn_service_n2t.t
-t/n2t
 t/nog_blade.t
 t/nog_bulk.t
 t/nog_gen.t
@@ -47,6 +44,5 @@ t/nog_mint.t
 t/nog_mkminter.t
 t/nog_startstop.t
 t/nog_validate.t
-t/web
 t/z_egg_prefixes_n2t.t
 VERSION

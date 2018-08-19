@@ -20,6 +20,7 @@
 .. _Crossref: https://crossref.org
 .. _European Bioinformatics Institute: https://www.ebi.ac.uk
 .. _California Digital Library: https://www.cdlib.org
+.. _Memorandum of Understanding Between CDL and EMBL-EBI: https://n2t.net/ark:/13030/c7bn9x29q
 .. _Uniform Resolution of Compact Identifiers for Biomedical Data: https://doi.org/10.1038/sdata.2018.95
 .. _Prefix Commons: https://prefixcommons.org
 .. _SNAC: http://snaccooperative.org
@@ -49,11 +50,11 @@ Compact Identifiers
 
  **General format**                *Prefix*:*LocalId*
 
- **Registry links**    -> `full set of N2T prefix records`_
-                   -> `joint N2T/Identifiers.org prefix list`_
-                   -> request to `add a prefix`_ to the list
- **Early adoption**    -> Nature Scientic Data: `On the road to robust data citation`_
-
+ **Registry links**      -> `full set of N2T prefix records`_
+                     -> `joint N2T/Identifiers.org prefix list`_
+                     -> request to `add a prefix`_ to the list
+ **Early adoption**      -> Nature Scientic Data: `On the road to robust data citation`_
+ **Formal support**      -> `Memorandum of Understanding Between CDL and EMBL-EBI`_
 
 How they work
 =============
