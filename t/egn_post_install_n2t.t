@@ -333,11 +333,11 @@ like $x, qr/response.*302 .*\nLocation: \Q$target/,
 	"RRID rule -- rule-based target redirect";
 
 # # pmid (alias for pubmed)
-# ncbi    http://www.ncbi.nlm.nih.gov/pubmed/$id
+# ncbi    https://www.ncbi.nlm.nih.gov/pubmed/$id
 # epmc    http://europepmc.org/abstract/MED/$id
 
 ($i, $q) = ('16333295', '-z-?');
-$target = 'http://www.ncbi.nlm.nih.gov/pubmed/$id';
+$target = 'https://www.ncbi.nlm.nih.gov/pubmed/$id';
 $i = uc $i;
 $target =~ s/\$id\b/$i/g;
 
@@ -352,7 +352,7 @@ like $x, qr|response.*302 .*\nLocation: \Q$target\E |,
 	"prefixed scheme with potentially confusing colons";
 
 ($i, $q) = ('9606', '-z-?');
-$target = 'http://www.rcsb.org/pdb/explore/explore.do?structureId=$id';
+$target = 'https://www.rcsb.org/pdb/explore/explore.do?structureId=$id';
 #$target = 'http://www.pdbe.org/$id';
 $i = uc $i;
 $target =~ s/\$id\b/$i/g;
@@ -372,7 +372,7 @@ like $x, qr/response.*302 .*\nLocation: \Q$target/,
 	"IGSN rule -- rule-based target redirect";
 
 ($i, $q) = ('9606', '-z-?');
-$target = 'http://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=$id';
+$target = 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=$id';
 $i = uc $i;
 $target =~ s/\$id\b/$i/g;
 
@@ -386,7 +386,7 @@ like $x, qr/response.*302 .*\nLocation: \Q$target/,
 #print "xxx disabled test: TAXONOMY rule -- rule-based target redirect\n";
 
 ($i, $q) = ('6622', '-z-?');
-$target = 'http://www.ncbi.nlm.nih.gov/gene/$id';
+$target = 'https://www.ncbi.nlm.nih.gov/gene/$id';
 $i = uc $i;
 $target =~ s/\$id\b/$i/g;
 
@@ -401,15 +401,15 @@ like $x, qr/response.*302 .*\nLocation: \Q$target/,
 	"prefix (amigo/go) with provider code -- rule-based target redirect";
 
 $i = '16333295';
-$target = 'http://www.ncbi.nlm.nih.gov/pubmed/16333295';
+$target = 'https://www.ncbi.nlm.nih.gov/pubmed/16333295';
 $x = `wegn -v locate "ncbi/pmid:$i"`;
 like $x, qr/response.*302 .*\nLocation: \Q$target/,
     "prefix (ncbi/pmid) with provider code and alias -- rule-based redirect";
 
-#intenz  http://www.ebi.ac.uk/intenz/query?cmd=SearchEC&amp;ec=$id
+#intenz  https://www.ebi.ac.uk/intenz/query?cmd=SearchEC&amp;ec=$id
 #expasy  http://enzyme.expasy.org/EC/$id
 ($i, $q) = ('1.1.1.1', '-z-?');
-$target = 'http://www.ebi.ac.uk/intenz/query?cmd=SearchEC&ec=$id';
+$target = 'https://www.ebi.ac.uk/intenz/query?cmd=SearchEC&ec=$id';
 $i = uc $i;
 $target =~ s/\$id\b/$i/g;
 
