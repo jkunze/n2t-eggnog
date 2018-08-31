@@ -19,5 +19,6 @@ partners.html: partners.rst makehtml.py
 	./makehtml.py partners.rst "N2T partners"
 
 test: all
+	# *.html means homepage.html changes also get copied in
 	cp -pr *.html *.txt *.pdf *.gz css fonts images \
 		$(HOME)/sv/cur/apache2/htdocs/e/

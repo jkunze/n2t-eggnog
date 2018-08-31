@@ -14,7 +14,6 @@ use warnings;
 
 use EggNog::ValueTester ':all';
 use File::Value ':all';
-use EggNog::Binder ':all';
 
 my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "egg";
 $td or			# if error
@@ -51,7 +50,15 @@ sub resolve_stdin_hdr {
 	return `$cmd --rrm $opt_string - < $td/getcmd`;
 }
 
-#=for later
+# Some globals to set once and use below, which are really constants. yyy
+
+use EggNog::Binder ':all';
+my $Rp = EggNog::Binder::RSRVD_PFIX;	# reserved sub-element prefix
+my $Rs = EggNog::Binder::SUBELEM_SC	# reserved sub-element separator prefix
+	. EggNog::Binder::RSRVD_PFIX;
+my $Tm = EggNog::Binder::TRGT_METADATA;   # actually content negotiation
+my $Ti = EggNog::Binder::TRGT_INFLECTION; # target for inflection
+
 {		# some simple ? and ?? tests
 remake_td($td, $bgroup);
 
@@ -78,45 +85,49 @@ like $x, qr/,\s*"Victory.*:\s*Victory/s, 'citation support';
 
 $ENV{EGG} = $hgbase;
 }
-#=cut
 
 {
 remake_td($td, $bgroup);
 my $x;
 
-=for earlytesting
-
-$x = `$cmd -p $td mkbinder foo`;
-shellst_is 0, $x, "make binder named foo";
-
-my $host = '';	# yyy was $host meant to be empty?
-
-#$x = `$cmd -d $td/foo ":idmap/foo".set _t "\\\$2/g7h/\\\$1"`;
-#$x = `$cmd -d $td/foo ":idmap/foo".fetch _t`;
-
-$x = `$cmd -d $td/foo ":idmap//ft([^x]+)x(.*)".set _t "\\\$2/g7h/\\\$1"`;
-$x = `$cmd -d $td/foo ":idmap//ft([^x]+)x(.*)".fetch _t`;
-
-$x = `$cmd -d $td/foo "$host".rm _t`;		# delete target
-$x = `$cmd -d $td/foo ":idmap//ft([^x]+)x(.*)".set _t "\\\$2/g7h/\\\$1"`;
-
-my $rurl = "http://g.h.i/ft89xr2t";
-$x = resolve_stdin("-d $td/foo", $rurl);
-like $x, qr,r2t/g7h/89,, "rule-based idmap substitution";
-
-#say "xxx x=$x";
+##=for earlytesting
+#
+## yyy maybe these next steps (up to target delete) belong towards end with
+## other inflection tests
+#
+#$x = `$cmd -p $td mkbinder foo`;
+#shellst_is 0, $x, "make binder named foo";
+#
+#my $host = '';	# yyy was $host meant to be empty?
+#
+##$x = `$cmd -d $td/foo ":idmap/foo".set _t "\\\$2/g7h/\\\$1"`;
+##$x = `$cmd -d $td/foo ":idmap/foo".fetch _t`;
+#
+#$x = `$cmd -d $td/foo ":idmap//ft([^x]+)x(.*)".set _t "\\\$2/g7h/\\\$1"`;
+#$x = `$cmd -d $td/foo ":idmap//ft([^x]+)x(.*)".fetch _t`;
+#
+#$x = `$cmd -d $td/foo "$host".rm _t`;		# delete target
+#$x = `$cmd -d $td/foo ":idmap//ft([^x]+)x(.*)".set _t "\\\$2/g7h/\\\$1"`;
+#
+#my $rurl = "http://g.h.i/ft89xr2t";
+#$x = resolve_stdin("-d $td/foo", $rurl);
+#like $x, qr,r2t/g7h/89,, "rule-based idmap substitution";
+#
+##say "xxx x=$x";
+##say "xxx premature exit"; exit;
+#
+#$x = `$cmd -d $td/foo "$host".rm _t`;		# delete target
+#my $nurl = 'http://www.ncbi.nlm.nih.gov/pubmed/';
+#$x = `$cmd -d $td/foo ":idmap/http://n2t.net/pmid:".set _t "$nurl"`;
+#$rurl = "http://n2t.net/pmid:1234567";
+#$x = resolve_stdin("-d $td/foo", $rurl);
+#like $x, qr,\b\Q${nurl}1234567,, "rule-based pmid mapping";
+#
 #say "xxx premature exit"; exit;
+#
+##=cut
 
-$x = `$cmd -d $td/foo "$host".rm _t`;		# delete target
-my $nurl = 'http://www.ncbi.nlm.nih.gov/pubmed/';
-$x = `$cmd -d $td/foo ":idmap/http://n2t.net/pmid:".set _t "$nurl"`;
-$rurl = "http://n2t.net/pmid:1234567";
-$x = resolve_stdin("-d $td/foo", $rurl);
-like $x, qr,\b\Q${nurl}1234567,, "rule-based pmid mapping";
-
-say "xxx premature exit"; exit;
-
-=cut
+#=for inprogress
 
 $x = `$cmd --version`;
 my $v1bdb = ($x =~ /DB version 1/);
@@ -124,17 +135,42 @@ my $v1bdb = ($x =~ /DB version 1/);
 $x = `$cmd -p $td mkbinder foo`;
 shellst_is 0, $x, "make binder named foo";
 
+$x = `$cmd -d $td/foo x.set y z`;
+
+#say "xxx very premature exit. x=$x"; exit;
+
 my $wrl;
 $wrl = 'ark:/12345/b.c^d\ e';	# yyy not a well-named variable?
 
-$x = `$cmd -d $td/foo $wrl.set _t waf`;
-shellst_is 0, $x, "set _t with nasty id chars";
-
+$x = `$cmd -d $td/foo $wrl.set _t waf`;			# vanilla target
+#shellst_is 0, $x, "set _t with nasty id chars";
 $x = `$cmd -d $td/foo $wrl.get _t`;
+like $x, qr/^waf\n/, "fetched _t set for id with nasty chars";
+
+#say "xxx set _t got: $x";
 
 $x = resolve_stdin("-d $td/foo", $wrl);
 like $x, qr/^redir302 waf\n/,
 	"resolution for id with nasty chars";
+
+use EggNog::Resolver;
+$x = `$cmd -d $td/foo $wrl.set ${Rp}${Ti} newt`;	# inflection target
+$x = resolve_stdin("-d $td/foo", "$wrl\?");
+like $x, qr|^redir302 newt\n|,
+	"default target redirect for ? inflection";
+
+
+# XXXXXX inflection could be just '.', which needs encoding test
+# XXXXXX try doi for another test with '.'
+
+
+#$x = resolve_stdin("-d $td/foo", "$wrl\?");
+#like $x, qr/^redir302 xxxwaf\n/,
+#	"inflection for id with nasty chars";
+
+#say "xxx premature exit"; exit;
+
+#=cut
 
 $x = resolve_stdin("-d $td/foo",
 "*/pdb:1234",
@@ -256,8 +292,6 @@ like $x, qr,\b\Q${nurl}1234567,, "rule-based pmid mapping";
 
 #=cut
 
-#say "xxx premature exit"; exit;
-
 $x = `$cmd -d $td/foo $url.set _t "301 zaf"`;
 $x = resolve_stdin("-d $td/foo", $url);
 like $x, qr/^redir301 zaf\n$/,
@@ -311,9 +345,9 @@ like $x, qr|^inflect.*suffix=/|, "script called for / inflection";
 $x =~ s/^.*\n//;				# remove top line
 like $x, qr|^inflect.*suffix=\./|, "script called for ./ inflection";
 
-my $Rp = EggNog::Binder::RSRVD_PFIX;	# reserved sub-element prefix
-my $Tm = EggNog::Binder::TRGT_METADATA;	# actually content negotiation
-my $Ti = EggNog::Binder::TRGT_INFLECTION;	# target for inflection
+#my $Rp = EggNog::Binder::RSRVD_PFIX;	# reserved sub-element prefix
+#my $Tm = EggNog::Binder::TRGT_METADATA;	# actually content negotiation
+#my $Ti = EggNog::Binder::TRGT_INFLECTION;	# target for inflection
 
 $x = `$cmd -d $td/fon $url.set ${Rp}${Ti} newt`;
 $x = resolve_stdin("-d $td/fon", "$url\?");

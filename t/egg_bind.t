@@ -193,11 +193,7 @@ like $x, qr/^$/s, "'rm' op with nasty chars";
 $x = `$cmd -d $td/foo '\$t.^x.set' '\$u.|e' nasty`;
 $x = `$cmd -d $td/foo '\$t.^x.purge'`;
 
-$indb and
 like $x, qr/under \$t\.\^x: 3\n/s, "'purge' op with nasty chars";
-
-$exdb and	# yyy no message, as that would require extra roundtrip
-like $x, qr/^$/s, "'purge' op with nasty chars";
 
 $x = `$cmd -d $td/foo '\$t.^x.exists'`;
 like $x, qr/^0\n/, "and 'exists' agrees that it's gone";

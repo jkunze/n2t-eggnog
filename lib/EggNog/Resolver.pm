@@ -818,14 +818,15 @@ sub id_decompose { my( $pfxs, $id )=@_;
 	if ($scheme eq 'ark') {
 		#$id =~ s|^([^/]+)/*|| or	# must match else panic
 		#	return undef;
-		$id =~ s|^([^/]+)/*|| and
+		$id =~ s|^([^/]+)/*|| and	# isolate NAAN, remove any /'s
 			$idx->{naan} = $1,
 			$kludge = '/',		# '/' before (and after) NAAN
 		1 or
 			$idx->{naan} = '',
 		;
-		$id =~ s|[-\s]||g;	# remove hyphens and internal whitespace
-		# NB:  arks are weird with their '/' after the ':'
+		$id =~ s|-||g;			# remove hyphens
+		#$id =~ s|[-\s]||g;	# remove hyphens and internal whitespace
+		# NB: arks are weird with their '/' after the ':'
 		# xxx this weirdness should go away one day when we change
 		#     storage from ark:/12345/... to ark:12345/...
 	}
@@ -1423,6 +1424,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 	# Here comes the second lookup. First try another form of the id and
 	# re-encode it.
 
+#say STDERR "xxx before idx->full_id replacement id=$id, full_id=$idx->{full_id}";
 	$id = $idx->{full_id} || '';	# normalized id or defined empty string
 			# any suffix or query string will still be attached
 	$rfs = $exget
@@ -1458,6 +1460,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 	# NB: EZID once supported this as a kind of alias for non-ARK ids,
 	#     so we try to honor these
 
+#say STDERR "xxx before shadow2id id=$id";
 	if ($idx->{scheme} eq 'ark' and $idx->{naan} =~ /^[b-z]\d\d\d\d$/) {
 		my $real_id = shadow2id($id);
 		my $real_rfs = $exget
@@ -1617,11 +1620,12 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 		# NB: next call defines $suffix (via a return parameter)
 		@dups = suffix_pass($bh, $id,
 				EggNog::Binder::TRGT_MAIN, $suffix);
-# xxx is $suffix flex_encoded or not? IMPORTANT, esp. length calculation
-		# suffix has NOT yet been added to target
+		# NB: $suffix, hence $rid, are returned DEcoded, ie, they're
+		# NOT flex_encoded
+		# Also, the suffix has NOT yet been added to target.
 		my $rid;			# rid = root id + suffix
 		$rid = substr($id, 0, - length($suffix));
-# xxx if $suffix is flex_encoded, then we NEED to decode before output!
+#say "xxx rid=$rid, suffix_pass returned suffix=$suffix";
 		($idx->{suffix}, $idx->{rid}) = ($suffix, $rid);
 		# At this point, $id includes the suffix, and $rid does not.
 
@@ -1782,10 +1786,13 @@ sub quote_args {			# quote args
 }
 
 # Return single target given $bh, $id, $element
+# Assume args arrive unencoded.
 
-sub exdb_get_one {
-# xxx flex_encode $id!?
-	my @dups = exdb_get_dup(@_);
+sub exdb_get_one { my( $bh )=( shift );		# leave other args in @_
+	my $rfs = flex_enc_exdb(@_);		# remaining ars
+	#my @dups = exdb_get_dup(@_);
+#say STDERR "rfs: ", $rfs->{id}, join(", ", @{ $rfs->{elems} });
+	my @dups = exdb_get_dup($bh, $rfs->{id}, @{ $rfs->{elems} });
 	return scalar(@dups)
 		? $dups[0]
 		: ''
@@ -1793,18 +1800,31 @@ sub exdb_get_one {
 }
 
 # Return single target given $bh, $id, $element
+# Assume args arrive unencoded.
 
-sub indb_get_one { my( $bh, $id, $element )=@_;
+# xxxxxx change other {elems}->[0] to just {elem} ?
+
+#sub indb_get_one { my( $bh, $id, $element )=@_;
+sub indb_get_one { my( $bh )=( shift );
 	my $db = $bh->{db};
 	my $target;
-# xxx flex_encode $id!?
-	return $db->db_get("$id$Se$element", $target)
+	my $rfs = flex_enc_indb(@_);		# remaining ars
+	#return $db->db_get("$id$Se$element", $target)
+#	my $xtarget = $db->db_get($rfs->{id} . $Se . $rfs->{elem}, $target)
+#		? ''				# non-zero means not found
+#		: $target			# zero means success
+#	;
+#say STDERR "xxx xtarget=$xtarget, key=", $rfs->{id} . $Se . $rfs->{elem};
+#return $xtarget;
+	return $db->db_get($rfs->{id} . $Se . $rfs->{elem}, $target)
 		? ''				# non-zero means not found
 		: $target			# zero means success
 	;
 }
 
 # Some globals to set once and use below, which are really constants. yyy
+# yyy same block is copied to t/egg_resolve.t (better way to share it?)
+
 my $Rp = EggNog::Binder::RSRVD_PFIX;	# reserved sub-element prefix
 my $Rs = EggNog::Binder::SUBELEM_SC	# reserved sub-element separator prefix
 	. EggNog::Binder::RSRVD_PFIX;
@@ -1877,6 +1897,7 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 		: \&indb_get_one
 	;
 
+#say "xxx before returnline=$returnline, fail=$fail, suffix=$suffix";
 	if (! $returnline and ! $fail and $suffix and $suffix !~ /\w/) {
 		# recall: $Rp is reserved sub-element prefix
 		#     and $Rs is reserved sub-element separator prefix
@@ -1885,6 +1906,7 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 
 		# now check the root id
 		$target =
+# xxx need to encode $rid before lookup!
 			&$get_one($bh, $rid, $Rp.$Ti.$suffix) ||
 			&$get_one($bh, $rid, $Rp.$Ti) || '';
 #		$db->db_get("$rid$Rs$Ti$suffix", $target) and	# unless found
@@ -1916,7 +1938,9 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 
 # XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX not finished
 # xxx exdb NOT FINISHED!
+# flex_encode $id
 		$target =
+# xxx need to encode $id before lookup!
 			&$get_one($bh, $id, $Rp.$Tm.$accept) ||
 			&$get_one($bh, $id, $Rp.$Tm) || '';
 #		$db->db_get("$id$Rs$Tm$accept", $target) and	# unless found
@@ -2605,11 +2629,23 @@ sub exdb_chopback { my( $bh, $verbose, $id, $stopchop, $elem, $value )=@_;
 	#
 	#$id =~ s/[^\w_~]*$//;	    # trim any terminal non-word chars
 
+#########################
+# Problem: during chopback,
+# the "...ed e?" should chop
+#  to "ed e", but it looks like it went
+#  to "ede"
+# ???? who dropped that space?
+# xxx notok result=0, id=ark:/12345/b^2ec^5ed e?, elem=_t
+# xxx notok result=0, id=ark:/12345/b^2ec^5ede?, elem=_t
+#########################
+
+#say STDERR "xxx in exdb_chopback id=$id, stopchop=$stopchop";
 	my @dups;
 	if ($id =~ s/[^\w_~]+$//) { # if terminal non-word chars got trimmed
 		$verbose and
 			say("id:$id");			# optional chatter
 		@dups = exdb_get_dup($bh, $id, $elem);
+#say STDERR "xxx in trimmed non-word chars id=$id, elem=$elem, dups0=$dups[0]";
 		scalar(@dups) and			# if the new key exists
 		  ! ($valcheck 				# we're checking values
 			&&				# and
@@ -2635,6 +2671,8 @@ sub exdb_chopback { my( $bh, $verbose, $id, $stopchop, $elem, $value )=@_;
 		# any necessary $key encoding was already done
 		length($id) > $stopchop			# something's left
 	);
+
+#say STDERR "xxx after trim and loop, id=$id, elem=$elem";
 	#
 	# If we get here, we either ran out of $id or we found something.
 	#
@@ -2983,6 +3021,7 @@ sub suffix_pass { my( $bh, $id, $element, $suffix_return )=@_;
 	# our database has any ids at all under (that start with) the
 	# (fully-qualified) shoulder that starts the identifier.
 
+#say STDERR "xxx before any_key_s id=$id";
 	$st = $shoulder ? any_key_starting($bh, $shoulder)
 		: 1;	# for edge case where $id doesn't look like a URL
 
@@ -3022,10 +3061,13 @@ sub suffix_pass { my( $bh, $id, $element, $suffix_return )=@_;
 
 	#### The main event. ####
 
+#say STDERR "xxx before chopback id=$id";
 	$newid = $exget		# NB: returned $newid is already flex_encoded
 		? exdb_chopback($bh, $verbose, $id, $stopchop, $element, $value)
 		: indb_chopback($bh, $verbose, $id, $stopchop, $element, $value)
 	;
+
+#say STDERR "xxx raw_id=$raw_id, newid=$newid, origlen=$origlen";
 
 	#$verbose and
 	#	print "chopback id was $id\n";
@@ -3062,8 +3104,10 @@ sub suffix_pass { my( $bh, $id, $element, $suffix_return )=@_;
 	# Found something.  Isolate the suffix by giving the original
 	# id and a negative offset to substr().
 
+#say STDERR "xxx substr $id, raw_id=$raw_id, newid=$newid, origlen=$origlen";
+
 	my $suffix = substr $id, length($newid) - $origlen;
-# xxx test!
+# xxxxxxxxx test this flex_decoding!
 	$suffix =~ s/\^([[:xdigit:]]{2})/chr hex $1/eg;		# flex_dec
 	$_[3] = $suffix;		# set $suffix_return
 

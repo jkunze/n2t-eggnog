@@ -441,7 +441,9 @@ sub exdb_get_dup { my( $bh, $id, $elem )=@_;
 #	return defined($result) ? ( $result ) : ();
 
 	$result && $result->{$elem} or	# if nothing found, return empty array
+#say(STDERR "xxx notok result=$result, id=$id, elem=$elem"),
 		return ();
+#say STDERR "xxx ok result=$result, id=$id, elem=$elem";
 	my $ref = ref $result->{$elem};
 	$ref eq 'ARRAY' and		# already is array ref, so return array
 		return @{ $result->{$elem} };
@@ -3015,9 +3017,6 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 	my $special;		# kludge for :id and :policy
 	my $rrmfail = 0;
 
-	# NB: this next loop should only be run under indb, so it assumes
-	#     indb-specific encodings.
-
 	for my $elem ( @{ $rfs->{elems} } ) {
 
 		# xxx will this be able to use OM and get string output?
@@ -3047,6 +3046,7 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 				? indb_get_dup($db, $rfs->{id} . $Se . $elem)
 				: exdb_get_dup($bh, $rfs->{id}, $elem)
 			;
+#say STDERR "XXXXXXXXXX inside egg_fetch, dups0=$dups[0]";
 		}
 
 		# yyy adds values that were hidden in blobs; presumably

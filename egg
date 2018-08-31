@@ -1,5 +1,8 @@
 #!/usr/bin/env perl
 
+####### exdb tests passed
+# egg_bind.t
+
 use 5.10.1;
 use strict;
 use warnings;
@@ -701,7 +704,7 @@ sub bdx_mstat { my( $level )=@_;
 		outmsg($sh, $msg);      # failed to configure
 		return 1;
 	}
-	$sh->{exdb} and $cmdr_from_d_flag and
+	$sh->{exdb} and ! $cmdr_from_d_flag and
 		$cmdr = '';	# binder name _is_ -d arg, not inside it
 
 	bopen($bh, $cmdr, DB_RDONLY, $minderpath) or
@@ -738,7 +741,7 @@ sub bdx_next_list { my( $max, $nextkey, @inkeys )=@_;
 		outmsg($sh, $msg);      # failed to configure
 		return 1;
 	}
-	$sh->{exdb} and $cmdr_from_d_flag and
+	$sh->{exdb} and ! $cmdr_from_d_flag and
 		$cmdr = '';	# binder name _is_ -d arg, not inside it
 
 	bopen($bh, $cmdr, DB_RDONLY, $minderpath) or
@@ -778,7 +781,7 @@ sub bdx_resolve {	# any args are optional headers, passed to Egg::resolve
 		outmsg($sh, $msg);      # failed to configure
 		return 1;
 	}
-	$sh->{exdb} and $cmdr_from_d_flag and
+	$sh->{exdb} and ! $cmdr_from_d_flag and
 		$cmdr = '';	# binder name _is_ -d arg, not inside it
 
 	bopen($bh, $cmdr, DB_RDONLY, $minderpath) or
@@ -882,7 +885,7 @@ sub bdx_mstatus { my( $status )=@_;
 		outmsg($sh, $msg);      # failed to configure
 		return 1;
 	}
-	$sh->{exdb} and $cmdr_from_d_flag and
+	$sh->{exdb} and ! $cmdr_from_d_flag and
 		$cmdr = '';	# binder name _is_ -d arg, not inside it
 
 	bopen($bh, $cmdr, $flag, $minderpath) or
@@ -1040,7 +1043,7 @@ sub bdx_assign { my( $lcmd, $delete, $polite, $how )=( shift, shift, shift, shif
 		outmsg($sh, $msg);      # failed to configure
 		return 1;
 	}
-	$sh->{exdb} and $cmdr_from_d_flag and
+	$sh->{exdb} and ! $cmdr_from_d_flag and
 		$cmdr = '';	# binder name _is_ -d arg, not inside it
 
 	bopen($bh, $cmdr, DB_RDWR, $minderpath) or
@@ -1068,7 +1071,7 @@ sub bdx_getfetch { my( $formal, @elems )=@_;
 		outmsg($sh, $msg);      # failed to configure
 		return 1;
 	}
-	$sh->{exdb} and $cmdr_from_d_flag and
+	$sh->{exdb} and ! $cmdr_from_d_flag and
 		$cmdr = '';	# binder name _is_ -d arg, not inside it
 
 #say "xxx cmdr=$cmdr, cmdr_from_d_flag=$cmdr_from_d_flag";
@@ -1109,7 +1112,7 @@ sub bdx_show { my( @elemsets )=@_;	# acts on ELEMENTS, eg, "show :brief"
 		outmsg($sh, $msg);      # failed to configure
 		return 1;
 	}
-	$sh->{exdb} and $cmdr_from_d_flag and
+	$sh->{exdb} and ! $cmdr_from_d_flag and
 		$cmdr = '';	# binder name _is_ -d arg, not inside it
 
 	bopen($bh, $cmdr, DB_RDONLY, $minderpath) or
@@ -1129,7 +1132,7 @@ sub bdx_exists {	# might have an element name argument
 		outmsg($sh, $msg);      # failed to configure
 		return 1;
 	}
-	$sh->{exdb} and $cmdr_from_d_flag and
+	$sh->{exdb} and ! $cmdr_from_d_flag and
 		$cmdr = '';	# binder name _is_ -d arg, not inside it
 
 	my $minderpath = $cmdr_from_d_flag ?
@@ -1154,7 +1157,7 @@ sub bdx_del { my( $lcmd, $formal )=( shift, shift );
 		outmsg($sh, $msg);      # failed to configure
 		return 1;
 	}
-	$sh->{exdb} and $cmdr_from_d_flag and
+	$sh->{exdb} and ! $cmdr_from_d_flag and
 		$cmdr = '';	# binder name _is_ -d arg, not inside it
 
 	my $minderpath = $cmdr_from_d_flag ?
@@ -1182,7 +1185,7 @@ sub bdx_purge { my( $formal )=shift;
 		outmsg($sh, $msg);      # failed to configure
 		return 1;
 	}
-	$sh->{exdb} and $cmdr_from_d_flag and
+	$sh->{exdb} and ! $cmdr_from_d_flag and
 		$cmdr = '';	# binder name _is_ -d arg, not inside it
 
 	my $minderpath = $cmdr_from_d_flag ?

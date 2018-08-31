@@ -220,15 +220,15 @@ isnt index($x, '302 https://scicrunch.org/resolver/RRID:AB_262044'), -1,
 	'rrid scheme prefix redirect'; 
 isnt index($x, '302 https://www.grid.ac/institutes/grid.419696.5'), -1,
 	'GRID scheme prefix redirect'; 
-isnt index($x, '302 http://www.ncbi.nlm.nih.gov/pubmed/16333295'), -1,
+isnt index($x, '302 https://www.ncbi.nlm.nih.gov/pubmed/16333295'), -1,
 	'straight pubmed prefix redirect'; 
 isnt index($x, '302 http://www.hubmed.org/display.cgi?uids=16333296'), -1,
 	'alternate provider hubmed/pubmed prefix redirect'; 
-isnt index($x, '302 http://www.ncbi.nlm.nih.gov/pubmed/16333297'), -1,
+isnt index($x, '302 https://www.ncbi.nlm.nih.gov/pubmed/16333297'), -1,
 	'explicit but primary ncbi/pubmed prefix redirect'; 
-isnt index($x, '302 http://www.ncbi.nlm.nih.gov/pubmed/16333298'), -1,
+isnt index($x, '302 https://www.ncbi.nlm.nih.gov/pubmed/16333298'), -1,
 	'alias prefix (pmid) redirect'; 
-isnt index($x, '302 http://www.ncbi.nlm.nih.gov/pubmed/16333299'), -1,
+isnt index($x, '302 https://www.ncbi.nlm.nih.gov/pubmed/16333299'), -1,
 	'provider code with alias prefix (ncbi/pmid) redirect'; 
 isnt index($x, '302 http://hdl.handle.net/10273/SSH000SUA'), -1,
 	'igsn scheme redirect'; 
@@ -250,31 +250,31 @@ isnt index($x, '302 http://europepmc.org/abstract/MED/16333290'), -1,
 	'biorxiv article scheme redirect -- epmc/pubmed'; 
 isnt index($x, '302 http://amigo.geneontology.org/amigo/term/GO:0006916'), -1,
 	'biorxiv article scheme redirect -- amigo/go'; 
-isnt index($x, '302 http://www.rcsb.org/pdb/explore/explore.do?structureId=2gc5'),
+isnt index($x, '302 https://www.rcsb.org/pdb/explore/explore.do?structureId=2gc5'),
 	-1, 'biorxiv article scheme redirect -- rcsb/pdb'; 
 
 isnt index($x, '302 http://flybase.org/reports/FBgn0011293.html'), -1,
 	'biorxiv article scheme redirect -- flybase'; 
-isnt index($x, '302 http://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606'), -1,
+isnt index($x, '302 https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606'), -1,
 	'biorxiv article scheme redirect -- taxon'; 
 
 isnt index($x, '302 http://amigo.geneontology.org/amigo/term/GO:0006915'), -1,
 	'biorxiv article scheme redirect -- go'; 
 
-isnt index($x, '302 http://www.ebi.ac.uk/intenz/query?cmd=SearchEC&ec=1.1.1.1'),
+isnt index($x, '302 https://www.ebi.ac.uk/intenz/query?cmd=SearchEC&ec=1.1.1.1'),
 	-1, 'biorxiv article scheme redirect -- ec'; 
-isnt index($x, '302 http://www.ebi.ac.uk/intenz/query?cmd=SearchEC&ec=1.1.1.2'),
+isnt index($x, '302 https://www.ebi.ac.uk/intenz/query?cmd=SearchEC&ec=1.1.1.2'),
 	-1, 'biorxiv article scheme redirect -- ec-code'; 
-isnt index($x, '302 http://www.rcsb.org/pdb/explore/explore.do?structureId=2gc4'),
+isnt index($x, '302 https://www.rcsb.org/pdb/explore/explore.do?structureId=2gc4'),
 	-1, 'biorxiv article scheme redirect -- pdb'; 
 isnt index($x, '302 http://www.kegg.jp/entry/hsa00190'), -1,
 	'biorxiv article scheme redirect -- kegg'; 
-isnt index($x, '302 http://www.ncbi.nlm.nih.gov/gene/100010'), -1,
+isnt index($x, '302 https://www.ncbi.nlm.nih.gov/gene/100010'), -1,
 	'biorxiv article scheme redirect -- ncbigene'; 
 isnt index($x, '302 http://purl.uniprot.org/uniprot/P62158'), -1,
 	'biorxiv article scheme redirect -- uniprot'; 
 isnt index($x,
-	'302 http://www.ebi.ac.uk/chebi/searchId.do?chebiId=CHEBI:36927'), -1,
+	'302 https://www.ebi.ac.uk/chebi/searchId.do?chebiId=CHEBI:36927'), -1,
 	'biorxiv article scheme redirect -- chebi:'; 
 isnt index($x, '302 http://europepmc.org/articles/PMC3084216'), -1,
 	'biorxiv article scheme redirect -- pmc'; 

@@ -1385,7 +1385,7 @@ sub bopen { my( $bh, $bdr, $flags, $minderpath, $mindergen )=@_;
 	}
 	my ($inbrname, $exbrname) =
 		str2brnames($sh, $bdr);
-#say "xxx bopen: bdr=$bdr";
+#say STDERR "xxx bopen: bdr=$bdr, exbrname=$exbrname";
 	if ($sh->{exdb}) {
 		($flags & DB_CREATE) and
 			$flags = $EGG_DB_CREATE;	# yyy dumb kludge
