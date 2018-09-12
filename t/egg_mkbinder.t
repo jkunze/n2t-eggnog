@@ -56,11 +56,11 @@ my $y;
 $x = `$cmd -d $td/foo/bar/egg.bdb a.get b`;
 $y = `$cmd -d $td/foo/zaf a.get b`;
 
-$exdb and
-is $x, "d\n\n",
-	"exdb: -d ignored, default binder used instead";
-
-$indb and
+#$exdb and
+#is $x, "d\n\n",
+#	"exdb: -d ignored, default binder used instead";
+#
+#$indb and
 is $x, "c\n\n",
 	"1st binder value good, with binder fiso_dname extension";
 

@@ -368,7 +368,7 @@ port_hprs=$port_htss
 # source code repository.  Relies on global $cfgdir being defined.
 # Other scripts rely on this output (eg, wegnpw).
 #
-# It first tries $HOME/warts/$cfgdir.pswdfile.  If and only if that file
+# It first tries $HOME/warts/.pswdfile.$cfgdir.  If and only if that file
 # does not exist, it tries "t/$cfgdir/pswdfile" in the eggnog source.
 #
 function which_pswdfile {
@@ -629,6 +629,7 @@ function makeminter {		# pass in populator and minter names as args
 # or initialize custom minders as determined by the ConfigDir setting.
 # It won't complain and won't overwrite existing (eg, custom) binders,
 # in part because it is often called right after removing everything.
+# Minters and binders defined in t/*/minder_builder.cfg.
 #
 function make_minders {
 

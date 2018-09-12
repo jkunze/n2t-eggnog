@@ -53,7 +53,7 @@ sub resolve_stdin_hdr {
 # Some globals to set once and use below, which are really constants. yyy
 
 use EggNog::Binder ':all';
-my $Rp = EggNog::Binder::RSRVD_PFIX;	# reserved sub-element prefix
+my $Rp = EggNog::Binder::RSRVD_PFIX;	# reserved sub-element prefix: _,e
 my $Rs = EggNog::Binder::SUBELEM_SC	# reserved sub-element separator prefix
 	. EggNog::Binder::RSRVD_PFIX;
 my $Tm = EggNog::Binder::TRGT_METADATA;   # actually content negotiation
@@ -141,17 +141,20 @@ $x = `$cmd -d $td/foo x.set y z`;
 
 my $wrl;
 $wrl = 'ark:/12345/b.c^d\ e';	# yyy not a well-named variable?
+$wrl = 'doi:10.12345/B.C^D\ E';	# yyy not a well-named variable?
+#$wrl = 'doi:10.12345/b.c^d\ e';	# yyy not a well-named variable?
 
 $x = `$cmd -d $td/foo $wrl.set _t waf`;			# vanilla target
-#shellst_is 0, $x, "set _t with nasty id chars";
+#shellst_is 0, $x, "set _t with difficult id chars";
 $x = `$cmd -d $td/foo $wrl.get _t`;
-like $x, qr/^waf\n/, "fetched _t set for id with nasty chars";
+like $x, qr/^waf\n/, "fetched _t set for id with difficult chars";
+# difficult means subject to encoding and decoding
 
 #say "xxx set _t got: $x";
 
 $x = resolve_stdin("-d $td/foo", $wrl);
 like $x, qr/^redir302 waf\n/,
-	"resolution for id with nasty chars";
+	"resolution for id with difficult chars";
 
 use EggNog::Resolver;
 $x = `$cmd -d $td/foo $wrl.set ${Rp}${Ti} newt`;	# inflection target
@@ -159,16 +162,22 @@ $x = resolve_stdin("-d $td/foo", "$wrl\?");
 like $x, qr|^redir302 newt\n|,
 	"default target redirect for ? inflection";
 
+$x = `$cmd -d $td/foo $wrl.set ${Rp}${Ti}./\? fort`;	# inflection with a '.'
+$x = resolve_stdin("-d $td/foo", "$wrl./\?");
+like $x, qr|^redir302 fort\n|,
+	"target redirect for difficult chars in inflection itself (./?)";
 
+#say "xxx premature exit"; exit;
+
+# XXXXXX unlike ezid, Egg does NOT normalize DOI's to uppercase -- bug?
 # XXXXXX inflection could be just '.', which needs encoding test
 # XXXXXX try doi for another test with '.'
 
 
 #$x = resolve_stdin("-d $td/foo", "$wrl\?");
 #like $x, qr/^redir302 xxxwaf\n/,
-#	"inflection for id with nasty chars";
+#	"inflection for id with difficult chars";
 
-#say "xxx premature exit"; exit;
 
 #=cut
 
@@ -299,8 +308,8 @@ like $x, qr/^redir301 zaf\n$/,
 
 $x = `$cmd -d $td/foo $url.set _t "999 zaf"`;
 $x = resolve_stdin("-d $td/foo", $url);
-like $x, qr/^redir302 zaf\n$/,
-	"got _t value with 302 redirect for unrecognized value";
+like $x, qr/^redir302 999 zaf\n$/,
+	"got _t value with 302 redirect for unrecognized redir value";
 
 $x = `$cmd -d $td/foo $url.set _t "410 zaf"`;
 $x = resolve_stdin("-d $td/foo", $url);

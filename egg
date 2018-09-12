@@ -1,7 +1,9 @@
 #!/usr/bin/env perl
 
 ####### exdb tests passed
-# egg_bind.t
+# egg_bind.t egg_log.t egg_mkbinder.t egg_normalize.t egg_resolve.t egg_webperms.t
+# errcount 2 - egg_dbcmds.t
+# ...
 
 use 5.10.1;
 use strict;

@@ -46,6 +46,8 @@ like $x, qr/created.*bar/, 'created new binder';
 
 #print "m=$x"; $x = `$cmd -d $td/bar mstat | grep bindings`; print "   b=$x";
 $cmdblock = "
+#pr before i.set a
+#mstat
 i.set a 1234567890
 i.set a 12
 i.set a 1234567890
@@ -78,8 +80,6 @@ mstat
 $x = run_cmds_on_stdin($cmdblock);
 like $x, qr/bindings: 10.*bindings: 4/s,
 	'bindings count tracks adds and purges';
-
-#say STDERR "xxx premature exit"; exit;
 
 remove_td($td, $bgroup);
 }

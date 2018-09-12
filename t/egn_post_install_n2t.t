@@ -24,6 +24,9 @@ $which =~ /wegn/ or plan skip_all => "why: web client \"wegn\" not found";
 grep(/\/blib\/lib/, @INC) and plan skip_all =>
     "why: should be run with installed code (eg, \"n2t test\" not with -Mblib)";
 
+! -e "$ENV{HOME}/warts/.pswdfile.n2t" and plan skip_all =>
+    "why: no $ENV{HOME}/.pswdfile.n2t file";
+
 plan 'no_plan';		# how we usually roll -- freedom to test whatever
 
 SKIP: {
@@ -56,7 +59,7 @@ $x =~ /failed.*refused/ and
 like $x, qr@99999/fk4\w\w\w@, "minted id matches format";
 
 ok -f "$ENV{HOME}/warts/.pswdfile.n2t",
-	"real passwords set up to occlude dummy passwords";
+	"no real passwords set up in ~/warts/ to occlude dummy passwords";
 
 if ($ENV{EGNAPA_HOST_CLASS} eq 'prd') {
 
@@ -256,12 +259,12 @@ $x = `wegn locate "$srch_ark$srch_ext"`;
 like $x, qr/^Location: \Q$srch_tgt$srch_ext/m,
 	"documented suffix passthrough works for srch_ark $srch_ark";
 
-# yyy temporary and redundant with first test ???
-# There's no way to usefully test production minting right now.  Every
-# minter currently in production use connects directly via hardcoded URL:
-#
-$x = `wegn mint 1`;
-like $x, qr@99999/fk4\w\w\w@, "minted id matches format";
+## yyy temporary and redundant with first test ???
+## There's no way to usefully test production minting right now.  Every
+## minter currently in production use connects directly via hardcoded URL:
+##
+#$x = `wegn mint 1`;
+#like $x, qr@99999/fk4\w\w\w@, "minted id matches format";
 
 # comment out to reduce noise temporarily
 my $prd = 'n2t.net';

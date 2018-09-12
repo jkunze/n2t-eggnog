@@ -26,6 +26,8 @@ shellst_is 1, $x, "webmode make binder fails";
 like $x, qr{unauth},
 	"webmode mkbinder failed because unauthorized";
 
+# in exdb shellmode this uses jak_s_betty (eg, if uid is 'jak'), but no such
+# uid is available to webmode
 $x = `$cmd -d $td/betty foo.set bar zaf`;
 like $x, qr{^$},
 	"in shellmode, set id value";
@@ -35,9 +37,12 @@ like $x, qr{^$},
 #        in light of how HTTP Basic works -- need to rethink
 # xxxxxx don't worry if these tests fail
 
-$x = `$cmd -d $td/betty --qs "--ua foo.get bar"`;
+$x = `$cmd -d $td/betty --verbose --qs "--ua foo.get bar"`;
+$indb and
 like $x, qr{Content-Type: text/plain; charset=UTF-8\n.*zaf}s,
 	"in webmode, get that id value with default 'public' permission";
+
+#say "premature exit"; exit;	#####################
 
 $x = `$cmd -d $td/betty --qs "--ua foo.set moodle cow"`;
 like $x, qr{Content-Type: text/plain.*egg-status: 0}s,
@@ -70,12 +75,18 @@ $x = `$cmd -d $td/betty --ack --qs "--ua foo.add moodle \@file"`;
 like $x, qr{unauth}s,
 	"webmode has no access to local server files";
 
-# XXXXXX end rethink section
-
 $x = `$cmd -d $td/betty --qs "--ua foo.fetch"`;
+$indb and
 like $x,
  qr/^Content-Type:.*foo.*^bar:\s*zaf.*^moodle:.*cow.*^# elements.*: 3\n/ms,
  	"fetch bindings in webmode gets binding from non-webmode";
+
+! $indb and
+like $x,
+ qr/^Content-Type:.*foo.*^moodle:.*cow.*^# elements.*: 2\n/ms,
+ 	"fetch bindings in webmode gets binding from non-webmode";
+
+# XXXXXX end rethink section
 
 like $x,
  qr/^moodle:\s*sheep$/ms,

@@ -1750,8 +1750,14 @@ sub inflect_cmd { my(   $bh, $eset, $format,  $idx )=
 #     because it goes out in order to come back in via script?
 #     where it would then be double-encoded?
 
+my $rid = $idx->{rid};
+$rid =~ s/ /\\ /g;
+my $slid = $idx->{slid};
+$slid =~ s/ /\\ /g;
+
 	my @args = ( 'inflect',
-			"id=$idx->{rid}",
+#"id=$idx->{rid}",
+"id=$rid",
 # xxx arg must not be encoded?
 			"eset=$eset",
 			"format=$format",
@@ -1764,7 +1770,8 @@ sub inflect_cmd { my(   $bh, $eset, $format,  $idx )=
 			"scheme=$idx->{scheme}",
 			"naan=$idx->{naan}",
 			"shoulder=$idx->{shoulder}",
-			"ac=$idx->{slid}",
+#"ac=$idx->{slid}",
+"ac=$slid",
 			#"shoshoblade=$idx->{shoshoblade}",
 			"suffix=" . ($idx->{suffix} || ""),
 	);
@@ -1880,6 +1887,7 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 	my $eset = 'brief';
 	my $format = 'anvl';
 
+#say STDERR "xxx before inflect_cmd: idx_rid=$idx->{rid}";
 	if ($op =~ /^partial=(.*)/) {	# just scheme given, maybe naan too
 		my $partial = $1;
 		$returnline = quote_args(
@@ -1913,12 +1921,13 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 #			$db->db_get("$rid$Rs$Ti", $target) and	# unless found
 #				$target = '';			# not found
 
+#say "xxx after before returnline target=$target";
 		$target and		# if $target found, redirect to it
 		# xxx conneg uses redir303, but inflections are different
 		#     is that a good idea?
 			$returnline = "redir302 $target",
 		1 or		# else check if "inflect" script handles it
-		$suffix eq '?'   || $suffix eq '??'  ||
+		$suffix eq '?'   || $suffix eq '??'  ||  $suffix eq '!'  ||
 				$suffix eq '/'   || $suffix eq './'  ||
 				$suffix eq '/?'  || $suffix eq '/??' ||
 				$suffix eq './?' || $suffix eq './??'
@@ -1936,16 +1945,9 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 
 		# yyy old xref binder element names use _mT* not ._eT*
 
-# XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX not finished
-# xxx exdb NOT FINISHED!
-# flex_encode $id
 		$target =
-# xxx need to encode $id before lookup!
 			&$get_one($bh, $id, $Rp.$Tm.$accept) ||
 			&$get_one($bh, $id, $Rp.$Tm) || '';
-#		$db->db_get("$id$Rs$Tm$accept", $target) and	# unless found
-#			$db->db_get("$id$Rs$Tm", $target) and	# unless found
-#				$target = '';
 		$target and		# if $target found, redirect to it
 			$returnline = "redir303 $target",	# http range-14!
 		1 or		# else check if "inflect" script handles it
@@ -1954,6 +1956,7 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 					"op=cn.$accept"))
 		;
 	}
+#say "xxx before ! returnline";
 	if (! $returnline) {
 		my $newstr = $suffix || '';	# make sure it's defined string
 
@@ -1993,17 +1996,27 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 	# 404	Temporarily gone			Not Found
 	# 410	Permanently gone			Gone
 	#
+#say "xxx before unless returnline=$returnline, dups0=<", $dupsR->[0], ">";
 	unless ($returnline) {		# if $returnline not already set
-		my @tparts = split " ", $dupsR->[0];	# tokenize
-		my $tcnt = scalar @tparts;		# token count
-		my $redircode = $tcnt > 1 ?		# assume first is a
-			$tparts[0] : '302';		# digit string
-		$redircode =~ /^[34][01][012347]$/ or	# clumsy check&recover
-			$redircode = '302';		# for unknown codes;
-		$returnline = "redir$redircode "	# redirNNN + space +
-			. (! $dupsR->[0] ? '' :		# last token, which
-				$tparts[ $tcnt - 1 ]);	# might be empty
+
+		my $redircode = '302';			# default; $tgt might
+		my $tgt = $dupsR->[0] // '';		# have own redircode
+		# NB: this RE is a crude check and recovery for unknown codes
+		$tgt =~ /^([34][01][012347]) +(.*)/ and		# if it does
+			($redircode, $tgt) = ($1, $2);	# isolate real target
+		$returnline =				# redirNNN+space+target
+			"redir$redircode $tgt"		# $tgt might be empty
 	}
+#		my @tparts = split " ", $dupsR->[0];	# tokenize
+#		my $tcnt = scalar @tparts;		# token count
+#		my $redircode = $tcnt > 1 ?		# assume first is a
+#			$tparts[0] : '302';		# digit string
+#		$redircode =~ /^[34][01][012347]$/ or	# clumsy check&recover
+#			$redircode = '302';		# for unknown codes;
+#		$returnline = "redir$redircode "	# redirNNN + space +
+#			. (! $dupsR->[0] ? '' :		# last token, which
+#				$tparts[ $tcnt - 1 ]);	# might be empty
+#	}
 	#$returnline or			# if $returnline not already set
 	#	$returnline = "redir302 $dupsR->[0]";
 

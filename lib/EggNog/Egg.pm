@@ -58,10 +58,10 @@ our $SL = length $separator;
 
 our $BSTATS;	# flex_encoded exdb record id/elem hash for binder stats
 
-# xxx test bulk commands at scale -- 2011.04.24 Greg sez it bombed
+# yyy test bulk commands at scale -- 2011.04.24 Greg sez it bombed
 #     out with a 1000 commands at a time; maybe lock timed out?
 
-# xxxThe database must hold nearly arbitrary user-level identifiers
+# yyy The database must hold nearly arbitrary user-level identifiers
 #    alongside various admin variables.  In order not to conflict, we
 #    require all admin variables to start with ":/", eg, ":/oacounter".
 #    We use "$A/" frequently as our "reserved root" prefix.
@@ -85,11 +85,11 @@ our $noflock = "";
 our $Win;			# whether we're running on Windows
 
 # Legal values of $how for the bind function.
-# xxx document that we removed: purge replace mint peppermint new
-# xxxx but put "mint" back in!
-# xxx implement append and prepend or remove!
-# xxx document mkid rmid
-# xxx valid_hows is unused -- remove here and in Nog.pm?
+# yyy document that we removed: purge replace mint peppermint new
+# yyy but put "mint" back in!
+# yyy implement append and prepend or remove!
+# yyy document mkid rmid
+# yyy valid_hows is unused -- remove here and in Nog.pm?
 my @valid_hows = qw(
 	set let add another append prepend insert delete mkid rm
 );
@@ -98,7 +98,7 @@ my @valid_hows = qw(
 # --- begin alphabetic listing (with a few exceptions) of functions ---
 #
 
-# xxxxx genonly seems to be there to relax validation,
+# yyy genonly seems to be there to relax validation,
 #       which is a direction we want to go further in
 #	$$noid{"$A/genonly"} && $validate
 #		#&& ! validate($noid, "-", $id) and
@@ -140,7 +140,7 @@ sub bcount { my( $bh, $amount )=@_;
 	my $ok = try {
 		$result = $coll->update_one(
 			{ $PKEY	  => $BSTATS->{id} },
-			{ '$inc'  => { $BSTATS->{elems}->[0] => $amount } },
+			{ '$inc'  => { $BSTATS->{elem} => $amount } },
 			{ upsert  => 1 },	# create if it doesn't exist
 		)
 		// 0;		# 0 != undefined
@@ -154,17 +154,17 @@ sub bcount { my( $bh, $amount )=@_;
 	! defined($ok) and 	# test undefined since zero is ok
 		addmsg($bh, $msg),
 		return undef;
-#say "xxx query={ $PKEY => $BSTATS->{id} }, { \$inc => { $BSTATS->{elems}->[0] => $amount } } ===> result=$result";
+#say "xxx query={ $PKEY => $BSTATS->{id} }, { \$inc => { $BSTATS->{elem} => $amount } } ===> result=$result";
 
 #say "xxx matched_count=$result->{matched_count}, modified_count=$result->{modified_count}, upserted_id=$result->{upserted_id}";
 
 	return $result;
 }
 
-# XXXX want mkid and mkbud to be soft if exists, like open WRITE|CREAT
-#  xxx and rlog it
-sub mkid {
-}
+# yyy want mkid to be soft if exists, like open WRITE|CREAT
+#  yyy and rlog it
+
+sub mkid { }
 
 # MUCH FASTER way to query mongo for existence
 # https://blog.serverdensity.com/checking-if-a-document-exists-mongodb-slow-findone-vs-find/
@@ -198,7 +198,7 @@ sub egg_exists { my( $bh, $mods, $id, $elem )=@_;
 			return undef;
 		if ($sh->{exdb}) {
 			@dups = exdb_get_dup($bh, $erfs->{id},
-					$erfs->{elems}->[0]);
+					$erfs->{elem});
 			$exists = scalar(@dups);
 		}
 		if ($sh->{indb}) {		# yyy if ie, i answer wins
@@ -232,7 +232,7 @@ sub egg_exists { my( $bh, $mods, $id, $elem )=@_;
 	return 1;
 }
 
-# xxx purge bug? why does the @- arg get ignored (eg, doesn't eat up the
+# yyy purge bug? why does the @- arg get ignored (eg, doesn't eat up the
 # lines that follow)?
 # i.set a b
 # i.set b c
@@ -260,7 +260,7 @@ sub egg_purge { my( $bh, $mods, $lcmd, $formal, $id )=@_;
 	# but purge has special sweeping powers and it's only one extra check.
 	#
 	#$bh->{ruu}->{remote} and		# check authz only if on web
-# XXXX bring this in line with other authz sections! (or delete)
+# yyy bring this in line with other authz sections! (or delete)
 #	$id_p = $dbh->{$id_permkey} or		# protocol violation!!
 #		addmsg($bh, "$id: id permissions string absent"),
 #		return undef;
@@ -430,8 +430,9 @@ sub exdb_get_dup { my( $bh, $id, $elem )=@_;
 	! defined($ok) and 	# test for undefined since zero is ok
 		addmsg($bh, $msg),
 		return undef;
-# make exdb_get_dup do double duty? fetch element or document, depending on
+# xxx make exdb_get_dup do double duty? fetch element or document, depending on
 #     whether $elem is defined (that way we can use it for egg_exists())
+#  ...ok flex_enc...
 # my @find_args = ( { $PKEY => $id } );
 # defined $elem and
 #	push @find_args, { $elem => 1 };	# add projection arg
@@ -575,8 +576,6 @@ sub indb_get_dup { my( $db, $key )=@_;
 # xxx this is called only once, so we can easily split it into two;
 #     {ex,in}db_del_dup and pass in appropriatedly flex_encoded args
 
-# xxxxxxxxx add encoding tests for resolve
-
 # Assumes $id and $elem are already encoded "rfs"
 
 sub indb_del_dup { my( $bh, $id, $elem )=@_;
@@ -638,57 +637,6 @@ sub exdb_del_dup { my( $bh, $id, $elem )=@_;
 		return -1;
 	return 0;
 }
-
-=for delete
-
-# yyy currently returns 0 on success (mimicking BDB-school return)
-# xxx this is called only once, so we can easily split it into two;
-#     {ex,in}db_del_dup and pass in appropriatedly flex_encoded args
-# Assumes $id and $elem are already encoded "rfs".
-
-sub egg_del_dup { my( $bh, $id, $elem )=@_;
-
-	my ($instatus, $result) = (0, 1);	# default is success
-	my $db = $bh->{db};
-
-# xxx who calls flex_encode? no one?
-	# xxx check that $elem is non-empty?
-	# XXX who calls arith_with_dups?
-	if ($bh->{sh}->{indb}) {
-		my $key = "$id$Se$elem";
-		$instatus = $db->db_del($key);		# indb del status
-		$instatus != 0 and addmsg($bh,
-			"problem deleting elem \"$elem\" under id \"$id\" " .
-				"from internal database: $@");
-			#return undef;
-	}
-	if ($bh->{sh}->{exdb}) {
-		# XXX binder belongs in $bh, NOT to $sh!
-		my $coll = $bh->{sh}->{exdb}->{binder};	# collection
-		my $msg;
-		my $ok = try {
-			$result = $coll->update_one(
-				{ $PKEY		=> $id },
-				{ '$unset'	=> { $elem => 1 } }
-			)
-			// 0;		# 0 != undefined
-		}
-		catch {
-			$msg = "error deleting elem \"$elem\" under " .
-				"id \"$id\" from external database: $_";
-			return undef;	# returns from "catch", NOT from routine
-		};
-		! defined($ok) and 	# test undefined since zero is ok
-			addmsg($bh, $msg),
-			return undef;
-	}
-	# yyy check $result how?
-	! $result || $instatus != 0 and		# if exdb or indb status bad
-		return -1;
-	return 0;
-}
-
-=cut
 
 # Remove an element (bind=bind).
 # $formal is true if we behave as if called by "delete" (whatever
@@ -757,7 +705,8 @@ sub egg_del { my( $bh, $mods, $lcmd, $formal, $id, $elem )=@_;
 		#@oldlens = map length, indb_get_dup($db, $key);
 		@oldlens = map length, $irfs
 			? indb_get_dup($db, $irfs->{key})
-			: exdb_get_dup($bh, $erfs->{id}, $erfs->{elems}->[0])
+			: exdb_get_dup($bh, $erfs->{id}, $erfs->{elem})
+			#: exdb_get_dup($bh, $erfs->{id}, $erfs->{elems}->[0])
 		;
 		$oldvalcnt = scalar(@oldlens);
 		my $octets = 0;
@@ -773,7 +722,7 @@ sub egg_del { my( $bh, $mods, $lcmd, $formal, $id, $elem )=@_;
 		$oldvalcnt = $irfs
 			? indb_get_dup($db, $irfs->{key})
 # xxx exdb fix next line?
-			: -1		# we're ignoring it in exdb case
+			: -1		# xxx always delete?
 		;
 	}
 	# xxx dropping this for now
@@ -786,10 +735,9 @@ sub egg_del { my( $bh, $mods, $lcmd, $formal, $id, $elem )=@_;
 
 	# Somehow we decided that rm/delete operations should succeed
 	# after this point even if there's nothing to delete. Maybe
-	# that's because our indb doesn't throw an exception, but now
-	# no longer try to delete a non-existent value because our exdb
-	# would throw an exception.
-# xxx is above comment true?
+	# that's because our indb doesn't throw an exception in that case.
+	# But with support of exdb, we no longer try to delete a non-existent
+	# value because our exdb _would_ throw an exception. (true? yyy)
 
 	my $status = 0;		# default is success
 	my ($emsg, $imsg);
@@ -799,7 +747,8 @@ sub egg_del { my( $bh, $mods, $lcmd, $formal, $id, $elem )=@_;
 
 	# if there's at least one (even -1) value, then delete
 	if ($oldvalcnt and $erfs) { 
-		$status = exdb_del_dup($bh, $erfs->{id}, $erfs->{elems}->[0]);
+		#$status = exdb_del_dup($bh, $erfs->{id}, $erfs->{elems}->[0]);
+		$status = exdb_del_dup($bh, $erfs->{id}, $erfs->{elem});
 		$emsg = ($status != 0				# error
 			? "couldn't remove key ($erfs->{key}) ($status)"
 			: '');
@@ -807,7 +756,8 @@ sub egg_del { my( $bh, $mods, $lcmd, $formal, $id, $elem )=@_;
 			addmsg($bh, $emsg);
 	}
 	if ($oldvalcnt and $irfs) { 
-		$status = indb_del_dup($bh, $irfs->{id}, $irfs->{elems}->[0]);
+		#$status = indb_del_dup($bh, $irfs->{id}, $irfs->{elems}->[0]);
+		$status = indb_del_dup($bh, $irfs->{id}, $irfs->{elem});
 		$imsg = ($status != 0 && $status != DB_NOTFOUND()	# error
 			? "couldn't remove key ($irfs->{key}) ($status)"
 			: '');
@@ -861,27 +811,27 @@ sub egg_del { my( $bh, $mods, $lcmd, $formal, $id, $elem )=@_;
 	# xxx do something with the $status, $oxstatus, $omstatus return!
 	# XXX change "element" to "dupe"
 	# XXX where does --ack fit in?
-# xxx $key??
+
 	my $omstatus = $om->elem("ok", ($oldvalcnt == 1 ?
 		# XXX need way to DISPLAY id + elem, and this next looks like a
 		#     mistake but it's not
 		#"element removed: $key" :
 		"element removed: $id$So$elem" :
 		($status == 1 ? "element doesn't exist" :
-# xxx display these properly or not at all?
 			"$oldvalcnt elements removed: $id$So$elem")));
 			#"$oldvalcnt elements removed: $key")));
 	return 1;
 }
 
 # Check user-specified existence criteria.
-# XXXXXX hold back releasing this:
+# yyy hold back releasing this:
 #      problems with conception, utility, and logging
 #      eg, should be renamed 'pif' (proceed, not succeed)
 #          needs to enter rlog for accuracy
 #          what's the relationship to 'let'?
 #          what's existence mean?
-# xxx! document sif=(x|n)
+	# xxx! document sif=(x|n)
+
 sub sif { my( $bh, $elem, $oldvalcnt )=@_;
 
 	my $sif = lc ( $bh->{opt}->{sif} || "" );
@@ -910,7 +860,7 @@ sub sif { my( $bh, $elem, $oldvalcnt )=@_;
 
 =cut
 
-# xxx need flex_get() routine that 
+# yyy need flex_get() routine that 
 
 # Circumflex-encode, internal db (indb) version.
 # Return hash with ready-for-storage (efs) versions of
@@ -1007,8 +957,8 @@ sub flex_dec { my $s = shift;
 #
 sub flex_dec_for_display { my( $s )=@_;
 
-# XXX do a version that takes multiple args and inserts '|' between them
-#     suitable for calling with $id, $elem --> foo|bar
+	# yyy do a version that takes multiple args and inserts '|' between
+	#     them suitable for calling with $id, $elem --> foo|bar
 	$s eq '' and			# make an empty string
 		$s = '""';		# a bit more visible
 	$s =~ s/\^([[:xdigit:]]{2})/chr hex $1/eg;
@@ -1025,9 +975,8 @@ sub flex_dec_for_display { my( $s )=@_;
 # Id of the form "$A/idmap/$elem", and change $elem to hold Idpattern;
 # this makes lookup faster and easier.
 #
-# XXX this is similar to how we'll put in :- and : element support!
+# yyy this is similar to how we'll put in :- and : element support!
 # yyy transform other ids beginning with ":"?
-# xxx $bh is unused -- remove?
 
 sub buildkey { my( $bh, $id, $elem )=@_;
 
@@ -1057,7 +1006,7 @@ sub buildkey { my( $bh, $id, $elem )=@_;
 =cut
 
 # expect name/value to be rest of file
-# xxx temporary
+# yyy temporary
 sub getbulkfile { my( $bh )=@_;		# ':-' as element name
 
 	#my $value;
@@ -1070,7 +1019,7 @@ sub getbulkfile { my( $bh )=@_;		# ':-' as element name
 	# Read all of STDIN into array "@input_lines".
 	my @input_lines = <STDIN>;
 
-# XXX should do proper ANVL input processing
+	# XXX should do proper ANVL input processing
 	# Remove all newlines.
 	chomp		foreach (@input_lines);
 
@@ -1118,135 +1067,6 @@ sub getbulkfile { my( $bh )=@_;		# ':-' as element name
 	return ($elem, $value);
 }
 
-=for removal
-
-# xxx temporary XXX should do real anvl parse!
-# get element/value pairs from stdin (':' as element name)
-sub getbulkelems { my( $bh, $mods, $lcmd, $delete, $polite, $how, $id )=@_;
-
-	# To slurp paragraph, apparently safest to use local $/, which
-	local $/;			# disappears when scope exits.
-	$/ = "\n\n";			# Means paragraph mode.
-	my $para = <STDIN> || "";	# xxx what if "0" is read
-	chop $para;	# yyy needed?
-	$para =~ s/^#.*\n//g;		# remove comment lines
-	$para =~ s/\n\s+/ /g;		# merge continuation lines
-	my @elemvals = split(/^([^:]+)\s*:\s*/m, $para);
-	shift @elemvals;		# throw away first null
-	my ($bound, $total, $octets) = (0, 0, 0);
-	my ($elem, $value);
-	my $ack = $bh->{opt}->{ack};
-	while (1) {
-		($elem, $value) = (shift @elemvals, shift @elemvals);
-		! defined($elem) && ! defined($value) and
-			last;
-		$total++;
-		! defined($elem) and
-			addmsg($bh,
-				"error: $id: bad element associated "
-					. qq@with value "$value".@),
-			last;
-		! defined($value) and
-			$value = "",
-		1 or
-			chop $value
-		;
-		EggNog::Egg::egg_set($bh, $mods, $lcmd,
-				$delete, $polite, $how, $id, $elem, $value) and
-			$bound++,
-			($ack and $octets += length($value));
-		# else Noid::Binder will have left msg with addmsg
-	}
-	$ack and
-		$bh->{om}->elem("oxum", "$octets.$bound");
-	# yyy summarize for log $total and $bound
-	return $bound == $total ? 1 : undef;	# one error is an error
-}
-
-=cut
-
-=for removal
-
-# Write what the action taken to the playback log as raw ANVL assigment
-# appended to a who|when| string.
-# Returns empty string on success, message on failure.
-# Log line format is
-#      who|where|when|what|id|elem.CMD data
-# where
-#   who		is from contact
-#   when	is from temper
-#   what	is one of "raw" or "note"
-#   id		is the identifier
-#   name	is the element name
-#   data	is the data value
-#
-sub wlog { my( $bh, $preamble, $cmd )=(shift, shift, shift);
-
-	my $logfhandle = $bh->{log} or
-		return "log file not open";
-	print($logfhandle $preamble, " ", $cmd, "\n") or
-		return "log print failed: $!";
-	return "";
-
-	#my $message = $preamble;
-	#defined($i) and
-	#	($i =~ m/[\s\n]/ &&
-	#		$i =~ s{([\s\n])}{		# %-encode whitespace
-	#			sprintf("%%%02x", ord($1))
-	#		}xeg),
-	#	$message .= " $i";
-	#defined($n) and
-	#	($n =~ m/[\s\n]/ &&
-	#		$n =~ s{([\s\n])}{		# %-encode whitespace
-	#			sprintf("%%%02x", ord($1))
-	#		}xeg),
-	#	$message .= " $n";
-	#defined($d) and
-	#	($d =~ m/[\r\n^]/ &&		# XXXXXX align with hex codes
-	#		$d =~ s{([\r\n])}{		# %-encode newlines
-	#			sprintf("^%02x", ord($1))
-	#		}xeg),
-	#	$message .= " $d";
-	#defined($n) and
-	#	$n =~ s{([\s\n])}{	# %-encode whitespace that would spoil
-	#		sprintf("%%%02x", ord($1))	# tokenizing by rlog
-	#	}xeg,
-	#	$message .= " " . $n;
-	#defined($d) and
-	#	$message .= " << " . length($d) . "\n$d\n";
-}
-
-
-# OLD/deprecated
-# OPs are
-#  i|e|se=OP
-#  <i>.edel e		delete all dups for element, if any
-#  <i>.eset e val	delete all dups, if any, and add a new dup
-#  <i>.eadd e val	add a new dup
-# <i>.eset e << 45
-# <45 octets of value>\n
-# \n
-# i.edel e
-#
-sub xwlog { my( $bh, $op, $elem, $val )=(shift,shift,shift,shift);
-
-	my $logfhandle = $bh->{log} or
-		return "log file not open";
-	my $message = $op;
-	defined($elem) and
-		$elem =~ s{([\s\n])}{	# %-encode whitespace that would spoil
-			sprintf("%%%02x", ord($1))	# tokenizing by rlog
-		}xeg,
-		$message .= " " . $elem;
-	defined($val) and
-		$message .= " << " . length($val) . "\n$val\n";
-	print($logfhandle $message, "\n") or
-		return "log print failed: $!";
-	return "";
-}
-
-=cut
-
 # $dbh is a tied hash ref, but with dups enabled we can't use hash slots
 # with simple ++, --, +=, -= constructs.  Instead we have to delete the
 # existing value before resetting to avoid creating a dup.
@@ -1272,17 +1092,19 @@ sub arith_with_dups { my( $dbh, $key, $amount )= (shift, shift, shift);
 #
 # Return 1 on success, or undef and a message on failure.
 # $WeNeed is the operation, $id is the raw id, $opd is the id+elem operand
-# xxx how to distinguish shoulders: "__mtype: shoulder?
+# yyy how to distinguish shoulders: "__mtype: shoulder?
 #        (__mtype: naan?) if #matches > 1, weird error
 #
-# XXXXXX shoulder() not currently called by anyone
+# NB: shoulder() not currently called by anyone
+
 sub shoulder { my( $bh, $WeNeed, $id, $opd ) = ( shift, shift, shift, shift );
 
-# XXXX yuck -- what a mess -- clean this up
-#	my $agid = $bh->{ruu}->{agentid};
-$bh->{rlog}->out("D: shoulder WeNeed=$WeNeed, id=$id, opd=$opd, remote=" .
-  "$bh->{remote}, ruu_agentid=$bh->{ruu}->{agentid}, otherids=" .
-  join(", " => @{$bh->{sh}->{ruu}->{otherids}}));
+	# XXX yuck -- what a mess -- clean this up
+	#	my $agid = $bh->{ruu}->{agentid};
+	$bh->{rlog}->out(
+		"D: shoulder WeNeed=$WeNeed, id=$id, opd=$opd, remote=" .
+		  "$bh->{remote}, ruu_agentid=$bh->{ruu}->{agentid}, otherids="
+		  . join(", " => @{$bh->{sh}->{ruu}->{otherids}}));
 
 	$bh->{remote} or		# if from shell, you are approved
 		return 1;
@@ -1346,7 +1168,6 @@ sub exdb_set_dup { my( $bh, $id, $elem, $val, $flags )=@_;
 # xxx to do:
 # rename $sh->{exdb} to $sh->{exdb_session}
 #   move ebopen artifacts to $bh->{exdb}
-# add: flex_dec_exdb on resolve!
 # add: consider sorting on fetch to mimic indb behavior with btree
 # yyy big opportunity to optimize assignment of a bunch of elements in
 #     one batch (eg, from ezid).
@@ -1603,7 +1424,8 @@ sub indb_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 	# ready-for-storage versions of id, elem, ...
 	my $rfs = flex_enc_indb($id, $elem);
 	my $key;
-	($key, $id, $elem) = ($rfs->{key}, $rfs->{id}, $rfs->{elems}->[0]);
+	#($key, $id, $elem) = ($rfs->{key}, $rfs->{id}, $rfs->{elems}->[0]);
+	($key, $id, $elem) = ($rfs->{key}, $rfs->{id}, $rfs->{elem});
 
 	! egg_authz_ok($bh, $id, OP_WRITE) and
 		return undef;
@@ -1726,8 +1548,8 @@ sub exdb_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 						$incr_decr,
 						$id, $elem, $value )=@_;
 
-# xxx consider merging this routine back into egg_set and leaving early
-#    if not indb also
+	# yyy consider merging this routine back into egg_set and leaving early
+	#    if not indb also
 	my $sh = $bh->{sh};
 	my $exdb = $sh->{exdb};
 	my $dbh = $bh->{tied_hash_ref};
@@ -1794,7 +1616,7 @@ sub exdb_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 
 	# NB: exdb_set_dup updates bindings_count by default
 
-	if (! exdb_set_dup($bh, $rfs->{id}, $rfs->{elems}->[0], $slvalue, {
+	if (! exdb_set_dup($bh, $rfs->{id}, $rfs->{elem}, $slvalue, {
 			optime => $optime,
 			delete => $delete,
 			polite => $polite,
@@ -2146,7 +1968,7 @@ sub mstat { my( $bh, $mods, $om, $cmdr, $level )=@_;
 	return 1;
 }
 
-# xxx bind list [pattern]
+# yyy bind list [pattern]
 #     ?list matching elems  ?list matching ids?
 #     ?list each id X where elem A has r'ship R to elem B in id Y
 
@@ -2225,8 +2047,9 @@ sub dbinfo { my( $bh, $mods, $level )=@_;
 	return 1;
 }
 
-# xxx dbsave and dbload built for the old DB_File.pm environment
-# xxx should probably be updated for BerkeleyDB.pm and MongoDB.pm
+# yyy dbsave and dbload built for the old DB_File.pm environment
+# yyy should probably be updated for BerkeleyDB.pm and MongoDB.pm
+
 sub dbsave { my( $bh, $mods, $destfile )=@_;
 
 	$bh->{remote} and		# no can do if you're on web
@@ -2247,8 +2070,9 @@ sub dbsave { my( $bh, $mods, $destfile )=@_;
 	return 1;
 }
 
-# xxx dbsave and dbload built for the old DB_File.pm environment
-# xxx should probably be updated for BerkeleyDB.pm and MongoDB.pm
+# yyy dbsave and dbload built for the old DB_File.pm environment
+# yyy should probably be updated for BerkeleyDB.pm and MongoDB.pm
+
 sub dbload { my( $bh, $mods, $srcfile )=@_;
 
 	$bh->{remote} and		# no can do if you're on web
@@ -2290,7 +2114,8 @@ sub cullrlog { my( $bh, $mods )=@_;
 
 # yyy eventually thought we would like to do fancy fine-grained locking with
 #     BerkeleyDB features.  For now, lock before tie(), unlock after untie().
-# xxxx maybe delete these?
+# yyy maybe delete these?
+
 sub dblock{ return 1;	# placeholder
 }
 sub dbunlock{ return 1;	# placeholder
@@ -2353,20 +2178,20 @@ sub egg_pr { my( $bh, $mods )=(shift, shift);
 	return $om->elem('', join( ' ' => @_ ));
 }
 
-# XXX deprecated
+# yyy deprecated
 #
 # Strict protocol for id modification.
-# xxx protocol: before setting _anything_ extending id, check id|__mp
+# yyy protocol: before setting _anything_ extending id, check id|__mp
 #   if you don't find it (even as ! remote), set it now!
 #     -- but how do you know you have permission on that shoulder?
-#     xxx to do: lookup shoulder permissions:  find a proper substring
+#     yyy to do: lookup shoulder permissions:  find a proper substring
 #   if you do find it, see if you have permission
 #   if changing permissions, remember to delete dupes first!
 # 
-# XXX retrieve top_level __mp just once and cache in $bh, right?
+# yyy retrieve top_level __mp just once and cache in $bh, right?
 #
-# xxx add this protocol to egg_del
-# xxx need a better way than WeAreOnWeb to mean "non-admin mode"
+# yyy add this protocol to egg_del
+# yyy need a better way than WeAreOnWeb to mean "non-admin mode"
 ####### Need to enforce protocol for creation and perms.
 ####### Need speed.
 ####### authz() builds bigpermstring and checks it
@@ -2382,7 +2207,8 @@ sub egg_pr { my( $bh, $mods )=(shift, shift);
 # which means, set the permissions string for the first time.
 # Return $dbh on success, undef on error.
 #
-# XXXX authy not currently called by anyone
+# ZZZZ authy not currently called by anyone
+
 sub authy { my( $WeNeed, $bh, $id, $key ) = ( shift, shift, shift, shift );
 
 	my $dbh = $bh->{tied_hash_ref};
@@ -2398,7 +2224,7 @@ sub authy { my( $WeNeed, $bh, $id, $key ) = ( shift, shift, shift, shift );
 	if (! defined $dbh->{$id_permkey}) {	# if no top-level permkey,
 		# our protocol takes that to mean the id doesn't exist.
 		#print("xxxkkk doesn't exist $id\n");
-# xxxx what if we're reading and not updating?  now exit!!
+	# xxxx what if we're reading and not updating?  now exit!!
 		#print("xxxkkk exists $dbh->{$id_permkey}\n");
 		($id_p, $opd_p) = shoulder($bh, $WeNeed, $id, $key);
 		$id_p or	# if empty $id_p then $opd_p is an error msg
@@ -2456,7 +2282,8 @@ sub show { my( $bh, $mods, $id, @elems )=@_;
 
 	my @vals;
 	$bh->{cite} = 1;	# total kludge to get title quotes
-	my $xerc = EggNog::Egg::egg_fetch($bh, undef, $som, undef, \@vals, $id, @elems);
+	my $xerc = EggNog::Egg::egg_fetch($bh,
+		undef, $som, undef, \@vals, $id, @elems);
 	$bh->{cite} = undef;	# total kludge to get title quotes
 	# XXX need one of these for HTML?
 	my $citation = join(", ", @vals);
@@ -2464,7 +2291,8 @@ sub show { my( $bh, $mods, $id, @elems )=@_;
 
 	# xxx kludgy to call print directly instead of OM?
 	print "# Please cite as\n#  $citation\n\n";
-	my $erc = EggNog::Egg::egg_fetch($bh, undef, $bh->{om}, undef, undef, $id, @elems);
+	my $erc = EggNog::Egg::egg_fetch($bh,
+		undef, $bh->{om}, undef, undef, $id, @elems);
 	#$bh->{om}->elem("erc", $erc);
 	# yyy no role for OM here?
 
@@ -2757,13 +2585,12 @@ sub elems_output { my( $om, $key, $val )=@_;
 
 # --format (-m) tells whether we want labels
 # -r tells whether we recurse
-# xxx old: $verbose is 1 if we want labels, 0 if we don't
 # yyy do we need to be able to "get/fetch" with a discriminant,
 #     eg, for smart multiple resolution??
 
 #our @suffixable = ('_t');		# elems for which we call suffix_pass
 
-# xxx can we use suffix chopback to support titles that partially match?
+# yyy can we use suffix chopback to support titles that partially match?
 #
 # Rewrite rules redirect any query string ?, ??, ?foo... to a CGI (bind):
 # They also catch any Accept header and redirect
@@ -2891,7 +2718,6 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 				# yyy use _id not id
 			($p && (($st &&= $s), 1) || ($st .= $s));
 
-############
 			my $all = $mods->{all} // $bh->{opt}->{all} // '';
 			my $skipregex = '';
 			my $spat = '';
@@ -2919,7 +2745,7 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 				$nelems += $ndups;
 				#$nelems++;
 			}
-################
+
 			$s = $om->elem('elems',		# print ending comment
 				" elements bound under $out_id: $nelems", "1#");
 			($p && (($st &&= $s), 1) || ($st .= $s));
@@ -3131,7 +2957,7 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 # If $om is defined, use it.  If $elemsR is defined, push element
 # names onto it.  If $valsR is defined, push element values onto it.
 # !! assume $elemsR and $valsR, if defined, are ready to push onto
-# xxx maybe we should have a special (faster) call just to get names
+# yyy maybe we should have a special (faster) call just to get names
 #
 # NB: input id and element names are already encoded ready-for-storage,
 # (eg, | and ^), which means (a) beware not to encode them again and
@@ -3263,10 +3089,10 @@ sub get_rawidtree { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id )=@_;
 			#
 			$elem = ($key =~ /^[^|]*\|(.*)/s ? $1 : $key);
 
-# xxx ??? $out_id = flex_dec_for_display($id);
-			$out_elem = $elem ne '' ? $elem : '""';
-			$out_elem =~		# "flex_dec_indb" as needed
-				s/\^([[:xdigit:]]{2})/chr hex $1/eg;
+			$out_elem = flex_dec_for_display($elem);
+			#$out_elem = $elem ne '' ? $elem : '""';
+			#$out_elem =~		# "flex_dec_indb" as needed
+			#	s/\^([[:xdigit:]]{2})/chr hex $1/eg;
 
 			# If $om is defined, do some output now.
 			$om and ($s = $om->elem(
