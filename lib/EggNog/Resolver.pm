@@ -348,7 +348,7 @@ my $n2thash = {
 		PFX_LOOK => 0,
 	},
 };
-# From Oct 19, 2016
+# From Oct 19, 2016 (Nick J?)
 # Yep - we picked up your hints at non-word characters ;p
 # But then you mentioned that you allow spaces in your 'prefix:id', which
 # is odd! But anyway....
@@ -660,9 +660,20 @@ sub id_decompose { my( $pfxs, $id )=@_;
 	## 1. remove whitespace
 
 	# we've saved original in $origid, so we can now modify it safely
-	$id =~ s/\s*\n\s*//g;	# drop internal newlines and surrounding spaces
 	$id =~ s/\s+$//;	# drop terminal whitespace
 	$id =~ s|^\s+||;	# drop initial whitespace
+
+	# This supports "ark 12345/67" -> ark:/12345/67 and similar, eg,
+	#   "DOI 10.1234/56" -> DOI:10.1234/56
+
+	# yyy what might it mean if id begins with a colon (:) ?
+	my $has_colon =		# does this id contain a colon?
+		(index($id, ':') >= 0);
+	! $has_colon and	# if no colon, convert the first run of spaces,
+		$id =~ s/\s+/:/g;	# if there is one, to a colon
+	$id =~ s/\s*\n\s*//g;	# drop internal newlines and surrounding spaces
+
+# ZZZZZZZZZZZZZZZZZZZZZZZZXXXXXX
 
 	## 2. try to infer a scheme if it's not obvious
 
@@ -689,13 +700,13 @@ sub id_decompose { my( $pfxs, $id )=@_;
 			$id = $1 . ':' . ($2 || '');
 		}
 	}
-	elsif ($id =~ m|^([^:]+):/*\s*(.*)|) {	# grab scheme name and id
-		$scheme_raw = $1;
-		$scheme = lc $1;	# $scheme defined and lowercase
-		$id = $2 || '';		# after removing scheme, initial spaces
+	elsif ($id =~ m|^([^:]+):/*\s*(.*)|) {	# grab scheme name and id,
+		$scheme_raw = $1;		# ignoring spaces after scheme
+		$scheme = lc $1;	# $scheme is now defined and lowercase
+		$id = $2 || '';		# $id now w.o. scheme or initial spaces
 	}
-	# yyy what might it mean if id begins with a colon (:) ?
-	elsif ($id !~ /:/) {		# if no colon-y bit, infer scheme
+	#elsif ($id !~ /:/) {		# if no colon-y bit, infer scheme
+	elsif (! $has_colon) {		# if no colon-y bit, infer scheme
 		if ($id =~ /^10\.\d+/o) {			# DOI Prefix
 			$scheme = 'doi';
 		}
@@ -952,6 +963,10 @@ sub id_decompose { my( $pfxs, $id )=@_;
 	$idx->{naan_i}->{key} = $fqnaan;
 	$idx->{scheme_i}->{key} = $scheme;
 	$idx->{rid} = $rid;
+
+	#print STDERR "XXXXXXXXX idx scheme_i: ";
+	#use Data::Dumper "Dumper"; print Dumper $idx->{scheme_i};
+	#use Data::Dumper "Dumper"; print Dumper $sh->{pfxs}->{doi};
 
 # If there's no lexically parsed blade, we MIGHT have a partial id.
 # Whether we have a full id is determined by the binder -- if it's in
@@ -1259,6 +1274,8 @@ sub load_prefixes { my( $sh )=@_;
 		join '; ', @msgs;
 }
 
+# NB: below use $exget instead of $exdb to test for exdb/indb case
+
 sub resolve { my( $bh, $mods, $id, @headers )=@_;
 
 	defined($id) or
@@ -1315,7 +1332,15 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 		# yyy we're starting a bit late in the routine (so timing may
 		#     look a little faster) but we'll get less noise from each
 		#     recursive call when resolverlist support gets added.
-	$txnid = tlogger $sh, $txnid, "BEGIN $lcmd $ur_origid $hdrinfo";
+	my $exget = $sh->{fetch_exdb} // 0;
+	#$txnid = tlogger $sh, $txnid, "BEGIN $lcmd $ur_origid $hdrinfo";
+	$txnid = tlogger $sh, $txnid, "BEGIN"
+		# yyy what's the indb equivalent?
+# ZZZZZZZZZXXXXXXXXXXXX remove debug
+# xxx document use of tlogger and $exget for debugging
+		. ($exget ? " bindername: $sh->{exdb}->{exdbname}" .
+			" connect_string: $sh->{exdb}->{connect_string}" : "")
+		. " $lcmd $ur_origid $hdrinfo";
 
 	my $db = $bh->{db};
 	my $rpinfo = undef;	# redirect prefix info
@@ -1334,7 +1359,6 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 	$id =~ s|^t-||i;	# remove pattern from resolver-directed tests
 	$id =~ s|^eoi:|doi:|i;	# xxx big kludge: temporary support for EOI
 
-	my $exget = $sh->{fetch_exdb} // 0;
 	my $rfs = $exget
 		? flex_enc_exdb($id)
 		: flex_enc_indb($id)
@@ -1346,7 +1370,13 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 	# This was the first time.
 
 	my $tg = EggNog::Binder::TRGT_MAIN;	# name of target element ('_t')
+
+
+	# This next step lines up lots of analysis we may use later, eg, for
+	# rule-based mapping and partial redirects.
+
 	my $idx = id_decompose($sh->{pfxs}, $id);
+
 	if (! $idx or $idx->{errmsg}) {
 		$msg = $idx ? $idx->{errmsg} : '';
 		return undef;
@@ -1659,7 +1689,8 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 	}
 
 	# If still nothing, try new rule-based mapping.
-	# Get redirection prefix info for the first, most-specific
+	# Select which redirection prefix we'll use (info obtained
+	# earlier by id_decompose), choosing the first, most-specific
 	# redirect rule that we find.
 	# yyy when/where do we use the info blocks except for a thest
 	#     that we found a redirect? the info itself will be provided

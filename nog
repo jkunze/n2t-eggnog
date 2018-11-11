@@ -212,6 +212,7 @@ my @getoptlist = (
 	'atlast=s',		# what to do when last id is minted
 	'checksum=s',		# s=md5, sha1 (def) ack changes with
 					# checksum (not yet)
+	'dbie=s',		# internal (i), external (e), both (ie, ei)
 	'debug',		# flag
 	'directory|d=s',	# filesystem directory name
 	'echo|e',		# echo small elem values set (let)
@@ -274,7 +275,7 @@ my @getoptlist = (
 	$mh_opt->{$_} = $opt{$_}		# options sharing same key
 		for (qw(
 			ack txnlog api atlast
-			checksum debug defuser echo force format
+			checksum dbie debug defuser echo force format
 			germ lock oklz persistomax recurse sif type
 			testlock verbose ));
 

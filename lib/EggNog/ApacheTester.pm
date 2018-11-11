@@ -37,9 +37,10 @@ sub update_server { my( $cfgdir )=@_;
 	$src_top = `pwd -P`;	# NOTE: -P because we don't want symlinks
 	chop $src_top;
 
-	# Now we extract environment vars from a build_server_tree.cfg
-	# file, and insert them into this (Perl's) environment, where
-	# they can then be accessed from test scripts (via t/*.t).
+	# Now we extract environment vars (EGNAPA_* and mongodb MG_*)
+	# from a build_server_tree.cfg file, and insert them into this
+	# (Perl's) environment, where they can then be accessed from test
+	# scripts (via t/*.t).
 	# yyy Not sure they actually need to be env vars before or after
 	#
 	# Important trick here for using the Bash config file (.cfg) to
@@ -52,7 +53,7 @@ sub update_server { my( $cfgdir )=@_;
 	# they come from bash strings so that they come to us on one line
 	# (grep- friendly), and bash arrays do not come to us on one line.
 	#
-	map { /(^EGNAPA_[^=]+)=(.*)/ and $ENV{$1} = $2 }
+	map { /(^(?:EGNAPA|MG)_[^=]+)=(.*)/ and $ENV{$1} = $2 }
 		split /\n/,
 			` bash -c "./build_server_tree env $cfgdir" `;
 			# ZZZ remove next 3
@@ -436,14 +437,17 @@ sub test_minters { my( $cfgdir, $u1, $u2, @fqshoulders )=@_;
 #"
 
 # First arg is $binders_root directory.
-#
 # xxx add $cfgdir arg here and in t/*.t  (see /get_user and see /test_.in.ers
-sub test_binders { my( $cfgdir, $binders_root, @binders )=@_;
 
+sub test_binders { my( $cfgdir, $binders_root, $indb, @binders )=@_;
+
+    # A random specific user
     my $for_user = "http://n2t.net/ark:/99166/b4cd3";		# long form
     my $u = "&P/b4cd3";				# short, &P-compressed form
 
     # XXX kludge: relies on the binder name containing owner name up to '_'!
+    #     kludge still in effect?
+    #     eg, for exdb: egg_bgdflt.P/b4cd3_s_pesty?
     for my $b (@binders) {
 
 	my ($x, $pps);
@@ -451,7 +455,7 @@ sub test_binders { my( $cfgdir, $binders_root, @binders )=@_;
 	#$user =~ s/_.*$//;	# xxx kludge!
 	#my ($login, $pwd) = xget_user_pwd($user);
 	my $realm = $b;
-	$realm =~ s/_.*$//;	# xxx kludge!
+	$realm =~ s/_.*$//;	# xxx kludge! -- still needed?
 
 	my $user = undef;	# kludge for t/apachebase.t user/realm tests
 	#$cfgdir eq 't/web' and
@@ -483,15 +487,19 @@ sub test_binders { my( $cfgdir, $binders_root, @binders )=@_;
 	like $x, qr{Authorization Req.*removed.*bow.*egg-status: 0}si,
 		"protected binder \"$b\" allows deleting that element";
 
-	# yyy "tail" not portable to Windows; should do File::ReadBackwards
-	#$y = flvl("< $binders_root/$b/egg.rlog", $x);
-	$x = `tail -1 $binders_root/$b/egg.rlog`;
-	like $x, qr{^\*\Q$u }m,
-		"previous operation's HTTP_ACTING_FOR user logged";
+	if ($indb) {
+	    # yyy "tail" not portable to Windows; prefer File::ReadBackwards
+	    #$y = flvl("< $binders_root/$b/egg.rlog", $x);
+	    $x = `tail -1 $binders_root/$b/egg.rlog`;
+	    like $x, qr{^\*\Q$u }m,
+	    	"previous operation's HTTP_ACTING_FOR user logged";
+	}
+
+	# XXX should perhaps add HTTP_ACTING_FOR to txnlog?
 
 	$x = `$webcl $pps "$ssvbase_u/a/$b/b? <xyzzy>i.set bow wow"`;
 	like $x, qr{rization Req.*HTTP/.+200.*not allowed.*egg-status: 1}si,
-		"\"$realm\" not allowed to switch binders via <> prefix";
+	    "\"$realm\" not allowed to switch binders via <> prefix";
     }
 }
 

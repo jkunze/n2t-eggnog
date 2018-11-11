@@ -106,6 +106,17 @@ $x = id_decompose($pfx, "RRiD: $i?$q ");
 is $x->{slid}, "$i",
     "RRID 'SLID' returned, space after ':' removed";
 
+$x = id_decompose($pfx, "ark  12345/67");
+like $x->{full_id}, qr|^ark:/12345/67$|,
+	'ark with space and no colon';
+
+$x = id_decompose($pfx, "DOI  10.12345/67");
+like $x->{full_id}, qr|^doi:10\.12345/67$|,
+	'doi with space and no colon';
+
+#print "xxx premature end\n";
+#exit; ###############
+
 #$x = id_normalize($pfx, "  DOI:10.12345/croWD-\n\t sOUrced?lower");
 $x = id_decompose($pfx, "  DOI:10.12345/croWD-\n\t sOUrced?lower");
 like $x->{full_id}, qr|^doi:10\.12345/CROWD-SOURCED\?lower$|,

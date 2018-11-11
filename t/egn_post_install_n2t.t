@@ -61,7 +61,7 @@ like $x, qr@99999/fk4\w\w\w@, "minted id matches format";
 ok -f "$ENV{HOME}/warts/.pswdfile.n2t",
 	"no real passwords set up in ~/warts/ to occlude dummy passwords";
 
-if ($ENV{EGNAPA_HOST_CLASS} eq 'prd') {
+if ($ENV{EGNAPA_HOST} =~ /n2t-prd-2a\./) {
 
 	# Some kludgy tests based on what is hopefully permanent data.
 	# NB: these test read the redirect Location but don't follow it.
@@ -73,6 +73,10 @@ if ($ENV{EGNAPA_HOST_CLASS} eq 'prd') {
 		"Duke target redirect with SPT";
 
 	# Location: http://merritt.cdlib.org/m/ark%3A%2F28722%2Fk2057s78h
+# xxx Merritt records this as (because of double-encoding bug):
+#               _t: http://merritt.cdlib.org/m/ark%253A%252F28722%252Fk2057s78h
+# xxx why? possibly because of some undocumented behavior with RewriteMap??
+# xxx see if this disappears with apache 2.4
 	$x = `wegn -v locate "ark:/28722/k2057s78h"`;
 	like $x, qr{^Location: http://merritt.cdlib.org/.*}m,
 		"Merritt target redirect";
@@ -101,6 +105,9 @@ if ($ENV{EGNAPA_HOST_CLASS} eq 'prd') {
 		"Perio.do target redirect";
 
 	print "--- END tests potentially affected by volatile data\n";
+}
+else {
+	say "--- SKIPPED production-only tests";
 }
 
 #$x = `crontab -l`;

@@ -179,15 +179,17 @@ RewriteRule "^_rslv_redir399 +(.+)"   \$1 [L,NE]
 # Egg code maps all unknown codes to 302 so don't need to check further here.
 #RewriteRule "^_rslv_redir\\S* +(.+)"   \$1 [R=302,L,NE]
 
-# XXX it seems bizarre that you cannot call a script with args, but have
+# yyy it seems bizarre that you cannot call a script with args, but have
 # to pass args in via a QUERY_STRING env variable -- is this really true?
+# XXXXXX absence of --home arg - bug?
 #
 RewriteRule "^_rslv_inflect +(.+)" \\
   "$document_root/e/x/inflect? --api --ua %{QUERY_STRING} \$1" [L]
 #  "$document_root/e/x/inflect? --api $tlog --ua %{QUERY_STRING} \$1" [L]
 
-# XXX it seems bizarre that you cannot call a script with args, but have
+# yyy it seems bizarre that you cannot call a script with args, but have
 # to pass args in via a QUERY_STRING env variable -- is this really true?
+# XXXXXX absence of --home arg - bug?
 #
 RewriteRule "^_rslv_pfxlookup +(.+)" \\
   "$document_root/e/x/pfxlookup? --api --ua %{QUERY_STRING} \$1" [L]
@@ -207,7 +209,7 @@ EOT
 
 echo Building out custom n2t server stuff.
 
-# NB: Mac Unix doesn't (a) document cp -r and (b) create an
+# NB: Mac Unix (a) doesn't document cp -r and (b) doesn't create an
 #     n2t_vision_files subdir under htdocs/e IF you append a / !!
 
 tr=$template_root

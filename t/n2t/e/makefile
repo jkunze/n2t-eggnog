@@ -1,7 +1,10 @@
-all: about.html ark_ids.html compact_ids.html noid.html n2t_apidoc.html partners.html
+all: about.html ark_ids.html compact_ids.html noid.html n2t_apidoc.html partners.html index.html
 
 about.html: about.rst makehtml.py
 	./makehtml.py about.rst "About N2T.net"
+
+index.html: index.rst makehtml.py
+	./makehtml.py index.rst "e/..."
 
 ark_ids.html: ark_ids.rst makehtml.py
 	./makehtml.py ark_ids.rst "ARK"

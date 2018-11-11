@@ -430,16 +430,6 @@ sub exdb_get_dup { my( $bh, $id, $elem )=@_;
 	! defined($ok) and 	# test for undefined since zero is ok
 		addmsg($bh, $msg),
 		return undef;
-# xxx make exdb_get_dup do double duty? fetch element or document, depending on
-#     whether $elem is defined (that way we can use it for egg_exists())
-#  ...ok flex_enc...
-# my @find_args = ( { $PKEY => $id } );
-# defined $elem and
-#	push @find_args, { $elem => 1 };	# add projection arg
-# ... $coll->find_one( @find_args );
-# ...
-# ! defined($elem) and
-#	return defined($result) ? ( $result ) : ();
 
 	$result && $result->{$elem} or	# if nothing found, return empty array
 #say(STDERR "xxx notok result=$result, id=$id, elem=$elem"),
@@ -1616,7 +1606,7 @@ sub exdb_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 
 	# NB: exdb_set_dup updates bindings_count by default
 
-	if (! exdb_set_dup($bh, $rfs->{id}, $rfs->{elem}, $slvalue, {
+	if (! exdb_set_dup($bh, $rfs->{id}, $rfs->{elem}, $value, {
 			optime => $optime,
 			delete => $delete,
 			polite => $polite,
@@ -2145,7 +2135,7 @@ sub note { my( $bh, $mods, $key, $value )=@_;
 	return 1;
 }
 
-# marks txnlog, eg, just before converting a live database, so that that
+# marks txnlog, eg, just before converting a live database, so that
 # log records _after_ the mark can be processed
 
 sub logmark { my( $bh, $mods, $string )=@_;
@@ -2170,7 +2160,7 @@ sub logmark { my( $bh, $mods, $string )=@_;
 # print args after possible substitution
 # don't log
 
-sub egg_pr { my( $bh, $mods )=(shift, shift);
+sub egg_pr { my( $bh, $mods )=( shift, shift );
 	# remaining args are concatenated
 
 	# yyy before processing $() and ${}, must warn Greg!
@@ -2680,6 +2670,11 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 
 		if ($sh->{fetch_exdb}) {	# if EGG_DBIE is e or ei
 
+# ZZZZZZZZZXXXXXXXXXXXX remove debug
+			tlogger $sh, $txnid, "XXX bindername:"
+				. " $sh->{exdb}->{exdbname}"
+				. " cstring: $sh->{exdb}->{connect_string}";
+
 			my $rfs = flex_enc_exdb($id, @elems);	# yyy no @elems
 
 			# yyy similar to calling get_rawidtree
@@ -2770,24 +2765,7 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 		return $st;
 	}
 
-#	my $key;	# xxx used?
-## xxx duplicate below and test; then drop this whole if thing from here
-#	if (! $mods->{did_rawidtree}) {
-#		$irfs = flex_enc_indb($id, @elems);
-##say "xxx naively called flex_enc_indb($id, $elems[0], ...)";
-## XXX use these from $irfs -- don't overwrite original $id and elems
-#		#$key = $irfs->{key};
-#		#$id = $irfs->{id};		# need encoded $id
-#		#@elems = @{ $irfs->{elems} };	# need encoded @elems
-#	}
-#	elsif ($sh->{fetch_indb}) {	# yyy exdb won't call get_ rawidtree
-## xxx !! useless -- drop this clause
-#		$irfs->{key} = join($Se, $id, @elems);
-#		# yyy not setting id or elems because we don't use them?
-#	}
-#	#else {		# this does no harm or good
-#	#	$key = join($Se, $id, @elems),
-#	#}
+	# If we get here, elements or element sets to fetch were specified.
 
 	# XXX need to issue END before every error return below
 	# xxx we're starting a bit late (so timing may look a little faster)
@@ -2795,7 +2773,6 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 	# use UNencded $id and @elems
 	$txnid = tlogger $sh, $txnid, "BEGIN $lcmd $id " . join('|', @elems);
 
-	# If we get here, elements or element sets to fetch were specified.
 	# %khash is a kludge hash to hold elements emerging from blobs.
 	# yyy should this work for elem names with regexprs in them?
 	# xxx need kludge hash to extract elements from XML or ERC blobs
@@ -2907,7 +2884,7 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 				($dups[$#dups] =~ s/$/"/);
 			push(@$valsR, @dups);	# we prepare for that
 		}
-
+#say STDERR "xxx om=$om, dups0=$dups[0]";
 		$om or			# and unless we're doing output
 			next;		# we're done with this element
 

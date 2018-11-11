@@ -59,15 +59,19 @@ use EggNog::RUU;
 use Try::Tiny;			# to use try/catch as safer than eval
 use Safe::Isa;
 use File::Basename;
+use EggNog::Session;
 
 # names of some filesystem artifacts
 use constant FS_OBJECT_TYPE	=> 'egg';	# a Namaste object type
 use constant FS_DB_NAME		=> 'egg.bdb';	# database filename
 
-# These next two are really constants, but Perl constants are a pain.
+# These next three are really constants, but Perl constants are a pain.
 
+our $EGGBRAND = EggNog::Session::EXDB_DBPREFIX . '_';
+#our $EGGBRAND = 'egg_';
 our $DEFAULT_BINDER    = 'binder1';	# user's binder name default
-our $DEFAULT_BINDER_RE = qr/^egg_.*\..*_s_\Q$DEFAULT_BINDER\E$/o;
+#our $DEFAULT_BINDER_RE = qr/^egg_.*\..*_s_\Q$DEFAULT_BINDER\E$/o;
+our $DEFAULT_BINDER_RE = qr/^$EGGBRAND.*\..*_s_\Q$DEFAULT_BINDER\E$/o;
 					# eg, egg_default.jak_s_binder1
 our $EGG_DB_CREATE	= 1;
 
@@ -229,6 +233,7 @@ sub new { # call with $sh, type, WeAreOnWeb, om, optref
 		$self->{humname} = "binder";
 		$self->{version} ||= $EggNog::Egg::VERSION;
 
+		# yyy should this egg_ be $EGGBRAND?
 		$self->{fname_pfix} = 'egg_';	# used in making filenames
 		$self->{edbdir} =		# embedded db directory
 			$self->{fname_pfix} . 'edb';
@@ -921,7 +926,7 @@ sub open_resolverlist { my( $bh, $list )=@_;
 					#     big assumption about caller here
 		ibopen(				# and IF
 			$rmh,			# we can ibopen it
-# XXXXX check if it's already open?
+						# yyy check if already open?
 			$_,			# using the map list item
 			#O_RDONLY,		# read-only (for a resolver)
 			DB_RDONLY,		# read-only (for a resolver)
@@ -1317,6 +1322,7 @@ sub ibopen { my( $bh, $mdr, $flags, $minderpath, $mindergen )=@_;
 # via str2brnames()
 #
 # ebopen = external binder open (new)
+
 sub ebopen { my( $bh, $exbrname, $flags )=@_;
 
 	$EggNog::Egg::BSTATS //=		# lazy, one-time evaluation
@@ -1325,8 +1331,9 @@ sub ebopen { my( $bh, $exbrname, $flags )=@_;
 			"bindings_count",		# element name
 		);
 	$flags //= 0;
+	my $sh = $bh->{sh};
 	! $exbrname and
-		(undef, $exbrname) = str2brnames($bh->{sh}, $DEFAULT_BINDER);
+		(undef, $exbrname) = str2brnames($sh, $DEFAULT_BINDER);
 
 		# NB: this $DEFAULT_BINDER is created implicitly by the first
 		# mongodb attempt to write a record/document, so it is not the
@@ -1339,14 +1346,33 @@ sub ebopen { my( $bh, $exbrname, $flags )=@_;
 	# With MongoDB, this is a very soft open, in the sense that it
 	# returns without contacting the server. (For performance reasons
 	# you don't really know if you have a connection until the first
-	# access attempt.)  NB: Consquently, it almost always "succeeds".
+	# access attempt.)  Consquently, it almost always "succeeds".
 
-	my $exdb = $bh->{sh}->{exdb};
+	# One feature of MongoDB that can be annoying is when it "succeeds" in
+	# opening a non-existent binder, creating it as a result. Instead you
+	# want it to fail so that you know if you constructed the binder name
+	# incorrectly. The feature is that you save a round trip on opening,
+	# but for read-only resolution by a long-running process, we do an
+	# explicit existence check since resolution is such a pain to debug.
+
+#	if ($bh->{rrm}) {		# if we're in resolver mode
+#	        my ($indbexists, $exdbexists) =
+# xxx this test should maybe go before DEFAULT_BINDER is used above
+# xxx maybe it should go before "bopen"
+# xxx need to get these next args passed in from caller
+# xxx $sh->{ruu}->{who} is $user?
+# xxx $sh->{bgroup} is $bgroup?
+# xxx $binder comes from ancestor of $exbrname, which refines it...
+#			binder_exists($sh, undef, $binder, $bgroup, $user, undef);
+#
+#	}
+# ZZZZZZZZZZZZZZZZZZZZXXXXXX
+
+	my $exdb = $sh->{exdb};
 	my $om = $bh->{om};
 	#my $open_exdb = {};
 	my $msg;
 	my $ok = try {
-		#$open_exdb->{binder} =
 		$exdb->{binder} = $exdb->{client}->ns( $exbrname );
 	}
 	catch {
@@ -1362,6 +1388,15 @@ sub ebopen { my( $bh, $exbrname, $flags )=@_;
 					# and stop with $sh->{exdb}->{binder}
 	$exdb->{exdbname} = $exbrname;
 	#$bh->{open_exdb} = $open_exdb;
+
+	my $ruu = $sh->{ruu};
+	#my $ruu = $bh->{sh}->{ruu};
+	if ($bh->{opt}->{verbose} and $om) {
+	    $om->elem("note",
+		"remote user: " . ($ruu->{remote_user} || '') .
+		($ruu->{http_acting_for} ?
+			" acting for $ruu->{http_acting_for} " : ''));
+	}
 
 	my $creating = $flags & $EGG_DB_CREATE;
 	$bh->{opt}->{verbose} and $om and $om->elem("note",
@@ -1383,6 +1418,9 @@ sub bopen { my( $bh, $bdr, $flags, $minderpath, $mindergen )=@_;
 		addmsg($bh, $msg);	# failed to configure
 		return undef;
 	}
+# xxx if rrm check for existence and bail if not!
+
+# xxx move this next into ebopen, so we can pass raw $bdr arg to ebopen
 	my ($inbrname, $exbrname) =
 		str2brnames($sh, $bdr);
 #say STDERR "xxx bopen: bdr=$bdr, exbrname=$exbrname";
@@ -1553,8 +1591,10 @@ sub str2brnames { my( $sh, $binder, $bgroup, $user )=@_;
 # NB: because MongoDB creates binders/collections simply be trying to
 #     read from them, if "show collections" comes up with a default binder
 #     name we'll just assume it is a binder that was NOT created by mkbinder
+# yyy $mods currently unused
 
 sub binder_exists { my( $sh, $mods, $binder, $bgroup, $user, $minderdir )=@_;
+# ZZZZZZZZZZZZZZZZZZZZXXXXXX
 
 	$binder =~ s|/$||;	# remove fiso_uname's trailing /, if any
 	#$binder =~ /[\W]_/ and
@@ -1614,6 +1654,9 @@ my $NSNS = 'system.namespaces';	# namespace of all namespaces
 #			// 0;		# 0 != undefined
 		}
 		catch {
+#error: error looking up database name "egg_td_egg.jak_s_egg_td_egg"
+#        (from exbrname "egg_td_egg.jak_s_egg_td_egg.jak_s_bar")
+#error: brmgroup: not removing egg_td_egg.jak_s_bar
 			$msg = "error looking up database name \"$dbname\" " .
 				"(from exbrname \"$exbrname\")";
 			return undef;	# returns from "catch", NOT from routine
@@ -1694,14 +1737,16 @@ sub mkbinder { my( $sh, $mods, $binder, $bgroup, $user, $what, $minderdir )=@_;
 		$exdbexists and
 			addmsg($sh, "exdb binder \"$exbrname\" already exists"),
 			return undef;
-		mkebinder($sh, $mods, $exbrname, $bgroup, $user, $what, $minderdir) or
+		mkebinder($sh, $mods, $exbrname, $bgroup, $user,
+				$what, $minderdir) or
 			return undef;
 	}
 	if ($sh->{indb}) {
 		#$indbexists and
 		#	addmsg($sh, "indb binder \"$inbrname\" already exists"),
 		#	return undef;
-		mkibinder($sh, $mods, $inbrname, $bgroup, $user, $what, $minderdir) or
+		mkibinder($sh, $mods, $inbrname, $bgroup, $user,
+				$what, $minderdir) or
 			return undef;
 	}
 	return 1;
@@ -1709,6 +1754,7 @@ sub mkbinder { my( $sh, $mods, $binder, $bgroup, $user, $what, $minderdir )=@_;
 
 sub mkebinder { my( $sh, $mods, $exbrname, $bgroup, $user, $what, $minderdir )=@_;
 
+	# xxx should reconcile diffs between mk{e,i}binder
 	! $sh and
 		return undef;
 	! $exbrname and
@@ -1720,6 +1766,9 @@ sub mkebinder { my( $sh, $mods, $exbrname, $bgroup, $user, $what, $minderdir )=@
 	my $bh = newnew($sh) or
 		addmsg($sh, "mkebinder couldn't create binder handler"),
 		return undef;
+
+#XXX; # modify the args below
+# ZZZZZZZZZZZZZZZZZZZZXXXXXX
 	! ebopen($bh, $exbrname, $EGG_DB_CREATE) and	# yyy some args unused
 		addmsg($sh, "could not open external binder \"$exbrname\""),
 		return undef;
@@ -1745,6 +1794,7 @@ sub mkibinder { my( $sh, $mods, $binder, $bgroup, $user, $what, $minderdir )=@_;
 	#		"($bh->{fiso})"),
 	#	return undef;
 
+	# xxx should reconcile diffs between mk{e,i}binder
 	unless ($binder) {
 		#$binder = prep_default_binder($sh, 'i', (O_CREATE|O_RDWR),
 		$binder = prep_default_binder($sh, 'i', (DB_CREATE | DB_RDWR),
@@ -1942,6 +1992,7 @@ sub createbinder { my( $bh, $dirname, $minderdir )=@_;
 
 # yyy only using $sh and $binder
 # yyy bails early unless we're in the exdb case
+
 sub brmgroup { my( $sh, $mods, $bgroup, $user )=@_;
 
 	! $sh and
@@ -1960,7 +2011,12 @@ sub brmgroup { my( $sh, $mods, $bgroup, $user )=@_;
 	}
 	! $sh->{exdb} and		# yyy only works for exdb case
 		return 1;
+	if ($sh->{opt}->{allb} || $sh->{opt}->{allc}) {
+		addmsg($sh, "--allb or --allc option not allowed");
+		return undef;
+	}
 	my @ebinders = ebshow($sh, $mods, 0, $bgroup, $user);
+
 	# empty return list is ok
 	@ebinders and ! defined($ebinders[0]) and	# our test for error
 		addmsg($sh, 'brmgroup: ebshow failed'),
@@ -1981,10 +2037,18 @@ sub brmgroup { my( $sh, $mods, $bgroup, $user )=@_;
 		# Need this next test because a collection that's listed
 		# might not actually be an eggnog binder.
 
-		($rootless = $b) =~ s/^\Q$binder_root_name//;
+		# Take fully qualified binder name and convert to simple name
+		# name as user knows it, eg, egg_td_egg.sam_s_foo -> foo
+		# Use $rootless to hold that simple binder name.
+
+		($rootless = $b) =~ s/^[^.]+.\Q$binder_root_name//;
 		my ($indbexists, $exdbexists) =
+# ZZZZZZZZZZZZZZZZZZZZXXXXXX
 			binder_exists($sh, $mods, $rootless, $bgroup,
 				$user, undef);
+#error: error looking up database name "egg_td_egg.jak_s_egg_td_egg"
+#        (from exbrname "egg_td_egg.jak_s_egg_td_egg.jak_s_bar")
+#error: brmgroup: not removing egg_td_egg.jak_s_bar
 		($inbrname, $exbrname) =
 			str2brnames($sh, $rootless, $bgroup, $user);
 		! $exdbexists and ! $sh->{opt}->{force} and
@@ -2013,6 +2077,9 @@ sub brmgroup_standalone { my( $bgroup )=@_;
 	use EggNog::Session;
 	my $sh = EggNog::Session->new(0) or
 		return "couldn't create session handler";
+	$sh->{remote} and		# yyy why have this and {WeAreOnWeb}?
+		unauthmsg($sh),
+		return undef;
 	my $msg;
 	$msg = EggNog::Session::config($sh) and
 		return $msg;
@@ -2305,6 +2372,7 @@ sub make_visitor { my( $sh, $symlinks_followed, $om )=@_;
 # NB: unlike ebshow, this does NOT return a list of binders (print only)
 # yyy convert to use $om
 # yyy doesn't yet use or honor $bgroup or $user
+
 sub ibshow { my( $sh, $mods, $om )=@_;	# internal db version of bshow
 
 	defined($Win) or	# if we're on a Windows platform avoid -l
@@ -2332,8 +2400,8 @@ sub ibshow { my( $sh, $mods, $om )=@_;	# internal db version of bshow
 }
 
 # external db bshow
-# returns list of binders on success, (undef) on error
-# returned list needed by td_remove()
+# returns a list of fully qualified binder names on success, (undef) on error
+# NB: the returned list is used directly by td_remove()
 # $om == 0 (zero) means just return list and don't do output
 # first get list of collections, later filter by $bgroup and $user
 # yyy ?add 'long' option that checks for every important file, eg,
@@ -2346,9 +2414,15 @@ sub ebshow { my( $sh, $mods, $om, $bgroup, $user, $ubname )=@_;
 		EggNog::Session::ebinder_names($sh, $bgroup, $user, $ubname);
 	my ($msg, $db, @cns);
 	my $ok = try {
-		#$db = $exdb->{client}->db( $exdb->{database_name} );
-		$db = $exdb->{client}->db( $edatabase_name );
-		@cns = $db->collection_names;
+		# get all database names
+		for my $dbname ( $exdb->{client}->database_names ) {
+			$db = $exdb->{client}->db( $dbname );
+			# for each dbname, get all collection names
+			#push @cns, $db->collection_names;
+			push @cns, map "$dbname.$_", $db->collection_names;
+		}
+		#$db = $exdb->{client}->db( $edatabase_name );
+		#@cns = $db->collection_names;
 		1;		# else empty list would look like an error
 	}
 	catch {
@@ -2360,25 +2434,34 @@ sub ebshow { my( $sh, $mods, $om, $bgroup, $user, $ubname )=@_;
 		return (undef);
 	$om //= $sh->{om};
 
-	# yyy unlike ibshow, only show binders owned by current user
-	#     consider an option to show all databases, all collections
 	#my $root_re = $sh->{opt}->{all} ? qr// :	# pass everything
 	#	qr/^\Q$exdb->{binder_root_name}/;	# or just mine
 
-	my $root_re =			# filter to just list user's binders
-		qr/^\Q$ebinder_root_name$clean_ubname/;
+	# xxx document these --allb and --allc options
+	my $root_re =
+		$sh->{opt}->{allc} ? qr// :	# do all collections if --allc,
+		($sh->{opt}->{allb} ?		# else if --allb just do what
+			qr/^\Q$EGGBRAND/ :	# looks like a binder
+						# else just do my binders
+			qr/^\Q$edatabase_name.$ebinder_root_name$clean_ubname/)
+	;
 
-	my @ret_binders = grep m/$root_re/,	# get binder names
+	my @ret_binders = sort			# return sorted results of
+			grep m/$root_re/,	# filtering binder names
 		@cns;				# from collection names
 	! $om and			# if $om == 0, suppress output
 		return @ret_binders;		# yyy is there a better way?
 
 	# if we get here we're doing output
-	$om->elem('note', ' ' . scalar(@ret_binders) .
-		" external binders under $edatabase_name." .
-		"$ebinder_root_name$clean_ubname", '1#'
+	$om->elem('note', ' ' . scalar(@ret_binders) . ' ' .
+		($sh->{opt}->{allc} ? "external collections" :
+		($sh->{opt}->{allb} ? "external binders under $EGGBRAND" :
+			"external binders under $edatabase_name." .
+				"$ebinder_root_name$clean_ubname")),
+		'1#'
 	);
-	map $om->elem('b', "$edatabase_name.$_"), @ret_binders;
+	map $om->elem('b', $_), @ret_binders;
+	#map $om->elem('b', "$edatabase_name.$_"), @ret_binders;
 	return @ret_binders;
 }
 
@@ -2388,10 +2471,13 @@ sub ebshow { my( $sh, $mods, $om, $bgroup, $user, $ubname )=@_;
 # yyy $mods not used
 # yyy to rename, make these synonyms: bmake = mkbinder, brm = rmbinder,
 #     in later release, remove old names
-#
+
 sub bshow { my( $sh, $mods, $om, $bgroup, $user, $ubname )=@_;
 
 	! $sh and
+		return undef;
+	$sh->{remote} and		# yyy why have this and {WeAreOnWeb}?
+		unauthmsg($sh),
 		return undef;
 	my $msg;
 	if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {
@@ -2449,6 +2535,9 @@ sub mstatus { my( $bh, $mods, $status )=@_;
 	! $bh and
 		return undef;
 	my $sh = $bh->{sh} or
+		return undef;
+	$sh->{remote} and		# yyy why have this and {WeAreOnWeb}?
+		unauthmsg($sh),
 		return undef;
 	#my $msg;
 	#if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {

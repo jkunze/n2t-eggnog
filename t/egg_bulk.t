@@ -1,3 +1,6 @@
+# xxx before removing this file, mine it for tests
+#     that don't belong here, eg, readonly mode
+
 use 5.10.1;
 use Test::More qw( no_plan );
 

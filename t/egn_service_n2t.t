@@ -128,9 +128,6 @@ $x = `$webcl "$ssvbase_u/e"`;
 like $x, qr{HTTP/\S+\s+200\s+OK.*extras directory}si,
 	'public https access to extras dir authorized';
 
-#$x = apachectl('graceful-stop'); #	and print("$x\n");
-#print "######### temporary testing stop #########\n"; exit;
-
 $x = `$webcl "$ssvbase_u/e/index.html"`;
 like $x, qr{HTTP/\S+\s+200\s+OK.*extras directory}si,
 	'public https access inside extras directory is authorized';
@@ -162,9 +159,6 @@ like $x, qr{HTTP/\S+\s+200\s+OK.*api home page}si,
 # XXX make urn:uuid resolve
 # xxx make CN with single underscore _mTm. work
 
-#$x = apachectl('graceful-stop'); #	and print("$x\n");
-#print "######### temporary testing stop #########\n"; exit;
-
 my $pps;		# passwords/permissions string
 my $fqsr;		# fully qualified shoulder
 
@@ -187,9 +181,6 @@ like $x, qr{Location:.*dvcsid=\Q$hgid\E&rmap=}i,
 	'resolver info with correct dvcsid returned';
 # fe80::c57:e454:73e5:9ed - - [22/Jan/2017:22:39:13 --0800] [jak-macbook.local/sid#7f83b4817728][rid#7f83b5012ca0/initial] (5) map lookup OK: map=map_ezid key=99999/__rrminfo__.resolve ac=*/*!!!ff=!!!ra=fe80::c57:e454:73e5:9ed!!!co=!!!re=!!!ua=Wget/1.15%20(darwin13.1.0) -> val=redir302 
 
-#$x = apachectl('graceful-stop'); #	and print("$x\n");
-#print "######### temporary testing stop #########\n"; exit;
-
 # XXX server hung could mean a rewriterule infinite loop
 my $q1 = 'ark:/12345/bcd?';
 $x = `$webcl $pps "$ssvbase_u/a/ezid/b? $q1.set _t http://q.example.com"`;
@@ -200,11 +191,52 @@ $x = `$webcl $pps "$ssvbase_u/a/ezid/b? $a1.fetch"`;
 like $x, qr{HTTP/\S+\s+200\s+.*_t: http://b.example.com}si,
 	'fetch the resolution target that was just bound';
 
+#my $date;
+#my $secs = 80;
+#$date = localtime;
+#say "xxx $date sleeping $secs seconds to wait for write";
+#sleep $secs;
+#$date = localtime;
+#say "xxx $date waking up now";
+
+#$x = apachectl('graceful') and say("yyy apache graceful-restart");
+
+#$x = apachectl('restart') and say("yyy apache restart");
+#$exdb and
+#	`mg restart`;
+
 # xxx do separate normalization test
-# xxx sometimes these tests hang when the network connection is poor
+# ??? true still ??? xxx sometimes these tests hang when the network connection is poor
 $x = `$webcl "$srvbase_u/$a1"`;
 like $x, qr{Location:.*http://b.example.com}i,
 	'resolution via redirect from rewritemap';
+
+if ($exdb) {
+  $x = apachectl('graceful-stop'); #	and print("$x\n");
+  say "xxx webcl resolution cmd: $webcl \"$srvbase_u/$a1\"";
+  say "XXXXXX temporary testing stop #########";
+  exit 1;	# this should cause 'make test' to notice an error
+}
+
+#not ok 18 - resolution via redirect from rewritemap
+#   Failed test 'resolution via redirect from rewritemap'
+#   at t/egn_service_n2t.t line 206.
+#                   '--2018-09-30 08:56:08--
+#                   http://jak-macbook.local:8082/ark:/12345/bcd
+# Resolving jak-macbook.local... fe80::81d:fa54:4f60:88b8, 127.0.0.1
+# Connecting to jak-macbook.local|fe80::81d:fa54:4f60:88b8|:8082... connected.
+# HTTP request sent, awaiting response...
+#   HTTP/1.1 404 Not Found
+#   Date: Sun, 30 Sep 2018 15:56:08 GMT
+#   Server: Apache/2.2.29 (Unix) DAV/2 mod_ssl/2.2.29 OpenSSL/0.9.8zh
+#   Content-Length: 212
+#   Keep-Alive: timeout=5, max=100
+#   Connection: Keep-Alive
+#   Content-Type: text/html; charset=iso-8859-1
+# 2018-09-30 08:56:08 ERROR 404: Not Found.
+#
+# '
+#     doesn't match '(?^i:Location:.*http://b.example.com)'
 
 # xxx sometimes these tests hang when the network connection is poor
 #     consider reducing maxredirects 
@@ -412,7 +444,7 @@ like $x, qr{HTTP/\S+\s+404\s+Not\s+Found}si,
 # xxx should pull this list of binders from FS via "find"
 my @binders = ( qw(ezid ezid_test oca oca_test yamz yamz_test) );
 
-test_binders $cfgdir, $ntd, @binders;
+test_binders $cfgdir, $ntd, $indb, @binders;
 
 # <body><h1>How to ask for a single-binder resolution.</h1></body> </html>
 $x = `$webcl "$srvbase_u/r"`;

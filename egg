@@ -1,9 +1,13 @@
 #!/usr/bin/env perl
 
 ####### exdb tests passed
-# egg_bind.t egg_log.t egg_mkbinder.t egg_normalize.t egg_resolve.t egg_webperms.t
-# errcount 2 - egg_dbcmds.t
-# ...
+# egg_bind.t egg_help.t egg_log.t egg_mkbinder.t egg_modifiers.t egg_normalize.t egg_resolve.t egg_webperms.t egn_apachebase.t 
+# errcount > 0 -   egg_dbcmds.t egg_list.t egg_incr.t
+# errcount > 0 - egn_service_n2t.t
+
+# xxx TO DO in separate commit: hg rename lib/EggNog/{RUU,Uinfo}.pm and
+#       everywhere do: s/ruu/uinfo/g    and    s/RUU/UINFO/g
+# this will clear the way for RUU to become something else
 
 use 5.10.1;
 use strict;
@@ -67,35 +71,49 @@ my $usage_text = << "EOF";
 
  Usage: egg [ options ] i.command [ name [ data ] ]
 
-Egg is a binder. The egg command makes and manages flexible non-volatile data
-element bindings in which each element belongs to a parent identifier (even if
-empty). Identifiers can be made "resolvable" to particular element values. The
-acronym, BIND (Bind Identifier to Named Data), echoes typical argument order.
-Some commands:
+Egg is a binding agent. The egg command makes and manages non-volatile bindings
+between data and named elements that belong to a parent identifier. Identifiers
+in turn belong to a named "binder". Egg can work with multiple binders, each 
+holding millions of identifiers. Every identifier is unique within its binder,
+but any element can have duplicate bindings ("dupes") under an identifier,
+eg, multiple elements named "author" belonging to an identifier for a book.
 
-  help readme     describe the latest "egg" essentials
-  i.set n d       set element n to d under id i, overwriting prior dupes
-  i.let n d       like set, but fail if element n already exists
-  i.add n d       add an element under i (creating a dupe if n exists)
-  i.get [n]       return all dupes of n (of all elements if no n) under i
-  i.fetch [n]     like get, but using a labeled output format (default ANVL)
-  i.rm n          remove all dupes of element n under i
-  i.purge         remove id i by removing all dupes of all elements under i
-  i.exists [n]    return 1 if i (or n under i) exists, else return 0
-  i.resolve [hdr] return one-line _t value (influenced by HTTP hdr info)
-  i.inflect       return resolution metadata (to test inflections)
-  i.norm          return resolver-normalized version of i
-  i.shadow        like norm but return i as shadow ARK if applicable
-  list m [k...]   list up to m (0=unlimited) ids (or ids under keys k)
-  next m x [k...] like list, but begin at next id not matching x (under k)
+Nearly arbitrary octet sequences can be used for identifiers, element names,
+and data. An unspecified identifier is equivalent to ''. A few element names
+are conventionally reserved when egg operates in certain service contexts.
+In a "persistent identifier" service, for example, an identifier might be made
+"resolvable" via a reserved "target" element bound to some URLs for accessing
+content, and might be described via reserved "metadata" element names such as
+"author", "title", and "date".
+
+The acronym, BIND (Bind Identifier to Named Data), echoes typical argument
+order in the subcommands listed below.
+
+  help readme       for an expanded description of "egg" essentials
+  i.set n d         set element n to d under id i, overwriting prior dupes
+  i.let n d         like set, but fail if element n already exists
+  i.add n d         add an element under i (creating a dupe if n exists)
+  i.get [n]         return all dupes of n (of all elements if no n) under i
+  i.fetch [n]       like get, but using a labeled output format (default ANVL)
+  i.rm n            remove all dupes of element n under i
+  i.purge           remove id i by removing all dupes of all elements under i
+  i.exists [n]      return 1 if i (or n under i) exists, else return 0
+  i.resolve [hdr]   return one-line _t value (maybe as per HTTP header info)
+  i.inflect         return resolution metadata (to test inflections)
+  i.norm            return resolver-normalized version of i
+  i.shadow          like norm but return i as shadow ARK if applicable
+  -                 do bulk (batch) commands from stdin or http request body
+  logmark string    write string to mark a place in the txnlog file
+  pr string ...     print strings to output
+[not working for exdb case]
+  list m [k...]     list up to m (0=unlimited) ids (or ids under keys k)
+  next m x [k...]   like list, but begin at next id not matching x (under k)
+[work in progress]
+  bshow [g [u]]     list binders of group g, user u; fullname egg_<g>.<u>_s_<b>
   bmake [b [g [u]]] make binder named b (mint name if no b) (aka mkbinder)
-  bshow [g [u]]     list binders for group g, user u
   brm b [g [u]]     remove binder named b (aka rmbinder)
   brmgroup g [u]    remove external binder group g (just external binders now)
-  mstat           show various binder counts
-  -               do bulk (batch) commands from stdin or http request body
-  logmark string  write string to mark a place in the txnlog file
-  pr string ...   print strings to output
+  mstat             show various binder counts
  
 Examples:
   egg ark:/12345/x9876r.set who 'Smith, Laurie'
@@ -205,6 +223,9 @@ my @getoptlist = (
 	'ack',			# acknowledge changes with oxum
 	'all',			# always fetch all elements (like :all always)
 				# xxx can't turn this off locally?
+	'allb',			# to make bshow list all binders
+	'allc',			# to make bshow list all collections, even
+				#     those that aren't binders
 	'api',			# we are using web api
 	'as=s',			# content type for output
 	'checksum=s',		# s=md5, sha1 (def) ack changes with
@@ -271,7 +292,7 @@ my @getoptlist = (
 	$bh_opt->{$_} = $opt{$_}		# options sharing same key
 		# xxx "all" option completely untested
 		for (qw(
-			ack all txnlog api as
+			ack all allb allc txnlog api as
 			dbie home pfx_file
 			minderpath
 			checksum debug echo force format lock
@@ -567,6 +588,7 @@ sub cmd_line {
 
 # xxx bug: try mkbinder with no args in bulk mode
 # xxx bug: ... then try it again
+
 sub bdx_mkbinder { bdx_bmake(@_) }
 sub bdx_bmake { my( $name, $bgroup, $user )=@_;
 
@@ -672,6 +694,7 @@ sub bdx_brm { my( $name, $bgroup, $user )=@_;
 
 #sub bdx_mshow { dx_mshow( @_ ) }
 # show known binders (was mshow)
+
 sub bdx_bshow { my( $bgroup, $user, $ubname )=@_;
 
 	EggNog::Binder::bshow($sh, $mods, $sh->{om}, $bgroup, $user, $ubname) or
@@ -693,6 +716,7 @@ sub bdx_mping { }
 
 # yyy merge mstat and show?
 # yyy make show list of all binders, flagging the default binder?
+
 sub bdx_mstat { my( $level )=@_;
 
 	$level ||= "brief";
@@ -771,7 +795,7 @@ use Safe::Isa;
 # This is a very special command used primarily by Apache RewriteMap that
 # must always outputs exactly one line (empty line means nothing found).
 # It uses simple "print()", ignoring any output format specified.
-#
+
 sub bdx_resolve {	# any args are optional headers, passed to Egg::resolve
 
 	my $minderpath = $cmdr_from_d_flag ?
@@ -822,6 +846,7 @@ sub bdx_resolve {	# any args are optional headers, passed to Egg::resolve
 }
 
 # XXX this should not require any minder to be specified!
+
 sub bdx_norm {
 	#my $nid = EggNog::Resolver::id_normalize($bh->{pfxdb}, $bindid);
 	my $idx = EggNog::Resolver::id_decompose($bh->{pfxs}, $bindid);
@@ -831,6 +856,7 @@ sub bdx_norm {
 }
 
 # XXX this should not require any minder to be specified!
+
 sub bdx_shadow {
 	my $idx = EggNog::Resolver::id_decompose($bh->{pfxs}, $bindid);
 	defined($idx) or
@@ -845,6 +871,7 @@ sub bdx_shadow {
 }
 
 #use DB_File;
+
 sub corrected_status { my( $status )=@_;
 
 	$status or
@@ -871,6 +898,7 @@ sub corrected_status { my( $status )=@_;
 # set or get minder status
 # xxx rename mstat to something else
 # call with ... mstatus [paused|readonly
+
 sub bdx_mstatus { my( $status )=@_;
 
 	my $flag;
@@ -915,6 +943,7 @@ sub bdx_dbinfo { my( $level )=@_;
 
 # usage: egg testlock SECONDS ex|sh
 #  ex=exclusive, sh=shared
+
 sub bdx_testlock { my( $secs, $locktype )=@_;
 	defined($secs) or
 		outmsg($bh, "need to specify number of seconds to hold lock"),
@@ -942,6 +971,7 @@ sub bdx_testlock { my( $secs, $locktype )=@_;
 
 # xxx dbsave and dbload built for the old DB_File.pm environment
 # xxx should probably be updated for BerkeleyDB.pm and MongoDB.pm
+
 sub bdx_dbsave { my( $destfile )=@_;	# arg may name a directory
 
 	$bindid and
@@ -973,6 +1003,7 @@ sub bdx_dbsave { my( $destfile )=@_;	# arg may name a directory
 
 # xxx dbsave and dbload built for the old DB_File.pm environment
 # xxx should probably be updated for BerkeleyDB.pm and MongoDB.pm
+
 sub bdx_dbload { my( $srcfile )=@_;	# arg may name a directory
 
 	$bindid and

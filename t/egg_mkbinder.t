@@ -150,7 +150,7 @@ $x = `$cmd a.get b`;
 like $x, qr|^c$|m, "implicit default binder created";
 #like $x, qr|^c$|m, "implicit default binder stored a value";
 
-$x = `$cmd bshow td_egg`;
+#$x = `$cmd bshow td_egg`;
 
 $x = `$cmd -d $td/binder3 a.set b c`;
 if ($exdb) {
@@ -158,7 +158,7 @@ if ($exdb) {
   like $x, qr|^c$|m, "no exdb binder name derived from directory";
 }
 
-$x = `$cmd bshow td_egg`;
+#$x = `$cmd bshow td_egg`;
 
 remake_td($td, $bgroup);
 $ENV{MINDERPATH} = $td;		# switch to just env variable influence

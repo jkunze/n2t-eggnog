@@ -25,7 +25,7 @@ use EggNog::Binder ();
 our ($perl, $blib, $bin);
 our ($rawstatus, $status);	# "shell status" version of "is"
 
-# Return values usefule for testing a given $script:
+# Return values useful for testing a given $script:
 #   $td		temporary directory, or empty string on error
 #   $cmd	command string
 #   $homedir	--home value
@@ -73,6 +73,13 @@ sub script_tester { my( $script )=@_;
 	my $hgbase = "--home $homedir";		# home-binder-group base string
 	$bgroup and				# empty unless EGG_DBIE is set
 		$hgbase .= " --bgroup $bgroup";
+
+
+# XXXXXXXXXXXXXXXXX need to add --user, so that behind server we open correct DB
+# XXXXXXXXXXXXXXXXX need to add binder groups: prd, dev, stg,
+
+
+
 	return ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb);
 }
 
@@ -84,26 +91,25 @@ sub shellst_is { my( $expected, $output, $label )=@_;
 	return is($status, $expected, $label);
 }
 
-# Call with remake_td($td);
 sub remake_td { my( $td, $bgroup )=@_;	# make $td with possible cleanup
 
-	#my $td = shift;
-	-e $td			and remove_td($td);
-	if ($bgroup) {
-		my $msg = EggNog::Binder::brmgroup_standalone($bgroup);
-		$msg and
-			say STDERR $msg;
-	}
-	mkdir($td)		or say STDERR "$td: couldn't mkdir: $!";
+	-e $td and
+		remove_td($td, $bgroup);
+	#if ($bgroup) {
+	#	my $msg = EggNog::Binder::brmgroup_standalone($bgroup);
+	#	$msg and
+	#		say STDERR $msg;
+	#}
+	mkdir($td) or
+		say STDERR "$td: couldn't mkdir: $!";
 }
-
-# Call with remove_td($td);
 
 sub remove_td { my( $td, $bgroup )=@_;
 
 	# remove $td but make sure $td isn't set to "."
 	# yyy maybe one day $td is optional
-	! $td || $td eq "."	and say STDERR "bad dirname \$td=$td";
+	! $td || $td eq "." and
+		say STDERR "bad dirname \$td=$td";
 	my $ok = try {
 		rmtree($td);
 	}

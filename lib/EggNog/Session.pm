@@ -12,7 +12,7 @@ our @ISA = qw(Exporter);
 
 our @EXPORT = qw();
 our @EXPORT_OK = qw(
-	config tlogger
+	config tlogger EXDB_DBPREFIX
 );
 our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
 
@@ -143,8 +143,19 @@ redirects:
 @;
 
 sub connect_string { my( $hostlist, $repsetopts, $setname )=@_;
+
+	#defined($hostlist) && defined($repsetopts) && defined($setname) or
+		# source env.sh
+
 	defined($hostlist) && defined($repsetopts) && defined($setname) or
 		return undef;		# all args must be defined
+#MG_CSTRING_HOSTS="$MG_CSTRING_HOSTS"	# exdb mongo database
+#MG_REPSETOPTS="$MG_REPSETOPTS"
+#MG_REPSETNAME="$MG_REPSETNAME"
+#export MG_CSTRING_HOSTS MG_REPSETOPTS MG_REPSETNAME
+#
+#EGNAPA_HOST_CLASS="$EGNAPA_HOST_CLASS"	# to form exdb dbname
+#export EGNAPA_HOST_CLASS
 	return 'mongodb://' .
 			$hostlist . "/?$repsetopts" . "&replicaSet=$setname";
 }
@@ -368,7 +379,7 @@ sub ebinder_names { my( $sh, $bgroup, $who, $ubname )=@_;
 	my $edatabase_name =		# eg, MongoDB "database name"
 		EXDB_DBPREFIX . '_' . $bgroup;
 	my $ebinder_root_name =		# eg, start of MongoDB "collection name"
-		$who . EXDB_UBDELIM;	# lacking dbname and bindername
+		$who . EXDB_UBDELIM;	# no dbname or bindername (eg sam_s_)
 	my $ns_root_name =		# eg, start FQ MongoDB collection name
 		"$edatabase_name.$ebinder_root_name";
 	# all that's missing from $ns_root_name is caller's binder name

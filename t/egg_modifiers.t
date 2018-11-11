@@ -24,9 +24,6 @@ shellst_is 0, $x, "make binder named foo";
 #$x = `$cmd -d $td/foo id.get bar`;
 #like $x, qr/^z\na\nf\n/,
 #	"hex modifier puts newlines globally into a value";
-#
-#say "xxxxxxx premature end x=$x";
-#exit;
 
 $x = `$cmd -d $td/foo :hx id.set bar "z^0aa^0af"`;
 $x = `$cmd -d $td/foo id.get bar`;
@@ -50,7 +47,7 @@ $x = `$cmd -d $td/foo :hx :hx% :hx+ id.set bar "z^0aa%0af+20r"`;
 $x = `$cmd -d $td/foo id.fetch bar`;
 like $x, qr/^bar:\s*z\^0aa%250af r\n/,
 	"last hex modifier overrides previous hex modifiers";
-# note that % is always URL-encoded when output via ANVL
+# note that % is always URL-encoded when output via ANVL (enabled by 'fetch')
 
 #   Failed test 'last hex modifier overrides previous hex modifiers'
 #   at t/modifiers.t line 40.
@@ -212,8 +209,6 @@ is length($x), $n + 2,
 
 ##### #xxxx still need to fix line counts
 #### XXXXX put modifiers into more than fetch and bind_del??
-#exit; ######
-#print "x=$x\n"; exit;   ##################
 
 remove_td($td, $bgroup);
 }

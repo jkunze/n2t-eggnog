@@ -50,6 +50,7 @@ $td or			# if error
 	exit 1;
 my ($td2, $cmd2);
 ($td2, $cmd2, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "nog";
+
 # This script calls egg, and we want the latest -Mblib and cleanest, eg,
 $hgbase = "--home $buildout_root";	# and we know better in this case
 $bgroup and
@@ -122,9 +123,6 @@ $x = `$webcl $pps "$ssvbase_u/a/pestx/b? --verbose --version"`;
 like $x, qr{HTTP/\S+\s+401\s+Authorization.*version:}si,
 	'verbose version collected from web server environment';
 
-#$x = apachectl('graceful-stop')	and print("$x\n");
-#exit;	#########
-
 my $v = `$cmd --verbose --version`;
 $v =~ s/^ ?[^ ].*\n*//gm;	# delete all but lines indented with 2 spaces
 
@@ -136,7 +134,7 @@ is $x, $v,
 	'environment behind web matches command line environment';
 
 # This test sets up the DB_PRIVATE test.
-# XXX shouldn't this mkbinder be done in minder_builder_more?
+# yyy shouldn't this mkbinder be done in minder_builder_more?
 $x = `$cmd -p $td mkbinder --verbose pest`;
 $x = `$cmd -d $td/pest --verbose i.set a b`;
 shellst_is 0, $x, "non-web-mode mkbinder and binding succeeds";
@@ -151,6 +149,9 @@ my $errs = 0;
 $msg and
 	$errs++,
 	print("Problem removing $backdir: $msg");
+
+if ($indb) {
+
 mkdir($backdir) or
 	$errs++,
 	print("Could not create dir $backdir.\n");
@@ -160,6 +161,8 @@ $dbmsg and
 	print($dbmsg);
 ok $errs == 0,
 	"DB_PRIVATE flag off (resolver sensitive to target changes)";
+
+} # $indb
 
 $x = `$webcl "$ssvbase_u/a/pest/b? rmbinder pest"`;
 like $x, qr{HTTP/\S+\s+401\s+unauthorized.*ation failed}si,
@@ -184,6 +187,8 @@ $y and print "error: $y\n";
 like $x, qr{BEGIN.*END SUCCESS}s,
 	'transaction log working';
 
+##########
+#remove_td($td, $bgroup); remove_td($td2, $bgroup);
 #$x = apachectl('graceful-stop')	and print("$x\n");
 #exit;	#########
 
@@ -195,16 +200,19 @@ $x = `$webcl "$ssvbase_u/a/pest/b? --verbose i.fetch moo"`;
 like $x, qr{HTTP/\S+\s+200\s+OK.*remote user: \?.*moo:\s*cow}si,
 	'open populator "pest" returns that element for still unknown user';
 
+if ($indb) {		# rlog being phased out, esp for exdb case
 $y = flvl("< $ntd/pest/egg.rlog", $x);
 like $x, qr{^\? }m,
 	'anonymous user logged as "?"';
+}
 
+# xxxxxx add indb arg as for test_binders?
 test_minters $cfgdir, 'pestx', 'pesty', @fqshoulders;
 
 # xxx should pull this list of binders from FS via "find"
 my @binders = ( qw(pestx pesty) );
 
-test_binders $cfgdir, $ntd, @binders;
+test_binders $cfgdir, $ntd, $indb, @binders;
 
 # xxx document that doi minters are put under ark for convenience of the
 #     check digit algorithm
@@ -213,6 +221,7 @@ test_binders $cfgdir, $ntd, @binders;
 #      reports and possibly suggests alternates
 
 #$x = apachectl('graceful-stop')	and print("$x\n");
+#say "xxxxxxxxxx premature exit";
 #exit;	#########
 
 $pps = setpps get_user_pwd("pesty", "testuser1", $cfgdir), "joey";

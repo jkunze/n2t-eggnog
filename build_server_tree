@@ -507,6 +507,18 @@ done
 	exit 1
 }
 
+egg_dbie=
+[[ "${EGG_DBIE:-}" ]] && {
+	egg_dbie="$EGG_DBIE"
+	[[ "$egg_dbie" =~ e ]] && {			# if exdb case
+		mg status > /dev/null || {		# yyy assume mongo
+			echo "error: database daemon not running;" \
+				"did you do \"mg start\"?" 1>&2
+			exit 1;				# bail out
+		}
+	}
+}
+
 #export LC_ALL=C				# to deal with unicode errors
 
 out_of_date_msg=$( is_build_out_of_date $buildout_root )
@@ -562,8 +574,10 @@ function makebinder {			# pass binder name as only arg
 	}
 	# We always use -Mblib here because we may need the latest and
 	# greatest egg to complete the transition we're working towards.
+	# yyy is it safe to use -Mblib always?
 	#
-	(cd $src_top; perl -Mblib egg -p $binders_root mkbinder $bname) || {
+	(cd $src_top; perl -Mblib egg --force -p $binders_root brm $bname; \
+			perl -Mblib egg -p $binders_root mkbinder $bname) || {
 		echo -n "(Problem creating binder \"$bname\".) "
 		return 1
 	}
@@ -879,8 +893,14 @@ EOT
 	chmod 755 $inflect
 }
 
-# XXX consider putting tlog and pfxf stuff into config file under $home
-home="--home $srvref_root"
+# yyy consider putting tlog and pfxf stuff into config file under --home
+homedb="--home $srvref_root"
+#[[ "${EGG_DBIE:-}" ]] && {
+#	homedb+=" --dbie '$EGG_DBIE'"
+#}
+[[ "$egg_dbie" ]] && {
+	homedb+=" --dbie '$egg_dbie'"
+}
 
 ## Need this to use transaction log invoked via RewriteRule.
 ##
@@ -1403,6 +1423,14 @@ function create_cgi {
 	PATH=$egpath
 	export PERL5LIB PATH
 
+	MG_CSTRING_HOSTS="$MG_CSTRING_HOSTS"	# exdb mongo database
+	MG_REPSETOPTS="$MG_REPSETOPTS"
+	MG_REPSETNAME="$MG_REPSETNAME"
+	export MG_CSTRING_HOSTS MG_REPSETOPTS MG_REPSETNAME
+
+	EGNAPA_HOST_CLASS="$EGNAPA_HOST_CLASS"	# to form exdb dbname
+	export EGNAPA_HOST_CLASS
+
 	cd $scripts_wd
 	exec $perlargs $which \$*
 
@@ -1495,7 +1523,8 @@ function create_rmap {
 	local rmap="htdocs/a/$populator/rmap_$rmp"
 
 	#cmd+=" --rrm $home $tlog $pfxf -d $bdrsref_root/$binder"
-	cmd+=" --rrm $home -d $bdrsref_root/$binder"
+	# Resolvers are invoked with some of these arguments.
+	cmd+=" --rrm $homedb -d $bdrsref_root/$binder"
 
 	[[ $rlist ]] &&			# caller wanted list of resolvers
 		cmd+=" --resolverlist=\"$rlist\""	# qualify command
@@ -1511,14 +1540,22 @@ function create_rmap {
 		#
 		# Because it is usually started from Apache via a RewriteMap
 		# directive, it doesn't inherit environment variables needed
-		# to run, so we set these variables explicitly.  It also
-		# doesn't leave any trace of a diagnostic if it doesn't
-		# start up correctly, so we set some EGNAPA environment
-		# variables so that rrminfo() can do a health check.
-		#
+		# to run, so we set these variables explicitly.  It cannot
+		# leave any diagnostic if it doesn't start up correctly, but
+		# some EGNAPA_* environment variables are set so that
+		# rrminfo() can reveal some status info.
+
 		PERL5LIB=$PERL5LIB
 		PATH=$egpath
 		export PERL5LIB PATH
+
+		MG_CSTRING_HOSTS="$MG_CSTRING_HOSTS"	# exdb mongo database
+		MG_REPSETOPTS="$MG_REPSETOPTS"
+		MG_REPSETNAME="$MG_REPSETNAME"
+		export MG_CSTRING_HOSTS MG_REPSETOPTS MG_REPSETNAME
+
+		EGNAPA_HOST_CLASS="$EGNAPA_HOST_CLASS"	# to form exdb dbname
+		export EGNAPA_HOST_CLASS
 
 		cd $scripts_wd
 
@@ -1526,6 +1563,8 @@ function create_rmap {
 		EGNAPA_SRVREF_ROOT=$EGNAPA_SRVREF_ROOT	# for rrminfo
 		export EGNAPA_RMAP EGNAPA_SRVREF_ROOT
 		
+		# Long-running resolver process started here, with arguments
+		# defined inside $cmd string, eg, --home.
 		exec $cmd
 
 		echo "Failed \"cd $scripts_wd ; exec $cmd\" with status \$?"
@@ -1687,18 +1726,18 @@ RewriteRule ^(.*)$ - [env=proto:https]
 
 # Binders are invoked with this rule.
 RewriteRule ^(/a/([^/]+)/b)\$ \\
-  "$document_root\$1? --api $home --all -d $bdrsref_root/\$2 --ua %{QUERY_STRING}" [L]
+  "$document_root\$1? --api $homedb --all -d $bdrsref_root/\$2 --ua %{QUERY_STRING}" [L]
 #  "$document_root\$1? --api $home $tlog --all -d $bdrsref_root/\$2 --ua %{QUERY_STRING}" [L]
 
 # Minters are invoked with this rule.
 RewriteRule ^(/a/([^/]+)/m)/(.+)\$ \\
-  "$document_root\$1? --api $home -d $mtrsref_root/\$2/\$3 --ua %{QUERY_STRING}" [L]
+  "$document_root\$1? --api $homedb -d $mtrsref_root/\$2/\$3 --ua %{QUERY_STRING}" [L]
 #  "$document_root\$1? --api $home $tlog -d $mtrsref_root/\$2/\$3 --ua %{QUERY_STRING}" [L]
-# yyy minters don't currently use $home
+# yyy minters don't currently use $homedb
 
 # This will be an edge case.
 RewriteRule ^(/a/[^/]+/m/*)\$ \\
-  "$document_root\$1? --api $home -p $mtrsref_root --ua %{QUERY_STRING}" [L]
+  "$document_root\$1? --api $homedb -p $mtrsref_root --ua %{QUERY_STRING}" [L]
 #  "$document_root\$1? --api $home $tlog -p $mtrsref_root --ua %{QUERY_STRING}" [L]
 
 ## Edge case rules to send to HTTP for extras or a resolver (e/... or r/...).
