@@ -66,7 +66,7 @@ if ($ENV{EGNAPA_HOST} =~ /n2t-prd-2a\./) {
 	# Some kludgy tests based on what is hopefully permanent data.
 	# NB: these test read the redirect Location but don't follow it.
 
-	print "--- BEGIN tests potentially affected by volatile data\n";
+	print "--- BEGIN production-data tests (potentially volatile)\n";
 
 	$x = `wegn -v locate "ark:/87924/r4639m84b?embed=true"`;
 	like $x, qr{^Location: https://repository.duke.edu/id/ark:/87924/r4639m84b\?embed=true}m,
@@ -104,10 +104,10 @@ if ($ENV{EGNAPA_HOST} =~ /n2t-prd-2a\./) {
 	like $x, qr{^Location: https://test.perio.do.*}m,
 		"Perio.do target redirect";
 
-	print "--- END tests potentially affected by volatile data\n";
+	print "--- END production-data tests (potentially volatile)\n";
 }
 else {
-	say "--- SKIPPED production-only tests";
+	say "--- SKIPPED tests requiring production data";
 }
 
 #$x = `crontab -l`;

@@ -153,6 +153,7 @@ DESCRIPTION
   specific hostname, Apache server directory, or SSL certificate (but only
   specify a chainfile if there is one).
 
+xxx update encouraging reliance on warts/env.sh settings
     EGNAPA_TOP              main server software engine eg, /etc/apache
     EGNAPA_HOST             eg, n2t.net
     EGNAPA_SSL_KEYFILE      eg, ~sam/ssl/2019-07-19/fran.key
@@ -283,22 +284,28 @@ buildout_root=$src_top/td_egnapa
 	buildout_root=$src_top/td_egnapa_public
 
 # Paths for all files that this script creates descend from $buildout_root.
-# It should never alter anything in $EGNAPA_TOP.
+#
+# The script should never alter anything in $EGNAPA_TOP.
 # This works fine for testing purposes, but when --public is specified,
 # files that we create will later be moved (not by this script) under $aptop,
 # and in order for them to work there, the paths that we insert into those
 # files are set to reference files under $aptop (in advance of the move).
 # Variable names of the form *ref_root are intended to work correctly as
 # references in the ordinary and the --public cases.
-#
+
 srvref_root=$buildout_root
 [[ $pubflag ]] &&
 	srvref_root=$aptop
 
-ssl_root=$buildout_root/ssl
-sslref_root=$srvref_root/ssl
+# ddddd sslref_root should no longer be needed, right?
+#ssl_root=$buildout_root/ssl
+# ddddd sslref_root does appear to host pwdfiles though, so we may need a
+#       pwdfileref_root var (set to conf/
+#sslref_root=$srvref_root/ssl
 
-# xxx should be .../dvN?
+# yyy should be .../dvN?
+pwdfile_root=$buildout_root/conf
+pwdfref_root=$srvref_root/conf
 binders_root=$buildout_root/binders
 bdrsref_root=$srvref_root/binders
 minters_root=$buildout_root/minters
@@ -313,12 +320,28 @@ rmap_root=$srvref_root/htdocs/a		# more paths referenced
 
 template_root=$src_top/t/$cfgdir	# paths to build input files
 
-sslcert=$ssl_root/server.crt
-sslcertkey=$ssl_root/server.key
-sslchain=
-sslcertref=$sslref_root/server.crt
-sslcertkeyref=$sslref_root/server.key
-sslchainref=
+# ddddd  once these locations aren't used any longer for self-signed
+#         certs, now where do generated password files go?  A: conf/
+# ddddd set sslcert et al to EGNAPA_SSL_CERTFILE et al
+#    ?? what about ...ref vars?
+sslcert=$EGNAPA_SSL_CERTFILE
+sslcertkey=$EGNAPA_SSL_KEYFILE
+sslchain=$EGNAPA_SSL_CHAINFILE
+
+#sslcertref=$sslref_root/server.crt
+#sslcertkeyref=$sslref_root/server.key
+#sslchainref=
+#cp -p $EGNAPA_SSL_CERTFILE $sslcert
+#cp -p $EGNAPA_SSL_KEYFILE $sslcertkey
+#[[ $EGNAPA_SSL_CHAINFILE ]] && {	# if there's a chain file
+#	cp -p $EGNAPA_SSL_CERTFILE $EGNAPA_SSL_CHAINFILE
+
+#sslcert=$ssl_root/server.crt
+#sslcertkey=$ssl_root/server.key
+#sslchain=
+#sslcertref=$sslref_root/server.crt
+#sslcertkeyref=$sslref_root/server.key
+#sslchainref=
 
 rotatelogs="$aptop/bin/rotatelogs -l"
 weekly=604800				# number of seconds in a week
@@ -393,7 +416,8 @@ function which_pswdfile {
 	return 1
 }
 
-# xxx properly add pwdfiles to checkfiles
+# yyy properly add pwdfiles to checkfiles
+# yyy is $bst_root/pswdfile even used any more?
 
 checkfiles=(
 	htdocs/a conf/$hconf $sslcert
@@ -692,6 +716,11 @@ function make_minders {
 	exit 0
 }
 
+# yyy probably shouldn't do this in case of 'cert' command
+rebuild_prefixes=
+pfx save $buildout_root	||	# tuck away prefixes stuff for re-use
+	rebuild_prefixes=1
+
 # If we get here, $cmd is "make", "build", or "cert".
 # XXX this logic isn't right if "build" is a forced make
 #
@@ -714,7 +743,10 @@ then
 			msg="Warning: error shutting down server."
 		echo "   $msg"
 	}
-	rm -fr $buildout_root	# !!!!
+
+	# ============== Destroy server !!!! ================
+	rm -fr $buildout_root
+
 	#echo Removing config and prefix defaults affecting your generic use.
 	#rm -fr $HOME/.eggnog/{eggnog_conf_default,prefixes.yaml}
 	## yyy kludge, only affects user installing new server
@@ -723,9 +755,8 @@ fi
 
 echo Building skeleton server structure extensions.
 
-
 msg=$( mkdir -p 2>&1 $buildout_root \
-	$buildout_root/{htdocs,conf,cgi-bin,logs,ssl} \
+	$buildout_root/{htdocs,conf,cgi-bin,logs} \
 	$buildout_root/htdocs/{a,e,r,e/pop,e/{images,x,css}} )
 [[ $msg != '' ]] && {
 	echo "Some structures already existed (ok):"
@@ -738,8 +769,20 @@ msg=$( mkdir -p 2>&1 $buildout_root \
 # xxx bottom line: need SURE way to update prefixes on running prd system
 #     as not even n2t rollout will catch latest updates
 
-pfx onboard || exit
-pfx build || exit
+# xxx much more efficient (instead of rebuilding prefixes all the time),
+#     would be to save a per-system prefix build that senses when to rebuild,
+#     eg, changes in pfx or Resolve.pm or ??
+#    where to cache? in ~/pfx_harvest/tmpxyz?
+
+#pfx onboard || exit
+#pfx build || exit
+pfx restore $buildout_root ||		# restore saved prefixes
+	rebuild_prefixes=1
+pfx onboard &&				# which might still need rebuilding
+	rebuild_prefixes=1
+[[ "$rebuild_prefixes" ]] && {
+	pfx build
+}
 
 # The next two items help reduce useless noise in error_log.
 #
@@ -917,81 +960,152 @@ homedb="--home $srvref_root"
 #
 hg identify $src_top | sed 's/ .*//' > $buildout_root/logs/dvcsid
 
-# IAS legend for ssl/ directory
+# Possible legend for filename suffixes in an ssl/ directory.
 # .crt – The actual certificate
 # .key – The key generated when creating the certificate request
-# .csr – The certificate request sent to NOC to returned a trusted signed certificate
+# .csr – The certificate request sent to obtain a trusted signed certificate
 # .int-root – The Intermediate Root authority certificate
 
 # Now make sure there's a certificate (to support ssl/https).  You can
 # test this code with, eg, previously created self-signed certs, as in
 #
-# x=$sv/apache2/ssl
+# x=$sv/apache2/conf
 # export EGNAPA_SSL_CERTFILE=$x/server.crt EGNAPA_SSL_KEYFILE=$x/server.key
-#
-if [[ $EGNAPA_SSL_CERTFILE ]]		# if there is a certificate
-then
-	[[ -f $EGNAPA_SSL_CERTFILE ]] || {
-		echo "Error: certificate file (EGNAPA_SSL_CERTFILE:" \
-			"$EGNAPA_SSL_CERTFILE) doesn't exist"
-		exit 1
-	}
-	[[ $EGNAPA_SSL_KEYFILE ]] || {
-		echo Error: either none or both of these environment \
-			variables should be set: EGNAPA_SSL_{CERT,KEY}FILE
-		exit 1
-	}
-	[[ -f $EGNAPA_SSL_KEYFILE ]] || {
-		echo "Error: key file (EGNAPA_SSL_KEYFILE:" \
-			"$EGNAPA_SSL_KEYFILE) doesn't exist"
-		exit 1
-	}
 
-	# By copying these source files into the built server, our service is
-	# safely isolated if someone refreshes/renews the cert source files.
-	#
-	cp -p $EGNAPA_SSL_CERTFILE $sslcert
-	cp -p $EGNAPA_SSL_KEYFILE $sslcertkey
-	echo "Using cert file $sslcert."
+err=			# 3 environment variables should be non-empty
+[[ "$EGNAPA_SSL_CERTFILE" ]]	|| err+=' EGNAPA_SSL_CERTFILE'
+[[ "$EGNAPA_SSL_KEYFILE" ]]	|| err+=' EGNAPA_SSL_KEYFILE'
+[[ "$EGNAPA_SSL_CHAINFILE" ]]	|| err+=' EGNAPA_SSL_CHAINFILE'
+[[ "$err" ]] && {
+	echo "Error: one or more certificate file variables -$err -" \
+		"aren't defined" 1>&2
+	exit 1
+}
 
-	[[ $EGNAPA_SSL_CHAINFILE ]] && {	# if there's a chain file
-		[[ -f $EGNAPA_SSL_CHAINFILE ]] || {
-			echo "Error: chain file (EGNAPA_SSL_CHAINFILE:" \
-				"$EGNAPA_SSL_CHAINFILE) doesn't exist" ]]
-			exit 1
-		}
-		sslchain=$ssl_root/server.chain
-		sslchainref=$sslref_root/server.chain
-		cp -p $EGNAPA_SSL_CHAINFILE $sslchain
-		chmod 644 $sslchain
-	}
+let ncertfiles=0
+[[ -f "$EGNAPA_SSL_CERTFILE" ]]		&&  let ncertfiles++
+[[ -f "$EGNAPA_SSL_KEYFILE" ]]		&&  let ncertfiles++
+[[ -f "$EGNAPA_SSL_CHAINFILE" ]]	&&  let ncertfiles++
+[[ $ncertfiles -eq 0 || $ncertfiles -eq 3 ]] || {	# eg, one file exists
+							# but not the other two
+	echo "Error: either none or all of these certificate files must exist:
+    $EGNAPA_SSL_CERTFILE
+    $EGNAPA_SSL_KEYFILE
+    $EGNAPA_SSL_CHAINFILE" 1>&2
+	exit 1
+}
 
-elif [[ ! -f $sslcert ]]	# if no self-signed exists, create it
-then
+[[ $ncertfiles -eq 0 ]] && {		# when no cert files exist ...
 
+	# If we get here, we will generate a self-signed certificate.
 	# This follows instructions from onlamp.com/onlamp/2008/03/
 	#    04/step-by-step-configuring-ssl-under-apache.html
-	#
+
 	days=7300				# 20 years
-	echo Creating self-signed $sslcert.
+	echo Creating self-signed $EGNAPA_SSL_CERTFILE.
 
 	# Hmm: openssl doesn't seem to return an error status; maybe one day?
-	#
+
 	#openssl req -new -x509 -days $days -sha1 -newkey rsa:2048 \
 	err=$( openssl req -new -x509 -days $days -sha256 -newkey rsa:2048 \
-		-nodes -keyout $sslcertkey -out $sslcert \
-		-subj "/O=Company/OU=Department/CN=$host" 2>&1 ) ||
+		-keyout $EGNAPA_SSL_KEYFILE -out $EGNAPA_SSL_CERTFILE \
+		-nodes -subj "/O=Company/OU=Department/CN=$host" 2>&1 ) ||
 			echo Error: openssl failed: "$err"
+
+	# For self-signed, we repurpose the cert for the intermediate file.
+	cp -p $EGNAPA_SSL_CERTFILE $EGNAPA_SSL_CHAINFILE
 
 	# To get a certificate signed by a CA, you first need to create
 	# a keypair and a certificate request (note no -x509):
 	#openssl req -new -sha1 -newkey rsa:1024 -nodes \ 
 	#	-keyout conf/server.key -out $host.csr \ 
 	#	-subj "/O=Company/OU=Department/CN=$host"
-fi
+}
+
+## By copying these source files into the built server, our service is
+## safely isolated if someone refreshes/renews the cert source files.
+#
+#cp -p $EGNAPA_SSL_CERTFILE $sslcert
+#cp -p $EGNAPA_SSL_KEYFILE $sslcertkey
+#echo "Using cert file $sslcert."
+#
+#[ XXXXX
+#[[ $EGNAPA_SSL_CHAINFILE ]] && {	# if there's a chain file
+#	[[ -f $EGNAPA_SSL_CHAINFILE ]] || {
+#		echo "Error: chain file (EGNAPA_SSL_CHAINFILE:" \
+#			"$EGNAPA_SSL_CHAINFILE) doesn't exist" ]]
+#		exit 1
+#	}
+#	sslchain=$ssl_root/server.chain
+#	sslchainref=$sslref_root/server.chain
+#	cp -p $EGNAPA_SSL_CHAINFILE $sslchain
+#	chmod 644 $sslchain
+#}
+#] XXXXX
+
+# if [[ $EGNAPA_SSL_CERTFILE ]]		# if there is a certificate
+# then
+# 	[[ -f $EGNAPA_SSL_CERTFILE ]] || {
+# 		echo "Error: certificate file (EGNAPA_SSL_CERTFILE:" \
+# 			"$EGNAPA_SSL_CERTFILE) doesn't exist"
+# 		exit 1
+# 	}
+# 	[[ $EGNAPA_SSL_KEYFILE ]] || {
+# 		echo Error: either none or both of these environment \
+# 			variables should be set: EGNAPA_SSL_{CERT,KEY}FILE
+# 		exit 1
+# 	}
+# 	[[ -f $EGNAPA_SSL_KEYFILE ]] || {
+# 		echo "Error: key file (EGNAPA_SSL_KEYFILE:" \
+# 			"$EGNAPA_SSL_KEYFILE) doesn't exist"
+# 		exit 1
+# 	}
+# 
+# 	# By copying these source files into the built server, our service is
+# 	# safely isolated if someone refreshes/renews the cert source files.
+# 	#
+# 	cp -p $EGNAPA_SSL_CERTFILE $sslcert
+# 	cp -p $EGNAPA_SSL_KEYFILE $sslcertkey
+# 	echo "Using cert file $sslcert."
+# 
+# 	[[ $EGNAPA_SSL_CHAINFILE ]] && {	# if there's a chain file
+# 		[[ -f $EGNAPA_SSL_CHAINFILE ]] || {
+# 			echo "Error: chain file (EGNAPA_SSL_CHAINFILE:" \
+# 				"$EGNAPA_SSL_CHAINFILE) doesn't exist" ]]
+# 			exit 1
+# 		}
+# 		sslchain=$ssl_root/server.chain
+# 		sslchainref=$sslref_root/server.chain
+# 		cp -p $EGNAPA_SSL_CHAINFILE $sslchain
+# 		chmod 644 $sslchain
+# 	}
+# 
+# elif [[ ! -f $sslcert ]]	# if no self-signed exists, create it
+# then
+# 
+# 	# This follows instructions from onlamp.com/onlamp/2008/03/
+# 	#    04/step-by-step-configuring-ssl-under-apache.html
+# 	#
+# 	days=7300				# 20 years
+# 	echo Creating self-signed $sslcert.
+# 
+# 	# Hmm: openssl doesn't seem to return an error status; maybe one day?
+# 	#
+# 	#openssl req -new -x509 -days $days -sha1 -newkey rsa:2048 \
+# 	err=$( openssl req -new -x509 -days $days -sha256 -newkey rsa:2048 \
+# 		-nodes -keyout $sslcertkey -out $sslcert \
+# 		-subj "/O=Company/OU=Department/CN=$host" 2>&1 ) ||
+# 			echo Error: openssl failed: "$err"
+# 
+# 	# To get a certificate signed by a CA, you first need to create
+# 	# a keypair and a certificate request (note no -x509):
+# 	#openssl req -new -sha1 -newkey rsa:1024 -nodes \ 
+# 	#	-keyout conf/server.key -out $host.csr \ 
+# 	#	-subj "/O=Company/OU=Department/CN=$host"
+# fi
 
 chmod 600 $sslcertkey		# should be root-readable only
-chmod 644 $sslcert		# must be readable to Apache user
+chmod 644 $sslcert $sslchain	# must be readable to Apache user
 
 # Enabling or disabling cert checking actually done at the client, but we
 # announce whether it should or shouldn't be in effect.  A client will
@@ -1001,11 +1115,11 @@ i=$( openssl x509 -issuer  -noout -in $sslcert )
 s=$( openssl x509 -subject -noout -in $sslcert )
 if [[ "${i#issuer=}" == "${s#subject=}" ]]
 then
-	echo "  Certificate is self-signed;" \
-		DISABLE client-side cert checking.
+	echo "Certificate is self-signed;" \
+		ok to DISABLE client-side cert checking.
 else
-	echo "  Certificate is NOT self-signed;" \
-		you may enable client-side cert checking.
+	echo "Certificate is NOT self-signed;" \
+		ok to enable client-side cert checking.
 fi
 # notAfter=Jan  5 23:59:59 2020 GMT
 enddate=$( openssl x509 -enddate -noout -in $sslcert |
@@ -1014,16 +1128,22 @@ echo "  EXPIRES $enddate"
 
 # Now that the files are created, create a text block that we'll use for
 # referencing them from the Apache config files.
-#
-sslcertblock="
-SSLCertificateFile \"$sslcertref\"
-SSLCertificateKeyFile \"$sslcertkeyref\""
 
-[[ $sslchainref ]] && {
-	sslcertblock+="
-SSLCertificateChainFile \"$sslchainref\""
-	echo Adding chainfile directive.
-}
+sslcertblock="
+SSLCertificateFile \"$sslcert\"
+SSLCertificateKeyFile \"$sslcertkey\"
+SSLCertificateChainFile \"$sslchain\""
+
+#SSLCertificateFile \"$sslcertref\"
+#SSLCertificateKeyFile \"$sslcertkeyref\""
+#SSLCertificateChainFile \"$sslchainref\""
+
+#[[ $sslchainref ]] && {
+#	sslcertblock+="
+#SSLCertificateChainFile \"$sslchainref\""
+#	echo Adding chainfile directive.
+#}
+
 # You can test cert installation with https://www.ssllabs.com/ssltest/ .
 
 [[ $cmd == cert ]] &&		# if $cmd was "cert", we can exit early
@@ -1082,7 +1202,7 @@ function build_passwd {
 	# pass 1 to initialize the password files that need to be built
 	n=${#flp[*]}
 	for (( i=0; i < $n; i+=3 )) do
-		pfile=$ssl_root/${flp[ $i ]}	# a pwdfile
+		pfile=$pwdfile_root/${flp[ $i ]}	# a pwdfile
 		[[ ! -e $pfile ]] && {
 			echo -n "${flp[$i]} "
 			$bc -b -c $pfile dummy dummy > /dev/null 2>&1
@@ -1094,8 +1214,8 @@ function build_passwd {
 	# pass 2 to actually set the passwords
 	n=${#flp[*]}
 	for (( i=0; i < $n; i+=3 )) do
-		pfile=$ssl_root/${flp[ $i ]}
-		$bc -b $pfile ${flp[ $i+1 ]} "${flp[ $i+2 ]}"
+		pfile=$pwdfile_root/${flp[ $i ]}
+		$bc -b $pfile ${flp[ $i+1 ]} "${flp[ $i+2 ]}" > /dev/null 2>&1
 	done
 	return 0
 }
@@ -1356,12 +1476,12 @@ function activate_popbinder {
 populator=$1
 binder=${2:-$populator}
 authnblock=
-[[ -e $ssl_root/pwdfile_$populator ]] &&
+[[ -e $pwdfile_root/pwdfile_$populator ]] &&
 	authnblock="
     AuthType Basic
     AuthName $populator
     AuthBasicProvider file
-    AuthUserFile $sslref_root/pwdfile_$populator
+    AuthUserFile $pwdfref_root/pwdfile_$populator
     Require valid-user
 "
 

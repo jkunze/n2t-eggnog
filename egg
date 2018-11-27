@@ -5,6 +5,8 @@
 # errcount > 0 -   egg_dbcmds.t egg_list.t egg_incr.t
 # errcount > 0 - egn_service_n2t.t
 
+# xxx To DO remove --storage wiredtiger option from admegn (now its default)
+# xxx look into rlimit advice
 # xxx TO DO in separate commit: hg rename lib/EggNog/{RUU,Uinfo}.pm and
 #       everywhere do: s/ruu/uinfo/g    and    s/RUU/UINFO/g
 # this will clear the way for RUU to become something else

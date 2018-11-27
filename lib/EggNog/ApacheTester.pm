@@ -115,6 +115,9 @@ sub prep_server { my( $cfgdir )=@_;
 			EGNAPA_TOP EGNAPA_HOST EGNAPA_BUILDOUT_ROOT
 			EGNAPA_BINDERS_ROOT EGNAPA_MINTERS_ROOT
 			EGNAPA_SRVREF_ROOT
+			EGNAPA_SSL_CERTFILE
+			EGNAPA_SSL_KEYFILE
+			EGNAPA_SSL_CHAINFILE
 			) ) {
 		$ENV{$v} or
 			push @server_errs, "$v not defined";
@@ -251,8 +254,11 @@ sub apachectl { my( $action, $sroot, $force )=@_;
 	# on and off can seem to clear things up.
 
 	shellst_is(0, $out, "apachectl $action ($srvport)");
-	$out ne '' || ($? >> 8) != 0 and
-		return "apachectl error: $out (result of $cmd)";
+	if ($out ne '' || ($? >> 8) != 0) {
+		my $msg = "apachectl error: $out (result of $cmd)";
+		#print STDERR $msg;	# as test harness too discreet?
+		return $msg;
+	}
 
 	$action eq 'graceful-stop' || $action eq 'stop' and
 		# diag("stopping server $sroot")
