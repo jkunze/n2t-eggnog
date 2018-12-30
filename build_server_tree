@@ -257,7 +257,7 @@ function is_build_out_of_date {
 }
 
 [[ -f Makefile.PL ]] || {
-	echo "Error: should be called from the eggnog module source directory" 1>&2
+	echo "Error: should be called from eggnog module source directory" 1>&2
 	usage 1>&2
 	exit 1
 }
@@ -560,8 +560,13 @@ then
 	# yyy not using $chkr
 	if [[ $? -ne 0 ]]
 	then
-		out_of_date_msg="Server needs to be rebuilt, as one "
-		out_of_date_msg+="or more checkfiles have changed: $chkr"
+		out_of_date_msg="Server needs to be rebuilt, as these "
+		out_of_date_msg+="checkfiles are missing:"
+		for i in ${checkfiles[*]}
+		do
+			[[ -e "$checkdir/$i" ]] ||
+				out_of_date_msg+=$'\n'"    $i"
+		done
 	#elif [[ "$prefixes_need_rebuilding" ]]
 	#then
 	#	echo "Prefixes file, not server itself, needs rebuilding."
@@ -573,7 +578,7 @@ fi
 
 [[ $cmd == check ]] && {	# handle the "check" sub-command and return
 	[[ $out_of_date_msg ]] && {
-		echo $out_of_date_msg
+		echo "$out_of_date_msg"
 		exit 1
 	}
 	[[ "$prefixes_need_rebuilding" ]] && {
@@ -1195,7 +1200,9 @@ function build_passwd {
 		return 0		# don't create a password file
 
 	local n i pfile bc flp
-	bc=$EGNAPA_TOP/bin/htpasswd
+	bc=$EGNAPA_TOP/bin/htpasswd	# xxx remove after linux2 conversion
+	[[ -e $bc ]] ||			# xxx remove after linux2 conversion
+		bc=htpasswd		# eg, in /usr/bin
 	flp=( $pwdfile )		# expand to file/login/password triples
 
 	echo -n "Making "
@@ -1306,6 +1313,11 @@ build_passwd || {
 
 echo Deriving basic server config info.
 
+sysap=/etc/httpd		# system Apache under AWS linux2
+ln -s $sysap/conf.modules.d conf/conf.modules.d		# load modules,
+	# which we keep veratim, eg, /etc/httpd/conf.modules.d/00-base.conf;
+	# later we'll override settings selectively, eg, from 00-ssl.conf
+
 hostport=$EGNAPA_HOST:$port_hpr
 shostport=$EGNAPA_HOST:$port_hprs
 
@@ -1325,6 +1337,9 @@ cat << EOT > conf/$hconf
 SetEnv PERL5LIB $PERL5LIB
 ServerRoot "$EGNAPA_TOP"
 
+# see Apache 2.4 /etc/httpd/conf.modules.d/00-mpm.conf
+LoadModule mpm_prefork_module modules/mod_mpm_prefork.so
+
 Listen $port_hpr
 Listen $port_hprs
 
@@ -1333,12 +1348,15 @@ Listen $port_hprs
 #
 PidFile $srvref_root/logs/httpd.pid
 
-<IfModule !mpm_netware_module>
-<IfModule !mpm_winnt_module>
-    User ${User:=daemon}
-    Group ${Group:=daemon}
-</IfModule> 
-</IfModule>
+User ${User:=daemon}
+Group ${Group:=daemon}
+
+#<IfModule !mpm_netware_module>
+#<IfModule !mpm_winnt_module>
+#    User ${User:=daemon}
+#    Group ${Group:=daemon}
+#</IfModule> 
+#</IfModule>
 
 ServerName $hostport
 DocumentRoot "$document_root"
@@ -1435,6 +1453,17 @@ DefaultType text/plain
     AddType application/x-x509-ca-cert .crt
     AddType application/x-pkcs7-crl .crl
 </IfModule>
+
+
+
+
+# XXX start linux2 ssl
+#  bring in /etc/httpd/conf.d/ssl.conf without comments and change
+# XXX end linux2 ssl
+
+
+
+
 
 <IfModule ssl_module>
 SSLRandomSeed startup builtin
