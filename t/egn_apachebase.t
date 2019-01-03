@@ -35,7 +35,6 @@ SKIP: {
 # We don't bother checking the return as it would usually complain.
 #
 apachectl('graceful-stop');
-
 # Note: $td and $td2 are barely used here.
 # Instead we use non-temporary dirs $ntd and $ntd2.
 # XXX change t/apachebase.t to use these type of dirs
@@ -75,6 +74,9 @@ my ($x, $y);
 $x = apachectl('start');
 skip "failed to start apache ($x)"
 	if $x;
+
+# HTTP Authorization challenge that should match either Apache 2.2 or 2.4.
+my $authz_chall = '401 \w*authoriz';
 
 $x = `$webcl "$srvbase_u"`;
 like $x, qr{HTTP/\S+\s+200\s+OK.*server home page}si,
@@ -120,8 +122,13 @@ $pps = setpps get_user_pwd "pestx", "testuser1", $cfgdir;
 #exit;	#########
 
 $x = `$webcl $pps "$ssvbase_u/a/pestx/b? --verbose --version"`;
-like $x, qr{HTTP/\S+\s+401\s+Authorization.*version:}si,
+#like $x, qr{HTTP/\S+\s+401\s+Authorization.*version:}si,
+like $x, qr{HTTP/\S+\s+$authz_chall.*version:}si,
 	'verbose version collected from web server environment';
+
+#say "xxx x=$x";
+#$x = apachectl('graceful-stop')	and print("$x\n");
+#exit;	#########
 
 my $v = `$cmd --verbose --version`;
 $v =~ s/^ ?[^ ].*\n*//gm;	# delete all but lines indented with 2 spaces
@@ -227,24 +234,24 @@ test_binders $cfgdir, $ntd, $indb, @binders;
 $pps = setpps get_user_pwd("pesty", "testuser1", $cfgdir), "joey";
 
 $x = `$webcl $pps "$ssvbase_u/a/pesty/b? --verbose i.set hello there"`;
-like $x, qr{Authorization Required.*remote user:.*joey}si,
+like $x, qr{$authz_chall.*remote user:.*joey}si,
 	'user string found in Acting-For header';
 
 my $user = "http://n2t.net/ark:/99166/b4cd3";
 $pps = setpps get_user_pwd("pesty", "testuser1", $cfgdir), $user;
 
 $x = `$webcl $pps "$ssvbase_u/a/pesty/b? --verbose i.set hello th+ere"`;
-like $x, qr{Authorization Required.*remote user:.*&P/b4cd3}si,
+like $x, qr{$authz_chall.*remote user:.*&P/b4cd3}si,
 	"Acting-For user ($user) gets &P-compressed";
 
 $x = " <html> <body><h1>Read-protected extras file.</h1></body> </html> ";
 $y = flvl("> $buildout_root/htdocs/e/pop/pesty/index.html", $x);
 $x = `$webcl $pps "$ssvbase_u/e/pop/pesty/"`;
-like $x, qr{Authorization Required.*Read-protected}si,
+like $x, qr{$authz_chall.*Read-protected}si,
 	"read-protected non-executable document area";
 
 $x = `$webcl $pps "$ssvbase_u/a/pesty/b? i.fetch hello"`;
-like $x, qr{Authorization Required.*hello:\s*th\+ere}si,
+like $x, qr{$authz_chall.*hello:\s*th\+ere}si,
 	"noid's old '+'-to-space decoding is no longer in effect";
 
 remove_td($td, $bgroup);
@@ -374,81 +381,3 @@ $x = apachectl('graceful-stop')	and print("$x\n");
 #remove_td($td, $bgroup);
 #remove_td($td2, $bgroup);
 }
-#
-#my $shdr = "99999/fk6";
-#my $shdrx = "b5072/fk9";
-#my $shdry = "99999/fk3";
-#
-#$x = `$cmd2 -d $td2/ark/$shdr mint 1`;
-#like $x, qr|$shdr.+|, "mint from compound minter";
-#
-#print "zxxx pps=$pps\n";
-#print "webcl=", qq@$webcl $pps "$ssvbase_u/a/pestx/m/ark/$shdr? mint 1"\n@;
-#
-#$x = `$webcl $pps "$ssvbase_u/a/pestx/m/ark/$shdr? --verbose mint 1"`;
-#like $x, qr{HTTP/\S+\s+401\s+Authorization.*s: 99999/fk6\w{4}\n}si,
-#	'populator "pestx" mints from one compound minter';
-#
-#$x = `$webcl $pps "$ssvbase_u/a/pestx/m/ark/$shdrx? mint 1"`;
-#like $x, qr{HTTP/\S+\s+401\s+Authorization.*s: b5072/fk9\w{4}\n}si,
-#	'populator "pestx" mints from second compound minter';
-#
-#$x = `$webcl $pps "$ssvbase_u/a/pesty/m/ark/$shdry? mint 1"`;
-#like $x, qr{HTTP/\S+\s+401\s+authorization.*ation failed}si,
-#	'authentic populator "pestx" cannot mint from "pesty" minter';
-#
-# this is for pestx
-#$pps = setpps "testuser1", "testpwd1a";
-#
-#$x = `$webcl $pps "$ssvbase_u/a/pestx/b? version"`;
-#like $x, qr{Authorization Required.*HTTP/\S+\s+200\s+OK.*version:.*version}si,
-#	'protected populator script starts up after requiring valid user';
-#
-#$x = `$webcl $pps "$ssvbase_u/a/pesty/b? version"`;
-#like $x, qr{Authorization Required.*HTTP/\S+\s+401.*ation failed}si,
-#	'a second populator script fails authN for user of first populator';
-#
-#$pps = setpps "testuser1", "testpwd1b";
-#$pps = setpps get_user_pwd "pesty", "testuser1", $cfgdir;
-#
-#$x = `$webcl $pps "$ssvbase_u/a/pesty/b? version"`;
-#like $x, qr{Authorization Required.*HTTP/\S+\s+200\s+OK.*version:.*version}si,
-#	'2nd populator script starts with valid user from 2nd password file';
-#
-#$x = `$webcl $pps "$ssvbase_u/a/pesty/m/ark/$shdry? mint 1"`;
-#like $x, qr{HTTP/\S+\s+401\s+Authorization.*s: 99999/fk3\w{4}\n}si,
-#	'populator "pesty" mints from its compound minter';
-#
-#$x = apachectl('graceful-stop')	and print("$x\n");
-#exit;	#########
-#
-#$x = `$webcl $pps "$ssvbase_u/a/pestx/m/ark/$shdrx? mint 1"`;
-#like $x, qr{HTTP/\S+\s+401\s+authorization.*ation failed}si,
-#	'authentic populator "pesty" cannot mint from a "pestx" minter';
-#
-##$x = apachectl('graceful-stop')	and print("$x\n");
-##exit; ####
-#
-#$x = `$webcl $pps "$ssvbase_u/a/pesty/b? --verbose i.set bow wow"`;
-#like $x, qr{Authorization Required.*HTTP/.+200.*remote user: testuser1}si,
-#	'protected populator "pesty" sets an element';
-#
-#$x = `$webcl $pps "$ssvbase_u/a/pesty/b? i.fetch bow"`;
-#like $x, qr{Authorization Required.*bow:\s*wow}si,
-#	'protected populator "pesty" returns that element';
-#
-#$x = `$webcl $pps "$ssvbase_u/a/pesty/b? i.delete bow"`;
-#like $x, qr{Authorization Req.*removed.*bow.*egg-status: 0}si,
-#	'protected populator "pesty" allows deleting that element';
-#
-#$x = `$webcl $pps "$ssvbase_u/a/pesty/b? i.purge"`;
-#like $x, qr{Authorization Req.*unique elements.*under i:}si,
-#	'protected populator "pesty" allows purging an id';
-#
-#$y = flvl("< $ntd/pesty/egg.rlog", $x);
-#like $x, qr{^testuser1 }m,
-#	'HTTP_REMOTE_USER logged';
-#
-#$x = `$webcl $pps "$ssvbase_u/a/pesty/b? <pestx>i.set bow wow"`;
-#like $x, qr{Authorization Req.*HTTP/.+200.*not allowed.*egg-status: 1}si,
-#	'authN with "pesty" fails try to switch to pestx via <> prefix';

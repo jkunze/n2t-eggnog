@@ -66,7 +66,9 @@ host=$EGNAPA_HOST		# EGNAPA_HOST typically set in .bashrc
 	}
 }
 
-# Then set value for $aptop (top-level apache2 directory).
+
+# Then set value for $aptop (top-level apache2 root of public-facing server).
+## Then set value for $aptop (top-level apache2 directory).
 #
 # Look for the first instance of apache2 that we can find; use it as our
 # best guess for EGNAPA_TOP
@@ -154,7 +156,8 @@ DESCRIPTION
   specify a chainfile if there is one).
 
 xxx update encouraging reliance on warts/env.sh settings
-    EGNAPA_TOP              main server software engine eg, /etc/apache
+xxx sysap     system apache root
+    EGNAPA_TOP              public-facing server root eg, /etc/apache2
     EGNAPA_HOST             eg, n2t.net
     EGNAPA_SSL_KEYFILE      eg, ~sam/ssl/2019-07-19/fran.key
     EGNAPA_SSL_CERTFILE     eg, ~sam/ssl/2019-07-19/fran.crt
@@ -343,7 +346,8 @@ sslchain=$EGNAPA_SSL_CHAINFILE
 #sslcertkeyref=$sslref_root/server.key
 #sslchainref=
 
-rotatelogs="$aptop/bin/rotatelogs -l"
+rotatelogs="/usr/sbin/rotatelogs -l"
+#rotatelogs="$aptop/bin/rotatelogs -l"
 weekly=604800				# number of seconds in a week
 let monthly=(604800 * 4)		# actually, just 4 weeks
 
@@ -524,6 +528,7 @@ done
 [[ $errs > 0 ]] &&
 	exit 1
 
+# xxx true in Apache 2.4?
 [[ ! $EGNAPA_TOP =~ ^/ || ! -d $EGNAPA_TOP/conf ]] && {
 	echo "EGNAPA_TOP ($EGNAPA_TOP) must be a full pathname to an" \
 		"Apache server root directory."
@@ -743,8 +748,10 @@ then
 	[[ -f $buildout_root/logs/httpd.pid ]] && {
 		echo "There appears to be an egnapa server running."
 		msg="Now shut down."
-		$aptop/bin/httpd -f $buildout_root/conf/httpd.conf -d $aptop \
-				-k stop ||
+		# xxx this cmd+args is repeated in ApacheTester.pm
+		#     define once and re-use
+		#$aptop/bin/httpd -f $buildout_root/conf/httpd.conf -d $aptop \
+		httpd -f $buildout_root/conf/httpd.conf -d $aptop -k stop ||
 			msg="Warning: error shutting down server."
 		echo "   $msg"
 	}
@@ -760,9 +767,15 @@ fi
 
 echo Building skeleton server structure extensions.
 
+# yyy what's httpauth for? var/state? should we use var/{run,lock}?
 msg=$( mkdir -p 2>&1 $buildout_root \
 	$buildout_root/{htdocs,conf,cgi-bin,logs} \
 	$buildout_root/htdocs/{a,e,r,e/pop,e/{images,x,css}} )
+
+ln -s $aptop/conf/mime.types $buildout_root/conf/mime.types
+ln -s $aptop/modules $buildout_root/modules		# link for modules
+ln -s $aptop/conf.modules.d $buildout_root/conf.modules.d	# load modules
+
 [[ $msg != '' ]] && {
 	echo "Some structures already existed (ok):"
 	echo "$msg" | sed 's/^/  /'
@@ -1200,6 +1213,7 @@ function build_passwd {
 		return 0		# don't create a password file
 
 	local n i pfile bc flp
+# xxx true in Apache 2.4?
 	bc=$EGNAPA_TOP/bin/htpasswd	# xxx remove after linux2 conversion
 	[[ -e $bc ]] ||			# xxx remove after linux2 conversion
 		bc=htpasswd		# eg, in /usr/bin
@@ -1313,20 +1327,17 @@ build_passwd || {
 
 echo Deriving basic server config info.
 
-sysap=/etc/httpd		# system Apache under AWS linux2
-ln -s $sysap/conf.modules.d conf/conf.modules.d		# load modules,
-	# which we keep veratim, eg, /etc/httpd/conf.modules.d/00-base.conf;
-	# later we'll override settings selectively, eg, from 00-ssl.conf
-
 hostport=$EGNAPA_HOST:$port_hpr
 shostport=$EGNAPA_HOST:$port_hprs
+
+#### Begin building main Apache HTTP server configuration file.
 
 # Remember to quote $ \ and ` in << blocks, or (in this case) to protect regexp
 # special chars by having them appear only as result of parameter expansion.
 # Kind of a kludge, but the second line of this new file should start with
 # "# configuration", which we grep for when we start a server so that we can
 # remind the user what configuration is in effect.
-#
+
 cat << EOT > conf/$hconf
 # This file was generated automatically by build_server_tree based on the
 # configuration $cfgphrase.
@@ -1334,18 +1345,23 @@ cat << EOT > conf/$hconf
 # It is the main Apache HTTP server configuration file for the resolver
 # and parallels the default Apache config file.
 
-SetEnv PERL5LIB $PERL5LIB
-ServerRoot "$EGNAPA_TOP"
+# yyy Do we need all these, eg, conf.modules.d/00-mpm.conf ?
+Include $EGNAPA_TOP/conf.modules.d/*.conf
 
-# see Apache 2.4 /etc/httpd/conf.modules.d/00-mpm.conf
-LoadModule mpm_prefork_module modules/mod_mpm_prefork.so
+SetEnv PERL5LIB $PERL5LIB
+
+
+# This is actually defined via httpd CLI option, so try not to repeat it
+# ServerRoot "$EGNAPA_TOP"
+# wrong for 2.4:
+
 
 Listen $port_hpr
 Listen $port_hprs
 
-# NB: this next directive is critically important, allowing us to bring
-# the test server up and down WITHOUT bring the public server down.
-#
+# NB: having our own PidFile allows us to bring the test server up and down
+# without bring the public server down. yyy should it live in ../var/run?
+
 PidFile $srvref_root/logs/httpd.pid
 
 User ${User:=daemon}
@@ -1381,16 +1397,18 @@ Header set Access-Control-Allow-Origin "*" env=GET_REQUEST
 <Directory />
     Options FollowSymLinks
     AllowOverride None
-    Order deny,allow
-    Deny from all
+    Require all denied
+#    Order deny,allow
+#    Deny from all
 </Directory>
 
 # Note that Indexes has been removed from Options.
 <Directory "$document_root">
     Options FollowSymLinks
     AllowOverride None
-    Order allow,deny
-    Allow from all
+    Require all granted
+#    Order allow,deny
+#    Allow from all
 </Directory>
 
 
@@ -1410,8 +1428,9 @@ AddOutputFilter INCLUDES .html
 <Directory "$srvref_root/htdocs/e/x">
         AllowOverride None
 	Options FollowSymLinks
-        Order allow,deny
-        Allow from all
+        Require all granted
+#        Order allow,deny
+#        Allow from all
 	SetHandler cgi-script
 	Options +ExecCGI
 </Directory>
@@ -1422,16 +1441,17 @@ AddOutputFilter INCLUDES .html
 </IfModule>
 
 <FilesMatch "^\\.ht">
-    Order allow,deny
-    Deny from all
-    Satisfy All
+#    Order allow,deny
+#    Deny from all
+#    Satisfy All
+    Require all denied
 </FilesMatch>
 
 # start new log file every month
 ErrorLog "|$rotatelogs $srvref_root/logs/error_log.%Y.%m.%d $monthly"
-#ErrorLog "$srvref_root/logs/error_log"
-LogLevel warn
-# Default is "LogLevel warn". Also useful is "LogLevel debug".
+
+#LogLevel warn
+## Default is "LogLevel warn". Also useful is "LogLevel debug".
 
 # XXX shouldn't this be HTTP:X-Forwarded-For ??
 CustomLog "|$rotatelogs $srvref_root/logs/access_log.%Y.%m.%d $monthly" \\
@@ -1443,7 +1463,9 @@ CustomLog "|$rotatelogs $srvref_root/logs/access_log.%Y.%m.%d $monthly" \\
 AliasMatch ^/\$ $document_root/e/homepage.html
 #AliasMatch ^/\$ $document_root/index.html
 
-DefaultType text/plain
+# new (2.4) not allowed
+#DefaultType text/plain
+# yyy what to replace it with?
 
 # yyy are these types all needed?
 <IfModule mime_module>
@@ -1454,21 +1476,10 @@ DefaultType text/plain
     AddType application/x-pkcs7-crl .crl
 </IfModule>
 
-
-
-
-# XXX start linux2 ssl
-#  bring in /etc/httpd/conf.d/ssl.conf without comments and change
-# XXX end linux2 ssl
-
-
-
-
-
-<IfModule ssl_module>
-SSLRandomSeed startup builtin
-SSLRandomSeed connect builtin
-</IfModule>
+#<IfModule ssl_module>
+#SSLRandomSeed startup builtin
+#SSLRandomSeed connect builtin
+#</IfModule>
 
 # Here ends the part that closely parallels httpd.conf.
 # What follows are additions to support generic resolver rewrite rules.
@@ -1481,14 +1492,17 @@ SSLRandomSeed connect builtin
 #     should rewritemap do it's own count and die, and does it restart
 #     automatically?
 
-RewriteLogLevel 9
+# new (2.4) log levels
+LogLevel warn rewrite:trace8
 # XXX writes lots of log info -- remember to truncate or set level to 0
+#RewriteLogLevel 9
 
-# !! RewriteLock file must not exist on startup [jak]
-RewriteLock $srvref_root/logs/lock_rewritemap
-#RewriteLog $srvref_root/logs/rewrite_log
-# start new log file every month
-RewriteLog "|$rotatelogs $srvref_root/logs/rewrite_log.%Y.%m.%d $monthly"
+# new (2.4) can't do separate rewrite logging
+## !! RewriteLock file must not exist on startup [jak]
+#RewriteLock $srvref_root/logs/lock_rewritemap
+##RewriteLog $srvref_root/logs/rewrite_log
+## start new log file every month
+#RewriteLog "|$rotatelogs $srvref_root/logs/rewrite_log.%Y.%m.%d $monthly"
 
 EOT
 
@@ -1523,8 +1537,9 @@ cat << EOT >> conf/$hconf
 <Directory "$srvref_root/htdocs/a/$binder">
         AllowOverride None
 	Options FollowSymLinks
-        Order allow,deny
-        Allow from all
+#        Order allow,deny
+#        Allow from all
+#        Require all granted
 	SetHandler cgi-script
 	Options +ExecCGI
 $authnblock
@@ -1536,8 +1551,9 @@ $authnblock
 <Directory "$srvref_root/htdocs/e/pop/$populator">
         AllowOverride None
 	Options FollowSymLinks
-        Order allow,deny
-        Allow from all
+#        Order allow,deny
+#        Allow from all
+#        Require all granted
 $authnblock
 </Directory>
 EOT
@@ -1755,32 +1771,56 @@ echo Deriving SSL server config info.
 #
 cat << EOT >> conf/$hconf
 
-# xxx how much of this is redundant with the altered lines from original?
-# xxx does this mean that the default port is HTTPS? 
-# xxx how does this Listen square with the earlier Listen?
-#     can we listen on both HTTP and HTTPS ports at once, and
-#     outside of vhost sections?
+# This section and comments are adapted from /etc/httpd/conf.d/ssl.conf.
 
-#### SSL section
-#
-# This section should closely parallel the extra/httpd-ssl.conf file that
-# comes with Apache.  That file should be consulted for additions and
-# changes as its helpful comments have been suppressed in this section.
-# This section should be reviewed for relevant updates as that file
-# changes when updating your server release beyond Apache/2.2.21.
+##
+##  SSL Global Context
+##
+##  All SSL configuration in this context applies both to
+##  the main server and all SSL-enabled virtual hosts.
+##
 
-SSLPassPhraseDialog  builtin
-SSLSessionCache   "shmcb:$srvref_root/logs/ssl_scache(512000)"
+#   Pass Phrase Dialog:
+#   Configure the pass phrase gathering process.
+#   The filtering dialog program ('builtin' is a internal
+#   terminal dialog) has to provide the pass phrase on stdout.
+SSLPassPhraseDialog exec:/usr/libexec/httpd-ssl-pass-dialog
+
+#   Inter-Process Session Cache:
+#   Configure the SSL Session Cache: First the mechanism 
+#   to use and second the expiring timeout (in seconds).
+SSLSessionCache         shmcb:$srvref_root/var/run/sslcache(512000)
 SSLSessionCacheTimeout  300
-SSLMutex          "file:$srvref_root/logs/ssl_mutex"
 
-# Temporary co-hosting of the arks.org website
-#<VirtualHost arks.org:$port_hprs>
-#DocumentRoot "$document_root/arks.org"
-#</VirtualHost>
-#<VirtualHost arks.org:$port_hpr>
-#DocumentRoot "$document_root/arks.org"
-#</VirtualHost>
+#   Pseudo Random Number Generator (PRNG):
+#   Configure one or more sources to seed the PRNG of the 
+#   SSL library. The seed data should be of good random quality.
+#   WARNING! On some platforms /dev/random blocks if not enough entropy
+#   is available. This means you then cannot use the /dev/random device
+#   because it would lead to very long connection times (as long as
+#   it requires to make more entropy available). But usually those
+#   platforms additionally provide a /dev/urandom device which doesn't
+#   block. So, if available, use this one instead. Read the mod_ssl User
+#   Manual for more details.
+SSLRandomSeed startup file:/dev/urandom  256
+SSLRandomSeed connect builtin
+#SSLRandomSeed startup file:/dev/random  512
+#SSLRandomSeed connect file:/dev/random  512
+#SSLRandomSeed connect file:/dev/urandom 512
+
+#
+# Use "SSLCryptoDevice" to enable any supported hardware
+# accelerators. Use "openssl engine -v" to list supported
+# engine names.  NOTE: If you enable an accelerator and the
+# server does not start, consult the error logs and ensure
+# your accelerator is functioning properly. 
+#
+SSLCryptoDevice builtin
+#SSLCryptoDevice ubsec
+
+##
+## SSL Virtual Host Context
+##
 
 <VirtualHost _default_:$port_hprs>
 
@@ -1791,40 +1831,239 @@ SSLMutex          "file:$srvref_root/logs/ssl_mutex"
 # xxx not recommended for security reasons -- move this to t/n2t/...?
 AllowEncodedSlashes On
 
-# xxx drop DocumentRoot and ServerName as redundant?
-ServerName $shostport
-DocumentRoot "$document_root"
-# XXX is this next line necessary?
-ServerAdmin ${ServerAdmin:=you@example.com}
+# General setup for the virtual host, inherited from global configuration
+#DocumentRoot "/var/www/html"
+#ServerName www.example.com:443
 
+## xxx drop DocumentRoot and ServerName as redundant?
+#ServerName $shostport
+#DocumentRoot "$document_root"
+## XXX is this next line necessary?
+#ServerAdmin ${ServerAdmin:=you@example.com}
+
+
+
+
+## Use separate log files for the SSL virtual host; note that LogLevel
+## is not inherited from httpd.conf.
+#ErrorLog logs/ssl_error_log
+#TransferLog logs/ssl_access_log
+#LogLevel warn
+
+#   SSL Engine Switch:
+#   Enable/Disable SSL for this virtual host.
+SSLEngine on
+
+#   SSL Protocol support:
+# List the enable protocol levels with which clients will be able to
+# connect.  Disable SSLv2 access by default:
+SSLProtocol all -SSLv3
+
+#   SSL Cipher Suite:
+#   List the ciphers that the client is permitted to negotiate.
+#   See the mod_ssl documentation for a complete list.
+SSLCipherSuite HIGH:MEDIUM:!aNULL:!MD5:!SEED:!IDEA
+
+#   Speed-optimized SSL Cipher configuration:
+#   If speed is your main concern (on busy HTTPS servers e.g.),
+#   you might want to force clients to specific, performance
+#   optimized ciphers. In this case, prepend those ciphers
+#   to the SSLCipherSuite list, and enable SSLHonorCipherOrder.
+#   Caveat: by giving precedence to RC4-SHA and AES128-SHA
+#   (as in the example below), most connections will no longer
+#   have perfect forward secrecy - if the server's key is
+#   compromised, captures of past or future traffic must be
+#   considered compromised, too.
+#SSLCipherSuite RC4-SHA:AES128-SHA:HIGH:MEDIUM:!aNULL:!MD5
+#SSLHonorCipherOrder on 
+
+#   Server Certificate:
+# Point SSLCertificateFile at a PEM encoded certificate.  If
+# the certificate is encrypted, then you will be prompted for a
+# pass phrase.  Note that a kill -HUP will prompt again.  A new
+# certificate can be generated using the genkey(1) command.
+#SSLCertificateFile /etc/pki/tls/certs/localhost.crt
+
+#   Server Private Key:
+#   If the key is not combined with the certificate, use this
+#   directive to point at the key file.  Keep in mind that if
+#   you've both a RSA and a DSA private key you can configure
+#   both in parallel (to also allow the use of DSA ciphers, etc.)
+#SSLCertificateKeyFile /etc/pki/tls/private/localhost.key
+
+#   Server Certificate Chain:
+#   Point SSLCertificateChainFile at a file containing the
+#   concatenation of PEM encoded CA certificates which form the
+#   certificate chain for the server certificate. Alternatively
+#   the referenced file can be the same as SSLCertificateFile
+#   when the CA certificates are directly appended to the server
+#   certificate for convinience.
+#SSLCertificateChainFile /etc/pki/tls/certs/server-chain.crt
+
+#   Certificate Authority (CA):
+#   Set the CA certificate verification path where to find CA
+#   certificates for client authentication or alternatively one
+#   huge file containing all of them (file must be PEM encoded)
+#SSLCACertificateFile /etc/pki/tls/certs/ca-bundle.crt
+
+$sslcertblock
+
+#   Client Authentication (Type):
+#   Client certificate verification type and depth.  Types are
+#   none, optional, require and optional_no_ca.  Depth is a
+#   number which specifies how deeply to verify the certificate
+#   issuer chain before deciding the certificate is not valid.
+#SSLVerifyClient require
+#SSLVerifyDepth  10
+
+#   Access Control:
+#   With SSLRequire you can do per-directory access control based
+#   on arbitrary complex boolean expressions containing server
+#   variable checks and other lookup directives.  The syntax is a
+#   mixture between C and Perl.  See the mod_ssl documentation
+#   for more details.
+#<Location />
+#SSLRequire (    %{SSL_CIPHER} !~ m/^(EXP|NULL)/ \
+#            and %{SSL_CLIENT_S_DN_O} eq "Snake Oil, Ltd." \
+#            and %{SSL_CLIENT_S_DN_OU} in {"Staff", "CA", "Dev"} \
+#            and %{TIME_WDAY} >= 1 and %{TIME_WDAY} <= 5 \
+#            and %{TIME_HOUR} >= 8 and %{TIME_HOUR} <= 20       ) \
+#           or %{REMOTE_ADDR} =~ m/^192\.76\.162\.[0-9]+$/
+#</Location>
+
+#   SSL Engine Options:
+#   Set various options for the SSL engine.
+#   o FakeBasicAuth:
+#     Translate the client X.509 into a Basic Authorisation.  This means that
+#     the standard Auth/DBMAuth methods can be used for access control.  The
+#     user name is the 'one line' version of the client's X.509 certificate.
+#     Note that no password is obtained from the user. Every entry in the user
+#     file needs this password: 'xxj31ZMTZzkVA'.
+#   o ExportCertData:
+#     This exports two additional environment variables: SSL_CLIENT_CERT and
+#     SSL_SERVER_CERT. These contain the PEM-encoded certificates of the
+#     server (always existing) and the client (only existing when client
+#     authentication is used). This can be used to import the certificates
+#     into CGI scripts.
+#   o StdEnvVars:
+#     This exports the standard SSL/TLS related 'SSL_*' environment variables.
+#     Per default this exportation is switched off for performance reasons,
+#     because the extraction step is an expensive operation and is usually
+#     useless for serving static content. So one usually enables the
+#     exportation for CGI and SSI requests only.
+#   o StrictRequire:
+#     This denies access when "SSLRequireSSL" or "SSLRequire" applied even
+#     under a "Satisfy any" situation, i.e. when it applies access is denied
+#     and no other module can change it.
+#   o OptRenegotiate:
+#     This enables optimized SSL connection renegotiation handling when SSL
+#     directives are used in per-directory context. 
+#SSLOptions +FakeBasicAuth +ExportCertData +StrictRequire
+<Files ~ "\.(cgi|shtml|phtml|php3?)$">
+    SSLOptions +StdEnvVars
+</Files>
+<Directory "$srvref_root/cgi-bin">
+    SSLOptions +StdEnvVars
+</Directory>
+
+#   SSL Protocol Adjustments:
+#   The safe and default but still SSL/TLS standard compliant shutdown
+#   approach is that mod_ssl sends the close notify alert but doesn't wait for
+#   the close notify alert from client. When you need a different shutdown
+#   approach you can use one of the following variables:
+#   o ssl-unclean-shutdown:
+#     This forces an unclean shutdown when the connection is closed, i.e. no
+#     SSL close notify alert is send or allowed to received.  This violates
+#     the SSL/TLS standard but is needed for some brain-dead browsers. Use
+#     this when you receive I/O errors because of the standard approach where
+#     mod_ssl sends the close notify alert.
+#   o ssl-accurate-shutdown:
+#     This forces an accurate shutdown when the connection is closed, i.e. a
+#     SSL close notify alert is send and mod_ssl waits for the close notify
+#     alert of the client. This is 100% SSL/TLS standard compliant, but in
+#     practice often causes hanging connections with brain-dead browsers. Use
+#     this only for browsers where you know that their SSL implementation
+#     works correctly. 
+#   Notice: Most problems of broken clients are also related to the HTTP
+#   keep-alive facility, so you usually additionally want to disable
+#   keep-alive for those clients, too. Use variable "nokeepalive" for this.
+#   Similarly, one has to force some clients to use HTTP/1.0 to workaround
+#   their broken HTTP/1.1 implementation. Use variables "downgrade-1.0" and
+#   "force-response-1.0" for this.
+BrowserMatch "MSIE [2-5]" \
+         nokeepalive ssl-unclean-shutdown \
+         downgrade-1.0 force-response-1.0
+
+#   Per-Server Logging:
+#   The home of a custom SSL log file. Use this when you want a
+#   compact non-error SSL logfile on a virtual host basis.
+#CustomLog logs/ssl_request_log \
+#          "%t %h %{SSL_PROTOCOL}x %{SSL_CIPHER}x \"%r\" %b"
+
+
+#################################################### start old
+
+### xxx how much of this is redundant with the altered lines from original?
+### xxx does this mean that the default port is HTTPS? 
+### xxx how does this Listen square with the earlier Listen?
+###     can we listen on both HTTP and HTTPS ports at once, and
+###     outside of vhost sections?
+#
+##### SSL section
+##
+## This section should closely parallel the extra/httpd-ssl.conf file that
+## comes with Apache.  That file should be consulted for additions and
+## changes as its helpful comments have been suppressed in this section.
+## This section should be reviewed for relevant updates as that file
+## changes when updating your server release beyond Apache/2.2.21.
+#
+#SSLPassPhraseDialog  builtin
+#SSLSessionCache   "shmcb:$srvref_root/logs/ssl_scache(512000)"
+#SSLSessionCacheTimeout  300
+#SSLMutex          "file:$srvref_root/logs/ssl_mutex"
+#
+## Temporary co-hosting of the arks.org website
+##<VirtualHost arks.org:$port_hprs>
+##DocumentRoot "$document_root/arks.org"
+##</VirtualHost>
+##<VirtualHost arks.org:$port_hpr>
+##DocumentRoot "$document_root/arks.org"
+##</VirtualHost>
+#
+#<VirtualHost _default_:$port_hprs>
+#
 ## start new log file every week (7 * 24) hours
 #ErrorLog "|$rotatelogs $srvref_root/logs/error_log.%Y.%m.%d 604800"
 # xxx commenting out, as it contradicts previous setting, right?
 #TransferLog "$srvref_root/logs/access_log"
+#
+#SSLEngine on
+#SSLProtocol All -SSLv2 -SSLv3
+##SSLProtocol -ALL +TLSv1	# on SLES until 2015.02.20 
+##SSLProtocol -ALL +SSLv3 +TLSv1	# prior to Oct 15
+##SSLProtocol All -SSLv2 -SSLv3	# Oct 15, 2014 recommendation POODLE exploit
+#SSLCipherSuite ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA:ECDHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA256:DHE-RSA-AES128-SHA256:DHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA:ECDHE-RSA-DES-CBC3-SHA:EDH-RSA-DES-CBC3-SHA:AES256-GCM-SHA384:AES128-GCM-SHA256:AES256-SHA256:AES128-SHA256:AES256-SHA:AES128-SHA:DES-CBC3-SHA:HIGH:!aNULL:!eNULL:!EXPORT:!DES:!MD5:!PSK:!RC4
+##SSLCipherSuite ALL:!ADH:RC4+RSA:+HIGH:+MEDIUM:!LOW:!SSLv2:!EXPORT	# on SLES until 2015.02.20 
+##SSLCipherSuite ALL:!ADH:!EXPORT56:RC4+RSA:+HIGH:+MEDIUM:+LOW:+SSLv2:+EXP:+eNULL
+#
+#$sslcertblock
+#
+## xxx unused?
+#<FilesMatch "\.(cgi|shtml|phtml|php)$">
+#    SSLOptions +StdEnvVars
+#</FilesMatch>
+#<Directory "$srvref_root/cgi-bin">
+#    SSLOptions +StdEnvVars
+#</Directory>
+#BrowserMatch ".*MSIE.*" \
+#         nokeepalive ssl-unclean-shutdown \
+#         downgrade-1.0 force-response-1.0
+#
+## Here ends the part that closely parallels extra/httpd-ssl.conf.
 
-SSLEngine on
-SSLProtocol All -SSLv2 -SSLv3
-#SSLProtocol -ALL +TLSv1	# on SLES until 2015.02.20 
-#SSLProtocol -ALL +SSLv3 +TLSv1	# prior to Oct 15
-#SSLProtocol All -SSLv2 -SSLv3	# Oct 15, 2014 recommendation POODLE exploit
-SSLCipherSuite ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA:ECDHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA256:DHE-RSA-AES128-SHA256:DHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA:ECDHE-RSA-DES-CBC3-SHA:EDH-RSA-DES-CBC3-SHA:AES256-GCM-SHA384:AES128-GCM-SHA256:AES256-SHA256:AES128-SHA256:AES256-SHA:AES128-SHA:DES-CBC3-SHA:HIGH:!aNULL:!eNULL:!EXPORT:!DES:!MD5:!PSK:!RC4
-#SSLCipherSuite ALL:!ADH:RC4+RSA:+HIGH:+MEDIUM:!LOW:!SSLv2:!EXPORT	# on SLES until 2015.02.20 
-#SSLCipherSuite ALL:!ADH:!EXPORT56:RC4+RSA:+HIGH:+MEDIUM:+LOW:+SSLv2:+EXP:+eNULL
+#################################################### end old
 
-$sslcertblock
 
-# xxx unused?
-<FilesMatch "\.(cgi|shtml|phtml|php)$">
-    SSLOptions +StdEnvVars
-</FilesMatch>
-<Directory "$srvref_root/cgi-bin">
-    SSLOptions +StdEnvVars
-</Directory>
-BrowserMatch ".*MSIE.*" \
-         nokeepalive ssl-unclean-shutdown \
-         downgrade-1.0 force-response-1.0
-
-# Here ends the part that closely parallels extra/httpd-ssl.conf.
 
 # What follows are lots of additions to support the binder for
 # calls coming in via https, which are required to use the API.

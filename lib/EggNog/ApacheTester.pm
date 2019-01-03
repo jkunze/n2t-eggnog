@@ -29,8 +29,11 @@ use EggNog::ValueTester 'shellst_is';
 my ($srvport, $srvbase_u, $ssvport, $ssvbase_u);
 my ($api_script, $api_cwd, $perl5lib, $ldlibpath);
 my ($apache_top, $src_top, $webcl);
-my ($srvexec, $srvpre, $cf_file);
+my ($srvexec, $srvpre, $cf_file, $buildout_root);
 my @servers = ();	# list of servers started (later to be stopped)
+
+# HTTP Authorization challenge that should match either Apache 2.2 or 2.4.
+my $authz_chall = '401 \w*authoriz';
 
 sub update_server { my( $cfgdir )=@_;
 
@@ -73,6 +76,7 @@ sub update_server { my( $cfgdir )=@_;
 	#
 	#$cf_file = "$ENV{EGNAPA_BUILDOUT_ROOT}/conf/httpd-other.conf";
 
+	$buildout_root = $ENV{EGNAPA_BUILDOUT_ROOT};
 	$cf_file = "$ENV{EGNAPA_BUILDOUT_ROOT}/conf/httpd.conf";
 
 	my $config_extender = "./build_server_tree make $cfgdir ";
@@ -131,9 +135,12 @@ sub prep_server { my( $cfgdir )=@_;
 
 	# Now check if we have an apache httpd server to test.
 	#
-	$srvexec = "$apache_top/bin/httpd";
+	# new (2.4)
+	#$srvexec = "$apache_top/bin/httpd";
+	$srvexec = "/usr/sbin/httpd";
 	-x $srvexec or				# ... or bail if not
-		return "because there's no Apache server in $apache_top";
+		return "because $srvexec is not an Apache server executable";
+		#return "because there's no Apache server in $apache_top";
 
 	# Key:
 	# $apache_top = apache tree containing bin, conf, logs, etc
@@ -222,9 +229,8 @@ sub prep_server { my( $cfgdir )=@_;
 
 # This routine calls httpd directly instead of the usual system-supplied
 # apachctl script; the latter screws up possibility of argument passing.
-#
 # Returns '' on success or an error message on failure.
-#
+
 sub apachectl { my( $action, $sroot, $force )=@_;
 
 	# Jump in and do $action right away.  If starting, do more stuff.
@@ -244,7 +250,9 @@ sub apachectl { my( $action, $sroot, $force )=@_;
 		return '';
 	}
 	$srvpre ||= '';
-	my $cmd = "$srvpre $srvexec -d $sroot -k $action -f $cf_file";
+	#my $cmd = "$srvpre $srvexec -d $sroot -k $action -f $cf_file";
+	# new (2.4)
+	my $cmd = "$srvpre $srvexec -d $buildout_root -k $action -f $cf_file";
 		# Don't use -E and startup errors helpfully reach the console.
 	my $out = ` $cmd 2>&1 `;
 	#	` $srvpre $srvexec -d $sroot -k $action -f $cf_file 2>&1 `;
@@ -380,17 +388,17 @@ sub noauth_test { my( $pps, $popminder, $naanblade, $u1, $u2, @fqshoulders )=@_;
 	# and unauthorized to use another's binder.
 
 	$x = `$webcl $pps "$ssvbase_u/a/$pbinder/m/ark/$nblade? mint 1"`;
-	like $x, qr{HTTP/\S+\s+401\s+authorization.*ation failed}si,
+	like $x, qr{HTTP/\S+\s+$authz_chall.*ation failed}si,
 		"authNd populator \"$popminder\" cannot mint from " .
 			"a \"$pbinder\" minter";
 
 	$x = `$webcl $pps "$ssvbase_u/a/$pbinder/b? i.set bow wow"`;
-	like $x, qr{HTTP/\S+\s+401\s+authorization.*ation failed}si,
+	like $x, qr{HTTP/\S+\s+$authz_chall.*ation failed}si,
 		"authNd populator \"$popminder\" cannot write on " .
 			"a \"$pbinder\" binder";
 
 	$x = `$webcl $pps "$ssvbase_u/a/$pbinder/b? version"`;
-	like $x, qr{HTTP/\S+\s+401\s+authorization.*ation failed}si,
+	like $x, qr{HTTP/\S+\s+$authz_chall.*ation failed}si,
 		"authNd populator \"$popminder\" cannot even reference " .
 			"a \"$pbinder\" binder";
 
@@ -420,7 +428,7 @@ sub test_minters { my( $cfgdir, $u1, $u2, @fqshoulders )=@_;
 	    $x =
 	      `$webcl $pps "$ssvbase_u/a/$popminder/m/ark/$naanblade? mint 1"`;
 	    like $x,
-		qr{HTTP/\S+\s+401\s+Authorization.*s: $naanblade\w{4,7}\n}si,
+		qr{HTTP/\S+\s+$authz_chall.*s: $naanblade\w{4,7}\n}si,
 		  "populator/binder \"$popminder\" mints from $naanblade";
 
 	    # We'll piggyback another use for the noauth_test, which is that
@@ -481,16 +489,16 @@ sub test_binders { my( $cfgdir, $binders_root, $indb, @binders )=@_;
 	# 
 	# REAL database change
 	$x = `$webcl $pps "$ssvbase_u/a/$b/b? --verbose i.set bow wow"`;
-	like $x, qr{Authorization Required.*HTTP/.+200.*\Q$remuser}si,
+	like $x, qr{$authz_chall.*HTTP/.+200.*\Q$remuser}si,
 		"protected test binder \"$b\" sets an element";
 
 	$x = `$webcl $pps "$ssvbase_u/a/$b/b? i.fetch bow"`;
-	like $x, qr{Authorization Required.*bow:\s*wow}si,
+	like $x, qr{$authz_chall.*bow:\s*wow}si,
 		"protected binder \"$b\" returns that element";
 
 	# REAL database change
 	$x = `$webcl $pps "$ssvbase_u/a/$b/b? i.delete bow"`;
-	like $x, qr{Authorization Req.*removed.*bow.*egg-status: 0}si,
+	like $x, qr{$authz_chall.*removed.*bow.*egg-status: 0}si,
 		"protected binder \"$b\" allows deleting that element";
 
 	if ($indb) {
@@ -504,7 +512,7 @@ sub test_binders { my( $cfgdir, $binders_root, $indb, @binders )=@_;
 	# XXX should perhaps add HTTP_ACTING_FOR to txnlog?
 
 	$x = `$webcl $pps "$ssvbase_u/a/$b/b? <xyzzy>i.set bow wow"`;
-	like $x, qr{rization Req.*HTTP/.+200.*not allowed.*egg-status: 1}si,
+	like $x, qr{$authz_chall.*HTTP/.+200.*not allowed.*egg-status: 1}si,
 	    "\"$realm\" not allowed to switch binders via <> prefix";
     }
 }

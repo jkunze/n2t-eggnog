@@ -98,6 +98,9 @@ $x = apachectl('start');
 skip "failed to start apache ($x)"
 	if $x;
 
+# HTTP Authorization challenge that should match either Apache 2.2 or 2.4.
+my $authz_chall = '401 \w*authoriz';
+
 #
 # This section tests server access to various documentation pages.
 #
@@ -264,7 +267,7 @@ $pps = setpps get_user_pwd "yamz", "yamz", $cfgdir;
 #	'exec failure error message';
 
 $x = `$webcl $pps "$ssvbase_u/a/yamz/b? --verbose --version"`;
-like $x, qr{HTTP/\S+\s+401\s+Authorization.*version:}si,
+like $x, qr{HTTP/\S+\s+$authz_chall.*version:}si,
 	'verbose version collected from web server environment';
 
 my $v = `$cmd --verbose --version`;
@@ -334,7 +337,7 @@ test_minters $cfgdir, 'yamz', 'xref', @more_fqshoulders;
 my ($popminder, $naanblade) = crack_minter 'yamz/ark/99999/ffk6';
 $pps = setpps get_user_pwd "yamz", "yamz", $cfgdir;
 $x = `$webcl $pps "$ssvbase_u/a/$popminder/m/ark/$naanblade? mint 1"`;
-like $x, qr{HTTP/\S+\s+401\s+Authorization.*s: $naanblade\w{4,7}\n}si,
+like $x, qr{HTTP/\S+\s+$authz_chall.*s: $naanblade\w{4,7}\n}si,
 	"populator/binder \"$popminder\" mints from $naanblade";
 
 # We'll piggyback another use for the noauth_test, which is that
