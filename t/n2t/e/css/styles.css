@@ -72,9 +72,9 @@ h2 {
   background: rgba(255, 255, 255, 0.35);
   /* opacity: 0.5; */ /* more standard, but makes text hard to read */
   /* background-color: #ffffff8c; */ /* good text, but no background on IE11 */
-  padding: 0px 10px;
+  padding: 10px 10px;
   margin: 10px 0px 0px;
-  height: 4.5em;
+  min-height: 4.5em;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -99,7 +99,7 @@ h2 {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 6.3em;
+  min-height: 6.3em;
   width: 100%;
   font-size: 18px;
   font-family: inherit;
@@ -110,7 +110,7 @@ h2 {
 }
 @media (min-width: 32em) {
   .box-linked {
-    height: 3.5em;
+    min-height: 3.5em;
   }
 }
 .box-linked:hover, .box-linked:focus {
@@ -178,7 +178,7 @@ h2 {
 .footer {
   flex-shrink: 0;
   background-color: #C0D6DF; 
-  min-height: 4em;
+  min-height: 2em;
 }
 .header {
   margin-top: -8px;
