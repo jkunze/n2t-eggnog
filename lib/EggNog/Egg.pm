@@ -2671,9 +2671,9 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 		if ($sh->{fetch_exdb}) {	# if EGG_DBIE is e or ei
 
 # ZZZZZZZZZXXXXXXXXXXXX remove debug
-			tlogger $sh, $txnid, "XXX bindername:"
-				. " $sh->{exdb}->{exdbname}"
-				. " cstring: $sh->{exdb}->{connect_string}";
+#			tlogger $sh, $txnid, "XXX bindername:"
+#				. " $sh->{exdb}->{exdbname}"
+#				. " cstring: $sh->{exdb}->{connect_string}";
 
 			my $rfs = flex_enc_exdb($id, @elems);	# yyy no @elems
 

@@ -1,9 +1,12 @@
 #!/usr/bin/env perl
 
-####### exdb tests passed
+####### exdb tests passed prepending EGG_DBIE=e to tests
 # egg_bind.t egg_help.t egg_log.t egg_mkbinder.t egg_modifiers.t egg_normalize.t egg_resolve.t egg_webperms.t egn_apachebase.t 
-# errcount > 0 -   egg_dbcmds.t egg_list.t egg_incr.t
+# errcount > 0 -   egg_dbcmds.t egg_list.t       egg_incr.t
 # errcount > 0 - egn_service_n2t.t
+##### Linux2 EGG_DBIE=e tests
+# failed: 
+# passed: 
 
 # xxx To DO remove --storage wiredtiger option from admegn (now its default)
 # xxx look into rlimit advice

@@ -1338,8 +1338,8 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 		# yyy what's the indb equivalent?
 # ZZZZZZZZZXXXXXXXXXXXX remove debug
 # xxx document use of tlogger and $exget for debugging
-		. ($exget ? " bindername: $sh->{exdb}->{exdbname}" .
-			" connect_string: $sh->{exdb}->{connect_string}" : "")
+#		. ($exget ? " bindername: $sh->{exdb}->{exdbname}" .
+#			" connect_string: $sh->{exdb}->{connect_string}" : "")
 		. " $lcmd $ur_origid $hdrinfo";
 
 	my $db = $bh->{db};

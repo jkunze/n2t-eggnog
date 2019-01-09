@@ -8,7 +8,7 @@
 
 .. _EZID: https://ezid.cdlib.org
 .. _ARKs: /e/ark_ids.html
-.. _ARKs in the Open: https://wiki.duraspace.org/display/DSP/ARKs+in+the+Open+Project
+.. _ARKs in the Open: http://ARKsInTheOpen.org
 .. _DOI: https://www.doi.org
 .. _EZID.cdlib.org: https://ezid.cdlib.org
 .. _Archive.org: https://archive.org
