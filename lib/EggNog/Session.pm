@@ -127,6 +127,7 @@ db:
 
 redirects:
   pre_lookup:
+    - "s e/ezid https://ezid.cdlib.org"
     - "s e/arks_eoi https://bit.ly/2C4fU8f"
     - "s e/naan_request https://goo.gl/forms/bmckLSPpbzpZ5dix1"
     - "s e/NAAN_request https://goo.gl/forms/bmckLSPpbzpZ5dix1"

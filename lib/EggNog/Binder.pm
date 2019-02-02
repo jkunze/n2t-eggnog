@@ -1229,14 +1229,19 @@ sub ibopen { my( $bh, $mdr, $flags, $minderpath, $mindergen )=@_;
 		push(@envargs, ( -ErrFile => $logbdb ));
 	# yyy should we complain if can't open log file?
 
-	#xxxaddmsg($bh, "before call BerkeleyDB::Error is $BerkeleyDB::Error");
 	my $env = new BerkeleyDB::Env @envargs;
 	if (! defined($env)) {
-		# xxxzzz ADD VERSION CHECK INFO HERE!
 		addmsg($bh, 'cannot create "BerkeleyDB::Env" object ' .
 			"($BerkeleyDB::Error) for [" .
 			join(', ', @envargs) . ']');
-		#xxxaddmsg($bh, `ls -ld $dbhome`, 'info');
+		my ($x, $modversion, $built, $running);
+		($x, $modversion, $built, $running) = get_dbversion();
+		addmsg($bh, "System BerkeleyDB version $modversion, built " .
+			"with C libdb $built, running with C libdb $running");
+		my $fileversion = `db_dump -p $mdrd | \
+				sed -n -e '/dbversion/{ n;p;q' -e '}'`;
+		chop $fileversion;
+		addmsg($bh, "Binder creation: $fileversion");
 		return undef;
 	}
 
@@ -1846,7 +1851,8 @@ sub mkibinder { my( $sh, $mods, $binder, $bgroup, $user, $what, $minderdir )=@_;
 
 	$dbh->{"$A/version"} = $VERSION;	# iii
 	$dbh->{"$A/dbversion"} = "With Egg version $VERSION, " .   # iii
-		"Using DB_File version $dbfile, built with Berkeley DB " .
+		#"Using DB_File version $dbfile, built with Berkeley DB " .
+		"built with Berkeley DB " .
 		"version $built, running with Berkeley DB version $running.";
 
 	#my $erc = fiso_erc($sh->{ruu}, $tagdir, $what); # iii

@@ -237,6 +237,7 @@ my @getoptlist = (
 	'recurse|r',		# perform action recursively (unused)
 	'sif=s',		# succeed if elem exists/doesn't (bind)
 	'testlock=i',		# flag xxx test
+	'bgroup=s',		# token to distinguish external binders
 	'txnlog=s',		# optional transaction log, eg, per-server
 	'type|t=s',		# mkminter type (noid only)
 	'ua',			# marker for start of user args in query string
@@ -277,7 +278,7 @@ my @getoptlist = (
 			ack txnlog api atlast
 			checksum dbie debug defuser echo force format
 			germ lock oklz persistomax recurse sif type
-			testlock verbose ));
+			testlock bgroup verbose ));
 
 	# Options without one-to-one key/value to transfer.
 	#

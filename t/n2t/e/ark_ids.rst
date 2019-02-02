@@ -77,7 +77,7 @@ Some advantages of ARKs:
 - impact – ARKs appear in Thomson Reuters’ Data Citation Index |sm| and
   ORCID researcher profiles
 
-Since 2001 over 550 organizations spread across fifteen countries registered
+Since 2001 over 500 organizations spread across fifteen countries registered
 to assign ARKs. `The registry`_ includes libraries, archives, museums
 (Smithsonian), publishers, government agencies, academic institutions
 (Princeton), and technology companies (Google). To have your institution
@@ -178,7 +178,7 @@ however, access may be provided by one or more different entities instead of or
 in addition to the original naming authority.
 
 The NAAN used above, 13030, represents the California Digital Library. As of
-2018, over 550 organizations have registered for ARK NAANs, including numerous
+2019, over 500 organizations have registered for ARK NAANs, including numerous
 universities, Google, the Internet Archive, WIPO, the British Library, and
 other national libraries.
 
