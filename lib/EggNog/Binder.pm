@@ -1529,24 +1529,29 @@ sub version_match { my( $bh )=@_;
 }
 
 # Normalize binder names
+#
 # Given a session handler and a user-oriented binder name, return an
-# array of 2 name strings suitable for machine connection:
-#    Elem 0: the internal database name, if session configured for it
-#    Elem 1: the external database name, if session configured for it
+# array of 2 names (strings) suitable for machine connection:
+#    Elem 0: the internal database name, if session is configured for it
+#    Elem 1: the external database name, if session is configured for it
 # The corresponding string will be empty if the session wasn't configured
 # for it or if there was some sort of error.
 #
 # Returned strings take into account the binder owner (populator) and
 # internal filesystem requirements (internal database) or connection
 # string (external database) requirements.
+#
 # An external database name lacks the path information that an internal
 # database name uses to distinguish temporary, personal, and production
 # names (eg, ./td_egnapa/..., ~/.eggnog/..., ~/sv/cur/apache2/...), so we
 # prepend info from $sh->{home} for external db names.
+#
 # NB: We convert binder name '/' into the empty string in the external case
 # where we don't support generating binder names (unlike the internal case).
 # yyy this doesn't do the fiso_db... stuff for internal database names
-# 
+#
+# ZZZZZZZZ Here's where we take binder owner and name into account
+
 sub str2brnames { my( $sh, $binder, $bgroup, $user )=@_;
 
 	my ($inbrname, $exbrname) = ('', '');
