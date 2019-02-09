@@ -1,0 +1,26 @@
+# defined service/deployment classes and hostnames
+
+classfmt="CLASS CANONICAL_NAME OTHER_NAMES ..."
+hostclass=(
+    -dev    n2t-dev.n2t.net ids-n2t-dev.n2t.net
+    -stg    n2t-stg.n2t.net ids-n2t-stg-2{a,b,c}.n2t.net
+    -prd    n2t.net ids-n2t-prd-2{a,b,c}.n2t.net
+    -loc    jak-macbook.local
+
+    -prefix_import stg-2c
+    -prod_data     prd-2a
+    -rcheck     prd-2a  (resolution check)
+    -backup     prd-2a  (for admegn)
+    -fulltest   prd-2a  (for t/service_n2t.t)
+
+    -mac    jak-macbook.local
+)
+
+# Some true environment variables needed to help the "wegn" client map
+# the "prd", "stg", and "dev" abbreviations to actual server names.
+
+wegn_tags=(
+    -dev export EGNAPA_SERVER_dev=n2t-dev.n2t.net
+    -stg export EGNAPA_SERVER_stg=n2t-stg.n2t.net
+    -prd export EGNAPA_SERVER_prd=ids-n2t-prd-2a.n2t.net
+)

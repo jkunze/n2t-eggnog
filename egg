@@ -8,6 +8,8 @@
 # failed: 
 # passed: 
 
+# see t/n2t/service.cfg and t/n2t/host_classes for eg, prd-data, backup
+
 # xxx To DO remove --storage wiredtiger option from admegn (now its default)
 # xxx look into rlimit advice
 # xxx TO DO in separate commit: hg rename lib/EggNog/{RUU,Uinfo}.pm and

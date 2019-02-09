@@ -1,5 +1,51 @@
 package EggNog::Binder;
 
+use 5.10.1;
+use strict;
+use warnings;
+
+our $VERSION;
+$VERSION = sprintf "%s", q$Name: Release-1.00$ =~ /Release-(\d+\.\d+)/;
+
+# Binder Naming Conventions
+#
+# xxx document
+# Here's how our hierarchical mongodb namespaces are structured.
+# A record/document corresponds to an identifier.
+# A table/collection corresponds to a binder.
+# Eggnog users aren't aware of binder names, but Eggnog admin users should know:
+#   An admin user's binder has a short name, as in "egg mkbinder mystuff".
+#   The full name of an eggnog binder, as stored in mongodb, looks like
+#
+#       egg_bgdflt.jak_s_mystuff
+#
+#   which breaks down into <database>.<collection>, where
+#
+#       egg_     begins mongodb databases for eggnog
+#   yyy    maybe extra component "n2t" to name service?
+#       bgdflt   is the default "binder group"
+#   yyy    maybe "test" should be default binder group
+#       jak      is the admin user/owner of the binder (from Unix creds)
+#       _s_      separates the user name from their binder name
+#       mystuff  is user jak's chosen "binder name" (default binder1)
+
+# ZZZZZZZZZZZZZZZ
+# Maybe for both exdb and indb (dirname) the dbname should be, eg,
+#       egg_{n2t,web,s(def)}_{real,test(def)}.jak_s_mystuff     or
+#       egg_{n2t,s(def)}_{real,test(def)}.jak_s_mystuff
+
+# So for indb case, we'd have
+#       ~/binders/egg_n2t_real.ezid_s_ezid/egg.bdb
+# simple "foo" would become (write code but don't deploy yet)
+#       build/eggnog/td_egg/egg_s_test.foo_s_foo/egg.bdb
+#
+# plus flag to ask bopen() to check db existence "even if expensive"
+
+
+
+
+# XXXXXX need to add authz to noid!
+
 =for dbnotes
 
 	// Embedded DB (BDB or DB_File)
@@ -17,15 +63,6 @@ package EggNog::Binder;
 	  Embedded case?  
 
 =cut
-
-# XXX XXX need to add authz to noid!
-
-use 5.10.1;
-use strict;
-use warnings;
-
-our $VERSION;
-$VERSION = sprintf "%s", q$Name: Release-1.00$ =~ /Release-(\d+\.\d+)/;
 
 require Exporter;
 our @ISA = qw(Exporter);
@@ -74,24 +111,6 @@ our $DEFAULT_BINDER    = 'binder1';	# user's binder name default
 our $DEFAULT_BINDER_RE = qr/^$EGGBRAND.*\..*_s_\Q$DEFAULT_BINDER\E$/o;
 					# eg, egg_default.jak_s_binder1
 our $EGG_DB_CREATE	= 1;
-
-# xxx document
-# Here's how our hierarchical mongodb namespaces are structured.
-# A record/document corresponds to an identifier.
-# A table/collection corresponds to a binder.
-# Eggnog users aren't aware of binder names, but Eggnog admin users should know:
-#   An admin user's binder has a short name, as in "egg mkbinder mystuff".
-#   The full name of an eggnog binder, as stored in mongodb, looks like
-#
-#       egg_bgdflt.jak_s_mystuff
-#
-#   which breaks down into <database>.<collection>, where
-#
-#       egg_     begins mongodb databases for eggnog
-#       bgdflt   is the default "binder group"
-#       jak      is the admin user/owner of the binder (from Unix creds)
-#       _s_      separates the user name from their binder name
-#       mystuff  is user jak's chosen "binder name" (default binder1)
 
 our %o;					# yyy global pairtree options
 
