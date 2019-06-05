@@ -271,7 +271,7 @@ isnt index($x, '302 http://www.kegg.jp/entry/hsa00190'), -1,
 	'biorxiv article scheme redirect -- kegg'; 
 isnt index($x, '302 https://www.ncbi.nlm.nih.gov/gene/100010'), -1,
 	'biorxiv article scheme redirect -- ncbigene'; 
-isnt index($x, '302 http://purl.uniprot.org/uniprot/P62158'), -1,
+isnt index($x, '302 https://purl.uniprot.org/uniprot/P62158'), -1,
 	'biorxiv article scheme redirect -- uniprot'; 
 isnt index($x,
 	'302 https://www.ebi.ac.uk/chebi/searchId.do?chebiId=CHEBI:36927'), -1,

@@ -12,6 +12,7 @@ our @ISA = qw(Exporter);
 
 our @EXPORT = qw();
 our @EXPORT_OK = qw(
+	bash2yaml
 	prep_server update_server apachectl
 	run_cmds_in_body run_cmdz_in_body run_ucmdz_in_body
 	purge_test_realms

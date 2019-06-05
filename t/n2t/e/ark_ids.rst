@@ -32,6 +32,10 @@
 .. _NAAN request form: https://goo.gl/forms/bmckLSPpbzpZ5dix1
 .. _The registry: http://www.cdlib.org/services/uc3/naan_registry.txt
 .. _Identifier conventions: http://ezid.cdlib.org/learn/id_concepts
+.. _Python Noid: https://github.com/no-reply/pynoid
+.. _Golang Noid: https://github.com/ndlib/noids
+.. _Ruby Noid: https://github.com/ruby-microservices/noid
+.. _PHP Noid: https://github.com/Daniel-KM/Noid4Php/blob/master/noid
 
 //BEGIN//
 
@@ -74,7 +78,7 @@ Some advantages of ARKs:
   compare for variant and containment relationships
 - openness – unlike other persistent identifiers, ARKs don't lock you into
   one specific, fee-based management and resolution infrastructure
-- impact – ARKs appear in Thomson Reuters’ Data Citation Index |sm| and
+- impact – ARKs appear in the Data Citation Index |sm| and in
   ORCID researcher profiles
 
 Since 2001 over 500 organizations spread across fifteen countries registered
@@ -120,25 +124,33 @@ Here is a brief summary of other resources relevant to ARKs.
 - `Towards Electronic Persistence Using ARK Identifiers`_ (July 2003)
 - `ARK and CDL Identifier conventions`_
 - `Archival Resource Key - Wikipedia`_
-- `Noid (Nice Opaque Identifiers)`_, open source software for minting and resolving ARKs on your own
+- `Noid (Nice Opaque Identifiers)`_, open source Perl software for minting and resolving ARKs on your own
+- `EZID service`_: long term identifiers made easy, if you would rather not install and maintain a service yourself
+- `N2T.net resolver`_: Name-to-Thing, a global resolver for ARKs (and other identifiers)
+
+A brief scan (May 2019) of open source software implementing ARK services turned up this set of packages, which we list below without endorsement.
+
+- `Python Noid`_, Python implementation of Noid
+- `Golang Noid`_, Golang/Docker implementation of Noid
+- `Ruby Noid`_, Ruby implementation of Noid
+- `PHP Noid`_, PHP implementation of Noid
 - `ARK plugin for Omeka`_, which creates and manages ARKs for the Omeka open source web-publishing platform
 - `ARK module for Drupal`_, which allows your Drupal site to act as a Name Mapping Authority (NMA)
-- `EZID service`_: long term identifiers made easy, if you would rather not install and maintain those services yourself
-- `N2T.net resolver`_: Name-to-Thing, a single global resolver at n2t.net
 
 ARK Anatomy
 =============
 
 An ARK is represented by a sequence of characters that contains the label,
-"``ark:``". When embedded in a URL, it is preceded by the protocol  ("``http://``"
-or "``https://``") and name of a service that provides support for that ARK.
-That service name, or the "Name Mapping Authority" (NMA), is mutable and
-replaceable, as neither the web server itself nor the current web protocols are
-expected to last longer than the identified objects. The immutable, globally
-unique identifier follows the "``ark:``" label. This includes a "Name Assigning
-Authority Number" (NAAN) identifying the naming organization, followed by the
-name that it assigns to the object. Please visit the `NAAN request form`_ if you
-are interested in generating and using ARKs for your information objects.
+"``ark:``". When embedded in a URL, it is preceded by the protocol
+("``http://``" or "``https://``") and name of a service that provides support
+for that ARK. That service name, or the "Name Mapping Authority" (NMA), is
+mutable and replaceable, as neither the web server itself nor the current web
+protocols are expected to last longer than the identified objects. The
+immutable, globally unique identifier follows the "``ark:``" label. This
+includes a "Name Assigning Authority Number" (NAAN) identifying the naming
+organization, followed by the name that it assigns to the object. Please visit
+the `NAAN request form`_ if you are interested in generating and using ARKs for
+your information objects.
 
 Here is a diagrammed example: ::
 

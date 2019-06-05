@@ -12,7 +12,7 @@ our @ISA = qw(Exporter);
 
 our @EXPORT = qw();
 our @EXPORT_OK = qw(
-	config tlogger EXDB_DBPREFIX
+	config tlogger
 );
 our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
 
@@ -29,11 +29,10 @@ use Config;
 
 use constant TIMEZONE		=> 'US/Pacific';
 
-# External database constants.
-use constant EXDB_CONNECT	=> 'mongodb://localhost';  # xxx replicasets?
-use constant EXDB_DBPREFIX	=> 'egg';
-use constant EXDB_UBDELIM	=> '_s_';	# populator's binder delimiter
-						# mnemonic: possessive "s"
+#xxxuse constant EXDB_CONNECT	=> 'mongodb://localhost';  # xxx replicasets?
+use constant SMODE_MAIN		=> 'real';	# storage mode
+use constant SMODE_ALT		=> 'test';	# storage mode
+use constant SMODE_DEFAULT	=> 'real';	# storage mode
 
 # External database record attributes.
 use constant EXDB_CTGT	 	=> '_t';	# content target element
@@ -42,11 +41,20 @@ use constant EXDB_MTGT_PX 	=> '_,eTm,';	# metadata tgt. prefix (conneg)
 
 use constant EGGNOG_DIR_DEFAULT		=> '.eggnog';
 use constant BGROUP_DEFAULT		=> 'bgdflt';	# binder group default
+					# zzzzz bgdflt deprecated
+use constant SERVICE_DEFAULT		=> 's';		# default service name
+use constant HOST_CLASS_DEFAULT		=> 'loc';
+
 use constant CONFIG_FILE_DEFAULT	=> 'eggnog_conf_default';
 use constant CONFIG_FILE		=> 'eggnog_conf';
+use constant WARTS_FILE			=> 'warts/env.yaml';
 use constant PFX_FILE_DEFAULT		=> 'prefixes_default.yaml';
 use constant PFX_FILE			=> 'prefixes.yaml';
 use constant TXNLOG_DEFAULT		=> catfile 'logs', 'transaction_log';
+
+use constant MG_CSTRING_HOSTS_DEFAULT	=> 'localhost';
+use constant MG_REPSETOPTS_DEFAULT	=> '';
+use constant MG_REPSETNAME_DEFAULT	=> 'live';
 
 ######################### Default Configuration ##################
 our $default_cfc =	# zero-config requires default config file contents
@@ -54,8 +62,9 @@ qq@
 # XXX this file should be more generic, leaving real conf file to be
 # custom built, eg, via build_server_tree
 
-# This is the default configuration file for "egg" (v$VERSION).
-# It is in YAML format and has 3 sections.
+# This is the configuration file for "egg" (v$VERSION).
+# It is in YAML format and has separate sections (associative arrays)
+# introduced by unindented top-level keys.
 
 # Top-level binder flags section
 # status is one of enabled, disabled, or readonly
@@ -145,18 +154,8 @@ redirects:
 
 sub connect_string { my( $hostlist, $repsetopts, $setname )=@_;
 
-	#defined($hostlist) && defined($repsetopts) && defined($setname) or
-		# source env.sh
-
 	defined($hostlist) && defined($repsetopts) && defined($setname) or
 		return undef;		# all args must be defined
-#MG_CSTRING_HOSTS="$MG_CSTRING_HOSTS"	# exdb mongo database
-#MG_REPSETOPTS="$MG_REPSETOPTS"
-#MG_REPSETNAME="$MG_REPSETNAME"
-#export MG_CSTRING_HOSTS MG_REPSETOPTS MG_REPSETNAME
-#
-#EGNAPA_HOST_CLASS="$EGNAPA_HOST_CLASS"	# to form exdb dbname
-#export EGNAPA_HOST_CLASS
 	return 'mongodb://' .
 			$hostlist . "/?$repsetopts" . "&replicaSet=$setname";
 }
@@ -175,6 +174,13 @@ sub config { my( $sh )=@_;
 		(-e $sh->{conf_file} ? $sh->{conf_file} :
 		(-e $sh->{conf_file_default} ? $sh->{conf_file_default} :
 		'' ));			# else neither config file exists
+
+# zzzzz apache start needs to call admegn warts on build so that it tracks
+#       changes from env.sh to env.yaml!
+	my $warts_file =
+		-e $sh->{warts_file}
+			? $sh->{warts_file}	# there's a warts file
+			: '';			# or else not
 
 	if (! $conf_file) {		# create a default configuration file
 		$conf_file = $sh->{conf_file_default};
@@ -197,10 +203,31 @@ sub config { my( $sh )=@_;
 			return $msg;
 	}
 
-	# The config file is currently read only on session startup.
-	#
+	# Now read the config file and any warts file. Any conflicting
+	# settings from the latter override those from the former.
+	# NB: either call to LoadFile may throw a fatal (uncaught) exception,
+	# which is ok (yyy right?) because something would be very wrong.
+
 	my $cfh = LoadFile($conf_file) or	# config file hash of hashes
-		return "$conf_file: config file load failed";
+		return "$conf_file: config file load failed"; # never called?
+
+	# Read the warts file, if any; its settings may override config file.
+
+	my $wf = {};		# a simple hash, keys look just like env vars
+	$warts_file and
+		($wf = LoadFile($warts_file) or		# yyy never called?
+			return "$warts_file: warts file load failed");
+
+	# Need service and host_class to form unique database names.
+
+	$sh->{service} =			# service name, eg, n2t, web
+		$sh->{opt}->{service}		# eg, "n2txidsn2tprd2b"
+		|| $ENV{EGNAPA_SERVICE}
+		|| $wf->{EGNAPA_SERVICE}	# eg, "n2t"
+		|| SERVICE_DEFAULT;		# eg, "s"
+	$sh->{host_class} = $ENV{HOST_CLASS}	# eg, dev, stg, prd
+		|| $wf->{EGNAPA_HOST_CLASS}
+		|| HOST_CLASS_DEFAULT;
 
 	$sh->{conf_file_actual} = $conf_file;	# save actual conf file used
 				# yyy document key; record event in txnlog
@@ -250,7 +277,6 @@ sub config { my( $sh )=@_;
 		return "xxx temporary check: unset resolver_ignore_redirect_host in config file";
 
 
-
 # xxx can we move this into "new" ??
 #     depends on opts and (currently) conf_db dbie setting
 #     depends on ENV var
@@ -262,6 +288,7 @@ sub config { my( $sh )=@_;
 	#       in module, eg, even if NOT called by egg)
 	# 4. config file
 
+	# xxx these DBIE setting look like a mess
 	my $dbie =
 		$sh->{opt}->{dbie} || $ENV{EGG_DBIE} || $sh->{conf_db}->{dbie};
 	$ENV{EGG_DBIE} and ! $sh->{opt}->{dbie} and
@@ -287,10 +314,19 @@ sub config { my( $sh )=@_;
 	}
 	if (($pos = index($dbie, 'e')) > -1) {
 		$sh->{exdb} = {};		# yyy document these keys
+
+		# We're doing exdb connections, so finalize our environment.
+		$ENV{MG_CSTRING_HOSTS} ||= $wf->{MG_CSTRING_HOSTS}
+			|| MG_CSTRING_HOSTS_DEFAULT;
+		$ENV{MG_REPSETOPTS} ||= $wf->{MG_REPSETOPTS}
+			|| MG_REPSETOPTS_DEFAULT;
+		$ENV{MG_REPSETNAME} ||= $wf->{MG_REPSETNAME}
+			|| MG_REPSETNAME_DEFAULT;
+
 		$sh->{exdb}->{connect_string} =
 			connect_string( $ENV{MG_CSTRING_HOSTS},
-				$ENV{MG_REPSETOPTS}, $ENV{MG_REPSETNAME} ) ||
-			$sh->{conf_db}->{exdb_connect_string} || EXDB_CONNECT;
+				$ENV{MG_REPSETOPTS}, $ENV{MG_REPSETNAME} )
+			|| $sh->{conf_db}->{exdb_connect_string};
 		$sh->{fetch_exdb} =		# read exdb on fetch if 0
 			$pos == 0 || $sh->{ietest};
 	}
@@ -313,6 +349,11 @@ sub config { my( $sh )=@_;
 	! $authok and
 		return $msg;
 	$sh->{ruu} = $ruu;
+	$sh->{smode} ||=
+		$sh->{opt}->{smode} || SMODE_DEFAULT;
+	$sh->{smode} eq SMODE_MAIN		# enforce "test" or "real"
+			|| $sh->{smode} eq SMODE_ALT or	# if messed up
+		$sh->{smode} = SMODE_ALT;		# assume "test"
 
 	if ($sh->{exdb}) {
 		# yyy a tiny stab at generic external db support;
@@ -321,7 +362,7 @@ sub config { my( $sh )=@_;
 			return 'Unknown external database class: ' .
 				$sh->{conf_db}->{exdb_class};
 		my $ok = try {
-			$sh->{exdb}->{client} =		# soft "connect"
+			$sh->{exdb}->{client} =		# "soft connect"
 				MongoDB->connect($sh->{exdb}->{connect_string});
 		}
 		catch {
@@ -330,12 +371,13 @@ sub config { my( $sh )=@_;
 		};
 		$ok // return $msg;	# test for undefined since zero is ok
 
+		use EggNog::Binder 'ebinder_names';
 		( $sh->{exdb}->{database_name},
 		  $sh->{exdb}->{binder_root_name},
 		  $sh->{exdb}->{ns_root_name},
 		  undef,		# don't care about final element
 		) =
-		  	ebinder_names($sh);
+		  	EggNog::Binder::ebinder_names($sh);
 
 		#my $bgroup = basename( $sh->{bgroup} );
 		#my $who = $ruu->{who};
@@ -344,7 +386,7 @@ sub config { my( $sh )=@_;
 		#	$item =~ s/[\W_]+$//;	# non-_ chars from item name
 		#}
 		#$sh->{exdb}->{database_name} =
-		#	EXDB_DBPREFIX . '_' . $bgroup;
+		#	DBPREFIX . '_' . $bgroup;
 		#$sh->{exdb}->{binder_root_name} =
 		#	$who . EXDB_UBDELIM;	# lacking dbname and bindername
 		#$sh->{exdb}->{ns_root_name} =		# namespace root name
@@ -361,32 +403,6 @@ sub config { my( $sh )=@_;
 
 	$sh->{cfgd} = 1;	# boolean to see if session is "configured"
 	return '';
-}
-
-# $sh required, optional args: $bgroup, $who, $ubname
-#   $ubname = user binder name (short name, as known to user)
-# returns ( $edatabase_name, $ebinder_root_name, $ns_root_name, $clean_ubname )
-# MongoDB-ready name is "$ns_root_name$clean_ubname"
-
-sub ebinder_names { my( $sh, $bgroup, $who, $ubname )=@_;
-
-	$bgroup ||= $sh->{bgroup};
-	$who ||= $sh->{ruu}->{who};
-	$ubname ||= '';
-	for my $item ($bgroup, $who, $ubname) {	# clean/normalize all fragments
-		$item =~ s/^[\W_]+//;		# drop leading/trailing non-word
-		$item =~ s/[\W_]+$//;		# non-_ chars from item name
-	}
-	my $edatabase_name =		# eg, MongoDB "database name"
-		EXDB_DBPREFIX . '_' . $bgroup;
-	my $ebinder_root_name =		# eg, start of MongoDB "collection name"
-		$who . EXDB_UBDELIM;	# no dbname or bindername (eg sam_s_)
-	my $ns_root_name =		# eg, start FQ MongoDB collection name
-		"$edatabase_name.$ebinder_root_name";
-	# all that's missing from $ns_root_name is caller's binder name
-	return (
-		$edatabase_name, $ebinder_root_name, $ns_root_name, $ubname,
-	);
 }
 
 # Take a redirect array reference and a return hash reference.
@@ -491,6 +507,8 @@ sub new {		# call with WeAreOnWeb, om, om_formal, optref
 	$self->{conf_file_default} =
 		catfile( $self->{home}, CONFIG_FILE_DEFAULT );
 	# we open config file only if we need it, eg, NOT for help command
+
+	$self->{warts_file} = catfile( $ENV{HOME}, WARTS_FILE );
 
 	$self->{txnlog_file_default} =
 		catfile( $self->{home}, TXNLOG_DEFAULT );

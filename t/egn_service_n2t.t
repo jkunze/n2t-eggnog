@@ -16,6 +16,7 @@ $td or			# if error
 	exit 1;
 my ($td2, $cmd2);
 ($td2, $cmd2, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "nog";
+# xxx why does egn_apachebase clobber returned $hgbase?
 $ENV{EGG} = $hgbase;		# initialize basic --home and --bgroup values
 
 # Tests for resolver mode look a little convoluted because we have to get

@@ -1378,17 +1378,22 @@ ServerName $hostport
 DocumentRoot "$document_root"
 ServerAdmin ${ServerAdmin:=you@example.com}
 
-# Patch to prevent a denial of service attack.  The following
-# declarations can (and should) be removed once we upgrade to Apache
-# 2.4.  See <http://mail-archives.apache.org/mod_mbox/httpd-announce/
-# 201108.mbox/%3C20110826103531.998348F82@minotaur.apache.org%3E> for
-# more information.
-SetEnvIf Range (?:,.*?){5,5} bad-range=1
-RequestHeader unset Range env=bad-range
-RequestHeader unset Request-Range
+## Patch to prevent a denial of service attack.  The following
+## declarations can (and should) be removed once we upgrade to Apache
+## 2.4.  See <http://mail-archives.apache.org/mod_mbox/httpd-announce/
+## 201108.mbox/%3C20110826103531.998348F82@minotaur.apache.org%3E> for
+## more information.
+#SetEnvIf Range (?:,.*?){5,5} bad-range=1
+#RequestHeader unset Range env=bad-range
+#RequestHeader unset Request-Range
+
+# This helps with problem introduced by timeout change in Apache 2.4.39.
+
+RequestReadTimeout header=20-40,MinRate=500 body=20,MinRate=500
 
 # Now enable CORS support for cross-site forwarding, but only for GET requests.
 # Should be safe because (a) we use "*" below and (b) we don't use cookies.
+# yyy CORS support not known to work yet
 
 UnSetEnv GET_REQUEST
 SetEnvIf Request_Method ^GET\$ GET_REQUEST=1

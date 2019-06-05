@@ -249,8 +249,8 @@ The API closely resembles Eggnog's CLI (command line interface).
 Deleting
 --------
 
-To delete an element entirely, use ``rm`` or, to delete all elements under
-an identifier (effectively deleting the identifier itself), ``purge``. ::
+To delete an element entirely, use ``rm``. To delete all elements under an
+identifier -- which is how to delete the identifier itself -- use ``purge``. ::
 
   wg "$b/a/sam/b?ark:/99999/fk4f30n.rm _t"
   wg "$b/a/sam/b?ark:/99999/fk4f30n.purge"
@@ -300,7 +300,8 @@ with a target URL. ::
 
 Great efficiency is possible. For example, if a file named "ids-to-purge"
 contains 9 million identifiers, one per line, the following server-side
-shell script (or its client-side equivalent) would purge them. ::
+shell script (which has a similar client-side equivalent) would purge them
+in batches of 5000 at a time. ::
 
   #!/bin/env bash
   
@@ -395,36 +396,48 @@ interpretation. For example, ::
 Metatypes
 ---------
 
-A "resource type" tells people that the identified object is of a certain
-kind. Often the resource type *also* seems to suggest things about the
-surrounding metadata, for example, a resource of type book usually has
-an author and publisher, but a geosample does not. Moreover it suggests
-mappings to core concepts, such as, that the person responsible was the
-collector (geosample) or the author (book). This double duty sometimes causes
-confusion.
+A "resource type" tells people that the identified object (resource) is of
+a certain kind. Often assigning the correct type requires deep subject
+expertise that people who manage and curate metadata do not have. Even if
+they had it, they often lack direct access (eg, to physical objects, to the
+means of production, or to the context of discovery), hence the ability to
+study and make a proper assignment. Consequently, the resource type is often
+wrong and cannot be fixed by collection curators.
 
-A metatype_ (text, data, video, etc.) looks similar to a resource type,
-but instead of characterizing the object it gives a functional description
-of the surrounding metadata. Why? To separate and clarify these two roles. A
-metatype assignment only reflects properties of the metadata and need not
-consider or match the resource type at all. Similarity between metatypes and
-resource types should be common, but never required.
-
-For one thing, metadata curators often lack object access or disciplinary
+This is where the concept of the metatype_ comes in. The resource type, such
+as it is, traditionally plays a secondary role in setting expectataions about
+which metadata elements should be present. For example, if a resource is a
+"book", we expect it to have an author, title, and publisher, but we don't
+expect those elements for a "rock", which instead might have a collector,
+composition, and hardness. Note that only disciplinary experts are qualified
+to assign and review resource types, but they're seldom trained in metadata.
+Similarly, metadata managers usually lack object access or disciplinary
 expertise to review resource type assignments (eg, tissue sample vs
-specimen? map vs image vs pdf?), but still want to convey which
-type-specific elements and semantics should be present.
-Without having to rely on a received resource type or risk making up
-their own, they can with confidence apply a metatype that correctly
-describes their finished metadata (not the object). Finally, metatypes also
-assert enough information to permit basic mapping (crosswalking) between
-metadata sets.
+specimen? map vs image vs pdf?). The flaw in the traditional approach is
+that resource types are inherently poor indicators of what metadata should
+be present.
 
-Thus a metataype of "text" asserts only that the surrounding metadata
+The metatype_ may look very much like a resource type, but differs from it
+in (a) being assigned by metadata experts who directly manage metadata and
+(b) requiring rather than suggesting things of the surrounding metadata.
+Thus when a metatype of "book" accompanies an object, which may or may not
+have an actual resource type of "book", it was assigned by a metadata expert
+to authoritatively set expectations about the surrounding metadata. This
+relieves the resource type from the burden of having to describe both the
+object and its metadata.
+
+So a metatype_ (text, data, video, etc.) looks similar to a resource type,
+but instead of characterizing the object it gives a functional description
+of the surrounding metadata. A metatype assignment only reflects properties
+of the metadata and need not consider or match the resource type at all.
+Similarity between metatypes and resource types should be common but never
+required. A metataype of "text" asserts only that the surrounding metadata
 should include other elements that normally accompany text-like objects.
 This is *not* an assertion that the object itself is of type "text". Exactly
 which elements are implied by a given metatype, along with core mappings to
-common metadata element sets, is defined with the metatype term itself.
+common metadata element sets, is defined along with the metatype term itself.
+Finally, metatypes also assert enough information to permit basic mapping
+(crosswalking) between metadata sets.
 
 The metatype and resource type both appear in the kernel element "how", which
 permits machine-readable parts followed by optional human readable parts.
@@ -437,8 +450,8 @@ For example, ::
   how: (:mtype agent) fruit fly
   how: (:mtype agent set) orchestra
 
-The machine-readable part must be preceded by ``(:mtype `` and followed
-by ``)``, and may itself be composite. In general, this composite is
+The machine-readable metatype must be preceded by ``(:mtype`` and a space,
+and terminated by ``)``. The metatype itself may be composite, consisting of
 
 1. a sequence of one or more *base* metatypes separated by "+", and
 2. is optionally followed by `` set`` (a space and the word "set_") to
@@ -451,8 +464,8 @@ The base metatypes are controlled values defined below.
 =========    =============================================================
 Metatype     Typical corresponding resource type
 =========    =============================================================
-text_	     words meant for reading
-image_	     still visual information other than text
+text_	     words meant for reading, including scanned images of text
+image_	     visual information, other than text, made of still images
 audio_	     information rendered as sounds
 video_	     visual information made of moving images, often with sound
 data_	     structured information meant for study and analysis
@@ -460,9 +473,9 @@ code_	     retrievable computer program in source or compiled form
 term_	     word or phrase
 service_     destination or automaton with which interaction is possible
 agent_	     person, organization, or automaton that can act
-human_	     specific kind of agent, namely, a person
+human_	     human being, as a specific kind of agent
 event_	     non-persistent, time-based occurrence
-oba_         none of the above (meaning "other" in Tagolog)
+oba_         other, or none of the above (from Tagolog)
 =========    =============================================================
 
 Optional descriptive metadata

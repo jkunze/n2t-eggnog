@@ -119,8 +119,12 @@ i.purge
 ";
 $x = run_cmds_on_stdin($cmdblock);
 
+my $isbname;
+$isbname = `$cmd --dbie i bname $td/foo`;	# indb system binder name
+$isbname =~ s/\n*$//;
+
 if ($indb) {	# phasing out rlog means not doing it for exdb
-$y = file_value("< $td/foo/egg.rlog", $x);
+$y = file_value("< $isbname/egg.rlog", $x);
 like $x, qr/ H: .* C: i\|a.set 3.*(?: C: .*){4}i.purge/s,
 	'bind value reflected in binder log file';
 }
@@ -146,7 +150,7 @@ $x = resolve_stdin('', $doi);	# do a prefix-based resolution; ignore return
 # now check effects of those commands on the log
 
 if ($indb) {
-$y = file_value("< $td/foo/egg.rlog", $x);
+$y = file_value("< $isbname/egg.rlog", $x);
 like $x, qr/mline.*%0athis.*%0athis/s,
 	'multi-line bind correctly encoded in logfile (for EDINA replication)';
 }
@@ -291,10 +295,6 @@ a^b|c%25d: x
 # elements bound under i^j|k%l: 1
 # admin + user elements found to purge under i^j|k%l: 3\n\n\n",
 	"tokens displaying with mix of % and ^ encodings";
-
-#say "x: $x";
-#say STDERR "xxx premature exit";
-#exit;
 
 $cmdblock = "
 purge

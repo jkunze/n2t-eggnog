@@ -538,6 +538,7 @@ sub exdb_get_id { my( $bh, $id )=@_;
 #     in scalar context return the number of dupes
 # Assumes $key is ready for storage
 
+# XXXXXXXXXXXXXXXX CHANGE this signature to match exdb_get_dup
 sub indb_get_dup { my( $db, $key )=@_;
 
 	my $wantlist = wantarray();
@@ -1929,7 +1930,8 @@ sub mstat { my( $bh, $mods, $om, $cmdr, $level )=@_;
 		my ($mtime, $size, @dups);
 		if ($level eq "brief") {
 
-			$om->elem("External binder", $sh->{exdb}->{exdbname});
+			#$om->elem("External binder", $sh->{exdb}->{exdbname});
+			$om->elem("External binder", $bh->{exdbname});
 			my $count = exdb_count($bh);
 			$count //= "error in fetching document count";
 			$om->elem("record count", $count);
@@ -2672,7 +2674,7 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 
 # ZZZZZZZZZXXXXXXXXXXXX remove debug
 #			tlogger $sh, $txnid, "XXX bindername:"
-#				. " $sh->{exdb}->{exdbname}"
+#				. " $bh->{exdbname}"
 #				. " cstring: $sh->{exdb}->{connect_string}";
 
 			my $rfs = flex_enc_exdb($id, @elems);	# yyy no @elems

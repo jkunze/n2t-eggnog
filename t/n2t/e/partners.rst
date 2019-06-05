@@ -53,7 +53,7 @@ building an open, international community around Archival Resource Keys
 
 While not currently storing individual identifiers for them, N2T stores
 "NAAN" and "shoulder" (described in `Identifier Basics`_) forwarding
-records for over 550 different ARK providers, including
+records for over 500 different ARK providers, including
 
 - Portico Digital Preservation Service
 - The National Library of France

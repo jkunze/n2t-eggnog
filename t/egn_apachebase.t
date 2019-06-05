@@ -50,6 +50,7 @@ $td or			# if error
 my ($td2, $cmd2);
 ($td2, $cmd2, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "nog";
 
+# xxx Clobbers? returned $hgbase.? egn_service_n2t... does not clobber - why?
 # This script calls egg, and we want the latest -Mblib and cleanest, eg,
 $hgbase = "--home $buildout_root";	# and we know better in this case
 $bgroup and

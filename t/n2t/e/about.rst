@@ -26,6 +26,7 @@
 .. _Force11: https://www.force11.org/
 .. _partners: /e/partners.html
 .. _N2T API Documentation: /e/n2t_apidoc.html
+.. _N2T Architecture: /e/images/N2T_Anatomy.jpg
 .. _Compact, prefixed identifiers at N2T.net: /e/compact_ids.html
 .. _Original N2T vision: /e/n2t_vision.html
 
@@ -105,9 +106,12 @@ Recognizing the important global role that the resolver plays, in 2018 CDL
 and DuraSpace_ launched an initiative, called `ARKs in the Open`_, to
 establish broad and sustainable community ownership of N2T's
 technological, administrative, and policy infrastructure.
+With support from 31 organizations on 4 continents, the initiative
+has three active working groups.
 
 - N2T partners_
 - `N2T API Documentation`_
 - `Original N2T vision`_
+- `N2T Architecture`_ diagram
 
 //END//

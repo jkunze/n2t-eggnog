@@ -1077,7 +1077,7 @@ sub load_prefix_hash { my( $sh, $pfx_file, $msgR )=@_;
 	my $ok = try {
 		$pfxs = YAML::Tiny::LoadFile($pfx_file);
 	}
-	catch {
+	catch {		# NB: catch this exception or resolver aborts
 		$$msgR .= "YAML::Tiny::LoadFile failed on $pfx_file";
 		return undef;	# returns from "catch", NOT from routine
 	};
@@ -1300,6 +1300,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 	my $txnid;		# undefined until first call to tlogger
 
 	# Load the prefixes hash (once) if it's not yet defined.
+	# Once done, the $sh->{pfxs} points to a hash of all known prefixes.
 	#
 	my $msg;
 	if (! $sh->{pfxs}) {
@@ -1338,7 +1339,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 		# yyy what's the indb equivalent?
 # ZZZZZZZZZXXXXXXXXXXXX remove debug
 # xxx document use of tlogger and $exget for debugging
-#		. ($exget ? " bindername: $sh->{exdb}->{exdbname}" .
+#		. ($exget ? " bindername: $bh->{exdbname}" .
 #			" connect_string: $sh->{exdb}->{connect_string}" : "")
 		. " $lcmd $ur_origid $hdrinfo";
 
@@ -1676,14 +1677,17 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 # xxx problem: this is capturing web server file paths as if they were partial
 # ids to send to pfx for lookup
 	# If still nothing, see if we have a probable partial match.
-	# This is risky as we might occlude rule-based redirection
-	# if we flag as partial something that ought to simply redirect.
+	# This is risky as we might occlude rule-based redirection if
+	# we'd flagged as partial something that ought to simply redirect.
 
  	if ($idx->{partial}) {		# scheme, or scheme+naan
 		my $partial = 
 			$idx->{shdr_i}->{key}
 			|| $idx->{naan_i}->{key}
 			|| $idx->{scheme_i}->{key};
+
+# xxx to do: make "n2t.net/pmid:" work -- does it fail because it's an alias?
+
 		return cnflect( $bh, $txnid, $db, $rpinfo, $accept,
 			$id, [ ], $idx, "partial=$partial" );
 	}

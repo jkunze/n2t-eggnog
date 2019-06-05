@@ -54,8 +54,15 @@ sub script_tester { my( $script )=@_;
 	my $bgroup;			# external binder group
 	my $indb = 1;			# default
 	my $exdb = 0;			# default
+	# xxx these settings should be derived using the session start up code!
+	# EGG_DBIE=e means e and NOT i
+	# EGG_DBIE=i means i and NOT e
+	# EGG_DBIE=ie means i and e
+	# EGG_DBIE=ei means i and e
+	# EGG_DBIE=xyz means i (default) and NOT e (default)
 	if ($ENV{EGG_DBIE}) {
 		if (index($ENV{EGG_DBIE}, 'e') >= 0) {
+			$exdb = 1;
 			say("script_tester: detecting env var " .
 				"EGG_DBIE=$ENV{EGG_DBIE}");
 			my $mgstatus = `mg status`;	# yyy mongo-specific
@@ -65,18 +72,25 @@ sub script_tester { my( $script )=@_;
 					"\"mg start\"?";
 				return ('');		# error
 			}
+			index($ENV{EGG_DBIE}, 'i') >= 0 or
+				$indb = 0;
 		}
+		#$indb = index($ENV{EGG_DBIE}, 'i') >= 0;	# not default
 		$bgroup = $td;		# td_egg is ok as dir or bgroup name
-		$exdb = 1;
-		$indb = index($ENV{EGG_DBIE}, 'i') >= 0;	# not default
 	}
 	my $hgbase = "--home $homedir";		# home-binder-group base string
 	$bgroup and				# empty unless EGG_DBIE is set
-		$hgbase .= " --bgroup $bgroup";
+# hgbase should have --service egg or nog or n2t or web or s,
+#    where value is same as $script (egg or nog), unless ???, when
+#      n2t or web ...?
+# XXX is this --service arg is needed?
+		$hgbase .= " --bgroup $bgroup --service n2t";
+		#$hgbase .= " --bgroup $bgroup";
 
 
 # XXXXXXXXXXXXXXXXX need to add --user, so that behind server we open correct DB
-# XXXXXXXXXXXXXXXXX need to add binder groups: prd, dev, stg,
+# XXXXXXXXXXXXXXXXX need to add bgroup binder groups: prd, dev, stg,
+# zzzzzzzzzzzzzzzzzzz
 
 
 

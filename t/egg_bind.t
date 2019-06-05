@@ -25,20 +25,24 @@ my $v1bdb = ($x =~ /DB version 1/);
 $x = `$cmd --verbose -p $td mkbinder foo`;
 shellst_is 0, $x, "make binder named foo";
 
+my $isbname = `$cmd --dbie i bname $td/foo`;	# indb system binder name
+$isbname =~ s/\n*$//;
+
 my $y;
-$x = file_value("<$td/foo/egg_README", $y);
+$x = file_value("<$isbname/egg_README", $y);
 
 if ($v1bdb) {
   like $y, qr/ordering.*not.*preserved/,
   	"note left about duplicate ordering not preserved";
 }
 else {
+  like $y, qr/.../, "README file found";
   unlike $y, qr/ordering.*not.*preserved/,
   	"no note left about duplicate ordering preserved";
 }
 
 if ($indb) {
-  is 1, (-f "$td/foo/egg.bdb"), 'created binder upper directory and bdb file';
+  is 1, (-f "$isbname/egg.bdb"), 'created binder upper directory and bdb file';
 }
 
 $x = `$cmd -d $td/foo foo.set bar zaf   woof`;
@@ -52,12 +56,12 @@ shellst_is 0, $x, "fetch status ok";
 like $x, qr/bar:\s*zaf\n/s,
 	"fetch promotes plain format to anvl and ignores extra tokens";
 
+#say "xxxxxx premature end. x=$x"; exit;
+
 $x = `$cmd -d $td/foo FOO.set bar cow`;
 $x = `$cmd -d $td/foo -m plain FOO.fetch`;
 like $x, qr/bar:\s*cow\n/s,
 	'id strings are case sensitive';
-
-#exit;
 
 $x = `$cmd -d $td/foo foo.let eel cow`;
 like $x, qr/^$/s, "simple let binding";
@@ -106,8 +110,6 @@ $x = `$cmd -d $td/foo -f -m anvl foo.rm bar`;
 $x = `$cmd -d $td/foo -f -m anvl --ack foo.let bar aaa`;
 like $x, qr/oxum: 3.1/,
 	"let proceeds and --ack talks when a value isn't already set";
-
-#say "xxxxxx premature end"; exit;
 
 $x = `$cmd -d $td/foo -m anvl foo.rm eel cow`;
 like $x, qr/^$/s, "'rm foo cow' operation with ANVL";

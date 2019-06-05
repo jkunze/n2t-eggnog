@@ -11,6 +11,16 @@ ark:
   probe: "http://n2t.net/ark:/88435/hq37vq534"
   more: "https://wiki.ucop.edu/display/Curation/ARK"
 
+ror:
+  type: "scheme"
+  name: "Research Organization Registry"
+  alias: 
+  primary: "true"
+  redirect: "https://ror.org/$id"
+  test: "03yrm5c26"
+  probe: "https://ror.org/03yrm5c26"
+  more: "http://ror.org"
+
 hdl:
   type: "scheme"
   name: "Handle System Identifier"
