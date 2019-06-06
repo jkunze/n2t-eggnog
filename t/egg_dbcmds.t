@@ -23,7 +23,7 @@ sub run_cmds_on_stdin { my( $cmdblock )=@_;
 
 {
 remake_td($td, $bgroup);
-$ENV{EGG} = "$hgbase -d $td/foo";
+$ENV{EGG} = "$hgbase --user foo -d $td/foo";	# user foo matches binder foo
 my ($x, $y, $cmdblock);
 
 $x = `$cmd --verbose mkbinder`;
@@ -48,6 +48,8 @@ like $x, qr{unauth},
 $x = `$cmd dbsave $td/dummysaved.bdb`;
 shellst_is 0, $x, "non-webmode dbsave proceeds";
 like $x, qr{running /bin/cp}, "non-webmode dbsave is authorized";
+
+#say "xxxxxx premature exit x=$x"; exit;
 
 $cmdblock = "
 this.purge
@@ -80,8 +82,6 @@ $x = `$cmd dbload $td/dummysaved.bdb`;
 # like $x, qr/^is: dbsaved\n\n$/m, "original binding back after dbload";
 
 #system "sum $td/foo/*";
-
-#exit; #############
 
 remove_td($td, $bgroup);
 }

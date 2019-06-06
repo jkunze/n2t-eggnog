@@ -940,7 +940,7 @@ sub open_resolverlist { my( $bh, $list )=@_;
 		$rmh->{subresolver} = 1;	# stop recursion 2
 		$rmh->{rrm} = 1;	# xxx better if inherited?
 					#     big assumption about caller here
-		ibopen(				# and IF
+		bopen(				# and IF
 			$rmh,			# we can ibopen it
 						# yyy check if already open?
 			$_,			# using the map list item
@@ -1376,8 +1376,8 @@ sub ebopen { my( $bh, $exbrname, $flags )=@_;
 #$ubname ||= $DEFAULT_BINDER;
 
 # zzz drop this soon
-	! $exbrname and
-		(undef, $exbrname) = str2brnames($sh, $DEFAULT_BINDER);
+#	! $exbrname and
+#		(undef, $exbrname) = str2brnames($sh, $DEFAULT_BINDER);
 
 		# NB: this $DEFAULT_BINDER is created implicitly by the first
 		# mongodb attempt to write a record/document, so it is not the
@@ -1407,7 +1407,7 @@ sub ebopen { my( $bh, $exbrname, $flags )=@_;
 # xxx $sh->{ruu}->{who} is $user?
 # xxx $sh->{bgroup} is $bgroup?
 # xxx $binder comes from ancestor of $exbrname, which refines it...
-#			binder_exists($sh, undef, $binder, $bgroup, $user, undef);
+#			xxxbinder_exists($sh, undef, $binder, $bgroup, $user, undef);
 #
 #	}
 # ZZZZZZZZZZZZZZZZZZZZXXXXXX
@@ -1482,14 +1482,14 @@ sub bopen { my( $bh, $bdr, $flags, $minderpath, $mindergen )=@_;
 # XXX zzz maybe need to preserve pathpart of $isbname???
 
 
-# XXX zzz should zzzbinder_exists() get called by bopen()?
+# XXX zzz should binder_exists() get called by bopen()?
 
 
 # zzz xxx if rrm check for existence (so we can bail if not!)
 	my $exists_flag = $sh->{rrm} ? 2 : 0;
 
-	my ($inbrname, $exbrname) =	# zzz xxx drop this soon
-		str2brnames($sh, $bdr);
+#	my ($inbrname, $exbrname) =	# zzz xxx drop this soon
+#		str2brnames($sh, $bdr);
 	if ($sh->{exdb}) {
 		($flags & DB_CREATE) and
 			$flags = $EGG_DB_CREATE;	# yyy dumb kludge
@@ -1923,7 +1923,7 @@ sub ub2sb { my( $sh, $ubname, $smode )=@_;
 	return ($isbname, $esbname);
 #	! $exists_flag and			# if 0 or undef, we're done
 #		return ($isbname, $esbname);
-#	return zzzbinder_exists( $sh,
+#	return binder_exists( $sh,
 #		$isbname, $esbname, $exists_flag, $minderpath );
 }
 
@@ -2070,7 +2070,7 @@ sub sb2parts { my( $sbname )=@_;
 # zzz $isbname non empty to check indb case
 # zzz $esbname non empty to check exdb case
 
-sub zzzbinder_exists { my( $sh, $isbname, $esbname, $exists_flag, $minderpath )=@_;
+sub binder_exists { my( $sh, $isbname, $esbname, $exists_flag, $minderpath )=@_;
 # ZZZZZZ change name to binder_exists when tested
 
 	! $sh and
@@ -2296,7 +2296,7 @@ sub str2brnames { my( $sh, $binder, $bgroup, $user )=@_;
 #     name we'll just assume it is a binder that was NOT created by mkbinder
 # yyy $mods currently unused
 
-sub binder_exists { my( $sh, $mods, $binder, $bgroup, $user, $minderdir )=@_;
+sub xxxbinder_exists { my( $sh, $mods, $binder, $bgroup, $user, $minderdir )=@_;
 # ZZZZZZZZZZZZZZZZZZZZXXXXXX
 
 	$binder =~ s|/$||;	# remove fiso_uname's trailing /, if any
@@ -2432,14 +2432,14 @@ sub mkbinder { my( $sh, $mods, $binder, $bgroup, $user, $what, $minderdir )=@_;
 
 # zzzzzz
 # should be able to remove this whole next call
-	my ($inbrname, $exbrname) = str2brnames($sh, $binder, $bgroup, $user);
+#	my ($inbrname, $exbrname) = str2brnames($sh, $binder, $bgroup, $user);
 
-	# yyy ignore result for internal db, since binder_exists thinks there's
+	# yyy ignore result for internal db, since xxxbinder_exists thinks there's
 	#     a binder when the dir. was just snagged by gen_minder
 # zzzzzz
 # should be able to remove this whole next call with the appropriate flag
-	my ($indbexists, $exdbexists) =
-		binder_exists($sh, $mods, $binder, $bgroup, $user, $minderdir);
+#	my ($indbexists, $exdbexists) =
+#		xxxbinder_exists($sh, $mods, $binder, $bgroup, $user, $minderdir);
 
 # zzz use ub2sb to replace str2brnames
 ## zzz add ub2sb to convert and check for existence (to exists_in_path...)
@@ -2450,9 +2450,9 @@ my ($isbname, $esbname) = bname_parse($sh,	# default binder if ! $binder
 # zzz set $minderdir default properly, do it for rmbinder too?
 
 
-my ($isbexists, $esbexists) = zzzbinder_exists($sh,
+my ($isbexists, $esbexists) = binder_exists($sh,
 	$isbname, $esbname, $exists_flag, $minderdir);
-#($isbname, $esbname) = zzzbinder_exists($sh,
+#($isbname, $esbname) = binder_exists($sh,
 #	$isbname, $esbname, $exists_flag, $minderdir);
 
 	if ($sh->{exdb}) {
@@ -2778,7 +2778,7 @@ sub brmgroup { my( $sh, $mods, $bgroup, $user )=@_;
 		#     the moment
 # zzz drop this nuance. if it starts with "egg_..." assume it's ours to do with
 # what we want
-		# yyy ignore result for internal db, since binder_exists
+		# yyy ignore result for internal db, since xxxbinder_exists
 		#     doesn't look in @$minderpath yyy this is too complicated
 		# Need this next test because a collection that's listed
 		# might not actually be an eggnog binder.
@@ -2789,21 +2789,21 @@ sub brmgroup { my( $sh, $mods, $bgroup, $user )=@_;
 
 # zzzz use new ub2sb sub
 		($rootless = $b) =~ s/^[^.]+.\Q$binder_root_name//;
-		my ($indbexists, $exdbexists) =
+#		my ($indbexists, $exdbexists) =
 # ZZZZZZZZZZZZZZZZZZZZXXXXXX
-			binder_exists($sh, $mods, $rootless, $bgroup,
-				$user, undef);
+#			xxxbinder_exists($sh, $mods, $rootless, $bgroup,
+#				$user, undef);
 #error: error looking up database name "egg_td_egg.jak_s_egg_td_egg"
 #        (from exbrname "egg_td_egg.jak_s_egg_td_egg.jak_s_bar")
 #error: brmgroup: not removing egg_td_egg.jak_s_bar
-		($inbrname, $exbrname) =
-			str2brnames($sh, $rootless, $bgroup, $user);
+#		($inbrname, $exbrname) =
+#			str2brnames($sh, $rootless, $bgroup, $user);
 
 # xxxzzz is this code tested?
 
 my $exists_flag = 1; 	# soft check
 my ($isbname, $esbname) = bname_parse($sh, $rootless, $sh->{smode});
-my ($isbexists, $esbexists) = zzzbinder_exists($sh,
+my ($isbexists, $esbexists) = binder_exists($sh,
 	$isbname, $esbname, $exists_flag, undef);
 
 #		! $exdbexists and ! $sh->{opt}->{force} and
@@ -2865,16 +2865,16 @@ sub rmbinder { my( $sh, $mods, $binder, $bgroup, $user, $minderpath )=@_;
 		return undef;
 	}
 
-	my ($inbrname, $exbrname) = str2brnames($sh, $binder, $bgroup, $user);
+#	my ($inbrname, $exbrname) = str2brnames($sh, $binder, $bgroup, $user);
 
 # zzz drop nuance
 # ub2sb
 
 	# ??? zzz
-	# yyy ignore result for internal db, since binder_exists doesn't
+	# yyy ignore result for internal db, since xxxbinder_exists doesn't
 	#     look in @$minderpath yyy this is too complicated
-	my ($indbexists, $exdbexists) =
-		binder_exists($sh, $mods, $binder, $bgroup, $user, undef);
+#	my ($indbexists, $exdbexists) =
+#		xxxbinder_exists($sh, $mods, $binder, $bgroup, $user, undef);
 
 # zzz indent
 # xxx is this defaulting needed?
@@ -2882,7 +2882,7 @@ sub rmbinder { my( $sh, $mods, $binder, $bgroup, $user, $minderpath )=@_;
 my ($isbname, $esbname) =
 	bname_parse($sh, $binder, $sh->{smode});
 my $exists_flag = 1; 	# soft check
-my ($isbexists, $esbexists) = zzzbinder_exists($sh,
+my ($isbexists, $esbexists) = binder_exists($sh,
 	$isbname, $esbname, $exists_flag, undef);
 
 	if ($sh->{exdb}) {
@@ -2891,8 +2891,9 @@ my ($isbexists, $esbexists) = zzzbinder_exists($sh,
 		! $binder and		# yyy is this test needed?
 			addmsg($sh, "no binder specified"),
 			return undef;
-		my $dflt_binder = ($exbrname and
-			$exbrname =~ $DEFAULT_BINDER_RE);
+		# zzzxxx untested code
+		my $dflt_binder = ($esbname and
+			$esbname =~ $DEFAULT_BINDER_RE);
 			# ? default binder for the binder group,
 			# ? which for mongodb we consider to _always_ exist
 			# yyy why do we check if if looks like default binder?

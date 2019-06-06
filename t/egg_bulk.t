@@ -130,13 +130,16 @@ myid.fetch
 # should force a re-open in rdwr mode.  Ultimately two closes should
 # be required: once after i.fetch and again at handler teardown.
 
+my $isbname = `$cmd --dbie i bname $td/foo`;	# indb system binder name
+$isbname =~ s/\n*$//;			# do it before --verbose in effect!
+
 $ENV{EGG} = "$hgbase --verbose -d $td/foo";
 $x = run_cmds_on_stdin($cmdblock);
 like $x, qr/aaa: ccc\n.*bar: zaf\ncat: dog\n/s,
 	"four bulk commands exercising both readonly and rdwr modes";
 # XXX an optimized mode could lock in rdwr mode for whole batch
 
-like $x, qr,(?:\nclosing.*$td/foo/egg.bdb\n.*){2},s,
+like $x, qr|(?:\nclosing.*\Q$isbname\E/egg.bdb\n.*){2}|s,
 	"different open modes means closing persistent mopen at least twice";
 
 use EggNog::Binder;
