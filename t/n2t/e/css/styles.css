@@ -3,7 +3,8 @@
 // border: 1px solid red;
 // }
 @font-face {
-  font-family: 'SourceSansPro';
+  font-family: "SourceSansPro", "Helvetica", "Arial", sans-serif;
+//  font-family: 'SourceSansPro';
   src:
     url('/e/fonts/SourceSansPro-Regular.ttf.woff2') format('woff2'),
     url('/e/fonts/SourceSansPro-Regular.ttf.woff') format('woff');

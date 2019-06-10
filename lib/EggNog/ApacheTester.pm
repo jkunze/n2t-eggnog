@@ -305,7 +305,7 @@ sub catch_zap {
 # sent as 'Acting-For: joey' and arriving as 'HTTP_ACTING_FOR=joey'.
 # 
 # The user should be given as, eg, http://n2t.net/ark:/99166/... -> &P/...
-#
+
 sub setpps { my( $user, $pw, $actingfor ) = (shift||'', shift||'', shift||'');
 	my $pps = '';
 	$user and		$pps .= qq@--user=$user @;
@@ -317,8 +317,7 @@ sub setpps { my( $user, $pw, $actingfor ) = (shift||'', shift||'', shift||'');
 # Return $login and $pwd for a given $user in a given $realm, as defined
 # by $cfgdir configuration (build_server_tree.cfg) settings.
 # yyy pwd=password confusing, given pwd=print working directory
-#
-#sub get_user_pwd { my( $realm, $user ) = ( shift, shift );
+
 sub get_user_pwd { my( $realm, $user, $cfgdir ) = ( shift, shift, shift );
 
 	$user ||= $realm;
@@ -454,16 +453,28 @@ sub test_minters { my( $cfgdir, $u1, $u2, @fqshoulders )=@_;
 # First arg is $binders_root directory.
 # xxx add $cfgdir arg here and in t/*.t  (see /get_user and see /test_.in.ers
 
-sub test_binders { my( $cfgdir, $binders_root, $indb, @binders )=@_;
+sub test_binders { my( $cfgdir, $binders_root, $indb, $bindersR, $ownersR )=@_;
+
+    # need to create session so we can call bname_parse
+    use EggNog::Session;
+    my $sh = EggNog::Session->new(0) or
+	    return "couldn't create session handler";
+    my $msg;
+    $msg = EggNog::Session::config($sh) and
+	    return $msg;
+    # session created; local $sh var session object destroyed when
+    # going out of scope, eg, on return
 
     # A random specific user
     my $for_user = "http://n2t.net/ark:/99166/b4cd3";		# long form
     my $u = "&P/b4cd3";				# short, &P-compressed form
+    my $owner;
+    my $n = 0;				# index into @$ownersR array
 
-    # XXX kludge: relies on the binder name containing owner name up to '_'!
-    #     kludge still in effect?
-    #     eg, for exdb: egg_bgdflt.P/b4cd3_s_pesty?
-    for my $b (@binders) {
+# XXX kludge: relies on the binder name containing owner name up to '_'!
+#     kludge still in effect?
+#     eg, for exdb: egg_bgdflt.P/b4cd3_s_pesty?
+    for my $b (@$bindersR) {
 
 	my ($x, $pps);
 	#my $user = $b;
@@ -502,10 +513,15 @@ sub test_binders { my( $cfgdir, $binders_root, $indb, @binders )=@_;
 	like $x, qr{$authz_chall.*removed.*bow.*egg-status: 0}si,
 		"protected binder \"$b\" allows deleting that element";
 
+	$owner = $ownersR->[$n];		# binder owner name
+	my ($isbname, $esbname) =
+		EggNog::Binder::bname_parse($sh, $b, $sh->{smode}, $owner);
 	if ($indb) {
 	    # yyy "tail" not portable to Windows; prefer File::ReadBackwards
 	    #$y = flvl("< $binders_root/$b/egg.rlog", $x);
-	    $x = `tail -1 $binders_root/$b/egg.rlog`;
+
+	    #$x = `tail -1 $binders_root/$b/egg.rlog`;
+	    $x = `tail -1 $binders_root/$isbname/egg.rlog`;
 	    like $x, qr{^\*\Q$u }m,
 	    	"previous operation's HTTP_ACTING_FOR user logged";
 	}
@@ -515,6 +531,8 @@ sub test_binders { my( $cfgdir, $binders_root, $indb, @binders )=@_;
 	$x = `$webcl $pps "$ssvbase_u/a/$b/b? <xyzzy>i.set bow wow"`;
 	like $x, qr{$authz_chall.*HTTP/.+200.*not allowed.*egg-status: 1}si,
 	    "\"$realm\" not allowed to switch binders via <> prefix";
+	
+	$n++;
     }
 }
 
@@ -537,8 +555,10 @@ sub purge_test_realms { my( $cfgdir, $td, $cleanup_idsR, @realms )=@_;
 	foreach my $realm (@realms) {
 		$cmdblk = join "\n", map "$_.purge", @$cleanup_idsR;
 		#$pps = setpps xget_user_pwd $realm;
-		$pps = setpps get_user_pwd $realm, $user, $cfgdir;
 		#$pps = setpps get_user_pwd $realm, $realm;
+
+		$pps = setpps get_user_pwd $realm, $user, $cfgdir;
+
 		# XXX kludge: realm binder name assumed to be $realm.'_test'
 		$binder = $realm . '_test';
 		$x = run_cmds_in_body($td, $pps, $binder, $cmdblk);
@@ -550,7 +570,7 @@ sub purge_test_realms { my( $cfgdir, $td, $cleanup_idsR, @realms )=@_;
 # Use this subroutine to get commands into http request body (stdin)
 # where they will run remotely as bulk (batch) commands.  Call with:
 #    $x = run_cmds_in_body($td, $flags, $binder, $cmdblock);
-#
+
 sub run_cmds_in_body { my( $td, $flags, $binder, $cmdblock )=
 			 (shift, shift,   shift,     shift );
 

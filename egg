@@ -118,7 +118,7 @@ order in the subcommands listed below.
   list m [k...]     list up to m (0=unlimited) ids (or ids under keys k)
   next m x [k...]   like list, but begin at next id not matching x (under k)
 [work in progress]
-  bname b           given binder b, print system binder form (--all for more)
+  bname b           for binder b, print system binder name (--all gets more)
   bshow [g [u]]     list binders of group g, user u; fullname egg_<g>.<u>_s_<b>
   bmake [b [g [u]]] make binder named b (mint name if no b) (aka mkbinder)
   brm b [g [u]]     remove binder named b (aka rmbinder)
@@ -192,7 +192,7 @@ my %opt;			# global options hash
 my $mdr;			# global minder name
 my $cmdr;			# global candidate minder name
 my $dontsearch;			# global flag to not search minder path
-my $pname_mdr;			# global with minder in program name
+my $pname_mdr;			# global with binder in program name (eg, CGI)
 my $om;				# global output multiplexer choices
 my $cgih;			# global HTTP headers, if any
 
@@ -310,7 +310,7 @@ my @getoptlist = (
 		# xxx "all" option completely untested
 		for (qw(
 			ack all allb allc txnlog api as
-			dbie home pfx_file
+			dbie directory home pfx_file
 			minderpath
 			checksum debug echo force format lock
 			persistomax recurse rrm resolverlist
@@ -345,6 +345,7 @@ my @getoptlist = (
 	# xxx document RewriteMapResolver mode!
 	# xxxx confusing overload of {rrm} key from both
 	#      $bh->{rrm} and $bh->{opt}->{rrm}
+	$sh->{rrm} = $WeAreResolver;	# whether we're in resolver mode
 	$bh->{rrm} = $WeAreResolver;	# whether we're in resolver mode
 	$bh->{resolverlist} = $opt{resolverlist};	# recursion test
 
@@ -358,7 +359,17 @@ my @getoptlist = (
 	);
 }
 
-# the return value from cmd_line becomes process' exit code!
+# This routine is called for every command submitted to egg, whether bulk
+# or otherwise.
+#
+# It also calls def_cmdr, without which the command won't know what binder
+# it's meant to operate on.
+#
+# The way that a CGI-invoked process know which binder (or minter) to
+# operate on is from calling def_cmdr, which examines arg0 and derives
+# the binder name from the path used to exec the process.
+# 
+# The return value from cmd_line becomes process' exit code!
 # so 0 for success, non-0 for errors
 
 sub cmd_line {
@@ -1572,7 +1583,7 @@ are silently ignored.
   i.shadow        like norm but return i as shadow ARK if applicable
   list m [k...]   list up to m (0=unlimited) ids (or ids under keys k)
   next m x [k...] like list, but begin at next id not matching x (under k)
-  bname b         given binder b, print system binder form (--all for more)
+  bname b         for binder b, print system binder name (--all gets more)
   bmake [b [g [u]]] make binder named b (mint name if no b) (aka mkbinder)
   bshow [g [u]]     list binders for group g, user u
   brm b [g [u]]     remove binder named b (aka rmbinder)

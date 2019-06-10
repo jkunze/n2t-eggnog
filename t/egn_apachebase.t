@@ -127,10 +127,6 @@ $x = `$webcl $pps "$ssvbase_u/a/pestx/b? --verbose --version"`;
 like $x, qr{HTTP/\S+\s+$authz_chall.*version:}si,
 	'verbose version collected from web server environment';
 
-#say "xxx x=$x";
-#$x = apachectl('graceful-stop')	and print("$x\n");
-#exit;	#########
-
 my $v = `$cmd --verbose --version`;
 $v =~ s/^ ?[^ ].*\n*//gm;	# delete all but lines indented with 2 spaces
 
@@ -143,14 +139,18 @@ is $x, $v,
 
 # This test sets up the DB_PRIVATE test.
 # yyy shouldn't this mkbinder be done in minder_builder_more?
-$x = `$cmd -p $td mkbinder --verbose pest`;
-$x = `$cmd -d $td/pest --verbose i.set a b`;
+$x = `$cmd -p $td mkbinder --verbose --user pest pest`;
+$x = `$cmd -d $td/pest --verbose --user pest i.set a b`;
 shellst_is 0, $x, "non-web-mode mkbinder and binding succeeds";
+
+my $isbname;
+$isbname = `$cmd --dbie i --user pest bname $td/pest`;	# indb sys binder name
+$isbname =~ s/\n*$//;
 
 # yyy remove $td and $td2 from this script?
 # Make sure $testdir exists and is empty
 # xxx change to $ntd?
-my $testdir = "$td/pest";
+my $testdir = "$isbname";
 my $backdir = "$td/pestbak";
 my $msg = `rm -fr $backdir 2>&1`;
 my $errs = 0;
@@ -166,7 +166,7 @@ mkdir($backdir) or
 my $dbmsg = `db_hotbackup -h $testdir -b $backdir 2>&1`;
 $dbmsg and
 	$errs++,
-	print($dbmsg);
+	print STDERR ($dbmsg);
 ok $errs == 0,
 	"DB_PRIVATE flag off (resolver sensitive to target changes)";
 
@@ -186,6 +186,8 @@ my @fqshoulders = (
 	'pesty/ark/99999/fk3',
 );
 
+# xxx this is one of those tests that relies on binder set up
+#     independent of these tests
 $x = `$webcl "$ssvbase_u/a/pest/b? i.set moo cow"`;
 like $x, qr{HTTP/\S+\s+200\s+OK.*egg-status: 0}si,
 	'open populator "pest" sets an element without a login/password';
@@ -194,11 +196,6 @@ $y = flvl("< $buildout_root/logs/transaction_log", $x);
 $y and print "error: $y\n";
 like $x, qr{BEGIN.*END SUCCESS}s,
 	'transaction log working';
-
-##########
-#remove_td($td, $bgroup); remove_td($td2, $bgroup);
-#$x = apachectl('graceful-stop')	and print("$x\n");
-#exit;	#########
 
 $x = `$webcl "$srvbase_u/e/x/feedback.pl"`;
 like $x, qr{Stub feedback.}i,
@@ -209,7 +206,11 @@ like $x, qr{HTTP/\S+\s+200\s+OK.*remote user: \?.*moo:\s*cow}si,
 	'open populator "pest" returns that element for still unknown user';
 
 if ($indb) {		# rlog being phased out, esp for exdb case
-$y = flvl("< $ntd/pest/egg.rlog", $x);
+
+$isbname = `$cmd --dbie i --user pest bname $ntd/pest`;	# indb sys binder name
+$isbname =~ s/\n*$//;
+#$y = flvl("< $ntd/pest/egg.rlog", $x);
+$y = flvl("< $isbname/egg.rlog", $x);
 like $x, qr{^\? }m,
 	'anonymous user logged as "?"';
 }
@@ -217,10 +218,11 @@ like $x, qr{^\? }m,
 # xxxxxx add indb arg as for test_binders?
 test_minters $cfgdir, 'pestx', 'pesty', @fqshoulders;
 
-# xxx should pull this list of binders from FS via "find"
+# yyy should pull this list of binders from FS via "find"?
 my @binders = ( qw(pestx pesty) );
+my @owners =  ( qw(pestx pesty) );
 
-test_binders $cfgdir, $ntd, $indb, @binders;
+test_binders $cfgdir, $ntd, $indb, \@binders, \@owners;
 
 # xxx document that doi minters are put under ark for convenience of the
 #     check digit algorithm
@@ -254,6 +256,9 @@ like $x, qr{$authz_chall.*Read-protected}si,
 $x = `$webcl $pps "$ssvbase_u/a/pesty/b? i.fetch hello"`;
 like $x, qr{$authz_chall.*hello:\s*th\+ere}si,
 	"noid's old '+'-to-space decoding is no longer in effect";
+
+#say "XXX x=$x";
+#$x = apachectl('graceful-stop')	and say "$x"; exit;	#########
 
 remove_td($td, $bgroup);
 remove_td($td2, $bgroup);

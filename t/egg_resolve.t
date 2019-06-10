@@ -152,9 +152,15 @@ like $x, qr/^waf\n/, "fetched _t set for id with difficult chars";
 
 #say "xxx set _t got: $x";
 
+$x = resolve_stdin("-d $td/food", $wrl);
+like $x, qr/error: resolver.*food.*exist/i,
+	"--rrm forces resolver existence check before first command";
+
 $x = resolve_stdin("-d $td/foo", $wrl);
 like $x, qr/^redir302 waf\n/,
 	"resolution for id with difficult chars";
+
+#say "xxx premature exit"; exit;
 
 use EggNog::Resolver;
 $x = `$cmd -d $td/foo $wrl.set ${Rp}${Ti} newt`;	# inflection target
@@ -166,8 +172,6 @@ $x = `$cmd -d $td/foo $wrl.set ${Rp}${Ti}./\? fort`;	# inflection with a '.'
 $x = resolve_stdin("-d $td/foo", "$wrl./\?");
 like $x, qr|^redir302 fort\n|,
 	"target redirect for difficult chars in inflection itself (./?)";
-
-#say "xxx premature exit"; exit;
 
 # XXXXXX unlike ezid, Egg does NOT normalize DOI's to uppercase -- bug?
 # XXXXXX inflection could be just '.', which needs encoding test

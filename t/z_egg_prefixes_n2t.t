@@ -87,13 +87,13 @@ SKIP: {
 
 # Make sure server is stopped in case we failed to stop it last time.
 # We don't bother checking the return as it would usually complain.
-#
+
 apachectl('graceful-stop');
 
 # Note: $td and $td2 are barely used here.
 # Instead we use non-temporary dirs $ntd and $ntd2.
 # XXX change t/apachebase.t to use these type of dirs
-#
+
 my $buildout_root = $ENV{EGNAPA_BUILDOUT_ROOT};
 my $binders_root = $ENV{EGNAPA_BINDERS_ROOT};
 my $minters_root = $ENV{EGNAPA_MINTERS_ROOT};
@@ -107,7 +107,6 @@ $x = apachectl('start');
 skip "failed to start apache ($x)"
 	if $x;
 
-#
 # This section tests resolution and prefixes via egg --rrm, and therefore
 # without a bit more raw than via apache, which produces some effects we
 # right now only test with t/post_install_n2t.t.
@@ -118,9 +117,13 @@ skip "failed to start apache ($x)"
 #isnt index($x, '302 https://id.example.org/foo'), -1,
 #	'tester prefix redirect without protocol pass https through'; 
 
+$x = `$cmd --verbose -d $td/dummy --user n2t mkbinder`;
+like $x, qr/opening binder.*dummy/,
+	'set up dummy binder that will keep --rrm mode happy';
+
 # as a batch, test some prefixes important to n2t
 #$x = resolve_stdin_hdr( "--pfxfile $buildout_root/prefixes.yaml",
-$x = resolve_stdin_hdr( "--home $buildout_root",
+$x = resolve_stdin_hdr( "--home $buildout_root -d $td/dummy",
 
 	'zzztestprefix:foo', '',	# test default with unspecifed proto
 	'zzztestprefix:foo', '!!!pr=http!!!',	# ... now incoming with http

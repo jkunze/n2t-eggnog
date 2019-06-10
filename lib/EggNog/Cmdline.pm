@@ -520,9 +520,9 @@ sub get_execution_context { my( $m_cmd, $version, $getoptlistR, $optR )=@_;
 	# testing (an important use).
 
 
-# XXX are $preamble and $webpreamble needed?
-#	$WeAreOnWeb and ! $preamble and		# now that we know for sure,
-#		$preamble = $web_preamble;	# correct $preamble if empty
+	# yyy are $preamble and $webpreamble needed?
+	#$WeAreOnWeb and ! $preamble and	# now that we know for sure,
+	#	$preamble = $web_preamble;	# correct $preamble if empty
 
 	# As soon as we are able, create an OM object so that we can
 	# do systematic outputting of error and diagnostic messages.
@@ -535,7 +535,7 @@ sub get_execution_context { my( $m_cmd, $version, $getoptlistR, $optR )=@_;
 	# make an ANVL OM object now, we'll likely get to re-use it for
 	# om_formal, web operations, or both.  We may have to update
 	# it based on what we learn from find_options.
-	#
+
 	my $default_labeled_format = 'anvl';
 
 	# This CGI header object is created if $WeAreOnWeb.  If it is
@@ -546,6 +546,7 @@ sub get_execution_context { my( $m_cmd, $version, $getoptlistR, $optR )=@_;
 	#    $om->{cgih}->add( { Status => '500 Internal Server Error' } );
 	#
 	# This is Head stuff is defined in lib/CGI under anvl/src/lib
+
 	my $cgih = $WeAreOnWeb ?
 		CGI::Head->new( {
 			#'Status'  => '200 OK',		# optimistic
@@ -592,13 +593,13 @@ sub get_execution_context { my( $m_cmd, $version, $getoptlistR, $optR )=@_;
 
 	# Test options and executable name to see if we should be
 	# operating as a resolver (as if behind Apache RewriteMap).
-	#
+
 	my $WeAreResolver = $optR->{rrm} || $xfn =~ m{binderr[^/]*$};
 
 	# xxx need to stop creating $om for resolvers, since $om 
 	#     outputs a newline, on close-rec, called by destroy;
 	#     OR maybe we should just create a new OM format
-	#
+
 	my $omx = File::OM->new(		# our interim OM object
 		$default_labeled_format, $om_optR,
 	);
@@ -607,7 +608,7 @@ sub get_execution_context { my( $m_cmd, $version, $getoptlistR, $optR )=@_;
 	# If there's no OM for output, we take a drastic step, which
 	# reports to stderr, and for the web case we have to hope we
 	# were able to combine stderr and stdout.
-	#
+
 	$omx or	
 		die($cgih->take() . "couldn't create an OM output multiplexer" .
 			" for format '$default_labeled_format'");
@@ -746,6 +747,49 @@ sub launch_commands { my( $mh, $bulkcmdmode, $EmitStatus,
 		&$dbgpr("minderpath=" . join(", ", $mh->{minderpath}) . "\n");
 	# XXX do we need $optR any more? at all?
 
+	# In rrm mode do hard check for binder existence and bail early instead
+	# of bringing up a server that silently fails all proper resolution and,
+	# because it's behind a server, gives no helpful error messages.
+
+	my $sh=$mh->{sh};
+	my $rrm = $mh->{rrm};
+	if ($rrm) {	# pre-check that resolver from -d really exists
+
+		my ($cmdr, $cmdr_from_d_flag) =
+			def_cmdr('', '', 'egg', $optR);	# zzz kludge
+
+		my ($isbname, $esbname) =	# default binder if ! $bdr
+			EggNog::Binder::bname_parse($sh, $cmdr, $sh->{smode});
+		my $exists_flag = 2;
+		my ($isbexists, $esbexists) = EggNog::Binder::binder_exists(
+			$sh, $isbname, $esbname, $exists_flag, [ '.' ]);
+			# yyy path arg is kludge to get binder_exists to behave
+			#     correctly testing with relative path (eg, td_egg)
+
+
+
+# zzzxxx drop
+#	my ($isbname, $esbname) =	# default binder if ! $binder
+#		bname_parse($sh, $binder, $sh->{smode});
+#	my $exists_flag = 2; 		# thorough check
+#	my ($isbexists, $esbexists) = binder_exists($sh,
+#		$isbname, $esbname, $exists_flag, [ $minderdir ]);
+
+
+
+
+		if ($sh->{exdb} and ! $esbexists) {
+			addmsg($mh, "resolver \"$esbname\" does not exist");
+			outmsg($mh);
+			return 1;	# error!
+		}
+		if ($sh->{indb} and ! $isbexists) {
+			addmsg($mh, "resolver \"$isbname\" does not exist");
+			outmsg($mh);
+			return 1;	# error!
+		}
+	}
+
 	#
 	# xxx how to capture minderpath and reflect in playback log?
 	#     -- or for that matter, how to capture and reflect all
@@ -790,7 +834,6 @@ sub launch_commands { my( $mh, $bulkcmdmode, $EmitStatus,
 	#
 	my ($cmd, $line, $partial, $lineno) = ('', '', '', 0);
 
-	my $rrm = $mh->{rrm};
 	my $line_count = 0;
 	my $ret = 0;		# overall return from set of bulk commands
 	while (defined($line = <STDIN>)) {
@@ -1179,12 +1222,11 @@ sub find_options { my( $getoptlistR, $optR, $no_reset )=@_;
 
 sub def_cmdr { my( $pname_mdr, $smdr, $m_dbbase, $optR )=@_;
 
-	#
 	# Now we start looking for the specified minder.  A minder that
 	# is specified need not already exist.
 	#
 	# We'd kind of like to deprecate this pname_mdr thing because it
-	# requires creating a link per binder to a noid executable, but
+	# requires creating a link per binder to an executable, but
 	# because Apache RewriteMap only lets you name a program without
 	# parameters, it's the only way to do resolver mode without a
 	# wrapper script.
@@ -1195,6 +1237,7 @@ sub def_cmdr { my( $pname_mdr, $smdr, $m_dbbase, $optR )=@_;
 	my $mdr = "";	# xxx drop entirely!
 	my ($cmdr, $cmdr_from_d_flag);
 	$cmdr_from_d_flag = 0;
+
 	if ($smdr) {			# searchable minder occludes -d
 		$cmdr = fiso_dname($smdr, "$m_dbbase.bdb");
 	}

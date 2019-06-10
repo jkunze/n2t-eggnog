@@ -1,5 +1,32 @@
 #!/usr/bin/env bash
 
+# zzzxxx why the http2 message in error log?
+# commend out current line and uncomment out
+#    #LoadModule mpm_event_module modules/mod_mpm_event.so
+# in /etc/httpd/conf.modules.d/00-mpm.conf
+# per https://www.youtube.com/watch?v=zT2iCk7-HLs
+# Step 3:
+# cd /etc/httpd/conf
+# vim httpd.conf
+# 
+# Add the below lines to bottom of the page:
+# Protocols h2 http/1.1
+# Protocols h2 h2c http/1.1
+# 
+# 
+# Step 4:
+# sudo service httpd restart
+# sudo service mysqld restart
+# 
+# 
+# Step 5:
+# Ensure your website is still up and running without any issues
+# 
+# Check if HTTP/2 is successfully enabled using the below website:
+# https://http2.pro/
+
+
+
 # xxx change from filval to File::Slurp ?
 
 # xxx add SNAC account? (to deal with this thing once and for all, since
@@ -599,8 +626,9 @@ rwplus=$buildout_root/conf/rewrite2-server.conf
 chmod go= $bst_root/minder_builder.cfg	# make sure most perms are turned off
 source $bst_root/minder_builder.cfg
 
-function makebinder {			# pass binder name as only arg
+function makebinder {	# args: binder name and owner (populator)
 	bname=$1
+	owner=$2
 
 	[[ -d $binders_root/$bname ]] && {
 		echo -n "(Skipping existing binder $binders_root/$bname.) "
@@ -610,9 +638,10 @@ function makebinder {			# pass binder name as only arg
 	# greatest egg to complete the transition we're working towards.
 	# yyy is it safe to use -Mblib always?
 	#
-	(cd $src_top; perl -Mblib egg --force -p $binders_root brm $bname; \
-			perl -Mblib egg -p $binders_root mkbinder $bname) || {
-		echo -n "(Problem creating binder \"$bname\".) "
+	(cd $src_top; \
+	    perl -Mblib egg -p $binders_root --user $owner --force brm $bname; \
+	    perl -Mblib egg -p $binders_root --user $owner mkbinder $bname) || {
+		echo -n "(Problem creating $owner's binder \"$bname\".) "
 		return 1
 	}
 	return 0
@@ -684,9 +713,11 @@ function make_minders {
 	local b n m
 
 	echo -n "Creating proto-binders: "
+	n=0
 	for b in ${binders[*]}
 	do
-		makebinder $b && echo -n "$b "
+		makebinder $b ${populators[$n]} && echo -n "$b "
+		let n++
 	done
 	echo ""
 
@@ -860,6 +891,8 @@ inflect=$buildout_root/htdocs/e/x/inflect
 	cat > $inflect << EOT
 #!/bin/sh
 # This "inflect" script handles inflections and prefix lookup.
+# Script args arrive via a QUERY_STRING as name=value pairs.
+# The script constructs a pfx commmand, runs it, and returns its output.
 # Add /usr/local/bin to path so that we get our version of bash.
 
 	PERL5LIB=$PERL5LIB
@@ -1606,7 +1639,7 @@ function create_cgi {
 
 	# Note that most important args are supplied via a RewriteRule.
 	echo "Failed \"cd $scripts_wd ; exec $perlargs $which \$*\"" \
-		"status: \$?"
+		"status: \$?" 2>&1
 	exit 1;
 	EOT
 
@@ -1694,7 +1727,9 @@ function create_rmap {
 
 	#cmd+=" --rrm $home $tlog $pfxf -d $bdrsref_root/$binder"
 	# Resolvers are invoked with some of these arguments.
-	cmd+=" --rrm $homedb -d $bdrsref_root/$binder"
+
+	# for resolution, force --user to be same as binder name
+	cmd+=" --rrm $homedb --user $populator -d $bdrsref_root/$binder"
 
 	[[ $rlist ]] &&			# caller wanted list of resolvers
 		cmd+=" --resolverlist=\"$rlist\""	# qualify command
@@ -1735,9 +1770,15 @@ function create_rmap {
 		
 		# Long-running resolver process started here, with arguments
 		# defined inside $cmd string, eg, --home.
+
+		# xxx To make startup errors visible, the exec should fall
+		# through to exec an artificial resolver that redirects all
+		# to example.com with a path containing the error message.
+
 		exec $cmd
 
-		echo "Failed \"cd $scripts_wd ; exec $cmd\" with status \$?"
+		echo "Failed \"cd $scripts_wd ; exec $cmd\" with status \$?" \\
+			1>&2
 		exit 1;
 	EOT
 	chmod 755 $rmap;

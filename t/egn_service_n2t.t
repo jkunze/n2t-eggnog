@@ -110,15 +110,14 @@ $x = `$webcl "$srvbase_u"`;
 like $x, qr{HTTP/\S+\s+200\s+OK.*Name-to-Thing.*Resolver}si,
 	'public http access to server home page authorized';
 
+#say "webcl=$webcl"; say "srvbase_u=$srvbase_u";
+#$x = apachectl('graceful-stop'); #	and print("$x\n");
+#print "######### temporary testing stop #########\n"; exit;
+
 # only want location info, not redirect
 $x = `$webcl --max-redirect 0 "$ssvbase_u/e/naan_request"`;
 like $x, qr{HTTP/\S+\s+302\s+.*goo.gl/forms}si,
 	'pre-binder-lookup redirect for externally hosted content';
-
-#say "webcl=$webcl";
-#say "srvbase_u=$srvbase_u";
-#$x = apachectl('graceful-stop'); #	and print("$x\n");
-#print "######### temporary testing stop #########\n"; exit;
 
 $x = `$webcl "$srvbase_u/e"`;
 like $x, qr{HTTP/\S+\s+200\s+OK.*extras directory}si,
@@ -445,10 +444,14 @@ $x = `$webcl "$srvbase_u/ark:/12345/WontBeFound"`;
 like $x, qr{HTTP/\S+\s+404\s+Not\s+Found}si,
 	"not found page gets 404, eg, and not home page";
 
-# xxx should pull this list of binders from FS via "find"
+# yyy should pull this list of binders from FS via "find"?
 my @binders = ( qw(ezid ezid_test oca oca_test yamz yamz_test) );
+my @owners =  ( qw(ezid ezid      oca oca      yamz yamz     ) );
 
-test_binders $cfgdir, $ntd, $indb, @binders;
+test_binders $cfgdir, $ntd, $indb, \@binders, \@owners;
+
+#$x = apachectl('graceful-stop'); #	and print("$x\n");
+#print "######### temporary testing stop #########\n"; exit;
 
 # <body><h1>How to ask for a single-binder resolution.</h1></body> </html>
 $x = `$webcl "$srvbase_u/r"`;

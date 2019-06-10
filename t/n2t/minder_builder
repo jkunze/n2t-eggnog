@@ -61,12 +61,25 @@ RewriteRule ^/eoi:/?.*\$ \\
 ## Exception: SPMC (has own resolver)
 #RewriteRule ^/ark:/?(76951.*)\$   http://ark.spmcpapers.com/ark:/\$1 [R=302,L,NC]
 
-# Redirect non-canonical hostnames to the canonical hostname (n2t.net).
+# xxx ACTION for princeton
+# On Thu, May 23, 2019 at 8:02 AM Esme Cowles <escowles@princeton.edu> wrote:
+# Yes, we're fine handling both http and https for arks.princeton.edu
+# locally. It looks like it can just be a cert and a redirect to n2t.net
+# on our load-balancer, so it should be minimal for us to maintain. I agree
+# there's no rush, since the vast majority of our links and systems use http
+# URLs, so this error isn't seen in the wild very often.
+#
+# That said, given the issues with hosting https and dealing with certs for
+# other domains, you may want to let other folks with pointers or virtual
+# hosts on n2t.net to know about this issue — I'm assuming this same error
+# happens for anyone with a custom domain that's pointed at n2t.net.
+# -Esmé
 # XXX here's a special rule for arks.princeton.edu; it should be somewhere else!
 #     do we even need to mention arks.princeton.edu? shouldn't it work if
 #     we remain silent?
 #     TEST: try coming in via n2t.info after removing it
-#
+
+# Redirect non-canonical hostnames to the canonical hostname (n2t.net).
 RewriteCond %{HTTP_HOST} ^(www\\.n2t\\.net|(www\\.)?n2t\\.(com|info|me|org))|arks\\.princeton\\.edu\$ [NC]
 RewriteRule ^/(.*) http://n2t.net/\$1 [L,R=permanent]
 
