@@ -620,7 +620,7 @@ sub cmd_line {
 sub bdx_mkbinder { bdx_bmake(@_) }
 sub bdx_bmake { my( $name, $bgroup, $user )=@_;
 
-# zzzzzzzz reconsider these bmake args in light of --user, --smode, --service
+# zzz reconsider these bmake args in light of --user, --smode, --service
 
 	$bindid and
 		outmsg($sh, "why did you specify an identifier ($bindid)?"),
@@ -1137,37 +1137,9 @@ sub bdx_assign { my( $lcmd, $delete, $polite, $how )=( shift, shift, shift, shif
 	}
 	$sh->{exdb} and ! $cmdr_from_d_flag and
 		$cmdr = '';	# binder name _is_ -d arg, not inside it
-# zzz below
-#	my $err = 0;
-#	if ($name and $sh->{indb}) {		# not exdb case
-#		(undef, $cmdr, $cmdr_from_d_flag, $err) =
-#			EggNog::Binder::def_bdr($bh, $name, 0);	# NB $bh not $sh
-#		$err and
-#			# NB: this call uses $bh instead of $sh
-#			outmsg($bh),
-#			return 1;
-#	}
-
-#	# yyy this next clause should be pushed into lower library routine?
-#	my $err = 0;
-#	if ($sh->{exdb}) {
-#		$cmdr = catfile($name, 'dummy');
-#		$cmdr_from_d_flag = 0;
-#	}
-#	# yyy if both exdb and indb are in effect, binder name must be given
-#	elsif ($name and $sh->{indb}) {		# not exdb case
-#		($mdr, $cmdr, $cmdr_from_d_flag, $err) =
-#			EggNog::Binder::def_bdr($bh, $name, 0);	# NB $bh not $sh
-#		$err and
-#			# NB: this call uses $bh instead of $sh
-#			outmsg($bh),
-#			return 1;
-#	}
-
 	my $minderpath = $cmdr_from_d_flag ?
 		"" : $bh->{minderpath};		# search unless -d used
 
-#say "xxxSSSSS cmdr=$cmdr, dlfag=$cmdr_from_d_flag, minderpath=$minderpath";
 	bopen($bh, $cmdr, DB_RDWR, $minderpath) or
 		outmsg($bh), return 1;
 
