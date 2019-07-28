@@ -121,6 +121,10 @@ $x = `$cmd --verbose -d $td/dummy --user n2t mkbinder`;
 like $x, qr/opening binder.*dummy/,
 	'set up dummy binder that will keep --rrm mode happy';
 
+#say "xxx x=$x";
+#$x = apachectl('graceful-stop'); #	and say "$x";
+#say "######### temporary testing stop #########"; exit;
+
 # as a batch, test some prefixes important to n2t
 #$x = resolve_stdin_hdr( "--pfxfile $buildout_root/prefixes.yaml",
 $x = resolve_stdin_hdr( "--home $buildout_root -d $td/dummy",

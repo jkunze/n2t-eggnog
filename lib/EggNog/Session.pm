@@ -12,7 +12,7 @@ our @ISA = qw(Exporter);
 
 our @EXPORT = qw();
 our @EXPORT_OK = qw(
-	config tlogger
+	config tlogger test_data_service
 );
 our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
 
@@ -33,6 +33,7 @@ use constant TIMEZONE		=> 'US/Pacific';
 use constant SMODE_MAIN		=> 'real';	# storage mode
 use constant SMODE_ALT		=> 'test';	# storage mode
 use constant SMODE_DEFAULT	=> 'real';	# storage mode
+use constant TESTING_DATA	=> 'td_';
 
 # External database record attributes.
 use constant EXDB_CTGT	 	=> '_t';	# content target element
@@ -160,6 +161,18 @@ sub connect_string { my( $hostlist, $repsetopts, $setname )=@_;
 			$hostlist . "/?$repsetopts" . "&replicaSet=$setname";
 }
 
+# Returns service name used to isolate test databases.
+# Call with $service arg (eg, "n2t", defaults to TESTING_DATA ("td_"))
+
+sub test_data_service { my( $service )=@_;
+	use Sys::Hostname;
+	
+	$service ||= TESTING_DATA;
+	my $td = $service . hostname();
+	$td =~ s/\W+//g;
+	return $td;
+}
+
 # Eggnog session configuration. Defines $sh->{cfgd} when done.
 # Returns empty string on success, or an error message on failure.
 
@@ -177,6 +190,7 @@ sub config { my( $sh )=@_;
 
 # zzzzz apache start needs to call admegn warts on build so that it tracks
 #       changes from env.sh to env.yaml!
+# zzz keep this warts_file yaml thing?
 	my $warts_file =
 		-e $sh->{warts_file}
 			? $sh->{warts_file}	# there's a warts file
@@ -218,13 +232,36 @@ sub config { my( $sh )=@_;
 		($wf = LoadFile($warts_file) or		# yyy never called?
 			return "$warts_file: warts file load failed");
 
-	# Need service and host_class to form unique database names.
+	$sh->{smode} ||=
+		$sh->{opt}->{smode} || SMODE_DEFAULT;
+	$sh->{smode} eq SMODE_MAIN		# enforce "test" or "real"
+			|| $sh->{smode} eq SMODE_ALT or	# if messed up
+		$sh->{smode} = SMODE_ALT;	# assume caller meant "test"
+
+	# Need service and yyy? host_class to form unique database names.
 
 	$sh->{service} =			# service name, eg, n2t, web
-		$sh->{opt}->{service}		# eg, "n2txidsn2tprd2b"
-		|| $ENV{EGNAPA_SERVICE}
-		|| $wf->{EGNAPA_SERVICE}	# eg, "n2t"
+		$sh->{opt}->{service}
+		|| $ENV{EGNAPA_SERVICE}		# yyy ?
+		|| $wf->{EGNAPA_SERVICE}	# eg, "n2t"  yyy ?
 		|| SERVICE_DEFAULT;		# eg, "s"
+# zzzzzzzz
+#	$sh->{opt}->{testing} and
+#		$sh->{service} = ....
+
+
+
+#	$sh->{service} eq '-' and
+#		$sh->{service} = test_data_service() || 'noservice';
+
+	# binder group used in forming database names
+	#$self->{bgroup} = $self->{opt}->{bgroup} || BGROUP_DEFAULT;
+# zzz normalize bgroup parts now or later?
+# zzz document how bgroup is only for testing support, esp. binder removal
+# zzz document how bgroup for binder removal overrides any --service & --smode
+	$sh->{bgroup} = $sh->{opt}->{bgroup} ||
+		"$sh->{service}_$sh->{smode}";
+
 	$sh->{host_class} = $ENV{HOST_CLASS}	# eg, dev, stg, prd
 		|| $wf->{EGNAPA_HOST_CLASS}
 		|| HOST_CLASS_DEFAULT;
@@ -349,11 +386,11 @@ sub config { my( $sh )=@_;
 	! $authok and
 		return $msg;
 	$sh->{ruu} = $ruu;
-	$sh->{smode} ||=
-		$sh->{opt}->{smode} || SMODE_DEFAULT;
-	$sh->{smode} eq SMODE_MAIN		# enforce "test" or "real"
-			|| $sh->{smode} eq SMODE_ALT or	# if messed up
-		$sh->{smode} = SMODE_ALT;		# assume "test"
+
+	# with $ruu set we have enough to define default_bname_parts
+	$sh->{default_bname_parts} = EggNog::Binder::init_bname_parts($sh);
+
+	#use Data::Dumper "Dumper"; print Dumper $sh->{default_bname_parts};
 
 	if ($sh->{exdb}) {
 		# yyy a tiny stab at generic external db support;
@@ -371,28 +408,14 @@ sub config { my( $sh )=@_;
 		};
 		$ok // return $msg;	# test for undefined since zero is ok
 
-		use EggNog::Binder 'ebinder_names';
+# zzz re-do in light of new bname_parse?
+		use EggNog::Binder 'binder_names';
 		( $sh->{exdb}->{database_name},
 		  $sh->{exdb}->{binder_root_name},
 		  $sh->{exdb}->{ns_root_name},
 		  undef,		# don't care about final element
 		) =
-		  	EggNog::Binder::ebinder_names($sh);
-
-		#my $bgroup = basename( $sh->{bgroup} );
-		#my $who = $ruu->{who};
-		#for my $item ($bgroup, $who) {
-		#	$item =~ s/^[\W_]+//;	# drop leading/trailing non-word
-		#	$item =~ s/[\W_]+$//;	# non-_ chars from item name
-		#}
-		#$sh->{exdb}->{database_name} =
-		#	DBPREFIX . '_' . $bgroup;
-		#$sh->{exdb}->{binder_root_name} =
-		#	$who . EXDB_UBDELIM;	# lacking dbname and bindername
-		#$sh->{exdb}->{ns_root_name} =		# namespace root name
-		#	$sh->{exdb}->{database_name} . '.' .
-		#	$sh->{exdb}->{binder_root_name};
-		#	# add user-supplied name to create a full binder name
+		  	EggNog::Binder::binder_names($sh);
 	}
 
 	# aim to be able to test using $mh->{sh}->{indb} and $mh->{sh}->{exdb}
@@ -452,6 +475,7 @@ sub init_minder { my( $home, $mpath )=@_;
 #  {txnlog_file_default}
 #  {pfx_file} {pfx_file_default}
 #  {trashers}
+#  {db_isolator}
 
 sub new {		# call with WeAreOnWeb, om, om_formal, optref
 
@@ -468,6 +492,9 @@ sub new {		# call with WeAreOnWeb, om, om_formal, optref
 	#$self->{om} = shift || '';	# no $om means be quiet
 	$self->{om_formal} = shift || '';
 	#$self->{om_formal} = $self->{opt}->{om_formal} || $self->{om};
+
+	use Sys::Hostname;
+	$self->{hostname} = hostname() || '';	# defined even if empty
 
 	$self->{dbhome} = '';		# dir of the open internal database
 					# yyy don't really need to initialize
@@ -514,8 +541,9 @@ sub new {		# call with WeAreOnWeb, om, om_formal, optref
 		catfile( $self->{home}, TXNLOG_DEFAULT );
 	# we open txnlog file only if we need it, eg, NOT for help command
 
-	# binder group used in forming database names
-	$self->{bgroup} = $self->{opt}->{bgroup} || BGROUP_DEFAULT;
+#	# binder group used in forming database names
+#	#$self->{bgroup} = $self->{opt}->{bgroup} || BGROUP_DEFAULT;
+#	$self->{bgroup} = $self->{opt}->{bgroup} || BGROUP_DEFAULT;
 
 	$self->{pfx_file} = catfile( $self->{home}, PFX_FILE );
 	$self->{pfx_file_default} =

@@ -640,12 +640,13 @@ sub bdx_bmake { my( $name, $bgroup, $user )=@_;
 
 	# yyy this next clause should be pushed into lower library routine?
 	my $err = 0;
-	if ($sh->{exdb}) {
-		$cmdr = catfile($name, 'dummy');
-		$cmdr_from_d_flag = 0;
-	}
-	# yyy if both exdb and indb are in effect, binder name must be given
-	elsif ($name and $sh->{indb}) {		# not exdb case
+#	if ($sh->{exdb}) {
+#		$cmdr = catfile($name, 'dummy');
+#		$cmdr_from_d_flag = 0;
+#	}
+#	# yyy if both exdb and indb are in effect, binder name must be given
+#	elsif ($name and $sh->{indb}) {		# not exdb case
+	if ($name) {
 		($mdr, $cmdr, $cmdr_from_d_flag, $err) =
 			EggNog::Binder::def_bdr($bh, $name, 0);	# NB $bh not $sh
 		$err and
@@ -687,12 +688,13 @@ sub bdx_brm { my( $name, $bgroup, $user )=@_;
 	# yyy this next clause should be pushed into lower library routine
 	# yyy still using mdr-type (minder) var names instead of bdr (binder)
 	my $err = 0;
-	if ($sh->{exdb}) {	# need to be configured before testing {exdb}
-		$cmdr = catfile($name, 'dummy');	# yyy
-		$cmdr_from_d_flag = 0;
-	}
-	# xxx !! if both exdb and indb are in effect, binder name must be given
-	elsif ($name and $sh->{indb}) {		# not exdb case
+#	if ($sh->{exdb}) {	# need to be configured before testing {exdb}
+#		$cmdr = catfile($name, 'dummy');	# yyy
+#		$cmdr_from_d_flag = 0;
+#	}
+#	# xxx !! if both exdb and indb are in effect, binder name must be given
+#	elsif ($name and $sh->{indb}) {		# not exdb case
+	if ($name) {
 		($mdr, $cmdr, $cmdr_from_d_flag, $err) =
 			EggNog::Binder::def_bdr($bh, $name, 1);	# NB $bh not $sh
 		$err and

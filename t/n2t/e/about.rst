@@ -114,4 +114,11 @@ has three active working groups.
 - `Original N2T vision`_
 - `N2T Architecture`_ diagram
 
+Maintenance Window
+------------------
+
+N2T may occasionally be suspended or interrupted for up to one hour
+during routine server maintenance on Sundays beginning at 08:00 in
+California, UTC-08:00 (standard time), UTC-07:00 (daylight savings).
+
 //END//

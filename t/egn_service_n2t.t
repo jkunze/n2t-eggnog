@@ -17,7 +17,8 @@ $td or			# if error
 my ($td2, $cmd2);
 ($td2, $cmd2, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "nog";
 # xxx why does egn_apachebase clobber returned $hgbase?
-$ENV{EGG} = $hgbase;		# initialize basic --home and --bgroup values
+$ENV{EGG} = "$hgbase --service n2t ";		# initialize basic --home and --bgroup values
+# ZZZZZZZZZZZZ add --service web to t/egn_apachebase.t
 
 # Tests for resolver mode look a little convoluted because we have to get
 # the actual command onto STDIN in order to test resolver mode.  This
@@ -92,7 +93,8 @@ remake_td($td2, $bgroup);
 
 # This script calls egg, and we want the latest -Mblib and cleanest, eg,
 #$ENV{EGG} = "--home $buildout_root";	# wrt default config and prefixes
-$ENV{EGG} = $hgbase;		# initialize basic --home and --bgroup values
+# zzz why does this next line appear twice
+$ENV{EGG} = "$hgbase --service n2t ";		# initialize basic --home and --bgroup values
 
 my ($x, $y);
 $x = apachectl('start');

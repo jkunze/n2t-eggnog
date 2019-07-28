@@ -240,12 +240,18 @@ cfgdir=$2
 	exit 1
 }
 
+EGG=""
+service="$cfgdir"		# yyy "service" is the better var name
+export EGG+=" --service $service "
+
 # Each build has a "signature" so we can run tests twice in a row without
 # rebuilding, but we make sure to rebuild if the signature doesn't match.
 #
 cfgphrase="file \"$cfgdir\""		# "signature" of build
 
 #bst_root=$src_top/$cfgdir		# "build_server_tree root"
+
+# zzz put t/... into var
 bst_root=$src_top/t/$cfgdir		# "build_server_tree root"
 cfgfile=$bst_root/build_server_tree.cfg
 
@@ -262,6 +268,7 @@ function is_build_out_of_date {
 	local fqhconf=$1/conf/$hconf
 
 	# (note grep -q won't stay quiet in case $fqhconf doesn't exist)
+# zzz put t/... into var
 	grep "t/$cfgdir" $fqhconf > /dev/null 2>&1 || {
 		echo "server needs to be (re)built for $cfgdir"
 		return 1
@@ -348,6 +355,7 @@ prefixes_root=$buildout_root/prefixes	# xxx drop? change?
 document_root=$srvref_root/htdocs	# paths referenced in files
 rmap_root=$srvref_root/htdocs/a		# more paths referenced
 
+# zzz put t/... into var
 template_root=$src_top/t/$cfgdir	# paths to build input files
 
 # ddddd  once these locations aren't used any longer for self-signed
@@ -638,6 +646,12 @@ function makebinder {	# args: binder name and owner (populator)
 	# greatest egg to complete the transition we're working towards.
 	# yyy is it safe to use -Mblib always?
 	#
+
+# ZZZZZZ big RISK here when we remove/make databases; must not be
+# production DBs !!!!!!!!!!!!!!
+
+
+
 	(cd $src_top; \
 	    perl -Mblib egg -p $binders_root --user $owner --force brm $bname; \
 	    perl -Mblib egg -p $binders_root --user $owner mkbinder $bname) || {
@@ -1786,7 +1800,7 @@ function create_rmap {
 
 echo Deriving SSL server config info.
 
-# zzz new
+# new
 #llpath=$( sed "s,^\([^:]*\)/bin:*.*,\1/lib:$LD_LIBRARY_PATH," <<< $PATH )
 # perl -pi -e 's,Jan,Feb,' $buildout_root/bin/envvars
 

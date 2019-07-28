@@ -25,6 +25,11 @@ my $v1bdb = ($x =~ /DB version 1/);
 $x = `$cmd --verbose -p $td mkbinder foo`;
 shellst_is 0, $x, "make binder named foo";
 
+#say "xxxxxx premature end."; exit;
+#say "xxxxxx premature end. x=$x"; exit;
+
+if ($indb) {
+
 my $isbname = `$cmd --dbie i bname $td/foo`;	# indb system binder name
 $isbname =~ s/\n*$//;
 
@@ -41,9 +46,8 @@ else {
   	"no note left about duplicate ordering preserved";
 }
 
-if ($indb) {
   is 1, (-f "$isbname/egg.bdb"), 'created binder upper directory and bdb file';
-}
+}	# close if ($indb)
 
 $x = `$cmd -d $td/foo foo.set bar zaf   woof`;
 shellst_is 0, $x, "simple set with bind status ok and -d";
