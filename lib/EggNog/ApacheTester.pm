@@ -455,15 +455,23 @@ sub test_minters { my( $cfgdir, $u1, $u2, @fqshoulders )=@_;
 
 sub test_binders { my( $cfgdir, $binders_root, $indb, $bindersR, $ownersR )=@_;
 
-    # need to create session so we can call bname_parse
-    use EggNog::Session;
-    my $sh = EggNog::Session->new(0) or
-	    return "couldn't create session handler";
-    my $msg;
-    $msg = EggNog::Session::config($sh) and
-	    return $msg;
-    # session created; local $sh var session object destroyed when
-    # going out of scope, eg, on return
+    my ($sh, $msg) = EggNog::Session::make_session();
+    if (! $sh) {
+    	return "couldn't create session: $msg";
+    }
+    # session created; local $sh var session object
+    # will be destroyed when it goes out of scope
+
+#    # need to create session so we can call bname_parse
+#    use EggNog::Session;
+#    my $sh = EggNog::Session->new(0) or
+#	    return "couldn't create session handler";
+#    my $msg;
+#    $msg = EggNog::Session::config($sh) and
+#	    return $msg;
+#
+#    # session created; local $sh var session object destroyed when
+#    # going out of scope, eg, on return
 
     # A random specific user
     my $for_user = "http://n2t.net/ark:/99166/b4cd3";		# long form

@@ -260,6 +260,8 @@ my @getoptlist = (
 			# Also for indb case, -d /a/b/c pulls off 'c' and
 			# transforms it xxx
 
+	'isolator=s',		# usually derived, rare: set to 'public' XXX doc
+				# NB: ONLY WAY TO ACCESS PUBLIC PROD BINDERS
 	'lock',			# lock db even on DB_RDONLY open
 	'long|l',		# flag (unused)
 	'man',			# flag
@@ -276,7 +278,8 @@ my @getoptlist = (
 	'rrm',			# act like a rewritemap resolver (egg only)
 	'service=s',		# usually "n2t", maybe "web", default is "s"
 	'sif=s',		# succeed if elem exists/doesn't (egg)
-	'smode=s',		# storage mode -- use "real" or "test" db
+	'smode=s',		# service mode -- use "real" or "test" db
+	'testdata=s',		# dbname part distinguishing system test scripts
 	'testlock=i',		# flag xxx test
 	'bgroup=s',		# token to distinguish external binders
 	'txnlog=s',		# per-server transaction log; use '' to disable
@@ -312,6 +315,7 @@ my @getoptlist = (
 			ack all allb allc txnlog api as
 			dbie directory home pfx_file
 			minderpath
+			isolator testdata
 			checksum debug echo force format lock
 			persistomax recurse rrm resolverlist
 			service sif smode testlock bgroup user verbose

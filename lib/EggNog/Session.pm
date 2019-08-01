@@ -12,7 +12,7 @@ our @ISA = qw(Exporter);
 
 our @EXPORT = qw();
 our @EXPORT_OK = qw(
-	config tlogger test_data_service
+	config tlogger 
 );
 our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
 
@@ -161,16 +161,47 @@ sub connect_string { my( $hostlist, $repsetopts, $setname )=@_;
 			$hostlist . "/?$repsetopts" . "&replicaSet=$setname";
 }
 
-# Returns service name used to isolate test databases.
-# Call with $service arg (eg, "n2t", defaults to TESTING_DATA ("td_"))
+# Create a new, configured session so we can use its attributes.
+# Returns a pair ($sh, $msg), where $sh is defined on success.
+# On error, $sh is undefined and $msg contains an error message.
 
-sub test_data_service { my( $service )=@_;
-	use Sys::Hostname;
-	
-	$service ||= TESTING_DATA;
-	my $td = $service . hostname();
-	$td =~ s/\W+//g;
-	return $td;
+sub make_session {	# no input args
+
+	use EggNog::Session;
+	my ($sh, $msg);
+
+	$sh = EggNog::Session->new(0) or
+		return ($sh, "couldn't create session handler");
+	$msg = EggNog::Session::config($sh) and
+		return ($sh, $msg);
+	return ($sh, $msg);
+}
+
+# zzz drop this entire routine?
+# Returns service name used to isolate test databases. Used to set --bgroup
+# as a background value (eg, via EGG environment var) for testing.
+# xxx doesn't work:
+#     Call with $service arg (eg, "n2t", defaults to TESTING_DATA ("td_"))
+
+sub xxxtest_data_service { my( $service )=@_;
+
+	my ($sh, $msg) = make_session();
+	! $sh and
+		return $msg;
+	# session created; local $sh var session object destroyed when
+	# going out of scope, eg, on return
+
+# zzz delete
+	#use Sys::Hostname;
+	#$service ||= TESTING_DATA;
+	#my $td = $service . hostname();
+	#$td =~ s/\W+//g;
+	#return $td;
+
+	use EggNog::Binder 'bname_parse';
+	my $bn;		# want definition of sdatabasename as side effect
+	(undef, undef, $bn) = EggNog::Binder::bname_parse($sh, 'dummy');
+	return $bn->{sdatabasename};
 }
 
 # Eggnog session configuration. Defines $sh->{cfgd} when done.
@@ -250,9 +281,6 @@ sub config { my( $sh )=@_;
 #		$sh->{service} = ....
 
 
-
-#	$sh->{service} eq '-' and
-#		$sh->{service} = test_data_service() || 'noservice';
 
 	# binder group used in forming database names
 	#$self->{bgroup} = $self->{opt}->{bgroup} || BGROUP_DEFAULT;
@@ -409,13 +437,15 @@ sub config { my( $sh )=@_;
 		$ok // return $msg;	# test for undefined since zero is ok
 
 # zzz re-do in light of new bname_parse?
-		use EggNog::Binder 'binder_names';
-		( $sh->{exdb}->{database_name},
-		  $sh->{exdb}->{binder_root_name},
-		  $sh->{exdb}->{ns_root_name},
-		  undef,		# don't care about final element
-		) =
-		  	EggNog::Binder::binder_names($sh);
+# $sh->{exdb}->{binder_root_name} = 'egg_';	# XXX
+#		use EggNog::Binder 'binder_names';
+#		( $sh->{exdb}->{database_name},		# zzz unused
+# zzz binder_root_name must be defined? for sake of brmgroup()
+#		  $sh->{exdb}->{binder_root_name},
+#		  $sh->{exdb}->{ns_root_name},		# zzz unused
+#		  undef,		# don't care about final element
+#		) =
+#		  	EggNog::Binder::binder_names($sh);
 	}
 
 	# aim to be able to test using $mh->{sh}->{indb} and $mh->{sh}->{exdb}

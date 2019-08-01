@@ -22,6 +22,9 @@ use Try::Tiny;			# to use try/catch as safer than eval
 use Safe::Isa;			# avoid exceptions with the unblessed
 use EggNog::Binder ();
 
+#our $testdata_default = 'td';	# a constant
+use constant TESTDATA_DEFAULT	=> 'td';
+
 our ($perl, $blib, $bin);
 our ($rawstatus, $status);	# "shell status" version of "is"
 
@@ -60,7 +63,11 @@ sub script_tester { my( $script )=@_;
 	# EGG_DBIE=ei means i and e
 	# EGG_DBIE=xyz means i (default) and NOT e (default)
 
-	my $bgroup = EggNog::Session::test_data_service();
+# zzz drop
+#my $bgroup = EggNog::Session::test_data_service();
+
+	# zzz document!
+	my $tdata = $ENV{EGG_TESTDATA} || TESTDATA_DEFAULT;
 
 	if ($ENV{EGG_DBIE}) {
 		if (index($ENV{EGG_DBIE}, 'e') >= 0) {
@@ -80,25 +87,21 @@ sub script_tester { my( $script )=@_;
 		#$indb = index($ENV{EGG_DBIE}, 'i') >= 0;	# not default
 		#$bgroup = $td;		# td_egg is ok as dir or bgroup name
 	}
-	my $hgbase = "--home $homedir";		# home-binder-group base string
+	my $hgbase = "--home $homedir "		# home-binder-group base string
+		. "--testdata $tdata";	# zzz only exdb case?
 
 # hgbase should have --service egg or nog or n2t or web or s,
 #    where value is same as $script (egg or nog), unless ???, when
 #      n2t or web ...?
 # XXX is this --service arg is needed?
 
-	$bgroup and				# empty unless EGG_DBIE is set
-		$hgbase .= " --bgroup $bgroup";
-		#$hgbase .= " --bgroup $bgroup --service n2t";
+# zzz drop
+#	$bgroup and				# empty unless EGG_DBIE is set
+#		$hgbase .= " --bgroup $bgroup";
+#		#$hgbase .= " --bgroup $bgroup --service n2t";
 
-
-# XXXXXXXXXXXXXXXXX need to add --user, so that behind server we open correct DB
-# XXXXXXXXXXXXXXXXX need to add bgroup binder groups: prd, dev, stg,
-# zzzzzzzzzzzzzzzzzzz
-
-
-
-	return ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb);
+	return ($td, $cmd, $homedir, $tdata, $hgbase, $indb, $exdb);
+	#return ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb);
 }
 
 sub shellst_is { my( $expected, $output, $label )=@_;
@@ -109,19 +112,17 @@ sub shellst_is { my( $expected, $output, $label )=@_;
 	return is($status, $expected, $label);
 }
 
+# zzz rename bgroup -> tdata
 sub remake_td { my( $td, $bgroup )=@_;	# make $td with possible cleanup
 
-	-e $td and
-		remove_td($td, $bgroup);
-	#if ($bgroup) {
-	#	my $msg = EggNog::Binder::brmgroup_standalone($bgroup);
-	#	$msg and
-	#		say STDERR $msg;
-	#}
+	remove_td($td, $bgroup);
+	#-e $td and
+	#	remove_td($td, $bgroup);
 	mkdir($td) or
 		say STDERR "$td: couldn't mkdir: $!";
 }
 
+# zzz rename bgroup -> tdata
 sub remove_td { my( $td, $bgroup )=@_;
 
 	# remove $td but make sure $td isn't set to "."
@@ -136,11 +137,30 @@ sub remove_td { my( $td, $bgroup )=@_;
 		return undef;	# returns from "catch", NOT from routine
 	};
 	# not bothering to check status of $ok
-	my $msg;
+
 	if ($bgroup) {
-		my $msg = EggNog::Binder::brmgroup_standalone($bgroup);
-		$msg and
-			say STDERR $msg;
+
+		# Tweak local environment so test binders get distinct names
+		# when session (created next) default vals get set (kludge?).
+
+		$ENV{EGG_TESTDATA} ||=		# don't override user setting
+			$bgroup;
+		my ($sh, $msg) = EggNog::Session::make_session();
+		if (! $sh) {
+			say STDERR "couldn't create session: $msg";
+			return undef;
+		}
+		# session created; local $sh var session object
+		# will be destroyed when it goes out of scope
+		if (! EggNog::Binder::brmgroup($sh)) {
+			outmsg($sh);
+			return undef;
+		}
+		return 1;
+# zzz delete brmgroup_standalone();
+		#my $msg = EggNog::Binder::brmgroup_standalone($bgroup);
+		#$msg and
+		#	say STDERR $msg;
 	}
 }
 

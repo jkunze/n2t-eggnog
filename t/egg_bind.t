@@ -10,23 +10,23 @@ use File::Value ':all';
 
 # Do "export EGG_DBIE=e" (=ie) to test exdb (both) paths,
 
-my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "egg";
+my ($td, $cmd, $homedir, $tdata, $hgbase, $indb, $exdb) = script_tester "egg";
 $td or			# if error
 	exit 1;
-$ENV{EGG} = $hgbase;		# initialize basic --home and --bgroup values
+$ENV{EGG} = $hgbase;		# initialize --home and --testdata values
 
 {
-remake_td($td, $bgroup);
+remake_td($td, $tdata);
 my $x;
+
+#say "xxxxxx premature end. tdata=$tdata, env.egg=$ENV{EGG}"; exit;
+#say "xxxxxx premature end. x=$x"; exit;
 
 $x = `$cmd --version`;
 my $v1bdb = ($x =~ /DB version 1/);
 
 $x = `$cmd --verbose -p $td mkbinder foo`;
 shellst_is 0, $x, "make binder named foo";
-
-#say "xxxxxx premature end."; exit;
-#say "xxxxxx premature end. x=$x"; exit;
 
 if ($indb) {
 
@@ -204,6 +204,6 @@ like $x, qr/under \$t\.\^x: 3\n/s, "'purge' op with nasty chars";
 $x = `$cmd -d $td/foo '\$t.^x.exists'`;
 like $x, qr/^0\n/, "and 'exists' agrees that it's gone";
 
-remove_td($td, $bgroup);
+remove_td($td, $tdata);
 }
 

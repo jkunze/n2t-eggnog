@@ -17,7 +17,7 @@ our @EXPORT_OK = qw(
 	addmsg outmsg getmsg hasmsg initmsg
 	authz unauthmsg badauthmsg
 	bname_parse def_bdr human_num
-	init_bname_parts binder_names
+	init_bname_parts 
 	OP_READ OP_WRITE OP_EXTEND OP_TAKE OP_CREATE OP_DELETE
 	SUPPORT_ELEMS_RE CTIME_ELEM CTIME_EL_EX PERMS_ELEM PERMS_EL_EX
 	BIND_KEYVAL BIND_PLAYLOG BIND_RINDEX BIND_PAIRTREE
@@ -1599,16 +1599,19 @@ session is configured for it or not, as found in $sh). If $exists_flag is
 Returned system names can be used for indb or exdb cases. They look like
 
 zzz
-      App_Svc_Clas_Isoltr_Smod.Who_s_Bname
+      App_Svc_Clas_Isoltr.Smod_Who_s_Bname
 
-      egg_n2t_prd_public_real.ezid_s_ezid
-      egg_td_loc_idsn2tprd2b_real.ezid_s_ezid
+      egg_n2t_prd_public.real_ezid_s_ezid
+      egg_td_loc_idsn2tprd2b.real_ezid_s_ezid
 
-      egg_n2t_real.ezid_s_ezid           or
-      egg_n2t_test.ezid_s_ezid (rare)    or
-      egg_s_real.jak_s_mybinder          or
-      egg_n2t_public_real.foo_s_foo (for public-facing binders)
-      egg_td_idsn2tprd2b_real.foo_s_foo (for test scripts)
+zzz the _td_ below is VERY important for shielding prod databases from accidental deletion
+zzz Isoltr CANNOT be set to public except via a special option XXX called...?
+
+      egg_n2t_loc_Isoltr.real_ezid_s_ezid           or
+      egg_n2t_loc_Isoltr.test_ezid_s_ezid (rare)    or
+      egg_s_loc_Isoltr.real_jak_s_mybinder          or
+      egg_n2t_public.real_foo_s_foo (for public-facing binders)
+      egg_td_prd_idsn2tprd2b.real_foo_s_foo (for test scripts)
 
 where a service name matching .*_pub is always rejected by mkbinder, 
 rmbinder, and rmbindergroup. It can only be matched by using --public
@@ -1640,6 +1643,7 @@ XXX where does 'n2t' come from in a generic eggnog test script?
 Test scripts NEED to be able to safely create and remove binders without any
 effect on other binders (eg, especially production binders). In the indb case,
 binders are safely isolated by filesystem hierarchy. In the exdb case, the
+xxx wrong below
 convention is to take the Service name, append "_x" plus the top-level domain
 name with problem characters squeezed out; for example, if the host is
 
@@ -1763,20 +1767,27 @@ John A. Kunze
 #
 # ??? return small hash, possibly updating $sh->{hostname}
 
-# zzz called by ebshow
-sub binder_names { my( $sh, $bgroup, $who, $ubname )=@_;
+sub xxxbinder_names { my( $sh, $bgroup, $who, $ubname )=@_;
+#sub bname_parse { my( $sh, $bname, $service_mode, $who )=@_;
 
-	$bgroup ||= $sh->{bgroup};
-	$who ||= $sh->{ruu}->{who};
+# zzz get mode from opt!
+my ($ibn, $ebn, $bn) = bname_parse($sh, $ubname, undef, $who);
+#		return ($bn->{isbname}, $bn->{esbname}, $bn);
+
+#	$bgroup ||= $sh->{bgroup};
+#	$who ||= $sh->{ruu}->{who};
 	$ubname ||= '';
-	for my $item ($bgroup, $who, $ubname) {	# clean/normalize all fragments
+#	for my $item ($bgroup, $who, $ubname) {	# clean/normalize all fragments
+	for my $item ($ubname) {	# clean/normalize all fragments
 		$item =~ s/^[\W_]+//;		# drop leading/trailing non-word
 		$item =~ s/[\W_]+$//;		# non-_ chars from item name
 	}
 	my $edatabase_name =		# eg, MongoDB "database name"
-		DBPREFIX . '_' . $bgroup;
+		$bn->{system_binder_name};
+#		DBPREFIX . '_' . $bgroup;
 	my $ebinder_root_name =		# eg, start of MongoDB "collection name"
-		$who . EXDB_UBDELIM;	# no dbname or bindername (eg sam_s_)
+		$bn->{who} . EXDB_UBDELIM;	# no dbname or bindername (eg sam_s_)
+#		$who . EXDB_UBDELIM;	# no dbname or bindername (eg sam_s_)
 	my $ns_root_name =		# eg, start FQ MongoDB collection name
 		"$edatabase_name.$ebinder_root_name";
 	# all that's missing from $ns_root_name is caller's binder name
@@ -1795,13 +1806,13 @@ sub binder_names { my( $sh, $bgroup, $who, $ubname )=@_;
 sub init_bname_parts { my( $sh )=@_;
 
 	return {
-		app => DBPREFIX,
-		service => 's',
-		class => 'loc',
-		isolator => ($sh->{hostname} || 'NoHostName'),
-		service_mode => 'real',
-		who => $sh->{ruu}->{who},
-		user_binder_name => $DEFAULT_BINDER,
+		app		   => DBPREFIX,
+		service		   => ($sh->{opt}->{service} || 's'),
+		class		   => ($sh->{host_class} || 'loc'),
+		isolator	   => ($sh->{hostname} || 'NoHostName'),
+		service_mode	   => ($sh->{opt}->{smode} || 'real'),
+		who		   => $sh->{ruu}->{who},
+		user_binder_name   => $DEFAULT_BINDER,
 	};
 }
 
@@ -1823,8 +1834,6 @@ sub init_bname_parts { my( $sh )=@_;
 # NB: unlike old ub2sb, always return non-empty values for $isbname and $esbname
 
 sub bname_parse { my( $sh, $bname, $service_mode, $who )=@_;
-
-# zzz also change adapt name construction in binder_names(), called by ebshow()
 
 	if (! $sh->{cfgd}) {		# configure a session to set defaults
 		my $msg = EggNog::Session::config($sh);
@@ -1850,13 +1859,14 @@ sub bname_parse { my( $sh, $bname, $service_mode, $who )=@_;
 	}
 	# xxx assign and compile this just once (per session, per forever?)
 	#my $sbparser = qr|^([^._]+)_([^.]+)_([^._]+)\.(.+)_s_(.+)$|o;
+# zzz make docs match this code
 	my $sbparser = qr|^
 		([^._]+)_	# 1. app name, no internal _
-		([^.]+)_	# 2. service name, no internal _
-		([^.]+)_	# 3. class name, no internal _
-		([^.]+)_	# 4. isolator, no internal _
-		([^._]+)	# 5. service mode, no internal _
+		([^.]+)_	# 2. service name, internal _ ok
+		([^._]+)_	# 3. class name, no internal _
+		([^._]+)	# 4. isolator, no internal _
 		\.
+		([^._]+)_	# 5. service mode, no internal _
 		(.+)_		# 6. user name, internal _ ok
 		s_
 		(.+)		# 7. user binder name, internal _ ok
@@ -1872,20 +1882,14 @@ sub bname_parse { my( $sh, $bname, $service_mode, $who )=@_;
 		$bn->{app} = $1;
 		$bn->{service} = $2;
 		$bn->{class} = $3;
-		$bn->{isolator} = $4;
+		#$bn->{isolator} = $4;
+		$bn->{isolator} = normalize_isolator( $4 );
 		$bn->{service_mode} = $5;
 		$bn->{who} = $6;
 		$bn->{user_binder_name} = $7;
-# zzz change these hash keys globally
-#		$bn->{smode} = $3; ZZZ
-#		$bn->{user} = $4; ZZZ
-#		$bn->{uname} = $5; ZZZ
-		#$bn->{isbname} = catfile($bn->{front_path} || '', $sbname);
 
-		$bn->{isbname} = exists $bn->{front_path}
-			? catfile($bn->{front_path}, $sbname)
-			: $sbname;
-		$bn->{esbname} = $sbname;
+		cat_bname_parts($bn);		# NB: alters $bn hash
+
 		return ($bn->{isbname}, $bn->{esbname}, $bn);
 	}
 	elsif ($bname =~ /\./) {	# yyy dumb check for malformed binder
@@ -1895,16 +1899,6 @@ sub bname_parse { my( $sh, $bname, $service_mode, $who )=@_;
 
 	# If we get here, the name is NOT in system format. To fill out
 	# the hash, we will rely very heavily on session defaults.
-
-# zzz maybe this is where we call a new routine that can be used also by
-# ebshow/binder_names
-#
-# zzz this is where name can be filled in by the hash returned by binder_names
-# zzz config will have filled in the defaults, and we just need to change
-#    the defaults based on args we're called with
-
-	# If we get here, the caller gave us a simple user name, and we have
-	# some work to do to fill out the system name components.
 
 	$bn->{got_sbtype} = 0;		# in other words, simple user name
 
@@ -1922,11 +1916,16 @@ sub bname_parse { my( $sh, $bname, $service_mode, $who )=@_;
 		# NB: yyy can't yet specify other than eponymous web binders
 	$sh->{ruu}->{WeAreOnWeb} and $who eq $bname and
 		$who =~ s/_test\s*$//;	# eg, assume ezid owns ezid_test
+			# zzz this is temporary; should use --smode
 
 	$bn->{app} = $dbnparts->{app};
 	$bn->{service} = $dbnparts->{service};
+	my $tdata = $sh->{opt}->{testdata} || $ENV{EGG_TESTDATA};
+	$tdata and
+		$bn->{service} .= '_' . $tdata;
+		# NB: helps protect permanent binders from testing activity
 	$bn->{class} = $dbnparts->{class};	# zzz normalize like service?
-	$bn->{isolator} = $dbnparts->{isolator};	# zzz normalize?
+	$bn->{isolator} = normalize_isolator( $dbnparts->{isolator} );
 	$bn->{service_mode} = $dbnparts->{service_mode};
 	$bn->{who} = $who;
 	$bn->{user_binder_name} = $bname;
@@ -1939,20 +1938,18 @@ sub bname_parse { my( $sh, $bname, $service_mode, $who )=@_;
 	# yyy seems like these normalizations are haphazard, occurring in
 	#     different spots -- should make more consistent
 
+# zzz shouldn't we be cleaning up names received in system format (above)?
 	(s/^[\W_]+//, s/[\W_]+$//, s/-//g)
 		foreach (
 			$bn->{app}, $bn->{service}, $bn->{class},
 			$bn->{isolator}, $bn->{service_mode},
 			$bn->{who}, $bn->{user_binder_name}
 		);
-	#foreach ($service, $bn->{isolator}, $service_mode, $who, $bname);
 
 	# To be able to isolate fragments reversably, no internal underscores.
 
-	(s/_//g)	# to meet decomposition requirements
+	(s/_//g)		# to meet decomposition requirements
 		foreach ( $bn->{who}, $bn->{service_mode} );
-	#$who =~ s/_//g;		# decomposition requirement
-	#$service_mode =~ s/_//g;		# decomposition requirement
 
 
 # zzz document that we DO permit underscores in (a) service name and
@@ -1960,29 +1957,34 @@ sub bname_parse { my( $sh, $bname, $service_mode, $who )=@_;
 #     AND DISALLOW it in the prefix "egg" -- this permits us to parse
 #      things deterministically
 
-	#$bn->{app} = $dbnparts->{app};
-	#$bn->{service} = $service;
-	#$bn->{class} = $dbnparts->{class};	# zzz normalize like service?
-	#$bn->{isolator} = $dbnparts->{isolator};# zzz normalize, like etc?
-	#$bn->{service_mode} = $service_mode;
-	#$bn->{who} = $who;
-	#$bn->{user_binder_name} = $bname;
-#	$bn->{app} = DBPREFIX;
-#	$bn->{service} = $service;
-#	$bn->{service_mode} = $service_mode;
-#	$bn->{who} = $who;
-#	$bn->{uname} = $bname;
+	cat_bname_parts($bn);		# NB: alters $bn hash
+
+# zzz drop distinction between isbname and esbname?
+	return ($bn->{isbname}, $bn->{esbname}, $bn);
+}
+
+# Return an isolator string with naught but alphanumerics.
+
+sub normalize_isolator { my( $s )=@_;		# input string
+
+	$s =~ s/[\W_]//g;
+	return $s;
+}
+
+sub cat_bname_parts { my( $bn )=@_;		# $bn is hash of bname_parts
 
 	# Build the two halves of the name, then join them with a '.'.
 	# Works for both indb and exdb cases.
+
 	my $sdatabasename =		# eg, a mongo "database" name
 		$bn->{app} . '_' .
 		$bn->{service} . '_' .
 		$bn->{class} . '_' .
-		$bn->{isolator} . '_' .
-		$bn->{service_mode};
+		$bn->{isolator};
+		#$bn->{service_mode};
 		#DBPREFIX . '_' . $service . '_' . $service_mode;
 	my $stablename =		# eg, a mongo "collection" name
+		$bn->{service_mode} . '_' .
 		$bn->{who} . '_s_' .
 		$bn->{user_binder_name};
 	(s/\.//g)			# drop any and all '.'s in each half
@@ -1990,14 +1992,13 @@ sub bname_parse { my( $sh, $bname, $service_mode, $who )=@_;
 	my $sbname =			# system binder name
 		$sdatabasename . '.' . $stablename;
 
-	$bn->{isbname} = $bn->{front_path}
+	$bn->{isbname} = exists $bn->{front_path}
 		? catfile($bn->{front_path}, $sbname)
 		: $sbname;
 	$bn->{esbname} = $sbname;
+	$bn->{sdatabasename} = $sdatabasename;
+	$bn->{stablename} = $stablename;
 	$bn->{system_binder_name} = $sbname;
-
-# zzz drop distinction between isbname and esbname?
-	return ($bn->{isbname}, $bn->{esbname}, $bn);
 }
 
 # returns array ($isbname, $esbname) similar to old str2brnames, which it
@@ -2461,9 +2462,10 @@ sub brmgroup { my( $sh, $mods, $bgroup, $user )=@_;
 	$sh->{remote} and		# yyy why have this and {WeAreOnWeb}?
 		unauthmsg($sh),
 		return undef;
-	! $bgroup and
-		addmsg($sh, "no binder group specified"),
-		return undef;
+# zzz delete
+#	! $bgroup and
+#		addmsg($sh, "no binder group specified"),
+#		return undef;
 	# yyy should we check if $bgroup matches $sh->{bgroup} ?
 	my $msg;
 	if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {
@@ -2476,6 +2478,7 @@ sub brmgroup { my( $sh, $mods, $bgroup, $user )=@_;
 		addmsg($sh, "--allb or --allc option not allowed");
 		return undef;
 	}
+# zzz set --service=td
 	my @ebinders = ebshow($sh, $mods, 0, $bgroup, $user);
 
 	# empty return list is ok
@@ -2487,7 +2490,8 @@ sub brmgroup { my( $sh, $mods, $bgroup, $user )=@_;
 	my ($inbrname, $exbrname, $rootless);	# yyy $inbrname unused
 
 	my $errs = 0;				# don't make errors fatal
-	my $binder_root_name = $sh->{exdb}->{binder_root_name};
+# zzz
+# my $binder_root_name = $sh->{exdb}->{binder_root_name};
 	for my $b (@ebinders) { 
 		# yyy should we call rmebinder($sh, $mods, $exbrname,
 		# $bgroup, $user)?
@@ -2504,10 +2508,12 @@ sub brmgroup { my( $sh, $mods, $bgroup, $user )=@_;
 		# name as user knows it, eg, egg_td_egg.sam_s_foo -> foo
 		# Use $rootless to hold that simple binder name.
 
-		($rootless = $b) =~ s/^[^.]+.\Q$binder_root_name//;
+		#($rootless = $b) =~ s/^[^.]+.\Q$binder_root_name//;
 
+# zzz should we store $bn hash in $bh?
 		my ($isbname, $esbname) =
-			bname_parse($sh, $rootless, $sh->{smode});
+			bname_parse($sh, $b, $sh->{smode});
+			# bname_parse($sh, $rootless, $sh->{smode});
 		my $exists_flag = 1;		# soft check
 		my ($isbexists, $esbexists) = binder_exists($sh,
 			$isbname, $esbname, $exists_flag, undef);
@@ -2528,10 +2534,11 @@ sub brmgroup { my( $sh, $mods, $bgroup, $user )=@_;
 	return 1;
 }
 
+# zzz drop this routine
 # called by remove_td() and remake_td() in test scripts with no active session
 # return message on error, or '' on success
 
-sub brmgroup_standalone { my( $bgroup )=@_;
+sub xxxbrmgroup_standalone { my( $bgroup )=@_;
 
 # xxx can this be consolidated with brmgroup? eg, start up disposable
 #     session on demand?
@@ -2546,8 +2553,6 @@ sub brmgroup_standalone { my( $bgroup )=@_;
 	my $msg;
 	$msg = EggNog::Session::config($sh) and
 		return $msg;
-
-
 
 # zzzxxx XXXXXXXXXXXXXXXXXXXXXXXXXX maybe we need $bgroup here?
 
@@ -2896,9 +2901,14 @@ sub ibshow { my( $sh, $mods, $om )=@_;	# internal db version of bshow
 
 sub ebshow { my( $sh, $mods, $om, $bgroup, $user, $ubname )=@_;
 
+#	my ($edatabase_name, $ebinder_root_name, $ns_root_name, $clean_ubname) =
+#		binder_names($sh, $bgroup, $user, $ubname);
+
+# zzz xxx make bshow arg1 be binder name, and test
+	my ($ibn, $ebn, $bn) =
+		bname_parse($sh, $ubname, undef, $user);
+
 	my $exdb = $sh->{exdb};
-	my ($edatabase_name, $ebinder_root_name, $ns_root_name, $clean_ubname) =
-		binder_names($sh, $bgroup, $user, $ubname);
 	my ($msg, $db, @cns);
 	my $ok = try {
 		# Build a complete list of collection names in @cns by
@@ -2933,31 +2943,41 @@ sub ebshow { my( $sh, $mods, $om, $bgroup, $user, $ubname )=@_;
 	# to the current user, based on default binder components from
 	# $sh->{default_bname_parts}.
 
-	my $dbn = $sh->{default_bname_parts};
+	my ($sysdb, $who, $ubdr) = (
+		$bn->{sdatabasename},
+		$bn->{who},
+		($ubname
+			? $bn->{user_binder_name} : ''),
+	);
+
+#	my $dbn = $sh->{default_bname_parts};
 # zzz xxx document these --allb and --allc options
 	my $root_re =
 		$sh->{opt}->{allc} ? qr// :	# do all collections if --allc,
 		($sh->{opt}->{allb} ?		# else if --allb just do what
-			qr/^\Q$dbn->{app}/ :	# looks like a binder
+			qr/^\Q$bn->{app}/ :	# looks like a binder
 						# else just do my binders
-			qr/^\Q$edatabase_name.$ebinder_root_name$clean_ubname/)
+			qr/^\Q$sysdb.\E[^_]+_\Q${who}_s_\Q$ubdr\E/)
+			#qr/^\Q$edatabase_name.$ebinder_root_name$clean_ubname/)
 			#qr/^\Q$EGGBRAND/ :	# looks like a binder
 			#			# else just do my binders
 			#qr/^\Q$edatabase_name.$ebinder_root_name$clean_ubname/)
 	;
 
 	my @ret_binders = sort			# return sorted results of
-			grep m/$root_re/,	# filtering binder names
-		@cns;				# from collection names
-	! $om and			# if $om == 0, suppress output
-		return @ret_binders;		# yyy is there a better way?
+		grep m/$root_re/,		# filtering binder names
+			@cns;			# from collection names
+	! $om and			# if $om == 0, suppress output, which
+		return @ret_binders;		# is how brmgroup calls us
 
 	# if we get here we're doing output
 	$om->elem('note', ' ' . scalar(@ret_binders) . ' ' .
 		($sh->{opt}->{allc} ? "external collections" :
-		($sh->{opt}->{allb} ? "external binders under $EGGBRAND" :
-			"external binders under $edatabase_name." .
-				"$ebinder_root_name$clean_ubname")),
+		($sh->{opt}->{allb} ? "external binders under $bn->{app}" :
+			"external binders under $bn->{sdatabasename}.")),
+#		($sh->{opt}->{allb} ? "external binders under $EGGBRAND" :
+#			"external binders under $edatabase_name." .
+#				"$ebinder_root_name$clean_ubname")),
 		'1#'
 	);
 	map $om->elem('b', $_), @ret_binders;

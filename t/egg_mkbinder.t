@@ -7,16 +7,16 @@ use warnings;
 use EggNog::ValueTester ':all';
 use File::Value ':all';
 
-my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "egg";
+my ($td, $cmd, $homedir, $tdata, $hgbase, $indb, $exdb) = script_tester "egg";
 $td or			# if error
 	exit 1;
-$ENV{EGG} = $hgbase;		# initialize basic --home and --bgroup values
+$ENV{EGG} = $hgbase;		# initialize --home and --testdata values
 
 my $isbname;
 
 use EggNog::Egg;
 {
-remake_td($td, $bgroup);
+remake_td($td, $tdata);
 my $x;
 
 $x = `$cmd --verbose -p $td mkbinder foo`;
@@ -73,7 +73,7 @@ is $y, "d\n\n", "2nd binder value good (no conflict with 1st binder)";
 
 #say "xxxxxx premature end. x=$x"; exit;
 
-remake_td($td, $bgroup);
+remake_td($td, $tdata);
 $x = `$cmd --verbose -p $td mint 1`;
 shellst_is 1, $x, "binder doesn't know 'mint' command";
 
@@ -92,7 +92,7 @@ like $x, qr/Usage:/s, "no-args output";
 
 if ($indb) {
 
-  remake_td($td, $bgroup);
+  remake_td($td, $tdata);
   $ENV{MINDERPATH} = $td;
   $x = `$cmd mkbinder --verbose foo`;
   like $x, qr|created.*foo|, "MINDERPATH from env";
@@ -104,7 +104,7 @@ if ($indb) {
   $x = `$cmd mkbinder foo`;
   like $x, qr|error:.*$isbname/egg_README/.|, "bad MINDERPATH from env";
   
-  remake_td($td, $bgroup);
+  remake_td($td, $tdata);
   # -p $td puts most binders below in $td
   $ENV{EGG} = "$hgbase -p $td -d $td/bar";
   
@@ -154,7 +154,7 @@ if ($indb) {
 }
 
 {			# tests for when binder is missing
-remake_td($td, $bgroup);
+remake_td($td, $tdata);
 $ENV{EGG} = $hgbase;
 $ENV{MINDERPATH} = $td;		# switch to just env variable influence
 my $x;
@@ -180,7 +180,7 @@ if ($exdb) {
 
 #$x = `$cmd bshow td_egg`;
 
-remake_td($td, $bgroup);
+remake_td($td, $tdata);
 $ENV{MINDERPATH} = $td;		# switch to just env variable influence
 
   $x = `$cmd mkbinder`;
@@ -204,17 +204,17 @@ $ENV{MINDERPATH} = $td;		# switch to just env variable influence
 
 }
 
-remove_td($td, $bgroup);
+remove_td($td, $tdata);
 
 {		# tests with multiple binders
-remake_td($td, $bgroup);
+remake_td($td, $tdata);
 my $x;
 my $minderhome;
 
 $x = `$cmd --verbose mkbinder -d $td/a/foo`;
 
 if ($exdb) {
-  like $x, qr|cannot be empty|, "exdb: cannot use empty binder name";
+  like $x, qr|created.*foo|, "exdb: empty binder name";
 }
 
 if ($indb) {
@@ -305,5 +305,5 @@ like $x, qr|^$|s,
 	"remove complaint for non-existent binder disappears with --force";
 
 # yyy keep pace with mkminter
-remove_td($td, $bgroup);
+remove_td($td, $tdata);
 }
