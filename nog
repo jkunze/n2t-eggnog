@@ -236,6 +236,7 @@ my @getoptlist = (
 	'qs=s',			# query string for testing http
 	'recurse|r',		# perform action recursively (unused)
 	'sif=s',		# succeed if elem exists/doesn't (bind)
+	'testdata=s',		# dbname part distinguishing system test scripts
 	'testlock=i',		# flag xxx test
 	'bgroup=s',		# token to distinguish external binders
 	'txnlog=s',		# optional transaction log, eg, per-server
