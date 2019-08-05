@@ -12,7 +12,7 @@ our @ISA = qw(Exporter);
 
 our @EXPORT = qw();
 our @EXPORT_OK = qw(
-	script_tester remake_td remove_td shellst_is
+	testdata_default script_tester remake_td remove_td shellst_is
 );
 our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
 
@@ -22,8 +22,7 @@ use Try::Tiny;			# to use try/catch as safer than eval
 use Safe::Isa;			# avoid exceptions with the unblessed
 use EggNog::Binder ();
 
-#our $testdata_default = 'td';	# a constant
-use constant TESTDATA_DEFAULT	=> 'td';
+our $testdata_default = 'td';	# a constant
 
 our ($perl, $blib, $bin);
 our ($rawstatus, $status);	# "shell status" version of "is"
@@ -67,7 +66,7 @@ sub script_tester { my( $script )=@_;
 #my $bgroup = EggNog::Session::test_data_service();
 
 	# zzz document!
-	my $tdata = $ENV{EGG_TESTDATA} || TESTDATA_DEFAULT;
+	my $tdata = $ENV{EGG_TESTDATA} || $testdata_default;
 
 	if ($ENV{EGG_DBIE}) {
 		if (index($ENV{EGG_DBIE}, 'e') >= 0) {

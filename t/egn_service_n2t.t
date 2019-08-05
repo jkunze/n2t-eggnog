@@ -11,15 +11,13 @@ use EggNog::ApacheTester ':all';
 #my ($td, $cmd) = script_tester "egg";		# yyy needed?
 #my ($td2, $cmd2) = script_tester "nog";		# yyy needed?
 
-my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "egg";
+my ($td, $cmd, $homedir, $tdata, $hgbase, $indb, $exdb) = script_tester "egg";
 $td or			# if error
 	exit 1;
 my ($td2, $cmd2);
-($td2, $cmd2, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "nog";
+($td2, $cmd2, $homedir, $tdata, $hgbase, $indb, $exdb) = script_tester "nog";
 # xxx why does egn_apachebase clobber returned $hgbase?
-#$ENV{EGG} = "$hgbase --service n2t ";		# initialize basic --home and --bgroup values
-$ENV{EGG} = "$hgbase ";		# initialize basic --home and --bgroup values
-# ZZZZZZZZZZZZ add --service web to t/egn_apachebase.t
+#$ENV{EGG} = "$hgbase --service n2t ";		# initialize basic --home and --tdata values
 
 # Tests for resolver mode look a little convoluted because we have to get
 # the actual command onto STDIN in order to test resolver mode.  This
@@ -89,14 +87,20 @@ my $binders_root = $ENV{EGNAPA_BINDERS_ROOT};
 my $minters_root = $ENV{EGNAPA_MINTERS_ROOT};
 my ($ntd, $ntd2) = ($binders_root, $minters_root);
 
-remake_td($td, $bgroup);
-remake_td($td2, $bgroup);
+remake_td($td, $tdata);
+remake_td($td2, $tdata);
 
 # This script calls egg, and we want the latest -Mblib and cleanest, eg,
 #$ENV{EGG} = "--home $buildout_root";	# wrt default config and prefixes
 # zzz why does this next line appear twice
-#$ENV{EGG} = "$hgbase --service n2t ";		# initialize basic --home and --bgroup values
-$ENV{EGG} = "$hgbase ";		# initialize basic --home and --bgroup values
+#$ENV{EGG} = "$hgbase --service n2t ";		# initialize basic --home and --tdata values
+
+$hgbase = "--home $buildout_root";	# and we know better in this case
+
+my $tda = "--testdata $tdata";
+$hgbase .= " $tda";
+
+$ENV{EGG} = "$hgbase ";		# initialize basic --home and --tdata values
 
 my ($x, $y);
 $x = apachectl('start');
@@ -114,8 +118,9 @@ $x = `$webcl "$srvbase_u"`;
 like $x, qr{HTTP/\S+\s+200\s+OK.*Name-to-Thing.*Resolver}si,
 	'public http access to server home page authorized';
 
-#say "webcl=$webcl"; say "srvbase_u=$srvbase_u";
-#$x = apachectl('graceful-stop'); #	and print("$x\n");
+#say "webcl=$webcl"; say "srvbase_u=$srvbase_u, ssvbase_u=$ssvbase_u";
+#$x = apachectl('graceful-stop')	and print("$x\n");
+#exit;	#########
 #print "######### temporary testing stop #########\n"; exit;
 
 # only want location info, not redirect
@@ -172,9 +177,13 @@ my $fqsr;		# fully qualified shoulder
 $pps = setpps get_user_pwd "ezid", "ezid", $cfgdir;
 
 my $a1 = 'ark:/12345/bcd';
-$x = `$webcl $pps "$ssvbase_u/a/ezid/b? $a1.set _t http://b.example.com"`;
+$x = `$webcl $pps "$ssvbase_u/a/ezid/b? --verbose $a1.set _t http://b.example.com"`;
 like $x, qr{HTTP/\S+\s+200\s+.*egg-status: 0}si,
 	'set resolution target';
+
+#say "webcl=$webcl"; say "srvbase_u=$srvbase_u, ssvbase_u=$ssvbase_u";
+#$x = apachectl('graceful-stop')	and print("$x\n");
+#exit;	#########
 
 use EggNog::Binder ':all';
 my $rrminfo = RRMINFOARK;
@@ -508,6 +517,6 @@ purge_test_realms($cfgdir, $td, \@cleanup_ids, 'ezid', 'oca', 'yamz');
 
 $x = apachectl('graceful-stop')	and print("$x\n");
 
-remove_td($td, $bgroup);
-remove_td($td2, $bgroup);
+remove_td($td, $tdata);
+remove_td($td2, $tdata);
 }

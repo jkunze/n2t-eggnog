@@ -152,7 +152,7 @@ EXDB Notes (external database):
   unsupported features:
    - implicit binder names for bmake/mkbinder
    - empty element name (empty id name ok)
-   - rlog (phasing out in favor of native replication)
+   - playback rlog (phasing out in favor of native replication)
 
 EOF
 

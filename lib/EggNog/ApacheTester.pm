@@ -23,7 +23,7 @@ our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
 
 use Test::More;
 use File::Value ':all';
-use EggNog::ValueTester 'shellst_is';
+use EggNog::ValueTester qw( shellst_is );
 
 #### start web server control code
 
@@ -544,15 +544,13 @@ sub test_binders { my( $cfgdir, $binders_root, $indb, $bindersR, $ownersR )=@_;
     }
 }
 
-# Usage:     purge_test_realms($ids_array_ref, 'ezid', 'oca', ...)
-#
 # xxx not so true?
 # Unlike binders created by other test scripts (oca_test, ezid_test,
 # etc.), these binders persist between script calls, so if we should
 # cleanup any values (before and after, for certainty) that we'll rely on.
 # We need to be all the more careful in this cleanup when testing real
 # binders.  Put all such ids into a var such as @cleanup_ids.
-#
+
 sub purge_test_realms { my( $cfgdir, $td, $cleanup_idsR, @realms )=@_;
 
 	my ($binder, $cmdblk, $pps, $x);
@@ -585,7 +583,7 @@ sub run_cmds_in_body { my( $td, $flags, $binder, $cmdblock )=
 	my $msg = flvl("> $td/getcmds", $cmdblock);
 	$msg		and return $msg;
 	$flags .= " --post-file=$td/getcmds " . join(" ", @_);
-	my $ret = `$webcl $flags "$ssvbase_u/a/$binder/b?-" < $td/getcmds`;
+	my $ret = `$webcl $flags "$ssvbase_u/a/$binder/b? -" < $td/getcmds`;
 	return $ret;
 }
 

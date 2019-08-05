@@ -44,22 +44,24 @@ my $binders_root = $ENV{EGNAPA_BINDERS_ROOT};
 my $minters_root = $ENV{EGNAPA_MINTERS_ROOT};
 my ($ntd, $ntd2) = ($binders_root, $minters_root);
 
-my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "egg";
+my ($td, $cmd, $homedir, $tdata, $hgbase, $indb, $exdb) = script_tester "egg";
 $td or			# if error
 	exit 1;
 my ($td2, $cmd2);
-($td2, $cmd2, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "nog";
+($td2, $cmd2, $homedir, $tdata, $hgbase, $indb, $exdb) = script_tester "nog";
 
 # xxx Clobbers? returned $hgbase.? egn_service_n2t... does not clobber - why?
 # This script calls egg, and we want the latest -Mblib and cleanest, eg,
 $hgbase = "--home $buildout_root";	# and we know better in this case
-$bgroup and
-	$hgbase .= " --bgroup $bgroup";
-$ENV{EGG} = $hgbase;		# initialize basic --home and --bgroup values
+
+my $tda = "--testdata $tdata";
+$hgbase .= " $tda";
+
+$ENV{EGG} = $hgbase;		# initialize basic --home and --testdata values
 #$ENV{EGG} = "--home $buildout_root";	# wrt default config and prefixes
 
-remake_td($td, $bgroup);
-remake_td($td2, $bgroup);
+remake_td($td, $tdata);
+remake_td($td2, $tdata);
 
 
 #sub catch_int {
@@ -137,15 +139,17 @@ $x =~ s/^ ?[^ ].*\n*//gm;
 is $x, $v,
 	'environment behind web matches command line environment';
 
-# This test sets up the DB_PRIVATE test.
-# yyy shouldn't this mkbinder be done in minder_builder_more?
-$x = `$cmd -p $td mkbinder --verbose --user pest pest`;
-$x = `$cmd -d $td/pest --verbose --user pest i.set a b`;
-shellst_is 0, $x, "non-web-mode mkbinder and binding succeeds";
-
 my $isbname;
 $isbname = `$cmd --dbie i --user pest bname $td/pest`;	# indb sys binder name
 $isbname =~ s/\n*$//;
+
+# This test sets up the DB_PRIVATE test.
+# yyy shouldn't this mkbinder be done in minder_builder_more?
+$x = `$cmd -p $td mkbinder --verbose --user pest pest`;
+like $x, qr{\Q$isbname}, 'mkbinder binder name matches bname';
+
+$x = `$cmd -d $td/pest --verbose --user pest i.set a b`;
+shellst_is 0, $x, "non-web-mode mkbinder and binding succeeds";
 
 # yyy remove $td and $td2 from this script?
 # Make sure $testdir exists and is empty
@@ -209,11 +213,16 @@ if ($indb) {		# rlog being phased out, esp for exdb case
 
 $isbname = `$cmd --dbie i --user pest bname $ntd/pest`;	# indb sys binder name
 $isbname =~ s/\n*$//;
+
 #$y = flvl("< $ntd/pest/egg.rlog", $x);
 $y = flvl("< $isbname/egg.rlog", $x);
 like $x, qr{^\? }m,
 	'anonymous user logged as "?"';
 }
+
+#$x = apachectl('graceful-stop')	and print("$x\n");
+#say "xxxxxxxxxx premature exit";
+#exit;	#########
 
 # xxxxxx add indb arg as for test_binders?
 test_minters $cfgdir, 'pestx', 'pesty', @fqshoulders;
@@ -229,10 +238,6 @@ test_binders $cfgdir, $ntd, $indb, \@binders, \@owners;
 # xxx why does .../ark: show in error log?
 # xxxx should do feature that on failure runs check digit algorithm and
 #      reports and possibly suggests alternates
-
-#$x = apachectl('graceful-stop')	and print("$x\n");
-#say "xxxxxxxxxx premature exit";
-#exit;	#########
 
 $pps = setpps get_user_pwd("pesty", "testuser1", $cfgdir), "joey";
 
@@ -260,8 +265,8 @@ like $x, qr{$authz_chall.*hello:\s*th\+ere}si,
 #say "XXX x=$x";
 #$x = apachectl('graceful-stop')	and say "$x"; exit;	#########
 
-remove_td($td, $bgroup);
-remove_td($td2, $bgroup);
+remove_td($td, $tdata);
+remove_td($td2, $tdata);
 
 $x = apachectl('graceful-stop')	and print("$x\n");
 exit;	#########
@@ -384,6 +389,6 @@ like $x, qr{HTTP/\S+\s+404\s.*Not Found}si,
 # xxx test with and without password, and with open populator
 
 $x = apachectl('graceful-stop')	and print("$x\n");
-#remove_td($td, $bgroup);
-#remove_td($td2, $bgroup);
+#remove_td($td, $tdata);
+#remove_td($td2, $tdata);
 }

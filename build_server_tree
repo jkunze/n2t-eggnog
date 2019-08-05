@@ -66,13 +66,13 @@ declare -x ${evarnames[@]}
 [[ -f ~/warts/env.sh ]] &&
 	source ~/warts/env.sh
 
-#
+
 # Begin by making guesses as to your hostname and Apache instance,
 # which will inform some of the help/usage information we may end up
 # printing on early exit.
 #
 # First set values for $uname (OS name) and $host (fully qualified hostname).
-#
+
 uname=$( uname -a )		# get name of operating system (OS)
 aws=				# XXX hack supporting t/n2t
 # on SLES, uname -a returns: Linux
@@ -149,7 +149,8 @@ EXAMPLES
 
 DESCRIPTION
 
-  This script must be called from the eggnog source directory.
+  This script must be called from the eggnog source directory. It is usually
+  run via File::ApacheTester::prep_server() with the "make" sub-command.
   $0 builds the filesystem pieces needed to test and
   run a binder/minter/resolver web service under an Apache HTTP Server.
   It creates essential server files in a temporary directory without
@@ -162,8 +163,6 @@ DESCRIPTION
   those server files (in a separate temporary directory) designed to work
   with the public-facing server.  These files are meant to be copied by the
   caller into the public server's Apache subdirectory when upgrading.
-  This script is usually called from File::ApacheTester::prep_server() with
-  the "make" sub-command.
   
   The prep_server() call itself is meant to appear near the beginning of Perl
   test suites such as t/apachebase.t and t/service_n2t.t. Before calling, the
@@ -388,17 +387,23 @@ let monthly=(604800 * 4)		# actually, just 4 weeks
 
 # The working directory we chdir to from inside scripts.  This value will
 # change in the --public case.
-#
+
 scripts_wd=$src_top
 [[ $pubflag ]] &&
 	scripts_wd=$aptop
 
-# Flags we pass to perl when invoked from scripts.  This value will
+# Flags we pass to Perl when invoked from CGI scripts.  This value will
 # change in the --public case.
-#
-perlargs="perl -Mblib"
-[[ $pubflag ]] &&
-	perlargs=""
+
+# zzz pull 'td' string from Perl source definition? else not DRY
+tda=td		# binder name qualifier for --testdata; protects public binders
+
+perl_args="perl -Mblib"
+tda_arg="--testdata $tda"
+[[ $pubflag ]] && {
+	perl_args=""
+	tda_arg=""
+}
 
 # There are 3 categories of port pairs (http and https):
 #   $port_hpa     http public-access (what you advertize)
@@ -647,16 +652,19 @@ function makebinder {	# args: binder name and owner (populator)
 	# yyy is it safe to use -Mblib always?
 	#
 
-# ZZZZZZ big RISK here when we remove/make databases; must not be
-# production DBs !!!!!!!!!!!!!!
+
+# ZZZZZZ must alter n2t rollout to RENAME these temps to NON-EXISTENT
+#        public databases!
 
 
+	local args	# NB: --testdata needed to shield production DBs!!
+	args=( -p "$binders_root" --user "$owner" --testdata $tda )
 
 	(cd $src_top; \
-	    perl -Mblib egg -p $binders_root --user $owner --force brm $bname; \
-	    perl -Mblib egg -p $binders_root --user $owner mkbinder $bname) || {
-		echo -n "(Problem creating $owner's binder \"$bname\".) "
-		return 1
+		perl -Mblib egg "${args[@]}" --force brm $bname; \
+		perl -Mblib egg "${args[@]}" mkbinder $bname) || {
+		    echo -n "(Problem creating $owner's binder \"$bname\".) "
+		    return 1
 	}
 	return 0
 }
@@ -1625,16 +1633,24 @@ EOT
 #
 function create_cgi {
 
-	local which=$1 cgi=$2
+	local eon=$1 cgi=$2	# eon = egg or nog
 
 	cat <<- EOT > $cgi	# '-' in <<- strips leading tabs from below
 	#!/bin/sh
 
 	# This file was generated automatically by build_server_tree.
-	# It is a CGI wrapper for "$which" that sets up the environment,
+	# It is a CGI wrapper for "$eon" that sets up the environment,
 	# working directory, and possible testing arguments ("-Mblib").
-	# Problems arising in this script usually result in "ERROR 500:
-	# Internal Server Error", and some clue can be found in error_log.
+	# The most important arguments (eg, which binder, what operation)
+	# are supplied upon invocation via a RewriteRule, which happens
+	# (a) when resolver rewritemaps are established on server startup
+	# and (b) when a user attempts a binder operation.
+
+	# Errors in this script therefore affect resolution and binding.
+	# Problems arising in this script often result in "ERROR 500:
+	# Internal Server Error", and some clue can be found in the Apache
+	# error_log* file. The message at the bottom sometimes gets trapped
+	# there as well.
 
 	PERL5LIB=$PERL5LIB
 	PATH=$egpath
@@ -1649,10 +1665,11 @@ function create_cgi {
 	export EGNAPA_HOST_CLASS
 
 	cd $scripts_wd
-	exec $perlargs $which \$*
+	exec $perl_args $eon \$*
 
-	# Note that most important args are supplied via a RewriteRule.
-	echo "Failed \"cd $scripts_wd ; exec $perlargs $which \$*\"" \
+	echo ""		# yyy not sure why this helps error show in rmap case
+	echo "error: command failure:" \
+		"\"cd $scripts_wd ; exec $perl_args $eon \$*\"" \
 		"status: \$?" 2>&1
 	exit 1;
 	EOT
@@ -1676,6 +1693,10 @@ cgiref_nog=$srvref_root/cgi-bin/nog.sh
 # paths that trigger AuthN first, and script invocation in cgi-bin is
 # accomplished by symbolic link.
 #
+
+
+# zzz add tdata ??
+
 create_cgi egg $cgi_egg
 create_cgi nog $cgi_nog
 
@@ -1744,6 +1765,7 @@ function create_rmap {
 
 	# for resolution, force --user to be same as binder name
 	cmd+=" --rrm $homedb --user $populator -d $bdrsref_root/$binder"
+	cmd+=" --testdata $tda"	# NB: --testdata shields production DBs!!
 
 	[[ $rlist ]] &&			# caller wanted list of resolvers
 		cmd+=" --resolverlist=\"$rlist\""	# qualify command
@@ -2174,7 +2196,7 @@ RewriteRule ^(.*)$ - [env=proto:https]
 
 # Binders are invoked with this rule.
 RewriteRule ^(/a/([^/]+)/b)\$ \\
-  "$document_root\$1? --api $homedb --all -d $bdrsref_root/\$2 --ua %{QUERY_STRING}" [L]
+  "$document_root\$1? --api $homedb --all -d $bdrsref_root/\$2 $tda_arg --ua %{QUERY_STRING}" [L]
 #  "$document_root\$1? --api $home $tlog --all -d $bdrsref_root/\$2 --ua %{QUERY_STRING}" [L]
 
 # Minters are invoked with this rule.

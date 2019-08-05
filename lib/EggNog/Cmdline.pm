@@ -380,7 +380,7 @@ sub massage_web_args { my( $err2out, $query_string, @ARGV )=@_;
 	# 
 	my @qstring_words =		# yyy? ok to use shellwords
 		shellwords($line);	# since $line will be short?
-	my @naughty = qw(-d -p --directory --minderpath --minder);
+	my @naughty = qw(-d -p --directory --minderpath --minder --testdata);
 		# xxx deprecate --minder flag?? used?
 		# XXXXXXX bug! user could specify just --direc and
 		#      we wouldn't spot it

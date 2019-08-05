@@ -1842,6 +1842,10 @@ sub bname_parse { my( $sh, $bname, $service_mode, $who )=@_;
 			return undef;
 		}
 	}
+	$sh->{opt}->{verbose} and
+		$sh->{om}->elem("note", "parsing $bname, testdata=" .
+			($sh->{opt}->{testdata} || '')
+		);
 
 	#$bname ||= $DEFAULT_BINDER;	# user binder defaults if not given
 	my $dbnparts = $sh->{default_bname_parts};
@@ -1872,6 +1876,8 @@ sub bname_parse { my( $sh, $bname, $service_mode, $who )=@_;
 		(.+)		# 7. user binder name, internal _ ok
 	$|xo;
 
+	# ==== Case 1: long binder name ====
+
 	# If the given name matches $sbparser, it's already in system format,
 	# in which case fill hash with component parts and return. All parts
 	# should be derived from the given name, not from session defaults.
@@ -1896,6 +1902,8 @@ sub bname_parse { my( $sh, $bname, $service_mode, $who )=@_;
 		addmsg($sh, "bname_parser: malformed binder name: $bname");
 		return undef;		# abort in this case
 	}
+
+	# ==== Case 2: short binder name ====
 
 	# If we get here, the name is NOT in system format. To fill out
 	# the hash, we will rely very heavily on session defaults.
