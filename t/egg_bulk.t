@@ -10,10 +10,10 @@ use warnings;
 use EggNog::ValueTester ':all';
 use File::Value ':all';
 
-my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "egg";
+my ($td, $cmd, $homedir, $tdata, $hgbase, $indb, $exdb) = script_tester "egg";
 $td or			# if error
 	exit 1;
-$ENV{EGG} = $hgbase;		# initialize basic --home and --bgroup values
+$ENV{EGG} = $hgbase;		# initialize basic --home and --testdata values
 
 # Use this subroutine to get actual commands onto STDIN (eg, bulkcmd).
 #
@@ -26,7 +26,7 @@ sub run_cmds_on_stdin { my( $cmdblock )=@_;
 
 =for later
 {
-remake_td($td, $bgroup);
+remake_td($td, $tdata);
 $ENV{MINDERPATH} = $td;
 my ($x, $cmdblock);
 
@@ -46,7 +46,7 @@ like $x, qr|xxx creating.*binder1|, "multiple mkbinders in one stream";
 =cut
 
 {
-remake_td($td, $bgroup);
+remake_td($td, $tdata);
 my $x;
 $ENV{EGG} = "$hgbase -d $td/foo";
 
@@ -236,5 +236,5 @@ like $x, qr/(?:bigelement){$n}:(?:\s*$bigvalue){$p}/,
          5: <you>
 =cut
 
-remove_td($td, $bgroup);
+remove_td($td, $tdata);
 }

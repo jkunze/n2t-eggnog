@@ -142,9 +142,16 @@ Some options:
   --ack        acknowledge changes with an oxum value (#octets.#elements)
   --txnlog Log transaction log (default ~/.eggnog/logs/transaction_log.rlog)
   --dbie=[ie]  database class: internal (i, default), external (e), both (ie)
-  --bgroup=G   external binder group, as in egg_<G>.<user>_s_<b>
   --home=Dir   eggnog home directory (~/.eggnog), containing configuration,
                logs, binders (indb only), minters (exdb only), prefixes, etc.
+  --testdata=S binder name modifier to distinguish developer-side test binders
+  --allb       with bshow, show all binders, not just this user's (exdb)
+  --allc       with bshow, show all collections, not just this user's (exdb)
+
+Environment variables:
+   EGG          string of default command line options
+   EGG_TESTDATA value (default 'td') that overrides any --testdata setting
+   EGG_DBIE     value for --dbie setting that does NOT override it
 
 EXDB Notes (external database):
   unsupported commands:
@@ -281,7 +288,6 @@ my @getoptlist = (
 	'smode=s',		# service mode -- use "real" or "test" db
 	'testdata=s',		# dbname part distinguishing system test scripts
 	'testlock=i',		# flag xxx test
-	'bgroup=s',		# token to distinguish external binders
 	'txnlog=s',		# per-server transaction log; use '' to disable
 	'ua',			# marker for start of user args in query string
 	'user=s',		# optional user name for dbname construction
@@ -318,7 +324,7 @@ my @getoptlist = (
 			isolator testdata
 			checksum debug echo force format lock
 			persistomax recurse rrm resolverlist
-			service sif smode testlock bgroup user verbose
+			service sif smode testlock user verbose
 		));
 		# yyy? a parsed resolverlist gets split into a resolverpath
 
@@ -622,9 +628,7 @@ sub cmd_line {
 # xxx bug: ... then try it again
 
 sub bdx_mkbinder { bdx_bmake(@_) }
-sub bdx_bmake { my( $name, $bgroup, $user )=@_;
-
-# zzz reconsider these bmake args in light of --user, --smode, --service
+sub bdx_bmake { my( $name, $user )=@_;
 
 	$bindid and
 		outmsg($sh, "why did you specify an identifier ($bindid)?"),
@@ -666,8 +670,7 @@ sub bdx_bmake { my( $name, $bgroup, $user )=@_;
 	my $minderhome = $cmdr_from_d_flag ?	# if user specified -d
 		"." :			# use current context, not minderhome
 		"" ;			# else use $sh->{minderhome}
-	EggNog::Binder::mkbinder($sh, $mods, $cmdr, $bgroup, $user,
-	#EggNog::Binder::mkbinder($sh, $mods, fiso_uname($cmdr), $bgroup, $user,
+	EggNog::Binder::mkbinder($sh, $mods, $cmdr, $user,
 			"user-initiated (with mkbinder)", $minderhome) or
 		outmsg($sh), return 1;
 
@@ -675,7 +678,7 @@ sub bdx_bmake { my( $name, $bgroup, $user )=@_;
 }
 
 sub bdx_rmbinder { bdx_brm( @_ ) }
-sub bdx_brm { my( $name, $bgroup, $user )=@_;
+sub bdx_brm { my( $name, $user )=@_;
 
 	$bindid and
 		outmsg($sh, "why did you specify an identifier ($bindid)?"),
@@ -717,9 +720,7 @@ sub bdx_brm { my( $name, $bgroup, $user )=@_;
 	#     fiso_dname or fiso_uname (which is easier on the caller/user)
 	# xxxx this minderpath is really a Perl array not a string!
 
-	#EggNog::Binder::rmbinder($sh, $mods, fiso_uname($cmdr), $bgroup, $user,
-	EggNog::Binder::rmbinder($sh, $mods, $cmdr, $bgroup, $user,
-			$minderpath) or
+	EggNog::Binder::rmbinder($sh, $mods, $cmdr, $user, $minderpath) or
 		outmsg($sh),
 		return 1;
 	return 0;
@@ -761,18 +762,16 @@ sub bdx_bname { my( $ubname, $smode )=@_;
 	return 0;
 }
 
-# zzz xxx what do we do with --bgroup now? dump?
-# xxx does this even use its args?
-sub bdx_bshow { my( $bgroup, $user, $ubname )=@_;
+sub bdx_bshow { my( $user, $ubname )=@_;
 
-	EggNog::Binder::bshow($sh, $mods, $sh->{om}, $bgroup, $user, $ubname) or
+	EggNog::Binder::bshow($sh, $mods, $sh->{om}, $user, $ubname) or
 		outmsg($sh), return 1;
 	return 0;
 }
 
-sub bdx_brmgroup { my( $bgroup, $user )=@_;
+sub bdx_brmgroup { my( $user )=@_;
 
-	EggNog::Binder::brmgroup($sh, $mods, $bgroup, $user) or
+	EggNog::Binder::brmgroup($sh, $mods, $user) or
 		outmsg($sh), return 1;
 	return 0;
 }
@@ -1666,7 +1665,6 @@ not map '+' to SPACE in query strings.)
   --api       enable API mode
   --txnlog=L  transaction log file (default ~/.eggnog/logs/transaction_log.rlog)
   --dbie=[ie] database class: internal (i, default), external (e), both (ie)
-  --bgroup=G  external binder group, as in egg_<G>.<user>_s_<b>
   --home=Dir  eggnog home directory (~/.eggnog), containing configuration,
               logs, binders, minters, prefixes, etc.
 

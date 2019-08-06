@@ -15,10 +15,10 @@ use warnings;
 use EggNog::ValueTester ':all';
 use File::Value ':all';
 
-my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "egg";
+my ($td, $cmd, $homedir, $tdata, $hgbase, $indb, $exdb) = script_tester "egg";
 $td or			# if error
 	exit 1;
-$ENV{EGG} = $hgbase;		# initialize basic --home and --bgroup values
+$ENV{EGG} = $hgbase;		# initialize basic --home and --testdata values
 
 # Tests for resolver mode look a little convoluted because we have
 # to get the actual command onto STDIN in order to test resolver mode.
@@ -60,7 +60,7 @@ my $Tm = EggNog::Binder::TRGT_METADATA;   # actually content negotiation
 my $Ti = EggNog::Binder::TRGT_INFLECTION; # target for inflection
 
 {		# some simple ? and ?? tests
-remake_td($td, $bgroup);
+remake_td($td, $tdata);
 
 $ENV{EGG} = "$hgbase -p $td -m anvl";
 my $x;
@@ -87,7 +87,7 @@ $ENV{EGG} = $hgbase;
 }
 
 {
-remake_td($td, $bgroup);
+remake_td($td, $tdata);
 my $x;
 
 ##=for earlytesting
@@ -583,5 +583,5 @@ else {
 }
 
 $ENV{EGG} = $hgbase;
-remove_td($td, $bgroup);
+remove_td($td, $tdata);
 }

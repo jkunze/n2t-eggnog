@@ -7,10 +7,10 @@ use warnings;
 use EggNog::ValueTester ':all';
 use File::Value ':all';
 
-my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "nog";
+my ($td, $cmd, $homedir, $tdata, $hgbase, $indb, $exdb) = script_tester "nog";
 $td or			# if error
 	exit 1;
-$ENV{NOG} = $hgbase;		# initialize basic --home and --bgroup values
+$ENV{NOG} = $hgbase;		# initialize basic --home and --testdata values
 
 # Use this subroutine to get actual commands onto STDIN (eg, bulkcmd).
 #
@@ -22,7 +22,7 @@ sub run_cmds_on_stdin { my( $cmdblock )=@_;
 }
 
 {
-remake_td($td, $bgroup);
+remake_td($td, $tdata);
 my $x;
 $ENV{NOG} = "$hgbase -p $td";
 
@@ -76,5 +76,5 @@ $x = run_cmds_on_stdin($cmdblock);
 like $x, qr/^(?:.*opening.*\n.*previously.*\n.*opening.*\n){2}$/s,
 	'that command block called opened 6 times, re-using twice';
 
-remove_td($td, $bgroup);
+remove_td($td, $tdata);
 }

@@ -21,12 +21,12 @@ use EggNog::ApacheTester ':all';
 #my ($td, $cmd) = script_tester "egg";		# yyy needed?
 #my ($td2, $cmd2) = script_tester "nog";		# yyy needed?
 
-my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "egg";
+my ($td, $cmd, $homedir, $tdata, $hgbase, $indb, $exdb) = script_tester "egg";
 $td or			# if error
 	exit 1;
 my ($td2, $cmd2);
-($td2, $cmd2, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "nog";
-$ENV{EGG} = $hgbase;		# initialize basic --home and --bgroup values
+($td2, $cmd2, $homedir, $tdata, $hgbase, $indb, $exdb) = script_tester "nog";
+$ENV{EGG} = $hgbase;		# initialize basic --home and --testdata values
 
 # Tests for resolver mode look a little convoluted because we have to get
 # the actual command onto STDIN in order to test resolver mode.  This
@@ -99,8 +99,8 @@ my $binders_root = $ENV{EGNAPA_BINDERS_ROOT};
 my $minters_root = $ENV{EGNAPA_MINTERS_ROOT};
 my ($ntd, $ntd2) = ($binders_root, $minters_root);
 
-remake_td($td, $bgroup);
-remake_td($td2, $bgroup);
+remake_td($td, $tdata);
+remake_td($td2, $tdata);
 
 my ($x, $y);
 $x = apachectl('start');
@@ -321,6 +321,6 @@ else {
 	diag 'at least one prefix test failed';	# from Test::More
 }
 
-remove_td($td, $bgroup);
-remove_td($td2, $bgroup);
+remove_td($td, $tdata);
+remove_td($td2, $tdata);
 }

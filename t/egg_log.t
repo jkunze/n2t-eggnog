@@ -10,10 +10,10 @@ use warnings;
 use EggNog::ValueTester ':all';
 use File::Value ':all';
 
-my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "egg";
+my ($td, $cmd, $homedir, $tdata, $hgbase, $indb, $exdb) = script_tester "egg";
 $td or			# if error
 	exit 1;
-$ENV{EGG} = $hgbase;		# initialize basic --home and --bgroup values
+$ENV{EGG} = $hgbase;		# initialize basic --home and --testdata values
 
 my $txnlog = "$td/txnlog";
 
@@ -37,7 +37,7 @@ sub resolve_stdin { my( $opt_string, @ids )=@_;
 
 
 {	# check mstat command
-remake_td($td, $bgroup);
+remake_td($td, $tdata);
 $ENV{EGG} = "$hgbase -p $td -d $td/bar --txnlog $txnlog";
 my ($cmdblock, $x, $y);
 
@@ -81,12 +81,12 @@ $x = run_cmds_on_stdin($cmdblock);
 like $x, qr/bindings: 10.*bindings: 4/s,
 	'bindings count tracks adds and purges';
 
-remove_td($td, $bgroup);
+remove_td($td, $tdata);
 }
 
 # stub log checker
 {
-remake_td($td, $bgroup);
+remake_td($td, $tdata);
 $ENV{EGG} = "$hgbase -d $td/foo --txnlog $txnlog";
 my ($x, $y);
 
@@ -352,12 +352,12 @@ $x = run_cmds_on_stdin($cmdblock);
 like $x, qr/^a: jklkkkkkkkkk kkkkkkkkkkk eeeeeeeeeeee rrrrrrrrrrrrrrrr tttttttttttt uuuuuuu ddddddddd wwwwwwwwwww ddddddddddddd$/m,
 	"on fetch, long value doesn't text wrap";
 
-remove_td($td, $bgroup);
+remove_td($td, $tdata);
 }
 
 # null txnlog checker
 {
-remake_td($td, $bgroup);
+remake_td($td, $tdata);
 $ENV{EGG} = "$hgbase -d $td/foo --txnlog ''";
 my ($x, $y);
 
@@ -372,5 +372,5 @@ $x = (! -e $txnlog ? 'nope' : 'exists');
 
 is $x, 'nope', 'txnlog file not created when logging is turned off';
 
-remove_td($td, $bgroup);
+remove_td($td, $tdata);
 }

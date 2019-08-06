@@ -452,10 +452,6 @@ sub authz { my(  $ruu, $WeNeed,   $mh,   $id,  $opd ) =
 	my $permstring =		# stringify it for regex matching
 		join("\n", @bigperms) || '';
 	
-##	print("yyy ruu_agentid=$ruu->{agentid}\notherids=",
-##			join(", " => @{$ruu->{otherids}}), "\n");
-##	print("zzz $_\n")
-
 $mh->{rlog}->out("D: WeNeed=$WeNeed, id=$id, opd=$opd, ruu_agentid=" .
 	"$ruu->{agentid}, otherids=" . join(", " => @{$ruu->{otherids}}));
 
@@ -878,7 +874,7 @@ our $v1bdb_dup_warning =
 # 'the binder, relinking Perl\'s DB_File module with libdb version 2 or ' .
 # 'higher, and re-creating the binder';
 
-# zzz independent conditions:
+# xxx independent conditions:
 #
 # noid mint 1 or bind i n d -> if no minder, use default;
 #    search for default, if no default, create default
@@ -909,7 +905,7 @@ our $v1bdb_dup_warning =
 #		qualify: GENERATE implied if default ! exists
 #   mopen($mh, $uname_or_dname, $flags) with other params given by
 # 	$mh->{minderpath}, $mh->{}
-# zzz always require named minder to _right_ of rmminter/rmbinder,
+# xxx always require named minder to _right_ of rmminter/rmbinder,
 #     BUT mkminter/mkbinder DONT need that when you want to create a
 #     new one but don't want to have to think of a new name! eg
 # $ noid mkminter
@@ -1274,7 +1270,7 @@ What if no server running when client starts:  startup server on demand?
 	#printf "XXX before cachesize=$btree->{cachesize}\n";
 	#$btree->{flags} &= ~DB_PRIVATE;
 	#printf "XXX after flags=%b\n", $btree->{flags};
-	#printf "ZZZ after cachesize=$btree->{maxkeypage}\n";
+	#printf "xxx after cachesize=$btree->{maxkeypage}\n";
 
 	$mh->{opt}->{verbose} and $om and $om->elem("note",
 		($creating ? "created" : "opened") . " $hname $mdrd"),
@@ -1447,7 +1443,7 @@ sub mkminder { my( $mh, $dirname, $minderdir )=@_;
 	# 
 	#print "xxx before unless dirname=$dirname, minderdir=$minderdir\n";
 	$minderdir ||= "";
-#print "xxxzzz $mh/$dirname: before minderdir=$minderdir\n";
+#print "xxxxxx $mh/$dirname: before minderdir=$minderdir\n";
 	$minderdir ||= $mh->{minderhome};
 # xxx what does file_name_is_absolute do with empty $dirname?
 	unless (file_name_is_absolute($dirname) or $minderdir eq ".") {
@@ -1456,7 +1452,7 @@ sub mkminder { my( $mh, $dirname, $minderdir )=@_;
 			$dirname);
 	}
 	# If here $dirname should be a valid absolute or relative pathname.
-#print "xxxzzz $mh/$dirname: after minderdir=$minderdir\n";
+#print "xxxxxx $mh/$dirname: after minderdir=$minderdir\n";
 	#print "xxx after unless dirname=$dirname\n";
 
 #use EggNog::Minder ':all';
@@ -1511,7 +1507,7 @@ sub mkminder { my( $mh, $dirname, $minderdir )=@_;
 #	$ret == 0 and		# normal(?) error
 #		addmsg($mh, "make_path->0 for $dirname subdirectories"),
 #		return "";
-#print "xxxzzz $mh/$dirname: dirname=$dirname\n";
+#print "xxxxxx $mh/$dirname: dirname=$dirname\n";
 
 	# Call mopen() without minderpath because we don't want search.
 	#
@@ -1923,8 +1919,7 @@ sub prep_default_minder { my( $mh, $flags, $minderpath, $mindergen )=@_;
 			EggNog::Nog::mkminter($submh, undef, $mdr,
 				$mh->{default_template}, $mh->{minderhome})
 			:
-			EggNog::Egg::mkbinder($submh, undef, $mdr,
-# xxx	$bgroup, $user,		# xxx if this code is ever run
+			EggNog::Egg::mkbinder($submh, undef, $mdr, undef,
 				"default binder", $mh->{minderhome});
 		$dbname or
 			addmsg($mh, getmsg($submh)),
@@ -1976,8 +1971,7 @@ sub gen_minder { my( $mh, $minderpath )=@_;
 		$mdr =~ s/\d+$/$n/;	# xxx assumes it ends in a number
 		# xxx shouldn't we be using name returned in $msg?
 		# XXX this _assumes_ only other type is ND_BINDER!!
-		my $dbname = EggNog::Egg::mkbinder($mh, undef, $mdr,
-# xxx	$bgroup, $user,		# xxx if this code is ever run
+		my $dbname = EggNog::Egg::mkbinder($mh, undef, $mdr, undef,
 			"Auto-generated binder", $mh->{minderhome});
 		$dbname or
 			addmsg($mh, "couldn't create snagged name ($mdr)"),

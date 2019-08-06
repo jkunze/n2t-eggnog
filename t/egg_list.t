@@ -7,10 +7,10 @@ use warnings;
 use EggNog::ValueTester ':all';
 use File::Value ':all';
 
-my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "egg";
+my ($td, $cmd, $homedir, $tdata, $hgbase, $indb, $exdb) = script_tester "egg";
 $td or			# if error
 	exit 1;
-$ENV{EGG} = $hgbase;		# initialize basic --home and --bgroup values
+$ENV{EGG} = $hgbase;		# initialize basic --home and --testdata values
 
 $exdb and plan skip_all =>
     "why: list/next not yet supported for the exdb case";
@@ -30,7 +30,7 @@ sub run_cmds_on_stdin { my( $cmdblock, $flags )=@_;
 # yyy? check mstat command ?
 
 SKIP: {
-remake_td($td, $bgroup);
+remake_td($td, $tdata);
 $ENV{EGG} = "$hgbase -p $td -d $td/bar";
 my ($cmdblock, $x, $y, $ark);
 
@@ -139,5 +139,5 @@ while (1) {
 like $list, qr|^((#[^\n]*\n)?ark:[^\n]+\n(#[^\n]+\n\n)?){14}#[^\n]+\n\n$|s,
 	"documented algorithm: list plus next to collect all ids";
 
-remove_td($td, $bgroup);
+remove_td($td, $tdata);
 }

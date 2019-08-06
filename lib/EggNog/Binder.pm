@@ -1080,7 +1080,6 @@ sub ibopen { my( $bh, $mdr, $flags, $minderpath, $mindergen )=@_;
 	# via gen_minder(). This call may have a side-effect of creating the
 	# default binder.
 
-# XXX zzz simplify prep_default_binder to just create one binder
 # XXX zzz unify prep_default_binder to work for indb and exdb cases
 # XXX zzz redo this to clearer: if ! $mdr then prep_default_binder()
  	$mdr ||= prep_default_binder($bh->{sh},
@@ -1436,15 +1435,6 @@ sub bopen { my( $bh, $bdr, $flags, $minderpath, $mindergen )=@_;
 		($flags & DB_CREATE) and
 			$flags = $EGG_DB_CREATE;	# yyy dumb kludge
 
-#		my $ebdr = $bdr;			# zzz needed?
-#		$ebdr ||= $DEFAULT_BINDER;	# XXX works for indb case?
-#				# indb case: # prep_default_binder does this
-
-# zzz stop calling this twice!
-#		my ($isbname, $esbname) =
-#			bname_parse($sh, $bdr, $sh->{smode});
-#			#bname_parse($sh, $ebdr, $sh->{smode});
-
 		if (! ebopen($bh, $esbname, $flags)) {
 			! $bdr and addmsg($bh,
 				"error opening default binder \"$esbname\"");
@@ -1456,7 +1446,6 @@ sub bopen { my( $bh, $bdr, $flags, $minderpath, $mindergen )=@_;
 
 		my $ibdr = $bdr ? $isbname : '';	# zzz needed?
 
-#$ibdr ||= $DEFAULT_BINDER;	# XXX works for indb case?
 		if (! ibopen($bh, $ibdr, $flags, $minderpath, $mindergen)) {
 			! $bdr and addmsg($bh,
 				"error opening default binder \"$isbname\"");
@@ -1627,10 +1616,8 @@ where Base is often one of
       td (generic eggnog test scripts)
       n2t (N2T related test and public binders)
 
-XXX zzz
-Isolator defaults to ???
 
-when does it NOT include hostname? 
+when does it NOT include hostname?  for 'public' case
 
 
 XXX where does 'n2t' come from in a generic eggnog test script?
@@ -1704,7 +1691,6 @@ what about separate designation for read? (not supported yet)
 
   !!! do not do same for nog yet!
 
-??? how does this interact with current --bgroup option
 
 EGN_SERVICE=n2t    (set in service.cfg, overridable from test suites
 		with eg, --service n2txidsn2tprd2b
@@ -1756,45 +1742,6 @@ John A. Kunze
 # --> for binder_names() we need to construct a kind of template to match
 #     against, so that hash filled up with defaults and args could be
 #     very useful
-
-# $sh required, optional args: $bgroup, $who, $ubname
-#   $ubname = user binder name (short name, as known to user)
-# returns ( $edatabase_name, $ebinder_root_name, $ns_root_name, $clean_ubname )
-# MongoDB-ready name is "$ns_root_name$clean_ubname"
-
-# Initialize binder namespace stubs (?to store with session info.?)
-# This has no per-binder names stuff in it.
-#
-# ??? return small hash, possibly updating $sh->{hostname}
-
-sub xxxbinder_names { my( $sh, $bgroup, $who, $ubname )=@_;
-#sub bname_parse { my( $sh, $bname, $service_mode, $who )=@_;
-
-# zzz get mode from opt!
-my ($ibn, $ebn, $bn) = bname_parse($sh, $ubname, undef, $who);
-#		return ($bn->{isbname}, $bn->{esbname}, $bn);
-
-#	$bgroup ||= $sh->{bgroup};
-#	$who ||= $sh->{ruu}->{who};
-	$ubname ||= '';
-#	for my $item ($bgroup, $who, $ubname) {	# clean/normalize all fragments
-	for my $item ($ubname) {	# clean/normalize all fragments
-		$item =~ s/^[\W_]+//;		# drop leading/trailing non-word
-		$item =~ s/[\W_]+$//;		# non-_ chars from item name
-	}
-	my $edatabase_name =		# eg, MongoDB "database name"
-		$bn->{system_binder_name};
-#		DBPREFIX . '_' . $bgroup;
-	my $ebinder_root_name =		# eg, start of MongoDB "collection name"
-		$bn->{who} . EXDB_UBDELIM;	# no dbname or bindername (eg sam_s_)
-#		$who . EXDB_UBDELIM;	# no dbname or bindername (eg sam_s_)
-	my $ns_root_name =		# eg, start FQ MongoDB collection name
-		"$edatabase_name.$ebinder_root_name";
-	# all that's missing from $ns_root_name is caller's binder name
-	return (
-		$edatabase_name, $ebinder_root_name, $ns_root_name, $ubname,
-	);
-}
 
 # zzz
 # Returns hash of binder name parts, generally for storage in a session hash.
@@ -2162,10 +2109,8 @@ sub binder_exists { my( $sh, $isbname, $esbname, $exists_flag, $minderpath )=@_;
 # $tagdir must be specified: it should be a directory name (uname);
 # return should be dirname picked for you xxxxxx?
 # (might not be quite what you asked for if there's a conflict)
-#
-# zzz $bgroup and $user args come in as cmd line args from user/caller of egg
 
-sub mkbinder { my( $sh, $mods, $binder, $bgroup, $user, $what, $minderdir )=@_;
+sub mkbinder { my( $sh, $mods, $binder, $user, $what, $minderdir )=@_;
 
 	! $sh and
 		return undef;
@@ -2192,7 +2137,7 @@ sub mkbinder { my( $sh, $mods, $binder, $bgroup, $user, $what, $minderdir )=@_;
 			addmsg($sh, ($binder ? '' : 'default ') .
 				"binder \"$esbname\" already exists"),
 			return undef;
-		mkebinder($sh, $mods, $esbname, $bgroup, $user,
+		mkebinder($sh, $mods, $esbname, $user,
 				$what, $minderdir) or
 			return undef;
 		! $binder and $om and $om->elem("note",
@@ -2204,9 +2149,7 @@ sub mkbinder { my( $sh, $mods, $binder, $bgroup, $user, $what, $minderdir )=@_;
 				"binder \"$isbname\" already exists"),
 			return undef;
 		}
-# zzz drop $bgroup $user too?
-#		mkibinder($sh, $mods, $inbrname, $bgroup, $user,
-		mkibinder($sh, $mods, $isbname, $bgroup, $user,
+		mkibinder($sh, $mods, $isbname, $user,
 				$what, $minderdir) or
 			return undef;
 		! $binder and $om and $om->elem("note",
@@ -2215,7 +2158,7 @@ sub mkbinder { my( $sh, $mods, $binder, $bgroup, $user, $what, $minderdir )=@_;
 	return 1;
 }
 
-sub mkebinder { my( $sh, $mods, $esbname, $bgroup, $user, $what, $minderdir )=@_;
+sub mkebinder { my( $sh, $mods, $esbname, $user, $what, $minderdir )=@_;
 
 	# xxx should reconcile diffs between mk{e,i}binder
 	! $sh and
@@ -2230,8 +2173,6 @@ sub mkebinder { my( $sh, $mods, $esbname, $bgroup, $user, $what, $minderdir )=@_
 		addmsg($sh, "mkebinder couldn't create binder handler"),
 		return undef;
 
-#XXX; # modify the args below
-# zzzxxx
 	! ebopen($bh, $esbname, $EGG_DB_CREATE) and	# yyy some args unused
 		addmsg($sh, "could not open external binder \"$esbname\""),
 		return undef;
@@ -2250,7 +2191,7 @@ sub mkebinder { my( $sh, $mods, $esbname, $bgroup, $user, $what, $minderdir )=@_
 	return 1;
 }
 
-sub mkibinder { my( $sh, $mods, $binder, $bgroup, $user, $what, $minderdir )=@_;
+sub mkibinder { my( $sh, $mods, $binder, $user, $what, $minderdir )=@_;
 
 # xxxzzz $binder comes in with $isbname -- change arg name?
 
@@ -2463,18 +2404,14 @@ sub createbinder { my( $bh, $dirname, $minderdir )=@_;
 
 # zzz XXXXXXXXX not doing indb case at all here? and what would it mean?
 
-sub brmgroup { my( $sh, $mods, $bgroup, $user )=@_;
+sub brmgroup { my( $sh, $mods, $user )=@_;
 
 	! $sh and
 		return undef;
 	$sh->{remote} and		# yyy why have this and {WeAreOnWeb}?
 		unauthmsg($sh),
 		return undef;
-# zzz delete
-#	! $bgroup and
-#		addmsg($sh, "no binder group specified"),
-#		return undef;
-	# yyy should we check if $bgroup matches $sh->{bgroup} ?
+
 	my $msg;
 	if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {
 		addmsg($sh, $msg);	# failed to configure
@@ -2486,8 +2423,7 @@ sub brmgroup { my( $sh, $mods, $bgroup, $user )=@_;
 		addmsg($sh, "--allb or --allc option not allowed");
 		return undef;
 	}
-# zzz set --service=td
-	my @ebinders = ebshow($sh, $mods, 0, $bgroup, $user);
+	my @ebinders = ebshow($sh, $mods, 0, $user);
 
 	# empty return list is ok
 	@ebinders and ! defined($ebinders[0]) and	# our test for error
@@ -2498,13 +2434,7 @@ sub brmgroup { my( $sh, $mods, $bgroup, $user )=@_;
 	my ($inbrname, $exbrname, $rootless);	# yyy $inbrname unused
 
 	my $errs = 0;				# don't make errors fatal
-# zzz
-# my $binder_root_name = $sh->{exdb}->{binder_root_name};
 	for my $b (@ebinders) { 
-		# yyy should we call rmebinder($sh, $mods, $exbrname,
-		# $bgroup, $user)?
-		#     we don't because that would fail on internal dbs at
-		#     the moment
 # zzz drop this nuance. if it starts with "egg_..." assume it's ours to do with
 # what we want
 		# yyy ignore result for internal db, since xxxbinder_exists
@@ -2531,7 +2461,7 @@ sub brmgroup { my( $sh, $mods, $bgroup, $user )=@_;
 			$errs++,
 			next,
 		;
-		rmebinder($sh, $mods, $esbname, $bgroup, $user) or
+		rmebinder($sh, $mods, $esbname, $user) or
 			addmsg($sh, "brmgroup: error removing binder $rootless "
 				. "($esbname)"),
 			$errs++,
@@ -2542,36 +2472,7 @@ sub brmgroup { my( $sh, $mods, $bgroup, $user )=@_;
 	return 1;
 }
 
-# zzz drop this routine
-# called by remove_td() and remake_td() in test scripts with no active session
-# return message on error, or '' on success
-
-sub xxxbrmgroup_standalone { my( $bgroup )=@_;
-
-# xxx can this be consolidated with brmgroup? eg, start up disposable
-#     session on demand?
-# xxx require instead of use?
-# yyy test database instead of egg_eggnog? eg, egg_td_egnapa
-	use EggNog::Session;
-	my $sh = EggNog::Session->new(0) or
-		return "couldn't create session handler";
-	$sh->{remote} and		# yyy why have this and {WeAreOnWeb}?
-		unauthmsg($sh),
-		return undef;
-	my $msg;
-	$msg = EggNog::Session::config($sh) and
-		return $msg;
-
-# zzzxxx XXXXXXXXXXXXXXXXXXXXXXXXXX maybe we need $bgroup here?
-
-	brmgroup($sh, undef, $bgroup) or
-		return outmsg($sh);
-	return '';
-	# local $sh var session object destroyed when going out of scope
-	#   eg, on return
-}
-
-sub rmbinder { my( $sh, $mods, $binder, $bgroup, $user, $minderpath )=@_;
+sub rmbinder { my( $sh, $mods, $binder, $user, $minderpath )=@_;
 
 	! $sh and
 		return undef;
@@ -2616,20 +2517,20 @@ sub rmbinder { my( $sh, $mods, $binder, $bgroup, $user, $minderpath )=@_;
 			addmsg($sh,
 				"external binder \"$esbname\" doesn't exist"),
 			return undef;
-		rmebinder($sh, $mods, $esbname, $bgroup, $user) or
+		rmebinder($sh, $mods, $esbname, $user) or
 			return undef;
 	}
 	if ($sh->{indb}) {
 		# yyy this test won't work: ! $indbexists and ...
 # zzz xxx why not test ! $isbexists and ...?
-		rmibinder($sh, $mods, $isbname, $bgroup, $user, $minderpath) or
+		rmibinder($sh, $mods, $isbname, $user, $minderpath) or
 			return undef;
 	}
 	return 1;
 }
 
 # assume existence check and call to str2brnames were already done by caller
-sub rmebinder { my( $sh, $mods, $exbrname, $bgroup, $user )=@_;
+sub rmebinder { my( $sh, $mods, $exbrname, $user )=@_;
 
 	! $exbrname and
 		addmsg($sh, "no binder specified"),
@@ -2653,7 +2554,7 @@ sub rmebinder { my( $sh, $mods, $exbrname, $bgroup, $user )=@_;
 	return 1;
 }
 
-sub rmibinder { my( $sh, $mods, $mdr, $bgroup, $user, $minderpath )=@_;
+sub rmibinder { my( $sh, $mods, $mdr, $user, $minderpath )=@_;
 
 	! $sh and
 		return undef;
@@ -2869,9 +2770,6 @@ sub make_visitor { my( $sh, $symlinks_followed, $om )=@_;
 # NB: unlike ebshow, this does NOT return a list of binders (print only)
 # yyy convert to use $om
 
-# yyy doesn't yet use or honor $bgroup or $user
-# zzz
-
 sub ibshow { my( $sh, $mods, $om )=@_;	# internal db version of bshow
 
 	defined($Win) or	# if we're on a Windows platform avoid -l
@@ -2903,18 +2801,16 @@ sub ibshow { my( $sh, $mods, $om )=@_;	# internal db version of bshow
 # returns a list of fully qualified binder names on success, (undef) on error
 # NB: the returned list is used directly by td_remove()
 # $om == 0 (zero) means just return list and don't do output
-# first get list of collections, later filter by $bgroup and $user
+# first get list of collections, later filter by $user
 # yyy ?add 'long' option that checks for every important file, eg,
 #     minder.{bdb,log,lock,README} and 0=minder_...
 
-sub ebshow { my( $sh, $mods, $om, $bgroup, $user, $ubname )=@_;
-
-#	my ($edatabase_name, $ebinder_root_name, $ns_root_name, $clean_ubname) =
-#		binder_names($sh, $bgroup, $user, $ubname);
+sub ebshow { my( $sh, $mods, $om, $user, $ubname )=@_;
 
 # zzz xxx make bshow arg1 be binder name, and test
 	my ($ibn, $ebn, $bn) =
 		bname_parse($sh, $ubname, undef, $user);
+# zzz bname_parse($sh, $ubname, $sh->{smode}, $user);
 
 	my $exdb = $sh->{exdb};
 	my ($msg, $db, @cns);
@@ -2958,8 +2854,6 @@ sub ebshow { my( $sh, $mods, $om, $bgroup, $user, $ubname )=@_;
 			? $bn->{user_binder_name} : ''),
 	);
 
-#	my $dbn = $sh->{default_bname_parts};
-# zzz xxx document these --allb and --allc options
 	my $root_re =
 		$sh->{opt}->{allc} ? qr// :	# do all collections if --allc,
 		($sh->{opt}->{allb} ?		# else if --allb just do what
@@ -3000,7 +2894,7 @@ sub ebshow { my( $sh, $mods, $om, $bgroup, $user, $ubname )=@_;
 # yyy to rename, make these synonyms: bmake = mkbinder, brm = rmbinder,
 #     in later release, remove old names
 
-sub bshow { my( $sh, $mods, $om, $bgroup, $user, $ubname )=@_;
+sub bshow { my( $sh, $mods, $om, $user, $ubname )=@_;
 
 	! $sh and
 		return undef;
@@ -3015,11 +2909,10 @@ sub bshow { my( $sh, $mods, $om, $bgroup, $user, $ubname )=@_;
 	my @ret;
 	$sh->{exdb} and
 		# ebshow indicates error by returning 1-element list: (undef)
-		(@ret = ebshow($sh, $mods, $om, $bgroup, $user, $ubname)),
+		(@ret = ebshow($sh, $mods, $om, $user, $ubname)),
 		(@ret and ! defined($ret[0]) and return undef),
 	;
 	$sh->{indb} and
-		# doesn't use $bgroup or $user
 		ibshow($sh, $mods, $om) || return undef,
 	;
 	return 1;
@@ -3213,7 +3106,7 @@ sub prep_default_binder { my( $sh, $ie, $flags, $minderpath, $mindergen )=@_;
 				$sh->{default_template}, $sh->{minderhome})
 			:
 # XXX NO:should there be an exdb case for this?
-			mkibinder($submh->{sh}, undef, $mdr, undef, undef,
+			mkibinder($submh->{sh}, undef, $mdr, undef,
 				"default binder", $sh->{minderhome});
 		$dbname or
 			addmsg($sh, getmsg($submh)),
@@ -3275,7 +3168,7 @@ sub gen_minder { my( $sh, $minderpath )=@_;
 		$mdr =~ s/\d+$/$n/;	# xxx assumes it ends in a number
 		# xxx shouldn't we be using name returned in $msg?
 		# XXX this _assumes_ only other type is ND_BINDER!!
-		my $dbname = mkibinder($sh, undef, $mdr, undef, undef,
+		my $dbname = mkibinder($sh, undef, $mdr, undef,
 			"Auto-generated binder", $sh->{minderhome});
 		$dbname or
 			addmsg($sh, "couldn't create snagged name ($mdr)"),

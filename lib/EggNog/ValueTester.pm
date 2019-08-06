@@ -31,7 +31,7 @@ our ($rawstatus, $status);	# "shell status" version of "is"
 #   $td		temporary directory, or empty string on error
 #   $cmd	command string
 #   $homedir	--home value
-#   $bgroup	binder group (for exdb case)
+#   $tdata	value intended for --testdata
 #   $indb	boolean to test if internal binder is being used
 #   $exdb	boolean to test if external binder is being used
 
@@ -62,10 +62,6 @@ sub script_tester { my( $script )=@_;
 	# EGG_DBIE=ei means i and e
 	# EGG_DBIE=xyz means i (default) and NOT e (default)
 
-# zzz drop
-#my $bgroup = EggNog::Session::test_data_service();
-
-	# zzz document!
 	my $tdata = $ENV{EGG_TESTDATA} || $testdata_default;
 
 	if ($ENV{EGG_DBIE}) {
@@ -84,23 +80,11 @@ sub script_tester { my( $script )=@_;
 				$indb = 0;
 		}
 		#$indb = index($ENV{EGG_DBIE}, 'i') >= 0;	# not default
-		#$bgroup = $td;		# td_egg is ok as dir or bgroup name
 	}
 	my $hgbase = "--home $homedir "		# home-binder-group base string
-		. "--testdata $tdata";	# zzz only exdb case?
-
-# hgbase should have --service egg or nog or n2t or web or s,
-#    where value is same as $script (egg or nog), unless ???, when
-#      n2t or web ...?
-# XXX is this --service arg is needed?
-
-# zzz drop
-#	$bgroup and				# empty unless EGG_DBIE is set
-#		$hgbase .= " --bgroup $bgroup";
-#		#$hgbase .= " --bgroup $bgroup --service n2t";
+		. "--testdata $tdata";
 
 	return ($td, $cmd, $homedir, $tdata, $hgbase, $indb, $exdb);
-	#return ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb);
 }
 
 sub shellst_is { my( $expected, $output, $label )=@_;
@@ -111,18 +95,16 @@ sub shellst_is { my( $expected, $output, $label )=@_;
 	return is($status, $expected, $label);
 }
 
-# zzz rename bgroup -> tdata
-sub remake_td { my( $td, $bgroup )=@_;	# make $td with possible cleanup
+sub remake_td { my( $td, $tdata )=@_;	# make $td with possible cleanup
 
-	remove_td($td, $bgroup);
+	remove_td($td, $tdata);
 	#-e $td and
-	#	remove_td($td, $bgroup);
+	#	remove_td($td, $tdata);
 	mkdir($td) or
 		say STDERR "$td: couldn't mkdir: $!";
 }
 
-# zzz rename bgroup -> tdata
-sub remove_td { my( $td, $bgroup )=@_;
+sub remove_td { my( $td, $tdata )=@_;
 
 	# remove $td but make sure $td isn't set to "."
 	# yyy maybe one day $td is optional
@@ -137,13 +119,13 @@ sub remove_td { my( $td, $bgroup )=@_;
 	};
 	# not bothering to check status of $ok
 
-	if ($bgroup) {
+	if ($tdata) {
 
 		# Tweak local environment so test binders get distinct names
 		# when session (created next) default vals get set (kludge?).
 
 		$ENV{EGG_TESTDATA} ||=		# don't override user setting
-			$bgroup;
+			$tdata;
 		my ($sh, $msg) = EggNog::Session::make_session();
 		if (! $sh) {
 			say STDERR "couldn't create session: $msg";
@@ -156,10 +138,6 @@ sub remove_td { my( $td, $bgroup )=@_;
 			return undef;
 		}
 		return 1;
-# zzz delete brmgroup_standalone();
-		#my $msg = EggNog::Binder::brmgroup_standalone($bgroup);
-		#$msg and
-		#	say STDERR $msg;
 	}
 }
 

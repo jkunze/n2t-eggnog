@@ -7,13 +7,13 @@ use warnings;
 use EggNog::ValueTester ':all';
 use File::Value ':all';
 
-my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "egg";
+my ($td, $cmd, $homedir, $tdata, $hgbase, $indb, $exdb) = script_tester "egg";
 $td or			# if error
 	exit 1;
-$ENV{EGG} = $hgbase;		# initialize basic --home and --bgroup values
+$ENV{EGG} = $hgbase;		# initialize basic --home and --testdata values
 
 {
-remake_td($td, $bgroup);
+remake_td($td, $tdata);
 my $x;
 
 $x = `$cmd help`;
@@ -35,5 +35,5 @@ $x = `$cmd help usage`;
 my $y = `$cmd usage`;
 is $x, $y, 'help usage like usage';
 
-remove_td($td, $bgroup);
+remove_td($td, $tdata);
 }

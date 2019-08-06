@@ -7,13 +7,13 @@ use warnings;
 use EggNog::ValueTester ':all';
 use File::Value ':all';
 
-my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "nog";
+my ($td, $cmd, $homedir, $tdata, $hgbase, $indb, $exdb) = script_tester "nog";
 $td or			# if error
 	exit 1;
-$ENV{NOG} = $hgbase;		# initialize basic --home and --bgroup values
+$ENV{NOG} = $hgbase;		# initialize basic --home and --testdata values
 
 {
-remake_td($td, $bgroup);
+remake_td($td, $tdata);
 my $x;
 
 $x = `$cmd`;
@@ -41,5 +41,5 @@ like $x, qr/^([a-z0-9_~]{22}\n){4}\s*$/si,
 #like $x, qr/^([a-z][a-z0-9_]){21}\n\s*$/si,
 #	'nice level 1 means id starts with letter and has no ~';
 
-remove_td($td, $bgroup);
+remove_td($td, $tdata);
 }

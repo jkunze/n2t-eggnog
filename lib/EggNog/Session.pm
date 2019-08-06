@@ -41,8 +41,6 @@ use constant EXDB_ITGT_PX 	=> '_,eTi,';	# inflection target prefix
 use constant EXDB_MTGT_PX 	=> '_,eTm,';	# metadata tgt. prefix (conneg)
 
 use constant EGGNOG_DIR_DEFAULT		=> '.eggnog';
-use constant BGROUP_DEFAULT		=> 'bgdflt';	# binder group default
-					# zzzzz bgdflt deprecated
 use constant SERVICE_DEFAULT		=> 's';		# default service name
 use constant HOST_CLASS_DEFAULT		=> 'loc';
 
@@ -177,33 +175,6 @@ sub make_session {	# no input args
 	return ($sh, $msg);
 }
 
-# zzz drop this entire routine?
-# Returns service name used to isolate test databases. Used to set --bgroup
-# as a background value (eg, via EGG environment var) for testing.
-# xxx doesn't work:
-#     Call with $service arg (eg, "n2t", defaults to TESTING_DATA ("td_"))
-
-sub xxxtest_data_service { my( $service )=@_;
-
-	my ($sh, $msg) = make_session();
-	! $sh and
-		return $msg;
-	# session created; local $sh var session object destroyed when
-	# going out of scope, eg, on return
-
-# zzz delete
-	#use Sys::Hostname;
-	#$service ||= TESTING_DATA;
-	#my $td = $service . hostname();
-	#$td =~ s/\W+//g;
-	#return $td;
-
-	use EggNog::Binder 'bname_parse';
-	my $bn;		# want definition of sdatabasename as side effect
-	(undef, undef, $bn) = EggNog::Binder::bname_parse($sh, 'dummy');
-	return $bn->{sdatabasename};
-}
-
 # Eggnog session configuration. Defines $sh->{cfgd} when done.
 # Returns empty string on success, or an error message on failure.
 
@@ -276,19 +247,6 @@ sub config { my( $sh )=@_;
 		|| $ENV{EGNAPA_SERVICE}		# yyy ?
 		|| $wf->{EGNAPA_SERVICE}	# eg, "n2t"  yyy ?
 		|| SERVICE_DEFAULT;		# eg, "s"
-# zzzzzzzz
-#	$sh->{opt}->{testing} and
-#		$sh->{service} = ....
-
-
-
-	# binder group used in forming database names
-	#$self->{bgroup} = $self->{opt}->{bgroup} || BGROUP_DEFAULT;
-# zzz normalize bgroup parts now or later?
-# zzz document how bgroup is only for testing support, esp. binder removal
-# zzz document how bgroup for binder removal overrides any --service & --smode
-	$sh->{bgroup} = $sh->{opt}->{bgroup} ||
-		"$sh->{service}_$sh->{smode}";
 
 	$sh->{host_class} = $ENV{HOST_CLASS}	# eg, dev, stg, prd
 		|| $wf->{EGNAPA_HOST_CLASS}
@@ -435,17 +393,6 @@ sub config { my( $sh )=@_;
 			return undef;	# returns from "catch", NOT from routine
 		};
 		$ok // return $msg;	# test for undefined since zero is ok
-
-# zzz re-do in light of new bname_parse?
-# $sh->{exdb}->{binder_root_name} = 'egg_';	# XXX
-#		use EggNog::Binder 'binder_names';
-#		( $sh->{exdb}->{database_name},		# zzz unused
-# zzz binder_root_name must be defined? for sake of brmgroup()
-#		  $sh->{exdb}->{binder_root_name},
-#		  $sh->{exdb}->{ns_root_name},		# zzz unused
-#		  undef,		# don't care about final element
-#		) =
-#		  	EggNog::Binder::binder_names($sh);
 	}
 
 	# aim to be able to test using $mh->{sh}->{indb} and $mh->{sh}->{exdb}
@@ -570,10 +517,6 @@ sub new {		# call with WeAreOnWeb, om, om_formal, optref
 	$self->{txnlog_file_default} =
 		catfile( $self->{home}, TXNLOG_DEFAULT );
 	# we open txnlog file only if we need it, eg, NOT for help command
-
-#	# binder group used in forming database names
-#	#$self->{bgroup} = $self->{opt}->{bgroup} || BGROUP_DEFAULT;
-#	$self->{bgroup} = $self->{opt}->{bgroup} || BGROUP_DEFAULT;
 
 	$self->{pfx_file} = catfile( $self->{home}, PFX_FILE );
 	$self->{pfx_file_default} =

@@ -8,13 +8,13 @@ use warnings;
 use EggNog::ValueTester ':all';
 use File::Value ':all';
 
-my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "egg";
+my ($td, $cmd, $homedir, $tdata, $hgbase, $indb, $exdb) = script_tester "egg";
 $td or			# if error
 	exit 1;
-$ENV{EGG} = $hgbase;		# initialize basic --home and --bgroup values
+$ENV{EGG} = $hgbase;		# initialize basic --home and --testdata values
 
 {
-remake_td($td, $bgroup);
+remake_td($td, $tdata);
 my $x;
 
 $x = `$cmd -p $td mkbinder foo`;
@@ -85,7 +85,7 @@ like $x, qr/^bigelem: # Creation record.*doesn't begin with ':' --\n$/s,
 
 	"big data value with hex modifier";
 
-remove_td($td, $bgroup);
+remove_td($td, $tdata);
 }
 
 # Use this subroutine to get actual commands onto STDIN (eg, bulkcmd).
@@ -101,7 +101,7 @@ sub run_cmds_on_stdin { my( $cmdblock, $flags )=@_;
 # yyy? check mstat command ?
 
 {
-remake_td($td, $bgroup);
+remake_td($td, $tdata);
 $ENV{EGG} = "$hgbase -p $td -d $td/bar";
 my ($cmdblock, $x, $y);
 
@@ -210,5 +210,5 @@ is length($x), $n + 2,
 ##### #xxxx still need to fix line counts
 #### XXXXX put modifiers into more than fetch and bind_del??
 
-remove_td($td, $bgroup);
+remove_td($td, $tdata);
 }

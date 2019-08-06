@@ -7,10 +7,10 @@ use warnings;
 use EggNog::ValueTester ':all';
 use File::Value ':all';
 
-my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "egg";
+my ($td, $cmd, $homedir, $tdata, $hgbase, $indb, $exdb) = script_tester "egg";
 $td or			# if error
 	exit 1;
-$ENV{EGG} = $hgbase;		# initialize basic --home and --bgroup values
+$ENV{EGG} = $hgbase;		# initialize basic --home and --testdata values
 
 # Use this subroutine to get actual commands onto STDIN (eg, bulkcmd).
 #
@@ -22,7 +22,7 @@ sub run_cmds_on_stdin { my( $cmdblock )=@_;
 }
 
 {
-remake_td($td, $bgroup);
+remake_td($td, $tdata);
 $ENV{EGG} = "$hgbase --user foo -d $td/foo";	# user foo matches binder foo
 my ($x, $y, $cmdblock);
 
@@ -83,5 +83,5 @@ $x = `$cmd dbload $td/dummysaved.bdb`;
 
 #system "sum $td/foo/*";
 
-remove_td($td, $bgroup);
+remove_td($td, $tdata);
 }
