@@ -196,6 +196,10 @@ $x = `$webcl "$ssvbase_u/a/pest/b? i.set moo cow"`;
 like $x, qr{HTTP/\S+\s+200\s+OK.*egg-status: 0}si,
 	'open populator "pest" sets an element without a login/password';
 
+#$x = apachectl('graceful-stop')	and print("$x\n");
+#say "xxxxxxxxxx premature exit";
+#exit;	#########
+
 $y = flvl("< $buildout_root/logs/transaction_log", $x);
 $y and print "error: $y\n";
 like $x, qr{BEGIN.*END SUCCESS}s,
@@ -220,10 +224,6 @@ like $x, qr{^\? }m,
 	'anonymous user logged as "?"';
 }
 
-#$x = apachectl('graceful-stop')	and print("$x\n");
-#say "xxxxxxxxxx premature exit";
-#exit;	#########
-
 # xxxxxx add indb arg as for test_binders?
 test_minters $cfgdir, 'pestx', 'pesty', @fqshoulders;
 
@@ -231,7 +231,11 @@ test_minters $cfgdir, 'pestx', 'pesty', @fqshoulders;
 my @binders = ( qw(pestx pesty) );
 my @owners =  ( qw(pestx pesty) );
 
-test_binders $cfgdir, $ntd, $indb, \@binders, \@owners;
+test_binders $buildout_root, $cfgdir, $ntd, $indb, \@binders, \@owners;
+
+#say "XXX x=$x";
+#$x = apachectl('graceful-stop')	and say "$x"; exit;	#########
+
 
 # xxx document that doi minters are put under ark for convenience of the
 #     check digit algorithm

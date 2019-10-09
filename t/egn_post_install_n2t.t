@@ -34,8 +34,8 @@ SKIP: {
 my ($x, $y, $n);
 
 my $ark1 = 'ark:/99999/fk8n2test1';
-my $tgt1 = 'http://www.cdlib.org/';
-my $tgt2 = 'http://www.cdlib.org/' . EggNog::Temper::etemper();
+my $tgt1 = 'http://cdlib.org/';
+my $tgt2 = 'http://cdlib.org/' . EggNog::Temper::etemper();
 my $eoi = 'doi:10.5072/EOITEST';	# MUST register in normalized uppercase
 my $eoi_tgt = 'http://crossref.org/';
 my $eoi_ref = 'eoi:10.5072/EOITEST';	# normalized reference
@@ -191,9 +191,11 @@ like $x, qr/^Location: \Q$tgt2/m, "third new bound target value resolved";
 #
 # NB: XXX these tests may not work on a new system until a server
 #     reboot, due to resolver bug (remove this note when fixed)
+# 2019.10.02: changed www.cdlib.org to just cdlib.org (www. deprecated)
+# xxx still need to remove www. from SPT documentation!
 
 my $cdl_ark = 'ark:/12345/fk1234';		# ACTUAL real ARK!
-my $cdl_tgt = 'http://www.cdlib.org/services';
+my $cdl_tgt = 'http://cdlib.org/services';
 my $cdl_ext = '/uc3/ezid/';
 
 $x = `wegn $cdl_ark.set _t $cdl_tgt`;
@@ -205,7 +207,17 @@ like $x, qr/^egg-status: 0/m, "egg sets date for $cdl_ark";
 
 $x = `wegn locate "$cdl_ark$cdl_ext"`;
 like $x, qr/^Location: \Q$cdl_tgt$cdl_ext/m,
-	"documented suffix passthrough works for cdl_ark $cdl_ark";
+	"documented suffix passthrough 'locate' for cdl_ark $cdl_ark";
+
+# this is a real test
+$x = `wegn resolve "$cdl_ark"`;
+like $x, qr/title.*Services.*California/m,
+	"documented 'resolve' target for cdl_ark $cdl_ark";
+
+# this is a real test
+$x = `wegn resolve "$cdl_ark$cdl_ext"`;
+like $x, qr/title.*EZID.*California/m,
+	"documented suffix passthrough 'resolve' for cdl_ark $cdl_ark";
 
 $x = `wegn resolve "$cdl_ark??"`;
 like $x, qr|erc:.*who: CDL.*when: 2014.*persistence:|s,

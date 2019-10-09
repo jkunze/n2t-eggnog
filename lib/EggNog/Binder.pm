@@ -62,6 +62,9 @@ our $DEFAULT_BINDER_RE = qr/^$EGGBRAND.*\..*_s_\Q$DEFAULT_BINDER\E$/o;
 					# eg, egg_default.jak_s_binder1
 our $EGG_DB_CREATE	= 1;
 
+# zzz xxx;
+our $CAREFUL = 'public';
+
 our %o;					# yyy global pairtree options
 
 my $nogbdb = 'nog.bdb';		# used a couple places yyy mostly silly
@@ -1431,7 +1434,7 @@ sub bopen { my( $bh, $bdr, $flags, $minderpath, $mindergen )=@_;
 		bname_parse($sh, $bdr, $sh->{smode});
 
 	if ($sh->{exdb}) {
-# zzz this code needs re-testing
+# xxx this code needs re-testing
 		($flags & DB_CREATE) and
 			$flags = $EGG_DB_CREATE;	# yyy dumb kludge
 
@@ -1560,6 +1563,7 @@ table/collection corresponds to a binder.
 =head1 BINDER NAMES
 
 # xxx document
+bname_parse() is the main routine defining names
 Eggnog users aren't aware of binder names, but Eggnog admin users sometimes
 need to know how databases are named in the filesytem (indb) or on a remote
 server (exdb). For simplicity there's one naming convention for both cases.
@@ -1678,19 +1682,10 @@ is it a global ENV var, since cwd is irrelevant for exdb case?
   (yes, same indb name can exist without conflict in more than one dir)
 
 ZZZ
-How does service name (eg, n2t) itself get passed?
-    service.cfg, at build time
-How does Smode get passed?  via --?? option to egg at mk,rmbinder,
 and to egg --rrm for test binders and t-... resolution
    --smode [real|test]
 ZZZ
-How does user get passed in?  via --user to egg for create/write
-what about separate designation for read? (not supported yet)
-   --user sam
-   # --rouser ?  for read-only user access to other dbs?
-
-  !!! do not do same for nog yet!
-
+  !!! we do not do same for nog yet!
 
 EGN_SERVICE=n2t    (set in service.cfg, overridable from test suites
 		with eg, --service n2txidsn2tprd2b
@@ -1795,7 +1790,7 @@ sub bname_parse { my( $sh, $bname, $service_mode, $who )=@_;
 		);
 
 	#$bname ||= $DEFAULT_BINDER;	# user binder defaults if not given
-	my $dbnparts = $sh->{default_bname_parts};
+	my $dbnparts = $sh->{default_bname_parts};	# see init_bname_parts()
 	$bname ||= $dbnparts->{user_binder_name};
 
 	my $bn = {};		# actual binder name hash to be returned
@@ -1874,13 +1869,19 @@ sub bname_parse { my( $sh, $bname, $service_mode, $who )=@_;
 			# zzz this is temporary; should use --smode
 
 	$bn->{app} = $dbnparts->{app};
-	$bn->{service} = $dbnparts->{service};
+	$bn->{service} =
+		$sh->{service_config}->{service} || $dbnparts->{service};
 	my $tdata = $sh->{opt}->{testdata} || $ENV{EGG_TESTDATA};
 	$tdata and
 		$bn->{service} .= '_' . $tdata;
 		# NB: helps protect permanent binders from testing activity
-	$bn->{class} = $dbnparts->{class};	# zzz normalize like service?
-	$bn->{isolator} = normalize_isolator( $dbnparts->{isolator} );
+
+	$bn->{class} = $sh->{opt}->{class} ||
+		$sh->{host_config}->{class} || $dbnparts->{class};
+
+	my $isolator = $sh->{opt}->{isolator} || $dbnparts->{isolator};
+	$bn->{isolator} = normalize_isolator( $isolator );
+	#$bn->{isolator} = normalize_isolator( $dbnparts->{isolator} );
 	$bn->{service_mode} = $dbnparts->{service_mode};
 	$bn->{who} = $who;
 	$bn->{user_binder_name} = $bname;
@@ -1931,14 +1932,14 @@ sub cat_bname_parts { my( $bn )=@_;		# $bn is hash of bname_parts
 	# Build the two halves of the name, then join them with a '.'.
 	# Works for both indb and exdb cases.
 
-	my $sdatabasename =		# eg, a mongo "database" name
+	my $sdatabasename =	# eg, system database (mongo "database") name
 		$bn->{app} . '_' .
 		$bn->{service} . '_' .
 		$bn->{class} . '_' .
 		$bn->{isolator};
 		#$bn->{service_mode};
 		#DBPREFIX . '_' . $service . '_' . $service_mode;
-	my $stablename =		# eg, a mongo "collection" name
+	my $stablename =	# eg, system table (mongo "collection") name
 		$bn->{service_mode} . '_' .
 		$bn->{who} . '_s_' .
 		$bn->{user_binder_name};
@@ -2098,6 +2099,69 @@ sub binder_exists { my( $sh, $isbname, $esbname, $exists_flag, $minderpath )=@_;
 #	# binder group, which for mongodb we consider to _always_ exist
 
 	return ($isbname, $esbname);
+}
+
+# Move (rename) binder
+
+sub mvbinder { my( $sh, $mods, $binder, $newbinder, $user, $what, $minderdir )=@_;
+
+	! $sh and
+		return undef;
+	my $om = $sh->{om};		# if $om we might use it for messages
+	my $msg;
+	if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {
+		addmsg($sh, $msg);	# failed to configure
+		return undef;
+	}
+	$sh->{remote} and		# yyy why have this and {WeAreOnWeb}?
+		unauthmsg($sh),
+		return undef;
+
+	if (! $binder) {
+		addmsg($sh, "binder name must not be empty");
+		return undef;
+	}
+	if (! $newbinder) {
+		addmsg($sh, "new binder name must not be empty");
+		return undef;
+	}
+	my ($isbname, $esbname, $bn) =
+		bname_parse($sh, $binder, $sh->{smode});
+	my ($nisbname, $nesbname, $nbn) =
+		bname_parse($sh, $newbinder, $sh->{smode});
+
+# Check that old exists, that new doesn't exist
+
+#use Data::Dumper "Dumper"; print Dumper $bn;
+#say STDERR "XXX isbname=$isbname, esbname=$esbname";
+	my $exists_flag = 2; 		# thorough check
+	my ($isbexists, $esbexists) = binder_exists($sh,
+		$isbname, $esbname, $exists_flag, [ $minderdir ]);
+
+	if ($sh->{exdb}) {
+		$esbexists and
+			addmsg($sh, ($binder ? '' : 'default ') .
+				"binder \"$esbname\" already exists"),
+			return undef;
+		mkebinder($sh, $mods, $esbname, $user,
+				$what, $minderdir) or
+			return undef;
+		! $binder and $om and $om->elem("note",
+			"default binder \"$isbname\" created");
+	}
+	if ($sh->{indb}) {
+		if ($isbexists) {
+			addmsg($sh, ($binder ? '' : 'default ') .
+				"binder \"$isbname\" already exists"),
+			return undef;
+		}
+		mkibinder($sh, $mods, $isbname, $user,
+				$what, $minderdir) or
+			return undef;
+		! $binder and $om and $om->elem("note",
+			"default binder \"$isbname\" created");
+	}
+	return 1;
 }
 
 # Returns the fullpath uname of the created binder (which may have been
@@ -2449,13 +2513,20 @@ sub brmgroup { my( $sh, $mods, $user )=@_;
 		#($rootless = $b) =~ s/^[^.]+.\Q$binder_root_name//;
 
 # zzz should we store $bn hash in $bh?
-		my ($isbname, $esbname) =
+		my ($isbname, $esbname, $bn) =
 			bname_parse($sh, $b, $sh->{smode});
 			# bname_parse($sh, $rootless, $sh->{smode});
 		my $exists_flag = 1;		# soft check
 		my ($isbexists, $esbexists) = binder_exists($sh,
 			$isbname, $esbname, $exists_flag, undef);
 
+		if ($bn->{isolator} eq $CAREFUL and ! $sh->{opt}->{ikwid}) {
+			addmsg($sh, "cannot remove binder with \"$CAREFUL\" "
+				. "as isolator unless the \"--ikwid\" option "
+				. "is also specified");
+			$errs++;
+			next;
+		}
 		! $esbexists and ! $sh->{opt}->{force} and
 			addmsg($sh, "brmgroup: not removing $rootless"),
 			$errs++,
@@ -2494,8 +2565,13 @@ sub rmbinder { my( $sh, $mods, $binder, $user, $minderpath )=@_;
 	# yyy ignore result for internal db, since xxxbinder_exists doesn't
 	#     look in @$minderpath yyy this is too complicated
 
-	my ($isbname, $esbname) =
+	my ($isbname, $esbname, $bn) =
 		bname_parse($sh, $binder, $sh->{smode});
+	if ($bn->{isolator} eq $CAREFUL and ! $sh->{opt}->{ikwid}) {
+		addmsg($sh, "cannot remove binder with \"$CAREFUL\" as isolator"
+			. " unless the \"--ikwid\" option is also specified");
+		return undef;
+	}
 	my $exists_flag = 1; 	# soft check
 	my ($isbexists, $esbexists) = binder_exists($sh,
 		$isbname, $esbname, $exists_flag, undef);

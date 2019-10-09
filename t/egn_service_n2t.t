@@ -461,7 +461,7 @@ like $x, qr{HTTP/\S+\s+404\s+Not\s+Found}si,
 my @binders = ( qw(ezid ezid_test oca oca_test yamz yamz_test) );
 my @owners =  ( qw(ezid ezid      oca oca      yamz yamz     ) );
 
-test_binders $cfgdir, $ntd, $indb, \@binders, \@owners;
+test_binders $buildout_root, $cfgdir, $ntd, $indb, \@binders, \@owners;
 
 #$x = apachectl('graceful-stop'); #	and print("$x\n");
 #print "######### temporary testing stop #########\n"; exit;

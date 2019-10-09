@@ -161,6 +161,121 @@ sub bcount { my( $bh, $amount )=@_;
 	return $result;
 }
 
+my $host_usage_text = << "EOF";
+
+Usage: egg host [ Query ]
+
+where Query is a one-word trigger for various kinds of plain text output
+showing configuration information. Except for the reserved words
+
+   _list
+   _listall
+   _help
+
+the Query word is normally taken as a verbatim key whose value is returned.
+If the key is undefined, the return status to the shell will be non-zero,
+otherwise it will be zero (success).
+
+Especially to support cron, extra processing occurs when the Query word
+contains the string "_today". This causes an internal search for keys
+exactly matching either these days of the month -- 1, 2, ..., 31 -- or
+these days of the week -- monday, ..., sunday. For example, these keys
+
+   patch_tuesday	# for OS patching on Tuesdays
+   rotate_1		# rotate logs at the start of the month
+
+will cause a Query of "patch_today" to return success only on a Tuesday, and
+a Query of "rotate_today" to return success only on the first of the month.
+EOF
+
+our @wdays =
+	qw( sunday monday tuesday wednesday thursday friday saturday );
+
+# output 1 if set 0 if not
+
+sub outkey { my( $hcf, $key, $quiet )=@_;
+
+	exists $hcf->{$key} or
+		$quiet || say("$key: UNDEFINED"),
+		return 0;
+	my $value = $hcf->{$key};
+	$value or
+		$quiet || say("$key:"),
+		return 0;
+	$quiet || say("$key: $value");
+	return 1;
+}
+# various host-specific configuration queries, used by cron
+
+sub egg_host { my( $bh, $mods, $om, $subcmd )=@_;
+
+	my $sh = $bh->{sh};
+	my $msg;
+	if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {
+		outmsg($sh, $msg);	# failed to configure
+		return undef;
+	}
+	$sh->{remote} and		# yyy why have this and {WeAreOnWeb}?
+		unauthmsg($sh),
+		return undef;
+
+	$subcmd ||= '_help';
+	my $allhosts = $sh->{cfh};
+	my $hcf = $sh->{host_config};
+
+	use Data::Dumper 'Dumper';
+	if ($subcmd eq 'help') {
+		say "$host_usage_text";
+		return undef;
+	}
+	elsif ($subcmd eq '_list') {
+		say Dumper $hcf;
+		return 1;
+	}
+	elsif ($subcmd eq '_listall') {
+		say Dumper $allhosts;
+		return 1;
+	}
+	# The rest is effectively an "else" clause
+
+	my $key = $subcmd;
+	$key !~ /_today(?:_|$)/ and		# ordinary case
+		return outkey($hcf, $key);
+
+	# Special processing case. Greedy match extracts only the last
+	# instance of "_today".
+
+	my ($before, $after) = $key =~ /^(.*_)today(_.*|$)/;
+	defined($before) or
+		return outkey($hcf, "bad query");	# yyy unknown error
+	$after //= '';
+	my @date = localtime();
+	my $mday = $date[3];
+	my $wday = $date[6];	# day of week, 0 = Sunday
+
+	my $keywday = $before .
+		$wdays[ $date[6] ] . $after;		# day of week, 0=sunday
+	my $keymday = $before . $date[3] . $after;	# day of month
+	my $quiet = 1;
+	outkey($hcf, $keywday, $quiet) and	# quietly check if true
+		return outkey($hcf, $keywday);	# and if so, output and return
+	outkey($hcf, $keymday, $quiet) and	# quietly check if true
+		return outkey($hcf, $keymday);	# and if so, output and return
+	# yyy NB: if weekday check succeeds, it occludes any monthday match
+
+# Used in boolean testing, Class is one of these attributes:
+# 
+#     dev | stg | prd | loc	- overall class returned by "get" (loc=local)
+#      (default is 'loc' if cannot be devined from string embedded in hostname)
+#     pfxpull			- prefixes pulled in and tested
+#     backup			- backups performed (eg, live data)
+#     fulltest			- full testing performed (eg, live data)
+#     rslvrcheck			- regular resolver check performed
+#     patch_{mon,tue,wed,thu,fri} - day on which OS patching occurs
+
+	return 0;
+}
+
 # yyy want mkid to be soft if exists, like open WRITE|CREAT
 #  yyy and rlog it
 
@@ -2199,7 +2314,7 @@ sub egg_pr { my( $bh, $mods )=( shift, shift );
 # which means, set the permissions string for the first time.
 # Return $dbh on success, undef on error.
 #
-# ZZZZ authy not currently called by anyone
+# XXX authy not currently called by anyone
 
 sub authy { my( $WeNeed, $bh, $id, $key ) = ( shift, shift, shift, shift );
 
@@ -2672,7 +2787,7 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 
 		if ($sh->{fetch_exdb}) {	# if EGG_DBIE is e or ei
 
-# ZZZZZZZZZXXXXXXXXXXXX remove debug
+# zzz remove debug
 #			tlogger $sh, $txnid, "XXX bindername:"
 #				. " $bh->{exdbname}"
 #				. " cstring: $sh->{exdb}->{connect_string}";

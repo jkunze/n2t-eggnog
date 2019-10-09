@@ -117,8 +117,11 @@ order in the subcommands listed below.
 [not working for exdb case]
   list m [k...]     list up to m (0=unlimited) ids (or ids under keys k)
   next m x [k...]   like list, but begin at next id not matching x (under k)
+
+Admin Commands
 [work in progress]
   bname b           for binder b, print system binder name (--all gets more)
+  host [query]      return config variable plus exit status (to support cron)
   bshow [g [u]]     list binders of group g, user u; fullname egg_<g>.<u>_s_<b>
   bmake [b [g [u]]] make binder named b (mint name if no b) (aka mkbinder)
   brm b [g [u]]     remove binder named b (aka rmbinder)
@@ -180,6 +183,7 @@ my @valid_commands = qw(
 	pause unpause
 	bname bshow brmgroup bmake brm
 	mstat
+	host
 	add another insert vinsert delete incr decr
 	set let uproot list next
 	testlock
@@ -252,6 +256,7 @@ my @getoptlist = (
 	'as=s',			# content type for output
 	'checksum=s',		# s=md5, sha1 (def) ack changes with
 					# checksum (not yet)
+	'class=s',		# usually obtained elsewhere, eg, from env var
 	'dbie=s',		# internal (i), external (e), both (ie, ei)
 	'debug',		# flag
 	'directory|d=s',	# filesystem directory name
@@ -267,8 +272,10 @@ my @getoptlist = (
 			# Also for indb case, -d /a/b/c pulls off 'c' and
 			# transforms it xxx
 
+	'ikwid',		# I Know What I'm Doing: required for removing
+				# 'public' binders XXX doc
 	'isolator=s',		# usually derived, rare: set to 'public' XXX doc
-				# NB: ONLY WAY TO ACCESS PUBLIC PROD BINDERS
+				# NB: ONLY WAY TO ACCESS PUBLIC PROD BINDERS zzz
 	'lock',			# lock db even on DB_RDONLY open
 	'long|l',		# flag (unused)
 	'man',			# flag
@@ -321,7 +328,7 @@ my @getoptlist = (
 			ack all allb allc txnlog api as
 			dbie directory home pfx_file
 			minderpath
-			isolator testdata
+			class ikwid isolator testdata
 			checksum debug echo force format lock
 			persistomax recurse rrm resolverlist
 			service sif smode testlock user verbose
@@ -808,6 +815,16 @@ sub bdx_mstat { my( $level )=@_;
 	return 0;
 }
 
+sub bdx_host { my( $subcmd )=@_;
+
+	my $minderpath = $cmdr_from_d_flag ?
+		"" : $bh->{minderpath};		# search unless -d used
+
+	EggNog::Egg::egg_host($bh, $mods, $bh->{om_formal}, $subcmd) or
+		outmsg($bh), return 1;
+	return 0;
+}
+
 # list at most $max ids that are matching ("in") @inkeys (all by default)
 # if $nextkey set, start listing with first next key NON-matching key
 
@@ -1207,6 +1224,8 @@ sub bdx_show { my( @elemsets )=@_;	# acts on ELEMENTS, eg, "show :brief"
 
 	# yyy need to configure so we can test $sh->{exdb} below
 	my $msg;
+# zzz move this config check into each lower-level library call
+# #   "thin client principle"
 	if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {
 		outmsg($sh, $msg);      # failed to configure
 		return 1;

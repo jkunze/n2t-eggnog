@@ -12,7 +12,7 @@ our @ISA = qw(Exporter);
 
 our @EXPORT = qw();
 our @EXPORT_OK = qw(
-	config tlogger 
+	config tlogger read_conf_file
 );
 our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
 
@@ -44,9 +44,12 @@ use constant EGGNOG_DIR_DEFAULT		=> '.eggnog';
 use constant SERVICE_DEFAULT		=> 's';		# default service name
 use constant HOST_CLASS_DEFAULT		=> 'loc';
 
+use constant CONFIG_FDEFAULT		=> 'eggnog_config_default';
+use constant CONFIG_F			=> 'eggnog_config';
+
 use constant CONFIG_FILE_DEFAULT	=> 'eggnog_conf_default';
 use constant CONFIG_FILE		=> 'eggnog_conf';
-use constant WARTS_FILE			=> 'warts/env.yaml';
+use constant WARTS_FILE			=> 'warts.yaml';
 use constant PFX_FILE_DEFAULT		=> 'prefixes_default.yaml';
 use constant PFX_FILE			=> 'prefixes.yaml';
 use constant TXNLOG_DEFAULT		=> catfile 'logs', 'transaction_log';
@@ -102,7 +105,8 @@ permissions:
 #
 # These are like user classes (admin, public), defining high-level perms.
 
-ruu:
+#ruu:
+uinfo:
   - "admin | &P/1 | 77 | proxy"
   - "public | &P/2 | 40 | every"
 
@@ -136,18 +140,8 @@ db:
 redirects:
   pre_lookup:
     - "s e/ezid https://ezid.cdlib.org"
-    - "s e/arks_eoi https://bit.ly/2C4fU8f"
-    - "s e/naan_request https://goo.gl/forms/bmckLSPpbzpZ5dix1"
-    - "s e/NAAN_request https://goo.gl/forms/bmckLSPpbzpZ5dix1"
-    - "s e/prefix_request https://docs.google.com/forms/d/18MBLnItDYFOglVNbhNkISqHwB-pE1gN1YAqaARY9hDg"
-    - "s e/prefix_overview https://docs.google.com/document/d/1qwvcEfzZ6GpaB6Fql6SQ30Mt9SVKN_MytaWoKdmqCBI"
   post_lookup:
     - "s e/NAAN_request https://goo.gl/forms/bmckLSPpbzpZ5dix1"
-    # xxx special rules for escholarship and OAC; remove when EZID registers
-    # their ARKs, eg, ark:/13030/tf3000038j
-    # xxx no 'r' support, ie, these don't do anything at all (yet)!
-    - "r ark:/13030/qt(.*) https://escholarship.org/uc/item/\$1"
-    - "r (ark:/13030/(?:tf|ft|kt).*) http://ark.cdlib.org/\$1"
 
 @;
 
@@ -162,77 +156,109 @@ sub connect_string { my( $hostlist, $repsetopts, $setname )=@_;
 # Create a new, configured session so we can use its attributes.
 # Returns a pair ($sh, $msg), where $sh is defined on success.
 # On error, $sh is undefined and $msg contains an error message.
+# Called from ApacheTester::test_binders() without the benefit of
+# egg arg processing, but we need a way to pass in equivalent of
+# --home Dir, so we do it with $egnhome (a bit of a kludge).
 
-sub make_session {	# no input args
+sub make_session { my( $egnhome )=@_;
 
 	use EggNog::Session;
 	my ($sh, $msg);
 
-	$sh = EggNog::Session->new(0) or
+	my $opt = $egnhome ? { home => $egnhome } : {};
+	$sh = EggNog::Session->new(0, '', '', $opt) or
 		return ($sh, "couldn't create session handler");
 	$msg = EggNog::Session::config($sh) and
 		return ($sh, $msg);
 	return ($sh, $msg);
 }
 
+# Load YAML file and return pointer to YAML struct on success.
+# Return undef on error and sets second arg to an error message.
+# This routine protects egg by catching exceptions thrown by YAML.
+
+sub LoadYAML { my( $file, $errmsgR )=@_;
+
+	my $yaml;
+	my $ok = try {
+		$yaml = YAML::Tiny::LoadFile($file);
+	}
+	catch {		# NB: catch this exception or process aborts
+		$$errmsgR = $YAML::Tiny::errstr;
+		return undef;	# returns from "catch", NOT from routine
+	};
+	#! defined($ok) and
+	#	return...
+	return $yaml;
+}
+
+# Creates default conf file from global $default_cfc contents.
+
+sub init_conf_file { my( $conf_file )=@_;
+
+	my $dir = dirname $conf_file;
+	my $msg;
+	my $ok = try {
+		$msg = mkpath( $dir );
+	}
+	catch {
+		$msg = "Couldn't create config directory \"$dir\": $@";
+		return undef;
+	};
+	$ok // return $msg;	# test for undefined since zero is ok
+
+	return
+		flvl("> $conf_file", $default_cfc);
+}
+
+# read_conf_file($sh, [$hostname] )
+# init default if not there
+# modify $sh->{host_config} based on $hostname or envvar or options
+# modify $sh->{cfh} on return
+# return '' on success, or error message on error
+
+# zzz is this needed as a separate routine (could be inline)?
+sub read_conf_file { my( $sh )=@_;
+
+	my $msg;
+	if (! -e $sh->{conf_file_default}) {	# create default config file
+		($msg = init_conf_file( $sh->{conf_file_default} )) and
+			return $msg;	# if there's a message, error out
+	}
+	my $conf_file =
+		(-e $sh->{conf_file} ? $sh->{conf_file} :
+			$sh->{conf_file_default});	# which should exist
+	$sh->{conf_file_actual} = $conf_file;	# save actual conf file chosen
+				# yyy document key; record event in txnlog
+
+	# Now read the config file and any warts file. Any conflicting
+	# settings from the latter will override those from the former.
+	# NB: either call to LoadFile may throw a fatal (uncaught) exception,
+	# which is ok (yyy right?) because something would be very wrong.
+
+	my $errmsg;		# reference to string
+	my $cfh = LoadYAML($conf_file, \$errmsg) or	# config hash of hashes
+		return "$conf_file: config file load failed: $errmsg";
+	$sh->{service_config} = $cfh;		# config hash
+	$sh->{host_config} = $cfh->{hosts}->{ $sh->{hostname} };
+
+	return '';		# success
+}
+
+
 # Eggnog session configuration. Defines $sh->{cfgd} when done.
 # Returns empty string on success, or an error message on failure.
 
 sub config { my( $sh )=@_;
 
-# yyy {home} should be where binders and minters go too
-# yyy drop this and drop per-binder config (for now) soon
-# yyy should open rlog file(s) here too
+	# yyy {home} should be where binders and minters go too
+	# yyy drop this and drop per-binder config (for now) soon
+	# yyy should open rlog file(s) here too
 
 	my $msg;
-	my $conf_file =
-		(-e $sh->{conf_file} ? $sh->{conf_file} :
-		(-e $sh->{conf_file_default} ? $sh->{conf_file_default} :
-		'' ));			# else neither config file exists
-
-# zzzzz apache start needs to call admegn warts on build so that it tracks
-#       changes from env.sh to env.yaml!
-# zzz keep this warts_file yaml thing?
-	my $warts_file =
-		-e $sh->{warts_file}
-			? $sh->{warts_file}	# there's a warts file
-			: '';			# or else not
-
-	if (! $conf_file) {		# create a default configuration file
-		$conf_file = $sh->{conf_file_default};
-		my $dir = dirname $conf_file;
-		my $msg;
-		my $ok = try {
-			$msg = mkpath( $dir );
-			#$msg = mkpath($sh->{home});
-		}
-		catch {
-			$msg = "Couldn't create config directory \"$dir\": $@";
-			return undef;
-			#return "Couldn't create config directory \"$dir\": $@";
-			#return "Couldn't create directory \"$sh->{home}\": $@";
-		};
-		$ok // return $msg;	# test for undefined since zero is ok
-
-		$msg = flvl("> $sh->{conf_file_default}", $default_cfc);
-		$msg and	# if there's a message, then there's a problem
-			return $msg;
-	}
-
-	# Now read the config file and any warts file. Any conflicting
-	# settings from the latter override those from the former.
-	# NB: either call to LoadFile may throw a fatal (uncaught) exception,
-	# which is ok (yyy right?) because something would be very wrong.
-
-	my $cfh = LoadFile($conf_file) or	# config file hash of hashes
-		return "$conf_file: config file load failed"; # never called?
-
-	# Read the warts file, if any; its settings may override config file.
-
-	my $wf = {};		# a simple hash, keys look just like env vars
-	$warts_file and
-		($wf = LoadFile($warts_file) or		# yyy never called?
-			return "$warts_file: warts file load failed");
+	$msg = read_conf_file($sh) and
+		return $msg;
+	my $cfh = $sh->{service_config};
 
 	$sh->{smode} ||=
 		$sh->{opt}->{smode} || SMODE_DEFAULT;
@@ -244,26 +270,26 @@ sub config { my( $sh )=@_;
 
 	$sh->{service} =			# service name, eg, n2t, web
 		$sh->{opt}->{service}
-		|| $ENV{EGNAPA_SERVICE}		# yyy ?
-		|| $wf->{EGNAPA_SERVICE}	# eg, "n2t"  yyy ?
+		|| $ENV{EGNAPA_SERVICE}		# yyy ? zzz
 		|| SERVICE_DEFAULT;		# eg, "s"
 
 	$sh->{host_class} = $ENV{HOST_CLASS}	# eg, dev, stg, prd
-		|| $wf->{EGNAPA_HOST_CLASS}
+#		|| $wf->{EGNAPA_HOST_CLASS}
 		|| HOST_CLASS_DEFAULT;
 
-	$sh->{conf_file_actual} = $conf_file;	# save actual conf file used
-				# yyy document key; record event in txnlog
+#	$sh->{conf_file_actual} = $conf_file;	# save actual conf file used
 
 	# Config info should now be in $cfh, in 4 parts.  yyy probably unused
 	$sh->{conf_flags} = $cfh->{flags} || '';	# 1/4 kinds of config
 
 	# Need to turn array into strings.
-	my $defagents = $cfh->{ruu} || [];		# defined agents
+	my $defagents = $cfh->{uinfo} || [];		# defined agents
+	#my $defagents = $cfh->{ruu} || [];		# defined agents
 
 	# kludge for scan_cfc to make blob look like list of lines of the form
 	#    defagent: admin | &P/1 | 77 | proxy
-	$sh->{conf_ruu} = "defagent: " .		# 2/4 kinds of config
+	#$sh->{conf_ruu} = "defagent: " .		# 2/4 kinds of config
+	$sh->{conf_uinfo} = "defagent: " .		# 2/4 kinds of config
 		join "\ndefagent: ",
 			@$defagents;
 
@@ -338,6 +364,8 @@ sub config { my( $sh )=@_;
 	if (($pos = index($dbie, 'e')) > -1) {
 		$sh->{exdb} = {};		# yyy document these keys
 
+# zzz
+my $wf = {};
 		# We're doing exdb connections, so finalize our environment.
 		$ENV{MG_CSTRING_HOSTS} ||= $wf->{MG_CSTRING_HOSTS}
 			|| MG_CSTRING_HOSTS_DEFAULT;
@@ -356,12 +384,12 @@ sub config { my( $sh )=@_;
 
 	# Record as much as we can find out about the person or agent
 	# who is calling us.
-	# Note: this is the only time that $sh->{ruu} is defined or redefined.
+	# Note: this is the only time that $sh->{uinfo} is defined or redefined.
 	# yyy add to $sh config file name used and last time it was read?
 	#
 	my $ruu = EggNog::RUU->new(	# XXX stop calling from $mh config
 		$sh->{WeAreOnWeb},
-		$sh->{conf_ruu},
+		$sh->{conf_uinfo},
 		$sh->{u2phash},
 	);
 
@@ -466,12 +494,12 @@ sub new {		# call with WeAreOnWeb, om, om_formal, optref
 		$self->{WeAreOnWeb} = 1;	#     this is more restrictive
 	$self->{remote} = $self->{WeAreOnWeb};	# one day from ssh also
 	$self->{om} = shift || '';		# empty $om means be quiet
-	#$self->{om} = shift || '';	# no $om means be quiet
 	$self->{om_formal} = shift || '';
 	#$self->{om_formal} = $self->{opt}->{om_formal} || $self->{om};
 
 	use Sys::Hostname;
-	$self->{hostname} = hostname() || '';	# defined even if empty
+	$self->{hostname} = $ENV{EGNAPA_HOST} ||
+		hostname() || '';	# defined even if empty
 
 	$self->{dbhome} = '';		# dir of the open internal database
 					# yyy don't really need to initialize
@@ -512,7 +540,8 @@ sub new {		# call with WeAreOnWeb, om, om_formal, optref
 		catfile( $self->{home}, CONFIG_FILE_DEFAULT );
 	# we open config file only if we need it, eg, NOT for help command
 
-	$self->{warts_file} = catfile( $ENV{HOME}, WARTS_FILE );
+	#$self->{warts_file} = catfile( $ENV{HOME}, WARTS_FILE );
+	$self->{warts_file} = catfile( $self->{home}, WARTS_FILE );
 
 	$self->{txnlog_file_default} =
 		catfile( $self->{home}, TXNLOG_DEFAULT );

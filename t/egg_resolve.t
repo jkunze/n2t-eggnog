@@ -330,6 +330,15 @@ $x = `$cmd -d $td/fon $url.set _t nersc`;
 $x = resolve_stdin("-d $td/fon", $url);
 like $x, qr|^redir302 nersc\n$|, "now have different _t value from fon binder";
 
+$x = resolve_stdin_hdr("-d $td/fon",
+       "$url/mysuffix", "!!!ac=text/turtle!!!",
+);
+like $x, qr|^redir302.*nersc/mysuffix|,
+       "redirect called for single target conneg and SPT";
+
+#print "x=$x";
+#print "####### temporary stop ########\n"; exit;
+
 $x = `$cmd -d $td/fon $url.add _t skink`;
 $x = resolve_stdin("-d $td/fon", $url);
 like $x, qr|"op=multi".*"target=nersc".*"target=skink"|,
@@ -444,10 +453,6 @@ $x = resolve_stdin('', $arkurl, $arkid, $arkurl);
 #$x =~ s/\n\n$//;				# trim two extra newlines
 like $x, qr,^redir302 zaf.*\nerror: .*\nredir302 zaf.*\n$,,
 	"an error in --rrm mode doesn't disturb subsequent resolutions";
-
-#print("resolve: $arkurl, $arkid, $arkurl\n");
-#print "x=$x";
-#print "####### temporary stop ########\n"; exit;
 
 # Now some real world tests.
 

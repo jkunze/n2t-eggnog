@@ -486,13 +486,20 @@ sub get_headers { my( $hdrinfo )=@_;
 	$proto =~ /^https?$/ or		# must be either 'http' or 'https'
 		$proto = '';
 
-	# Extract the "Accept:" header, as it may effect resolution.
+	# Extract the "Accept:" header, as it may affect resolution.
 	# yyy based on private format shared with build_server_tree
 
 	my $accept;
 	$hdrinfo =~ /!!!ac=(.*?)!!!/;		# non-greedy
 	$accept = $1 || '';
 
+	# NB: browsers seem to set the Accept: header to '*/*' instead
+	#     of just leaving it empty.
+
+	$accept eq '*/*' and	# if anything accepted then
+		$accept = '';		# no content negotiation
+
+	# xxx why was the whitelist below ever in effect?
 	#$accept eq '*/*' and	# if anything accepted then
 	#	$accept = '';		# no content negotiation
 	#1 or			# else if we don't know it, then ignore
@@ -502,11 +509,6 @@ sub get_headers { my( $hdrinfo )=@_;
 	#	$accept = '',		# as if no content negotiation
 	#;
 
-	$accept ne 'application/rdf+xml' &&
-			$accept ne 'text/turtle' &&
-			$accept ne 'application/atom+xml' and
-		$accept = '',		# as if no content negotiation
-	;
 	return ($hdrinfo, $accept, $proto);
 }
 # xxx adjust resolver protocol to get command and args in return
@@ -1930,17 +1932,20 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 				"op=partial", "partial=$partial" ))
 	}
 
-	# yyy shouldn't this be checking $idx->{query}, not $suffix?
-	#     because what if you want to do SPT _and_ inflections?
-	# if no returnline yet and we didn't fail the lookup and if SPT was
-	# called and returned a non-empty suffix that contains no word char...
-
 	my $get_one = $bh->{sh}->{fetch_exdb}	# {ex,in}db-agnostic get 1 elem
 		? \&exdb_get_one
 		: \&indb_get_one
 	;
 
-#say "xxx before returnline=$returnline, fail=$fail, suffix=$suffix";
+	# yyy shouldn't this be checking $idx->{query}, not $suffix?
+	#     because what if you want to do SPT _and_ inflections?
+	#
+	# If no returnline yet and we didn't fail the lookup and if there's
+	# an inflection-like suffix (ie, if SPT was called and
+	# returned a non-empty suffix that contains no word char...)
+
+	#say "xxx before returnline=$returnline, fail=$fail, suffix=$suffix";
+
 	if (! $returnline and ! $fail and $suffix and $suffix !~ /\w/) {
 		# recall: $Rp is reserved sub-element prefix
 		#     and $Rs is reserved sub-element separator prefix
@@ -1956,7 +1961,7 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 #			$db->db_get("$rid$Rs$Ti", $target) and	# unless found
 #				$target = '';			# not found
 
-#say "xxx after before returnline target=$target";
++		#say "xxx after before returnline target=$target";
 		$target and		# if $target found, redirect to it
 		# xxx conneg uses redir303, but inflections are different
 		#     is that a good idea?
@@ -1973,10 +1978,17 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 		;
 	}
 
-	# Check for content negotiation if $returnline is still empty
-	# (ie, if id was found but no valid inflection was detected).
-	# 
-	if (! $returnline and $accept) {	# here we check $id, not $rid
+	# // How inflections differ from conneg
+	# 1. Resolution of A? by default returns metadata from resolver.
+	# 2. Resolution of A with conneg when a suffix is detected will
+	#    redirect so that the target returns metadata.
+	# These outcomes can be altered by setting $Tm and $Ti targets
+ 
+ 	# Check for content negotiation if $returnline is still empty
+ 	# (ie, if id was found but no valid inflection was detected).
+	# Here we check $id, not $rid.
+
+	if (! $returnline and ! $fail and ! $suffix and $accept) {
 
 		# yyy old xref binder element names use _mT* not ._eT*
 
@@ -1991,7 +2003,7 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 					"op=cn.$accept"))
 		;
 	}
-#say "xxx before ! returnline";
+	#say "xxx before ! returnline";
 	if (! $returnline) {
 		my $newstr = $suffix || '';	# make sure it's defined string
 

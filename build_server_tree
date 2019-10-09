@@ -32,7 +32,7 @@
 # xxx add SNAC account? (to deal with this thing once and for all, since
 #     EZID's batch interface probably won't ever support bulk minting
 
-# xxxx bug: t/apachebase.t fails on machines where only ports 80 and 443
+# xxxx bug: $sstub/apachebase.t fails on machines where only ports 80 and 443
 #      are open; also t/service_n2t.t
 # yyy ?move wegn and wegnpw from n2t repo into the eggnog repo
 #      esp. as ApacheTester (and soon t/* tests) rely on them
@@ -74,7 +74,7 @@ declare -x ${evarnames[@]}
 # First set values for $uname (OS name) and $host (fully qualified hostname).
 
 uname=$( uname -a )		# get name of operating system (OS)
-aws=				# XXX hack supporting t/n2t
+aws=				# XXX hack supporting $sstub/n2t
 # on SLES, uname -a returns: Linux
 # on EC2, uname -a returns: Linux.*amzn
 [[ "$uname" =~ .*amzn.* ]] &&		# hack indicating if we're
@@ -89,7 +89,7 @@ host=$EGNAPA_HOST		# EGNAPA_HOST typically set in .bashrc
 [[ "$host" ]] || {		# try for some platform independence
 	host=$( hostname -f 2> /dev/null ) || {	# fails on Solaris
 		host=$( hostname )
-		host+='.cdlib.org'		# XXX kludge
+		#host+='.cdlib.org'		# XXX kludge
 	}
 }
 
@@ -250,8 +250,8 @@ cfgphrase="file \"$cfgdir\""		# "signature" of build
 
 #bst_root=$src_top/$cfgdir		# "build_server_tree root"
 
-# zzz put t/... into var
-bst_root=$src_top/t/$cfgdir		# "build_server_tree root"
+sstub=t				# service config stub directory, eg, $sstub/n2t
+bst_root=$src_top/$sstub/$cfgdir		# "build_server_tree root"
 cfgfile=$bst_root/build_server_tree.cfg
 
 hconf=httpd.conf
@@ -267,8 +267,7 @@ function is_build_out_of_date {
 	local fqhconf=$1/conf/$hconf
 
 	# (note grep -q won't stay quiet in case $fqhconf doesn't exist)
-# zzz put t/... into var
-	grep "t/$cfgdir" $fqhconf > /dev/null 2>&1 || {
+	grep "$sstub/$cfgdir" $fqhconf > /dev/null 2>&1 || {
 		echo "server needs to be (re)built for $cfgdir"
 		return 1
 	}
@@ -354,8 +353,7 @@ prefixes_root=$buildout_root/prefixes	# xxx drop? change?
 document_root=$srvref_root/htdocs	# paths referenced in files
 rmap_root=$srvref_root/htdocs/a		# more paths referenced
 
-# zzz put t/... into var
-template_root=$src_top/t/$cfgdir	# paths to build input files
+template_root=$src_top/$sstub/$cfgdir	# paths to build input files
 
 # ddddd  once these locations aren't used any longer for self-signed
 #         certs, now where do generated password files go?  A: conf/
@@ -436,7 +434,7 @@ port_hprs=$port_htss
 # Other scripts rely on this output (eg, wegnpw).
 #
 # It first tries $HOME/warts/.pswdfile.$cfgdir.  If and only if that file
-# does not exist, it tries "t/$cfgdir/pswdfile" in the eggnog source.
+# does not exist, it tries "$sstub/$cfgdir/pswdfile" in the eggnog source.
 #
 function which_pswdfile {
 
@@ -514,6 +512,7 @@ chmod go= $bst_root/pswdfile	# kill all perms except the owner's
 echo Configured $cfgdir in $buildout_root.
 
 # This script calls egg, and we want the latest -Mblib and cleanest, eg,
+# XXX does this do anything?
 export EGG="--home $buildout_root"	# wrt default config and prefixes
 
 #export NOG="--home $build_root"     # yyy later?
@@ -660,8 +659,9 @@ function makebinder {	# args: binder name and owner (populator)
 	local args	# NB: --testdata needed to shield production DBs!!
 	args=( -p "$binders_root" --user "$owner" --testdata $tda )
 
+		#perl -Mblib egg "${args[@]}" --force brm $bname; \
 	(cd $src_top; \
-		perl -Mblib egg "${args[@]}" --force brm $bname; \
+		perl -Mblib egg "${args[@]}" --force rmbinder $bname; \
 		perl -Mblib egg "${args[@]}" mkbinder $bname) || {
 		    echo -n "(Problem creating $owner's binder \"$bname\".) "
 		    return 1
@@ -728,7 +728,7 @@ function makeminter {		# pass in populator and minter names as args
 # or initialize custom minders as determined by the ConfigDir setting.
 # It won't complain and won't overwrite existing (eg, custom) binders,
 # in part because it is often called right after removing everything.
-# Minters and binders defined in t/*/minder_builder.cfg.
+# Minters and binders defined in $sstub/*/minder_builder.cfg.
 #
 function make_minders {
 
@@ -824,6 +824,11 @@ echo Building skeleton server structure extensions.
 msg=$( mkdir -p 2>&1 $buildout_root \
 	$buildout_root/{htdocs,conf,cgi-bin,logs} \
 	$buildout_root/htdocs/{a,e,r,e/pop,e/{images,x,css}} )
+
+[[ -e $bst_root/eggnog_conf ]] && {
+	echo Copying $bst_root/eggnog_conf
+	cp -p $bst_root/eggnog_conf $buildout_root/
+}
 
 ln -s $aptop/conf/mime.types $buildout_root/conf/mime.types
 ln -s $aptop/modules $buildout_root/modules		# link for modules
@@ -1661,11 +1666,16 @@ function create_cgi {
 	MG_REPSETNAME="$MG_REPSETNAME"
 	export MG_CSTRING_HOSTS MG_REPSETOPTS MG_REPSETNAME
 
-	EGNAPA_HOST_CLASS="$EGNAPA_HOST_CLASS"	# to form exdb dbname
-	export EGNAPA_HOST_CLASS
+# zzz shouldn't we be exporting EGNAPA_HOST too? since we can't count on
+# Perl's hostname to give us the proper fqdn?
+	EGNAPA_HOST_CLASS="$EGNAPA_HOST_CLASS"	# to form exdb dbname xxx
+	EGNAPA_HOST="$EGNAPA_HOST"		# to form exdb dbname
+	export EGNAPA_HOST EGNAPA_HOST_CLASS
 
+# zzz document which perl routine calls this and with which args
 	cd $scripts_wd
-	exec $perl_args $eon \$*
+	#exec $perl_args $eon \$*
+	exec $perl_args $eon $homedb \$*
 
 	echo ""		# yyy not sure why this helps error show in rmap case
 	echo "error: command failure:" \
@@ -1764,6 +1774,7 @@ function create_rmap {
 	# Resolvers are invoked with some of these arguments.
 
 	# for resolution, force --user to be same as binder name
+# zzz $homedb is a set of args, eg, --home ...
 	cmd+=" --rrm $homedb --user $populator -d $bdrsref_root/$binder"
 	cmd+=" --testdata $tda"	# NB: --testdata shields production DBs!!
 
@@ -1795,8 +1806,11 @@ function create_rmap {
 		MG_REPSETNAME="$MG_REPSETNAME"
 		export MG_CSTRING_HOSTS MG_REPSETOPTS MG_REPSETNAME
 
+# zzz shouldn't we be exporting EGNAPA_HOST too? since we can't count on
+# Perl's hostname to give us the proper fqdn?
 		EGNAPA_HOST_CLASS="$EGNAPA_HOST_CLASS"	# to form exdb dbname
-		export EGNAPA_HOST_CLASS
+		EGNAPA_HOST="$EGNAPA_HOST"		# to form dbname
+		export EGNAPA_HOST EGNAPA_HOST_CLASS
 
 		cd $scripts_wd
 
@@ -1910,7 +1924,7 @@ SSLCryptoDevice builtin
 #### HTTPS section:  how API connections will be processed
 #
 
-# xxx not recommended for security reasons -- move this to t/n2t/...?
+# xxx not recommended for security reasons -- move this to $sstub/n2t/...?
 AllowEncodedSlashes On
 
 # General setup for the virtual host, inherited from global configuration
@@ -2238,7 +2252,7 @@ RewriteRule ^/([ar])/*\$ /\$1/ [PT]
 #
 Include $srvref_root/conf/rewrite1-setup.conf
 
-# XXX rewrite2-server.conf expected to be created by (currently) t/n2t/
+# XXX rewrite2-server.conf expected to be created by (currently) $sstub/n2t/
 ####### Include rewrite2-server.conf for HTTPS
 #
 Include $srvref_root/conf/rewrite2-server.conf
@@ -2567,7 +2581,7 @@ RewriteRule ^/r/$b/+(.*)\$ \"_rslv_\${map_$b:\$1.resolve \${$hdrblob}}\"" >> $rw
 	# that's shared between two virtual host blocks.
 
 	# Recall that the main resolver engine is in $rwplus.pre, eg,
-	# built by t/n2t/minder_builder.  Now we put the pieces together.
+	# built by $sstub/n2t/minder_builder.  Now we put the pieces together.
 	#
 	cat $rwplus.pre $rwplus.post > $rwplus
 	rm $rwplus.pre $rwplus.post

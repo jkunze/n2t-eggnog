@@ -407,6 +407,7 @@ sub noauth_test { my( $pps, $popminder, $naanblade, $u1, $u2, @fqshoulders )=@_;
 
 sub test_minters { my( $cfgdir, $u1, $u2, @fqshoulders )=@_;
 
+	# xxx ? my ($sh, $msg) = EggNog::Session::make_session();
 	# Real processing loop.
 	my $noauth_tests = 0;
 	my ($x, $pps);
@@ -453,12 +454,13 @@ sub test_minters { my( $cfgdir, $u1, $u2, @fqshoulders )=@_;
 # First arg is $binders_root directory.
 # xxx add $cfgdir arg here and in t/*.t  (see /get_user and see /test_.in.ers
 
-sub test_binders { my( $cfgdir, $binders_root, $indb, $bindersR, $ownersR )=@_;
+sub test_binders { my( $egnhome, $cfgdir, $binders_root, $indb, $bindersR, $ownersR )=@_;
 
-    my ($sh, $msg) = EggNog::Session::make_session();
+    my ($sh, $msg) = EggNog::Session::make_session($egnhome);
     if (! $sh) {
     	return "couldn't create session: $msg";
     }
+    #say STDERR "XXX egnhome=$egnhome, home=$sh->{home}";
     # session created; local $sh var session object
     # will be destroyed when it goes out of scope
 
