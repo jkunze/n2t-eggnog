@@ -75,13 +75,13 @@ SKIP: {
 
 # Make sure server is stopped in case we failed to stop it last time.
 # We don't bother checking the return as it would usually complain.
-#
+
 apachectl('graceful-stop');
 
 # Note: $td and $td2 are barely used here.
 # Instead we use non-temporary dirs $ntd and $ntd2.
 # XXX change t/apachebase.t to use these type of dirs
-#
+
 my $buildout_root = $ENV{EGNAPA_BUILDOUT_ROOT};
 my $binders_root = $ENV{EGNAPA_BINDERS_ROOT};
 my $minters_root = $ENV{EGNAPA_MINTERS_ROOT};
@@ -96,10 +96,8 @@ remake_td($td2, $tdata);
 #$ENV{EGG} = "$hgbase --service n2t ";		# initialize basic --home and --tdata values
 
 $hgbase = "--home $buildout_root";	# and we know better in this case
-
 my $tda = "--testdata $tdata";
 $hgbase .= " $tda";
-
 $ENV{EGG} = "$hgbase ";		# initialize basic --home and --tdata values
 
 my ($x, $y);

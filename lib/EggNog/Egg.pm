@@ -173,8 +173,9 @@ showing configuration information. Except for the reserved words
    _help
 
 the Query word is normally taken as a verbatim key whose value is returned.
-If the key is undefined, the return status to the shell will be non-zero,
-otherwise it will be zero (success).
+If the key doesn't identify a host-specific setting, it will be looked up
+as general service setting. If the key identifies a value of "false", the
+return status to the shell will be non-zero, and otherwise zero (success).
 
 Especially to support cron, extra processing occurs when the Query word
 contains the string "_today". This causes an internal search for keys
@@ -192,17 +193,21 @@ our @wdays =
 	qw( sunday monday tuesday wednesday thursday friday saturday );
 
 # output 1 if set 0 if not
+# first try hash given as first arg, and if no keys found,
+# try hash given as second arg; usually these args are given as
+# 1. a host-specific hash
+# 2. a service-specific hash
 
-sub outkey { my( $hcf, $key, $quiet )=@_;
+sub outkey { my( $om, $h1cf, $h2cf, $key, $quiet )=@_;
 
-	exists $hcf->{$key} or
-		$quiet || say("$key: UNDEFINED"),
+	! exists $h1cf->{$key} && ! exists $h2cf->{$key} and
+		$quiet || $om->elem($key, 'UNDEFINED'),
 		return 0;
-	my $value = $hcf->{$key};
+	my $value = $h1cf->{$key} // $h2cf->{$key};	# defined but 0 is ok
 	$value or
-		$quiet || say("$key:"),
+		$quiet || $om->elem($key, ''),
 		return 0;
-	$quiet || say("$key: $value");
+	$quiet || $om->elem($key, $value);
 	return 1;
 }
 # various host-specific configuration queries, used by cron
@@ -220,11 +225,11 @@ sub egg_host { my( $bh, $mods, $om, $subcmd )=@_;
 		return undef;
 
 	$subcmd ||= '_help';
-	my $allhosts = $sh->{cfh};
+	my $servicecf = $sh->{service_config};
 	my $hcf = $sh->{host_config};
 
 	use Data::Dumper 'Dumper';
-	if ($subcmd eq 'help') {
+	if ($subcmd eq '_help') {
 		say "$host_usage_text";
 		return undef;
 	}
@@ -233,21 +238,21 @@ sub egg_host { my( $bh, $mods, $om, $subcmd )=@_;
 		return 1;
 	}
 	elsif ($subcmd eq '_listall') {
-		say Dumper $allhosts;
+		say Dumper $servicecf;
 		return 1;
 	}
-	# The rest is effectively an "else" clause
+	# All above cases will have returned, so the rest is an "else" case.
 
 	my $key = $subcmd;
 	$key !~ /_today(?:_|$)/ and		# ordinary case
-		return outkey($hcf, $key);
+		return outkey($om, $hcf, $servicecf, $key);
 
 	# Special processing case. Greedy match extracts only the last
 	# instance of "_today".
 
 	my ($before, $after) = $key =~ /^(.*_)today(_.*|$)/;
 	defined($before) or
-		return outkey($hcf, "bad query");	# yyy unknown error
+		return outkey($om, $hcf, $servicecf, "bad query");	# yyy unknown error
 	$after //= '';
 	my @date = localtime();
 	my $mday = $date[3];
@@ -257,10 +262,10 @@ sub egg_host { my( $bh, $mods, $om, $subcmd )=@_;
 		$wdays[ $date[6] ] . $after;		# day of week, 0=sunday
 	my $keymday = $before . $date[3] . $after;	# day of month
 	my $quiet = 1;
-	outkey($hcf, $keywday, $quiet) and	# quietly check if true
-		return outkey($hcf, $keywday);	# and if so, output and return
-	outkey($hcf, $keymday, $quiet) and	# quietly check if true
-		return outkey($hcf, $keymday);	# and if so, output and return
+	outkey($om, $hcf, $servicecf, $keywday, $quiet) and	# quietly check if true
+		return outkey($om, $hcf, $servicecf, $keywday);	# and if so, output and return
+	outkey($om, $hcf, $servicecf, $keymday, $quiet) and	# quietly check if true
+		return outkey($om, $hcf, $servicecf, $keymday);	# and if so, output and return
 	# yyy NB: if weekday check succeeds, it occludes any monthday match
 
 # Used in boolean testing, Class is one of these attributes:

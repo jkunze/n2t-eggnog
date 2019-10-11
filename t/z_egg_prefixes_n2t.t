@@ -102,13 +102,18 @@ my ($ntd, $ntd2) = ($binders_root, $minters_root);
 remake_td($td, $tdata);
 remake_td($td2, $tdata);
 
+$hgbase = "--home $buildout_root";	# and we know better in this case
+my $tda = "--testdata $tdata";
+$hgbase .= " $tda";
+$ENV{EGG} = "$hgbase ";		# initialize basic --home and --tdata values
+
 my ($x, $y);
 $x = apachectl('start');
 skip "failed to start apache ($x)"
 	if $x;
 
 # This section tests resolution and prefixes via egg --rrm, and therefore
-# without a bit more raw than via apache, which produces some effects we
+# a bit more raw than via apache, which produces some other effects we
 # right now only test with t/post_install_n2t.t.
 #
 
@@ -117,6 +122,8 @@ skip "failed to start apache ($x)"
 #isnt index($x, '302 https://id.example.org/foo'), -1,
 #	'tester prefix redirect without protocol pass https through'; 
 
+# ZZZ problem here with binder creation
+#
 $x = `$cmd --verbose -d $td/dummy --user n2t mkbinder`;
 like $x, qr/opening binder.*dummy/,
 	'set up dummy binder that will keep --rrm mode happy';
@@ -202,6 +209,11 @@ $x = resolve_stdin_hdr( "--home $buildout_root -d $td/dummy",
 
 isnt index($x, '302 http://id.example.org/foo'), -1,
 	'tester prefix redirects without protocol, defaulting to http'; 
+
+#say "xxx x=$x";
+#$x = apachectl('graceful-stop'); #	and say "$x";
+#say "######### temporary testing stop #########"; exit;
+
 isnt index($x, '302 http://id.example.org/foo'), -1,
 	'tester prefix redirects without protocol, passes http through'; 
 isnt index($x, '302 https://id.example.org/foo'), -1,

@@ -287,6 +287,7 @@ my @getoptlist = (
 	'persistomax=n',	# max number of opens in persistent connection
 	'pfx_file=s',		# name of prefixes file/database (yyy obsolete?)
 	'qs=s',			# query string for testing http
+	'quiet|q',		# no output, just exit status, if possible
 	'recurse|r',		# perform action recursively (unused)
 	'resolverlist=s',	# list of binders to try, in that order
 	'rrm',			# act like a rewritemap resolver (egg only)
@@ -820,7 +821,7 @@ sub bdx_host { my( $subcmd )=@_;
 	my $minderpath = $cmdr_from_d_flag ?
 		"" : $bh->{minderpath};		# search unless -d used
 
-	EggNog::Egg::egg_host($bh, $mods, $bh->{om_formal}, $subcmd) or
+	EggNog::Egg::egg_host($bh, $mods, $om, $subcmd) or
 		outmsg($bh), return 1;
 	return 0;
 }

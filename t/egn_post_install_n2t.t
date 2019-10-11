@@ -61,7 +61,11 @@ like $x, qr@99999/fk4\w\w\w@, "minted id matches format";
 ok -f "$ENV{HOME}/warts/.pswdfile.n2t",
 	"no real passwords set up in ~/warts/ to occlude dummy passwords";
 
-if ($ENV{EGNAPA_HOST} =~ /n2t-prd-2a\./) {
+#if ($ENV{EGNAPA_HOST} =~ /n2t-prd-2a\./) {
+my $home = $ENV{HOME};
+my $eghome = "$home/sv/cur/apache2";
+my $production_data = `egg -q --home $eghome host production_data && echo yes`;
+if ($production_data eq "yes\n") {
 
 	# Some kludgy tests based on what is hopefully permanent data.
 	# NB: these test read the redirect Location but don't follow it.
@@ -116,7 +120,6 @@ else {
 #like $x, qr/restart/, 'crontab restarts server periodically';
 
 # yyy retire soon
-my $home = $ENV{HOME};
 $x = `$home/sv/cur/build/eggnog/replay`;
 like $x, qr/usage/i, 'replay (replicate) script is executable';
 

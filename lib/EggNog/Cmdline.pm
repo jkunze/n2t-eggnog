@@ -277,17 +277,6 @@ use File::Find;
 use EggNog::Minder ':all';
 use CGI::Head;
 
-sub xinit_om_formal { my( $mh )=@_;
-
-	my $om = File::OM->new('anvl',
-		{ outhandle => $mh->{om}->{outhandle},
-		  wrap => $mh->{om}->{wrap} });
-	$om and
-		return $om;
-	addmsg($mh, "couldn't create formal output formatter");
-	return undef;
-}
-
 ## Should make a "debug printer" by creating a closure around caller's static
 ## view of $om and an optional $outfile (eg, for debugging web server).
 ##
@@ -538,25 +527,25 @@ sub get_execution_context { my( $m_cmd, $version, $getoptlistR, $optR )=@_;
 
 	my $default_labeled_format = 'anvl';
 
-	# This CGI header object is created if $WeAreOnWeb.  If it is
-	# created, it needs to be shared among all OM objects that might
-	# perform output, so that HTTP headers are output only once.
-	# We may later alter the Status header, eg, with
-	#    $om->{cgih}->add( { Status => '401 unauthorized' } );
-	#    $om->{cgih}->add( { Status => '500 Internal Server Error' } );
-	#
-	# This is Head stuff is defined in lib/CGI under anvl/src/lib
-
-	my $cgih = $WeAreOnWeb ?
-		CGI::Head->new( {
-			#'Status'  => '200 OK',		# optimistic
-			'Content-Type'  => 'text/plain; charset=UTF-8',
-			"$m_cmd-version" => $version, } )
-		: undef;
-	my $om_optR = {
-		outhandle	=> *STDOUT,
-		cgih		=> $cgih,
-	};
+#	# This CGI header object is created if $WeAreOnWeb.  If it is
+#	# created, it needs to be shared among all OM objects that might
+#	# perform output, so that HTTP headers are output only once.
+#	# We may later alter the Status header, eg, with
+#	#    $om->{cgih}->add( { Status => '401 unauthorized' } );
+#	#    $om->{cgih}->add( { Status => '500 Internal Server Error' } );
+#	#
+#	# This is Head stuff is defined in lib/CGI under anvl/src/lib
+#
+#	my $cgih = $WeAreOnWeb ?
+#		CGI::Head->new( {
+#			#'Status'  => '200 OK',		# optimistic
+#			'Content-Type'  => 'text/plain; charset=UTF-8',
+#			"$m_cmd-version" => $version, } )
+#		: undef;
+#	my $om_optR = {
+#		outhandle	=> *STDOUT,
+#		cgih		=> $cgih,
+#	};
 
 	my $err2out;		# chicken and egg problem:  can't check this
 	$WeAreOnWeb and		# return until we've created an output stream
@@ -595,6 +584,26 @@ sub get_execution_context { my( $m_cmd, $version, $getoptlistR, $optR )=@_;
 	# operating as a resolver (as if behind Apache RewriteMap).
 
 	my $WeAreResolver = $optR->{rrm} || $xfn =~ m{binderr[^/]*$};
+
+	# This CGI header object is created if $WeAreOnWeb.  If it is
+	# created, it needs to be shared among all OM objects that might
+	# perform output, so that HTTP headers are output only once.
+	# We may later alter the Status header, eg, with
+	#    $om->{cgih}->add( { Status => '401 unauthorized' } );
+	#    $om->{cgih}->add( { Status => '500 Internal Server Error' } );
+	#
+	# This is Head stuff is defined in lib/CGI under anvl/src/lib
+
+	my $cgih = $WeAreOnWeb ?
+		CGI::Head->new( {
+			#'Status'  => '200 OK',		# optimistic
+			'Content-Type'  => 'text/plain; charset=UTF-8',
+			"$m_cmd-version" => $version, } )
+		: undef;
+	my $om_optR = {
+		outhandle	=> ($optR->{quiet} ? '' : *STDOUT),
+		cgih		=> $cgih,
+	};
 
 	# xxx need to stop creating $om for resolvers, since $om 
 	#     outputs a newline, on close-rec, called by destroy;

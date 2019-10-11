@@ -71,6 +71,20 @@ qq@
 # Top-level binder flags section
 # status is one of enabled, disabled, or readonly
 
+service: web
+role_account: s       # defaults to service name
+contact_email: info at example dot org
+
+hosts:
+  localhost:			# All sample values: change to suit your needs
+    shell_name: localhost	# must be unique
+    class: loc			# may default to what's found in the hostname
+    client_name: loc		# one instance of this class as known to wegn
+    patch_18: 1			# patch on the 18th
+    resolver_check: 1		# perform resolver checks
+    backup: 0			# not backed up, evaluates as "false"
+
+
 flags:
   status: enabled
   on_bind: "keyval | playlog"
@@ -240,11 +254,14 @@ sub read_conf_file { my( $sh )=@_;
 	my $cfh = LoadYAML($conf_file, \$errmsg) or	# config hash of hashes
 		return "$conf_file: config file load failed: $errmsg";
 	$sh->{service_config} = $cfh;		# config hash
-	$sh->{host_config} = $cfh->{hosts}->{ $sh->{hostname} };
+	my $key = $cfh->{hosts}->{ $sh->{hostname} } ?
+		$sh->{hostname} : 'localhost';
+	$sh->{host_config} = $cfh->{hosts}->{ $key } and
+		$sh->{host_config}->{ _key } = $key;	# add key to id entry
+		# added key '_key' distinguished by initial underscore
 
 	return '';		# success
 }
-
 
 # Eggnog session configuration. Defines $sh->{cfgd} when done.
 # Returns empty string on success, or an error message on failure.
