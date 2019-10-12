@@ -163,7 +163,7 @@ sub bcount { my( $bh, $amount )=@_;
 
 my $host_usage_text = << "EOF";
 
-Usage: egg host [ Query ]
+Usage: egg cfq [ Query ]
 
 where Query is a one-word trigger for various kinds of plain text output
 showing configuration information. Except for the reserved words
@@ -177,16 +177,19 @@ If the key doesn't identify a host-specific setting, it will be looked up
 as general service setting. If the key identifies a value of "false", the
 return status to the shell will be non-zero, and otherwise zero (success).
 
-Especially to support cron, extra processing occurs when the Query word
-contains the string "_today". This causes an internal search for keys
-exactly matching either these days of the month -- 1, 2, ..., 31 -- or
-these days of the week -- monday, ..., sunday. For example, these keys
+The cfq subcommand support cron. Extra processing occurs when the Query
+word contains the string "_today". Before lookup, this string is transformed
+into the current day of the week (monday, ..., sunday) or, failing a match,
+day of the month (1, 2, ..., 31). The resulting keys are looked up and the
+first match is returned. For example, these keys
 
    patch_tuesday	# for OS patching on Tuesdays
    rotate_1		# rotate logs at the start of the month
 
-will cause a Query of "patch_today" to return success only on a Tuesday, and
-a Query of "rotate_today" to return success only on the first of the month.
+will cause "egg cfq patch_today" to print the value for patch_tuesday only
+on Tuesdays, and "egg -q cfq rotate_today" to print nothing, but return a
+non-zero exit status only on the first of the month and if the value for
+rotate_1 is non-empty or non-zero.
 EOF
 
 our @wdays =
@@ -204,15 +207,14 @@ sub outkey { my( $om, $h1cf, $h2cf, $key, $quiet )=@_;
 		$quiet || $om->elem($key, 'UNDEFINED'),
 		return 0;
 	my $value = $h1cf->{$key} // $h2cf->{$key};	# defined but 0 is ok
-	$value or
-		$quiet || $om->elem($key, ''),
-		return 0;
 	$quiet || $om->elem($key, $value);
-	return 1;
+	return ($value ? 1 : 0);
 }
-# various host-specific configuration queries, used by cron
 
-sub egg_host { my( $bh, $mods, $om, $subcmd )=@_;
+# various configuration queries, used by cron
+# reserved queries: _help, _list, _listall
+
+sub egg_cfq { my( $bh, $mods, $om, $subcmd )=@_;
 
 	my $sh = $bh->{sh};
 	my $msg;
@@ -231,7 +233,7 @@ sub egg_host { my( $bh, $mods, $om, $subcmd )=@_;
 	use Data::Dumper 'Dumper';
 	if ($subcmd eq '_help') {
 		say "$host_usage_text";
-		return undef;
+		return 1;
 	}
 	elsif ($subcmd eq '_list') {
 		say Dumper $hcf;
@@ -251,8 +253,8 @@ sub egg_host { my( $bh, $mods, $om, $subcmd )=@_;
 	# instance of "_today".
 
 	my ($before, $after) = $key =~ /^(.*_)today(_.*|$)/;
-	defined($before) or
-		return outkey($om, $hcf, $servicecf, "bad query");	# yyy unknown error
+	defined($before) or			# yyy unknown error
+		return outkey($om, $hcf, $servicecf, "bad query");
 	$after //= '';
 	my @date = localtime();
 	my $mday = $date[3];
@@ -262,10 +264,12 @@ sub egg_host { my( $bh, $mods, $om, $subcmd )=@_;
 		$wdays[ $date[6] ] . $after;		# day of week, 0=sunday
 	my $keymday = $before . $date[3] . $after;	# day of month
 	my $quiet = 1;
-	outkey($om, $hcf, $servicecf, $keywday, $quiet) and	# quietly check if true
-		return outkey($om, $hcf, $servicecf, $keywday);	# and if so, output and return
-	outkey($om, $hcf, $servicecf, $keymday, $quiet) and	# quietly check if true
-		return outkey($om, $hcf, $servicecf, $keymday);	# and if so, output and return
+	outkey($om, $hcf, $servicecf, $keywday, $quiet) and
+		# quietly check if true and if so, output and return
+		return outkey($om, $hcf, $servicecf, $keywday);
+	outkey($om, $hcf, $servicecf, $keymday, $quiet) and
+		# quietly check if true and if so, output and return
+		return outkey($om, $hcf, $servicecf, $keymday);
 	# yyy NB: if weekday check succeeds, it occludes any monthday match
 
 # Used in boolean testing, Class is one of these attributes:

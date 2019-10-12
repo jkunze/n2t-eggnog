@@ -121,7 +121,7 @@ order in the subcommands listed below.
 Admin Commands
 [work in progress]
   bname b           for binder b, print system binder name (--all gets more)
-  host [query]      return config variable plus exit status (to support cron)
+  cfq [query]       return config variable plus exit status (to support cron)
   bshow [g [u]]     list binders of group g, user u; fullname egg_<g>.<u>_s_<b>
   bmake [b [g [u]]] make binder named b (mint name if no b) (aka mkbinder)
   brm b [g [u]]     remove binder named b (aka rmbinder)
@@ -183,7 +183,7 @@ my @valid_commands = qw(
 	pause unpause
 	bname bshow brmgroup bmake brm
 	mstat
-	host
+	cfq
 	add another insert vinsert delete incr decr
 	set let uproot list next
 	testlock
@@ -816,12 +816,12 @@ sub bdx_mstat { my( $level )=@_;
 	return 0;
 }
 
-sub bdx_host { my( $subcmd )=@_;
+sub bdx_cfq { my( $subcmd )=@_;
 
 	my $minderpath = $cmdr_from_d_flag ?
 		"" : $bh->{minderpath};		# search unless -d used
 
-	EggNog::Egg::egg_host($bh, $mods, $om, $subcmd) or
+	EggNog::Egg::egg_cfq($bh, $mods, $om, $subcmd) or
 		outmsg($bh), return 1;
 	return 0;
 }

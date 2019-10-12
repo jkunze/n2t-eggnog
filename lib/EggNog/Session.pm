@@ -72,18 +72,19 @@ qq@
 # status is one of enabled, disabled, or readonly
 
 service: web
-role_account: s       # defaults to service name
-contact_email: info at example dot org
+role_account: s			# else defaults to service name
+contact_email: info_at_example.org
 
-hosts:
-  localhost:			# All sample values: change to suit your needs
+hosts:				# all sample values, just so there's something
+  localhost:			# used if EGNAPA_HOST env var value isn't a key
     shell_name: localhost	# must be unique
     class: loc			# may default to what's found in the hostname
     client_name: loc		# one instance of this class as known to wegn
     patch_18: 1			# patch on the 18th
-    resolver_check: 1		# perform resolver checks
-    backup: 0			# not backed up, evaluates as "false"
-
+    one_check: 1		# one = true
+    zero_check: 0		# zero value (false)
+    false_check: false		# false = true
+    empty_check:		# empty value (false)
 
 flags:
   status: enabled
