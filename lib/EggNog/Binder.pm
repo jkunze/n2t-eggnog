@@ -2148,9 +2148,6 @@ sub binder_exists { my( $sh, $isbname, $esbname, $exists_flag, $minderpath )=@_;
 # Move (rename) binder
 
 # zzz should other binder commands act on fsb (full system binder names)?
-#
-# zzz drop binder_exists, check via bname_parse; ADD minderpath arg! zzz
-# replace isbname/esbname with $bn->{isbname}/$bn->{isbname}...
 # NB: $cmdr1 is short name, $b2fullsysname is pathname of full system name
 
 sub renamebinder { my( $sh, $mods, $cmdr1, $minderpath, $b2fullsysname, $user )=@_;
@@ -2173,7 +2170,6 @@ sub renamebinder { my( $sh, $mods, $cmdr1, $minderpath, $b2fullsysname, $user )=
 	}
 
 	my $exists_flag = 2; 		# thorough check
-
 	my ($isbname, $esbname, $bn) =
 		bname_parse($sh, $cmdr1, $exists_flag, $sh->{smode}, undef,
 			$minderpath);
@@ -2207,7 +2203,7 @@ sub renamebinder { my( $sh, $mods, $cmdr1, $minderpath, $b2fullsysname, $user )=
 		# public binder, where
 		#   dev binders live in td_egnapa_public/binders and
 		#   production binders live in ~/sv/cur/apache2/binders,
-		# do something like this:
+		# do something like (unverified) this:
 		#   prdpath=$HOME/sv/cur/apache2/binders
 		#   new=$( perl -Mblib egg --service n2t --class prd
 		#     --isolator public bname foo )
@@ -2232,8 +2228,6 @@ sub renamebinder { my( $sh, $mods, $cmdr1, $minderpath, $b2fullsysname, $user )=
 # return should be dirname picked for you xxxxxx?
 # (might not be quite what you asked for if there's a conflict)
 
-# zzz drop binder_exists, check via bname_parse; ADD minderpath arg! zzz
-# replace isbname/esbname with $bn->{isbname}/$bn->{isbname}...
 sub mkbinder { my( $sh, $mods, $binder, $user, $what, $minderdir )=@_;
 
 	! $sh and
@@ -2250,14 +2244,16 @@ sub mkbinder { my( $sh, $mods, $binder, $user, $what, $minderdir )=@_;
 
 	my $exists_flag = 2; 		# thorough check
 	my ($isbname, $esbname, $bn) =	# default binder if ! $binder
-		bname_parse($sh, $binder, $exists_flag, $sh->{smode});
-#use Data::Dumper "Dumper"; print Dumper $bn;
-#say STDERR "XXX isbname=$isbname, esbname=$esbname";
-	my ($isbexists, $esbexists) = binder_exists($sh,
-		$isbname, $esbname, $exists_flag, [ $minderdir ]);
+		bname_parse($sh, $binder, $exists_flag, $sh->{smode}, undef,
+			 [ $minderdir ]);
+		#bname_parse($sh, $binder, $exists_flag, $sh->{smode});
+	#my ($isbexists, $esbexists) = binder_exists($sh,
+	#	$isbname, $esbname, $exists_flag, [ $minderdir ]);
 
 	if ($sh->{exdb}) {
-		$esbexists and
+		#$esbexists and
+		#my $esbname = $bn->{esbname};
+		$bn->{esbexists} and
 			addmsg($sh, ($binder ? '' : 'default ') .
 				"binder \"$esbname\" already exists"),
 			return undef;
@@ -2265,10 +2261,12 @@ sub mkbinder { my( $sh, $mods, $binder, $user, $what, $minderdir )=@_;
 				$what, $minderdir) or
 			return undef;
 		! $binder and $om and $om->elem("note",
-			"default binder \"$isbname\" created");
+			"default binder \"$esbname\" created");
 	}
 	if ($sh->{indb}) {
-		if ($isbexists) {
+		#if ($isbexists) {
+		#my $isbname = $bn->{isbname};
+		if ($bn->{isbexists}) {
 			addmsg($sh, ($binder ? '' : 'default ') .
 				"binder \"$isbname\" already exists"),
 			return undef;
@@ -2582,6 +2580,19 @@ sub brmgroup { my( $sh, $mods, $user )=@_;
 		my ($isbexists, $esbexists) = binder_exists($sh,
 			$isbname, $esbname, $exists_flag, undef);
 
+# slug
+#	my $exists_flag = 2; 		# thorough check
+#	my ($isbname, $esbname, $bn) =
+#		bname_parse($sh, $binder, $exists_flag, $sh->{smode}, undef,
+#			$minderpath);
+#		# similar to rmbinder, since $isbname is to be removed
+
+# slug
+#	my $isbpathname = $bn->{isbpathname};
+#	if ($sh->{indb} and ! $bn->{iexists}) {
+#		addmsg($sh, "source binder \"$bn->{isbname}\" doesn't exist"),
+#		return undef;
+#	}
 		if ($bn->{isolator} eq $CAREFUL and ! $sh->{opt}->{ikwid}) {
 			addmsg($sh, "cannot remove binder with \"$CAREFUL\" "
 				. "as isolator unless the \"--ikwid\" option "
@@ -2605,8 +2616,6 @@ sub brmgroup { my( $sh, $mods, $user )=@_;
 	return 1;
 }
 
-# zzz drop binder_exists, check via bname_parse; ADD minderpath arg! zzz
-# replace isbname/esbname with $bn->{isbname}/$bn->{isbname}...
 sub rmbinder { my( $sh, $mods, $binder, $user, $minderpath )=@_;
 
 	! $sh and
@@ -2625,36 +2634,38 @@ sub rmbinder { my( $sh, $mods, $binder, $user, $minderpath )=@_;
 		return undef;
 	}
 
-	# zzz ??? drop nuance
 	# yyy ignore result for internal db, since xxxbinder_exists doesn't
 	#     look in @$minderpath yyy this is too complicated
 
-	my $exists_flag = 1; 	# soft check
+	my $exists_flag = 1; 		# soft check
 	my ($isbname, $esbname, $bn) =
-		bname_parse($sh, $binder, $exists_flag, $sh->{smode});
+		bname_parse($sh, $binder, $exists_flag, $sh->{smode}, undef,
+			$minderpath);
+		#bname_parse($sh, $binder, $exists_flag, $sh->{smode});
 	if ($bn->{isolator} eq $CAREFUL and ! $sh->{opt}->{ikwid}) {
 		addmsg($sh, "cannot remove binder with \"$CAREFUL\" as isolator"
 			. " unless the \"--ikwid\" option is also specified");
 		return undef;
 	}
-	my ($isbexists, $esbexists) = binder_exists($sh,
-		$isbname, $esbname, $exists_flag, $minderpath);
-		#$isbname, $esbname, $exists_flag, undef);
+
+#	my ($isbexists, $esbexists) = binder_exists($sh,
+#		$isbname, $esbname, $exists_flag, $minderpath);
+#		#$isbname, $esbname, $exists_flag, undef);
 
 	if ($sh->{exdb}) {
-# zzz this has to use $esbname!! not $binder
+		# xxx untested code
 		$binder =~ s|/$||;	# remove fiso_uname's trailing /, if any
 		! $binder and		# yyy is this test needed?
 			addmsg($sh, "no binder specified"),
 			return undef;
-		# zzzxxx untested code
 		my $dflt_binder = ($esbname and
 			$esbname =~ $DEFAULT_BINDER_RE);
 			# ? default binder for the binder group,
 			# ? which for mongodb we consider to _always_ exist
 			# yyy why do we check if if looks like default binder?
 			#     do we need this check?
-		! $esbexists and ! $sh->{opt}->{force} and ! $dflt_binder and
+		! $bn->{esbexists} and ! $sh->{opt}->{force} and
+				! $dflt_binder and
 			addmsg($sh,
 				"external binder \"$esbname\" doesn't exist"),
 			return undef;
@@ -2663,7 +2674,7 @@ sub rmbinder { my( $sh, $mods, $binder, $user, $minderpath )=@_;
 	}
 	if ($sh->{indb}) {
 		# yyy this test won't work: ! $indbexists and ...
-# zzz xxx why not test ! $isbexists and ...?
+		# yyy why not test ! $isbexists and ...?
 		rmibinder($sh, $mods, $isbname, $user, $minderpath) or
 			return undef;
 	}

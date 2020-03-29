@@ -1,5 +1,10 @@
 #!/usr/bin/env perl
 
+# Unlike most other test sets in this directory, these test run against
+# the installed server. During focussed debugging on these tests, therefore,
+# the developer will likely want to run "n2t --force rollout" before each
+# run of "perl -Mblib t/egn_post_install_n2t.t".
+
 # NB: this part of the eggnog source DEPENDS on wegn,
 #     defined in another source code repo (n2t_create)
 

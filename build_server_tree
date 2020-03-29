@@ -399,10 +399,12 @@ scripts_wd=$src_top
 tda=td		# binder name qualifier for --testdata; protects public binders
 
 perl_args="perl -Mblib"
-tda_arg="--testdata $tda"
+#tda_arg="--testdata $tda"
+isolation_arg="--testdata $tda"
 [[ $pubflag ]] && {
 	perl_args=""
-	tda_arg="--isolator public"
+	isolation_arg="--isolator public"
+#	tda_arg="--isolator public"
 }
 
 # There are 3 categories of port pairs (http and https):
@@ -651,19 +653,12 @@ function makebinder {	# args: binder name and owner (populator)
 	# We always use -Mblib here because we may need the latest and
 	# greatest egg to complete the transition we're working towards.
 	# yyy is it safe to use -Mblib always?
-	#
 
-
-# ZZZZZZ must alter n2t rollout to RENAME these temps to NON-EXISTENT
-#        public databases!
-# where does --public isolator belong???
-# how do we test ('td') before rollout ('public')?
-
-
+# zzz test that we can't rmbinder with --isolator public
 	local args	# NB: --testdata needed to shield production DBs!!
-	#args=( -p "$binders_root" --user "$owner" --testdata $tda )
+	# This should ALWAYS use -testdata arg, never --isolator public,
+	# because that would accidentally remove public-facing binders.
 	args=( -p "$binders_root" --user "$owner" --testdata $tda )
-# zzz XXX this should ALWAYS be set to testdata, never public 
 
 		#perl -Mblib egg "${args[@]}" --force brm $bname; \
 	(cd $src_top; \
@@ -1783,14 +1778,9 @@ function create_rmap {
 	# for resolution, force --user to be same as binder name
 # zzz $homedb is a set of args, eg, --home ...
 	cmd+=" --rrm $homedb --user $populator -d $bdrsref_root/$binder"
-	cmd+=" --testdata $tda"	# NB: --testdata shields production DBs!!
-# zzz XXX this should ONLY be set to testdata if ! $pubflag
-# if [[ ! $pubflag ]]
-# then
-#	cmd+=" --testdata $tda"
-# else
-#	cmd+=" --isolator public"
-# fi
+	#cmd+=" --testdata $tda" # NB: --testdata shields production DBs!!
+	# $isolation_arg gives us either testdata binder or public binder
+	cmd+=" $isolation_arg"
 
 	[[ $rlist ]] &&			# caller wanted list of resolvers
 		cmd+=" --resolverlist=\"$rlist\""	# qualify command
@@ -2224,7 +2214,8 @@ RewriteRule ^(.*)$ - [env=proto:https]
 
 # Binders are invoked with this rule.
 RewriteRule ^(/a/([^/]+)/b)\$ \\
-  "$document_root\$1? --api $homedb --all -d $bdrsref_root/\$2 $tda_arg --ua %{QUERY_STRING}" [L]
+  "$document_root\$1? --api $homedb --all -d $bdrsref_root/\$2 $isolation_arg --ua %{QUERY_STRING}" [L]
+#  "$document_root\$1? --api $homedb --all -d $bdrsref_root/\$2 $tda_arg --ua %{QUERY_STRING}" [L]
 #  "$document_root\$1? --api $home $tlog --all -d $bdrsref_root/\$2 --ua %{QUERY_STRING}" [L]
 
 # Minters are invoked with this rule.

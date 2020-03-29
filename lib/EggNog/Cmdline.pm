@@ -774,21 +774,11 @@ sub launch_commands { my( $mh, $bulkcmdmode, $EmitStatus,
 			# yyy path arg is kludge to get binder_exists to behave
 			#     correctly testing with relative path (eg, td_egg)
 
-#		my $exists_flag = 2;
-#		my ($isbexists, $esbexists) = EggNog::Binder::binder_exists(
-#			$sh, $isbname, $esbname, $exists_flag, [ '.' ]);
-# zzzxxx drop
-#	my $exists_flag = 2; 		# thorough check
-#	my ($isbexists, $esbexists) = binder_exists($sh,
-#		$isbname, $esbname, $exists_flag, [ $minderdir ]);
-
-		#if ($sh->{exdb} and ! $esbexists) {
 		if ($sh->{exdb} and ! $bn->{eexists}) {
 			addmsg($mh, "resolver \"$bn->{esbname}\" does not exist");
 			outmsg($mh);
 			return 1;	# error!
 		}
-		#if ($sh->{indb} and ! $isbexists) {
 		if ($sh->{indb} and ! $bn->{iexists}) {
 			addmsg($mh, "resolver \"$bn->{isbname}\" does not exist");
 			outmsg($mh);

@@ -118,7 +118,7 @@ order in the subcommands listed below.
   list m [k...]     list up to m (0=unlimited) ids (or ids under keys k)
   next m x [k...]   like list, but begin at next id not matching x (under k)
 
-Admin Commands
+System Commands - a binder name is short or a FSBN (full system binder name)
 [work in progress]
   bname b           for binder b, print full system name (--all shows more)
   bxname b          like bname, but b must exist else silent with error status
@@ -127,7 +127,7 @@ Admin Commands
   bshow [g [u]]     list binders of group g, user u; fullname egg_<g>.<u>_s_<b>
   bmake [b [g [u]]] make binder named b (mint name if no b) (aka mkbinder)
   brm b [g [u]]     remove binder named b (aka rmbinder)
-  brename b fsbn    rename short binder b to full system binder name (fsbn)
+  bmv b1 b2         rename binder b1 to b2, which must be a FSBN
   brmgroup g [u]    remove external binder group g (just external binders now)
   mstat             show various binder counts
  
@@ -184,7 +184,7 @@ my @valid_commands = qw(
 	dbsave dbload
 	norm shadow
 	pause unpause
-	bname bxname bpname bshow brmgroup bmake brm brename
+	bname bxname bpname bshow brmgroup bmake brm bmv
 	mstat
 	cfq
 	add another insert vinsert delete incr decr
@@ -711,7 +711,7 @@ sub bdx_brm { my( $name, $user )=@_;
 	return 0;
 }
 
-#sub bdx_mvbinder { bdx_brename( @_ ) }
+sub bdx_bmv { bdx_brename( @_ ) }
 sub bdx_brename { my( $b1, $b2, $user )=@_;
 
 	$bindid and
