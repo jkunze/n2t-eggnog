@@ -9,6 +9,8 @@
 
 .. _EZID: https://ezid.cdlib.org
 .. _ARK: /e/ark_ids.html
+.. _ARK request form: https://goo.gl/forms/bmckLSPpbzpZ5dix1
+.. _ARKs FAQ: https://wiki.duraspace.org/display/ARKs/ARK+Identifiers+FAQ
 .. _DOI: https://www.doi.org
 .. _EZID.cdlib.org: https://ezid.cdlib.org
 .. _DataCite: https://www.datacite.org
@@ -29,7 +31,6 @@
 .. _ARK module for Drupal: https://www.drupal.org/project/ark
 .. _EZID service: https://ezid.cdlib.org
 .. _N2T.net resolver: /
-.. _NAAN request form: https://goo.gl/forms/bmckLSPpbzpZ5dix1
 .. _The registry: http://www.cdlib.org/services/uc3/naan_registry.txt
 .. _Identifier conventions: http://ezid.cdlib.org/learn/id_concepts
 .. _Python Noid: https://github.com/no-reply/pynoid
@@ -42,8 +43,13 @@
 Archival Resource Key (ARK) Identifiers
 =======================================
 
-ARKs are URLs designed to support long-term access to information objects.
-In 2001 ARKs were introduced to identify objects of any type:
+ARK identifiers are URLs designed to support long-term access to
+information objects. To get started creating ARKs, first fill out the
+`ARK request form`_, and to come up to speed quickly, see the `ARKs
+FAQ`_.
+
+Introduced in 2001, ARK identifiers were designed to identify objects of
+any type:
 
 - digital objects – documents, databases, images, software, websites, etc.
 - physical objects – books, bones, statues, etc.
@@ -85,7 +91,7 @@ Since 2001 over 500 organizations spread across fifteen countries registered
 to assign ARKs. `The registry`_ includes libraries, archives, museums
 (Smithsonian), publishers, government agencies, academic institutions
 (Princeton), and technology companies (Google). To have your institution
-registered, use the `NAAN request form`_. Some of the major users are
+registered, use the `ARK request form`_. Some of the major users are
 
 - The California Digital Library
 - The Internet Archive
@@ -149,7 +155,7 @@ protocols are expected to last longer than the identified objects. The
 immutable, globally unique identifier follows the "``ark:``" label. This
 includes a "Name Assigning Authority Number" (NAAN) identifying the naming
 organization, followed by the name that it assigns to the object. Please visit
-the `NAAN request form`_ if you are interested in generating and using ARKs for
+the `ARK request form`_ if you are interested in generating and using ARKs for
 your information objects.
 
 Here is a diagrammed example: ::

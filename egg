@@ -120,11 +120,14 @@ order in the subcommands listed below.
 
 Admin Commands
 [work in progress]
-  bname b           for binder b, print system binder name (--all gets more)
+  bname b           for binder b, print full system name (--all shows more)
+  bxname b          like bname, but b must exist else silent with error status
+  bpname b          like bname, but pure parse with no caller env (use --all)
   cfq [query]       return config variable plus exit status (to support cron)
   bshow [g [u]]     list binders of group g, user u; fullname egg_<g>.<u>_s_<b>
   bmake [b [g [u]]] make binder named b (mint name if no b) (aka mkbinder)
   brm b [g [u]]     remove binder named b (aka rmbinder)
+  brename b fsbn    rename short binder b to full system binder name (fsbn)
   brmgroup g [u]    remove external binder group g (just external binders now)
   mstat             show various binder counts
  
@@ -153,7 +156,7 @@ Some options:
 
 Environment variables:
    EGG          string of default command line options
-   EGG_TESTDATA value (default 'td') that overrides any --testdata setting
+   EGG_TESTDATA value (default 'td') overridable by any --testdata setting
    EGG_DBIE     value for --dbie setting that does NOT override it
 
 EXDB Notes (external database):
@@ -181,7 +184,7 @@ my @valid_commands = qw(
 	dbsave dbload
 	norm shadow
 	pause unpause
-	bname bshow brmgroup bmake brm
+	bname bxname bpname bshow brmgroup bmake brm brename
 	mstat
 	cfq
 	add another insert vinsert delete incr decr
@@ -647,32 +650,18 @@ sub bdx_bmake { my( $name, $user )=@_;
 	# yyy deprecate this feature?: being able to do mkbinder without
 	#     a named binder is a feature that adds lots of complicated code
 
-	my $msg;
-	# yyy need to configure so we can test $sh->{exdb} below
-	if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {
-		outmsg($sh, $msg);      # failed to configure
-		return 1;
-	}
-
 	# yyy this next clause should be pushed into lower library routine?
 	my $err = 0;
-#	if ($sh->{exdb}) {
-#		$cmdr = catfile($name, 'dummy');
-#		$cmdr_from_d_flag = 0;
-#	}
-#	# yyy if both exdb and indb are in effect, binder name must be given
-#	elsif ($name and $sh->{indb}) {		# not exdb case
 	if ($name) {
 		($mdr, $cmdr, $cmdr_from_d_flag, $err) =
-			EggNog::Binder::def_bdr($bh, $name, 0);	# NB $bh not $sh
-		$err and
-			# NB: this call uses $bh instead of $sh
-			outmsg($bh),
+			EggNog::Binder::gbip($sh, $name, 0);
+		$err and		# $err is a number not a message
+			outmsg($sh),
 			return 1;
 	}
 
 	# Set $minderhome depending on whether -d was given. If the binder
-	# name was unqualified, we always create it in $sh->{minderpath}.
+	# name was unqualified, we always create it in $sh->{minderhome}.
 	# This is a slightly different setting from the rmbinder case.
 
 	my $minderhome = $cmdr_from_d_flag ?	# if user specified -d
@@ -693,32 +682,20 @@ sub bdx_brm { my( $name, $user )=@_;
 		return 1;
 
 	$name ||= "";
-	my $msg;
-	# yyy need to configure so we can test $sh->{exdb} below
-	if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {
-		outmsg($sh, $msg);      # failed to configure
-		return 1;
-	}
 
 	# yyy this next clause should be pushed into lower library routine
 	# yyy still using mdr-type (minder) var names instead of bdr (binder)
 	my $err = 0;
-#	if ($sh->{exdb}) {	# need to be configured before testing {exdb}
-#		$cmdr = catfile($name, 'dummy');	# yyy
-#		$cmdr_from_d_flag = 0;
-#	}
-#	# xxx !! if both exdb and indb are in effect, binder name must be given
-#	elsif ($name and $sh->{indb}) {		# not exdb case
 	if ($name) {
 		($mdr, $cmdr, $cmdr_from_d_flag, $err) =
-			EggNog::Binder::def_bdr($bh, $name, 1);	# NB $bh not $sh
-		$err and
-			outmsg($bh),	# yyy $sh?
+			EggNog::Binder::gbip($sh, $name, 1);
+		$err and		# $err is a number not a message
+			outmsg($sh),
 			return 1;
 	}
 
-	# Set $minderhome depending on whether -d was given. If the binder
-	# name was unqualified, we always create it in $sh->{minderpath}.
+	# Set $minderpath depending on whether -d was given. If the binder
+	# name was unqualified, we always create it in $sh->{minderhome}.
 	# This is a slightly different setting from the mkbinder case.
 
 	my $minderpath = $cmdr_from_d_flag ?	# if user specified -d
@@ -729,6 +706,57 @@ sub bdx_brm { my( $name, $user )=@_;
 	# xxxx this minderpath is really a Perl array not a string!
 
 	EggNog::Binder::rmbinder($sh, $mods, $cmdr, $user, $minderpath) or
+		outmsg($sh),
+		return 1;
+	return 0;
+}
+
+#sub bdx_mvbinder { bdx_brename( @_ ) }
+sub bdx_brename { my( $b1, $b2, $user )=@_;
+
+	$bindid and
+		outmsg($sh, "why did you specify an identifier ($bindid)?"),
+		return 1;
+
+	my $minderpath = $cmdr_from_d_flag ?	# if user specified -d
+		"" :			# ignore minderpath
+		$sh->{minderpath};	# else use $sh->{minderpath}
+
+	# yyy this next clause should be pushed into lower library routine
+	# yyy still using mdr-type (minder) var names instead of bdr (binder)
+	my $err = 0;
+	#my ($cmdr1, $cmdr2);
+#	my $cmdr1;
+#	if ($b1) {	# source binder $b1 to be removed, similar to rmbinder
+#		($mdr, $cmdr, $cmdr_from_d_flag, $err) =
+#			EggNog::Binder::gbip($sh, $b1, 1); # expect 1 there
+#		$cmdr1 = $cmdr;
+#		$err and		# $err is a number not a message
+#			outmsg($sh),
+#			return 1;
+#	}
+
+	# binder $b2 is destination: format must be path to full system name
+	#if ($b2) {		# $b2 to be created, similar to mkbinder case
+	#	($mdr, $cmdr, $cmdr_from_d_flag, $err) =
+	#		EggNog::Binder::gbip($sh, $b2, 0); # expect none there
+	#	$cmdr2 = $cmdr;
+	#	$err and		# $err is a number not a message
+	#		outmsg($sh),
+	#		return 1;
+	#}
+	# yyy can we assume -d only specifies the source binder?
+	my $minderhome = $cmdr_from_d_flag ?	# if user specified -d
+		"." :			# use current context, not minderhome
+		"" ;			# else use $sh->{minderhome}
+
+	# yyy these EggNog::Egg::* routines should take a name that is either a
+	#     fiso_dname or fiso_uname (which is easier on the caller/user)
+	# xxxx this minderpath is really a Perl array not a string!
+
+	#EggNog::Binder::renamebinder($sh, $mods, $cmdr1, $minderpath,
+	EggNog::Binder::renamebinder($sh, $mods,
+			$b1, $minderpath, $b2, $user) or
 		outmsg($sh),
 		return 1;
 	return 0;
@@ -749,25 +777,39 @@ sub bdx_brm { my( $name, $user )=@_;
 #sub bdx_mshow { dx_mshow( @_ ) }
 # show known binders (was mshow)
 
-sub bdx_bname { my( $ubname, $smode )=@_;
+sub bdx_bxname { bdx_bindername( 2, @_ ) }	# do hard existence check
+sub bdx_bpname { bdx_bindername( -1, @_ ) }	# pure parse, no opts or env
+sub bdx_bname { bdx_bindername( 0, @_ ) }
+#sub bdx_bname { my( $ubname, $smode, $exists_flag )=@_;
+sub bdx_bindername { my( $exists_flag, $ubname, $smode )=@_;
 
+	$exists_flag //= 0;
+	my $minderpath = $cmdr_from_d_flag ?	# if user specified -d
+		"" :			# ignore minderpath
+		$sh->{minderpath};	# else use $sh->{minderpath}
 	my ($isbname, $esbname, $bn) =
-		EggNog::Binder::bname_parse($sh, $ubname, $smode);
+		EggNog::Binder::bname_parse($sh, $ubname, $exists_flag, $smode,
+			undef, $minderpath);
 		# yyy undocumented what $smode does
 	defined($isbname) or
 		outmsg($sh),
 		return 1;
-	#use Data::Dumper "Dumper"; print Dumper $bn;
-	$sh->{indb} and
-		$om->elem('indb_system_binder_name', $bn->{isbname});
-	$sh->{exdb} and
-		$om->elem('exdb_system_binder_name', $bn->{esbname});
 	if ($opt{all}) {
+		my $om = $sh->{om_formal};
 		foreach my $key (sort keys %$bn) {
 			$om->elem($key, $bn->{$key});
 		}
 	}
-	return 0;
+	my $retstat = 0;		# default return status
+	if ($sh->{indb}) {
+		$exists_flag > 0 and ! $bn->{isbpathname} and
+			$retstat = 1;
+		! $retstat and
+			$om->elem('indb_system_binder_name', $bn->{isbname});
+	}
+	$sh->{exdb} and
+		$om->elem('exdb_system_binder_name', $bn->{esbname});
+	return $retstat;
 }
 
 sub bdx_bshow { my( $user, $ubname )=@_;
@@ -1581,6 +1623,8 @@ are silently ignored.
   list m [k...]   list up to m (0=unlimited) ids (or ids under keys k)
   next m x [k...] like list, but begin at next id not matching x (under k)
   bname b         for binder b, print system binder name (--all gets more)
+  bxname b        like bname, but silent and non-zero status unless b exists
+  bpname b        like bname, but pure parse with no caller env (use --all)
   bmake [b [g [u]]] make binder named b (mint name if no b) (aka mkbinder)
   bshow [g [u]]     list binders for group g, user u
   brm b [g [u]]     remove binder named b (aka rmbinder)

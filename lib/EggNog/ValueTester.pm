@@ -62,6 +62,11 @@ sub script_tester { my( $script )=@_;
 	# EGG_DBIE=ei means i and e
 	# EGG_DBIE=xyz means i (default) and NOT e (default)
 
+	# The way we're called there's no --testdata option, so we pull
+	# from the environment. Later we actually generate a --testsdata
+	# option to support tests that will rely on it to create binder
+	# names that don't conflict with other names.
+
 	my $tdata = $ENV{EGG_TESTDATA} || $testdata_default;
 
 	if ($ENV{EGG_DBIE}) {

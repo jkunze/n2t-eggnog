@@ -44,12 +44,8 @@ use constant EGGNOG_DIR_DEFAULT		=> '.eggnog';
 use constant SERVICE_DEFAULT		=> 's';		# default service name
 use constant HOST_CLASS_DEFAULT		=> 'loc';
 
-use constant CONFIG_FDEFAULT		=> 'eggnog_config_default';
-use constant CONFIG_F			=> 'eggnog_config';
-
 use constant CONFIG_FILE_DEFAULT	=> 'eggnog_conf_default';
 use constant CONFIG_FILE		=> 'eggnog_conf';
-use constant WARTS_FILE			=> 'warts.yaml';
 use constant PFX_FILE_DEFAULT		=> 'prefixes_default.yaml';
 use constant PFX_FILE			=> 'prefixes.yaml';
 use constant TXNLOG_DEFAULT		=> catfile 'logs', 'transaction_log';
@@ -71,8 +67,8 @@ qq@
 # Top-level binder flags section
 # status is one of enabled, disabled, or readonly
 
-service: web
-role_account: s			# else defaults to service name
+service: s
+role_account: eggnog_role	# else defaults to service name
 contact_email: info_at_example.org
 
 hosts:				# all sample values, just so there's something
@@ -246,7 +242,7 @@ sub read_conf_file { my( $sh )=@_;
 	$sh->{conf_file_actual} = $conf_file;	# save actual conf file chosen
 				# yyy document key; record event in txnlog
 
-	# Now read the config file and any warts file. Any conflicting
+	# Now read the config file. Any conflicting
 	# settings from the latter will override those from the former.
 	# NB: either call to LoadFile may throw a fatal (uncaught) exception,
 	# which is ok (yyy right?) because something would be very wrong.
@@ -292,7 +288,6 @@ sub config { my( $sh )=@_;
 		|| SERVICE_DEFAULT;		# eg, "s"
 
 	$sh->{host_class} = $ENV{HOST_CLASS}	# eg, dev, stg, prd
-#		|| $wf->{EGNAPA_HOST_CLASS}
 		|| HOST_CLASS_DEFAULT;
 
 #	$sh->{conf_file_actual} = $conf_file;	# save actual conf file used
@@ -382,15 +377,10 @@ sub config { my( $sh )=@_;
 	if (($pos = index($dbie, 'e')) > -1) {
 		$sh->{exdb} = {};		# yyy document these keys
 
-# zzz
-my $wf = {};
 		# We're doing exdb connections, so finalize our environment.
-		$ENV{MG_CSTRING_HOSTS} ||= $wf->{MG_CSTRING_HOSTS}
-			|| MG_CSTRING_HOSTS_DEFAULT;
-		$ENV{MG_REPSETOPTS} ||= $wf->{MG_REPSETOPTS}
-			|| MG_REPSETOPTS_DEFAULT;
-		$ENV{MG_REPSETNAME} ||= $wf->{MG_REPSETNAME}
-			|| MG_REPSETNAME_DEFAULT;
+		$ENV{MG_CSTRING_HOSTS} ||= MG_CSTRING_HOSTS_DEFAULT;
+		$ENV{MG_REPSETOPTS} ||= MG_REPSETOPTS_DEFAULT;
+		$ENV{MG_REPSETNAME} ||= MG_REPSETNAME_DEFAULT;
 
 		$sh->{exdb}->{connect_string} =
 			connect_string( $ENV{MG_CSTRING_HOSTS},
@@ -476,16 +466,17 @@ sub init_minder { my( $home, $mpath )=@_;
 	# directories that determines the set of known minders.  A minder
 	# in a directory occurring earlier in @minderpath hides a minder
 	# of the same name occurring later in @minderpath.
-	
-	# If neither is set, the default minderpath is <~/.minders:.>.
+
+	# If neither is set, the default minderpath (for egg at least)
+	# is <~/.eggnog/binders:.>.
 	# If we need to create a minder (eg, $default_minder_nab), we'll
 	# attempt to create it in the first directory of @minderpath.
 	#
 	# Set default minderpath if caller didn't supply one.
-	$mpath ||= $home . $Config{path_sep} . ".";	# add current dir
+	#$mpath ||= $home . $Config{path_sep} . ".";	# add current dir
 
-	#$mpath ||= catfile(($ENV{HOME} || ""),	# ~/.minders or /.minders,
-	#	$minders) . $Config{path_sep} . ".";	# then current dir
+	$mpath ||= catfile($home, 'binders') .	# yyy 'binders' literal -1
+		$Config{path_sep} . ".";	# add current dir
 
 	my @minderpath = split($Config{path_sep}, $mpath);
 	my $minderhome = $minderpath[0];
@@ -557,9 +548,6 @@ sub new {		# call with WeAreOnWeb, om, om_formal, optref
 	$self->{conf_file_default} =
 		catfile( $self->{home}, CONFIG_FILE_DEFAULT );
 	# we open config file only if we need it, eg, NOT for help command
-
-	#$self->{warts_file} = catfile( $ENV{HOME}, WARTS_FILE );
-	$self->{warts_file} = catfile( $self->{home}, WARTS_FILE );
 
 	$self->{txnlog_file_default} =
 		catfile( $self->{home}, TXNLOG_DEFAULT );

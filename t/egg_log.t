@@ -38,7 +38,7 @@ sub resolve_stdin { my( $opt_string, @ids )=@_;
 
 {	# check mstat command
 remake_td($td, $tdata);
-$ENV{EGG} = "$hgbase -p $td -d $td/bar --txnlog $txnlog";
+$ENV{EGG} = "$hgbase -p $td/binders -d $td/binders/bar --txnlog $txnlog";
 my ($cmdblock, $x, $y);
 
 $x = `$cmd --verbose mkbinder bar`;
@@ -87,7 +87,7 @@ remove_td($td, $tdata);
 # stub log checker
 {
 remake_td($td, $tdata);
-$ENV{EGG} = "$hgbase -d $td/foo --txnlog $txnlog";
+$ENV{EGG} = "$hgbase -d $td/binders/foo --txnlog $txnlog";
 my ($x, $y);
 
 $x = `$cmd --version`;
@@ -120,7 +120,8 @@ i.purge
 $x = run_cmds_on_stdin($cmdblock);
 
 my $isbname;
-$isbname = `$cmd --dbie i bname $td/foo`;	# indb system binder name
+#$isbname = `$cmd --dbie i bname $td/foo`;	# indb system binder name
+$isbname = `$cmd --dbie i bname $td/binders/foo`;	# indb system binder name
 $isbname =~ s/\n*$//;
 
 if ($indb) {	# phasing out rlog means not doing it for exdb
@@ -128,6 +129,9 @@ $y = file_value("< $isbname/egg.rlog", $x);
 like $x, qr/ H: .* C: i\|a.set 3.*(?: C: .*){4}i.purge/s,
 	'bind value reflected in binder log file';
 }
+
+#say "premature exit XXX x=$x";	#####################
+#exit;
 
 # NOTE: must precede @ in "" if it looks like possible array ref
 $cmdblock = "
@@ -358,7 +362,7 @@ remove_td($td, $tdata);
 # null txnlog checker
 {
 remake_td($td, $tdata);
-$ENV{EGG} = "$hgbase -d $td/foo --txnlog ''";
+$ENV{EGG} = "$hgbase -d $td/binders/foo --txnlog ''";
 my ($x, $y);
 
 $x = `$cmd --verbose mkbinder foo`;

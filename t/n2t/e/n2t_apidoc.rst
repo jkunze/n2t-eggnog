@@ -279,7 +279,7 @@ the start of *i*.
 
 The ``set`` command takes two arguments, so names or values that contain
 spaces should be quoted. Normal shell-like quoting conventions work
-(single or double quotes, plus backslash), so "a b\" c" would specify the
+(single or double quotes, plus backslash), so 'a b\" c' would specify the
 value: a b" c.
 
 Bulk operations

@@ -34,10 +34,10 @@ SKIP: {
 my ($x, $y, $n);
 
 my $ark1 = 'ark:/99999/fk8n2test1';
-my $tgt1 = 'http://cdlib.org/';
-my $tgt2 = 'http://cdlib.org/' . EggNog::Temper::etemper();
+my $tgt1 = 'https://cdlib.org/';
+my $tgt2 = 'https://cdlib.org/' . EggNog::Temper::etemper();
 my $eoi = 'doi:10.5072/EOITEST';	# MUST register in normalized uppercase
-my $eoi_tgt = 'http://crossref.org/';
+my $eoi_tgt = 'https://crossref.org/';
 my $eoi_ref = 'eoi:10.5072/EOITEST';	# normalized reference
 my $eoi_ref_lc = 'eoi:10.5072/eoitest';	# unnormalized reference
 
@@ -59,7 +59,7 @@ $x =~ /failed.*refused/ and
 like $x, qr@99999/fk4\w\w\w@, "minted id matches format";
 
 ok -f "$ENV{HOME}/warts/.pswdfile.n2t",
-	"no real passwords set up in ~/warts/ to occlude dummy passwords";
+	"real passwords set up in ~/warts/ to occlude dummy passwords";
 
 #if ($ENV{EGNAPA_HOST} =~ /n2t-prd-2a\./) {
 my $home = $ENV{HOME};
@@ -105,7 +105,7 @@ if ($production_data eq "yes\n") {
 	# Ryan Shaw, Eric Kansa ("periodo" ezid customers), with one
 	# identifier (p0) in the 99152 namespace.
 	$x = `wegn locate "ark:/99152/p0vn2frcz8h"`;
-	like $x, qr{^Location: https://test.perio.do.*}m,
+	like $x, qr{^Location: https://data.perio.do.*}m,
 		"Perio.do target redirect";
 
 	print "--- END production-data tests (potentially volatile)\n";
@@ -144,7 +144,8 @@ $x = `wegn -v $ark1.set _t $tgt1`;
 like $x, qr/^egg-status: 0/m,
 	"egg sets target URL for id $ark1";
 
-#exit;  ########
+#print "xxx x=$x, premature exit\n";
+#exit;
 
 $x = `wegn locate "$ark1"`;
 like $x, qr/^Location: \Q$tgt1/m, "bound target value resolved";
@@ -198,7 +199,7 @@ like $x, qr/^Location: \Q$tgt2/m, "third new bound target value resolved";
 # xxx still need to remove www. from SPT documentation!
 
 my $cdl_ark = 'ark:/12345/fk1234';		# ACTUAL real ARK!
-my $cdl_tgt = 'http://cdlib.org/services';
+my $cdl_tgt = 'https://cdlib.org/services';
 my $cdl_ext = '/uc3/ezid/';
 
 $x = `wegn $cdl_ark.set _t $cdl_tgt`;
@@ -249,14 +250,14 @@ like $x, qr|erc:.*who: id.*what: assoc.*when: 2018|s,
 #  who: CDL
 #  what: CDL Services Landing Page
 #  when: 2014
-#  where: ark:/12345/fk1234 (currently http://www.cdlib.org/services)
+#  where: ark:/12345/fk1234 (currently http://cdlib.org/services)
 #  how: (:unav)
 #  id created: 2017.05.21_21:25:03
 #  id updated: 2014.05.29_17:48:06
 #  persistence: (:unav)
 
 my $wkp_ark = 'ark:/12345/fk1235';
-my $wkp_tgt = 'http://en.wikipedia.org/wiki';
+my $wkp_tgt = 'https://en.wikipedia.org/wiki';
 my $wkp_ext = '/Persistent_identifier';
 
 $x = `wegn $wkp_ark.set _t $wkp_tgt`;
@@ -266,8 +267,8 @@ like $x, qr/^Location: \Q$wkp_tgt$wkp_ext/m,
 	"documented suffix passthrough works for wkp_ark $wkp_ark";
 
 my $srch_ark = 'ark:/12345/fk3';
-my $srch_tgt = 'http://www.google.com/#q=';
-my $enc_srch_tgt = 'http://www.google.com/%23q=';	# encoded form
+my $srch_tgt = 'https://www.google.com/#q=';
+my $enc_srch_tgt = 'https://www.google.com/%23q=';	# encoded form
 my $srch_ext = 'pqrst';
 #xxx fix wiki doc (An e)xtended ARK: http://n2t.net/ark:/12345/fk3pqrst
 #    high level intro could be simpler too
@@ -340,9 +341,6 @@ like $x, qr{^Location: http://escholarship.org/uc/item/123456789}m,
 $x = `wegn -v locate "ark:/13030/tf3000038j"`;
 like $x, qr{^Location: http://ark.cdlib.org/ark:/13030/tf3000038j}m,
 	"Legacy OAC redirect via post-egg Apache kludge";
-
-#print "xxx premature exit\n";
-#exit;
 
 ($i, $q) = ('ab_262044', '-z-?');
 $target = 'https://scicrunch.org/resolver/RRID:$id';

@@ -524,8 +524,10 @@ sub test_binders { my( $egnhome, $cfgdir, $binders_root, $indb, $bindersR, $owne
 		"protected binder \"$b\" allows deleting that element";
 
 	$owner = $ownersR->[$n];		# binder owner name
+	my $exists_flag = 0;			# yyy don't check for existence
 	my ($isbname, $esbname) =
-		EggNog::Binder::bname_parse($sh, $b, $sh->{smode}, $owner);
+		EggNog::Binder::bname_parse($sh, $b, $exists_flag,
+			$sh->{smode}, $owner);
 	if ($indb) {
 	    # yyy "tail" not portable to Windows; prefer File::ReadBackwards
 	    #$y = flvl("< $binders_root/$b/egg.rlog", $x);

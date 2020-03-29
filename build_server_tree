@@ -272,6 +272,8 @@ function is_build_out_of_date {
 		return 1
 	}
 	local out_of_date=$( find $bst_root -newer $fqhconf )
+	#echo XXX build_server_tree 1>&2
+	#ls -l $0 $fqhconf 1>&2
 	[[ $0 -nt $fqhconf ]] &&
 		out_of_date=( $0 ${out_of_date[*]} )
 	[[ ${out_of_date[0]} ]] || {
@@ -400,7 +402,7 @@ perl_args="perl -Mblib"
 tda_arg="--testdata $tda"
 [[ $pubflag ]] && {
 	perl_args=""
-	tda_arg=""
+	tda_arg="--isolator public"
 }
 
 # There are 3 categories of port pairs (http and https):
@@ -654,10 +656,14 @@ function makebinder {	# args: binder name and owner (populator)
 
 # ZZZZZZ must alter n2t rollout to RENAME these temps to NON-EXISTENT
 #        public databases!
+# where does --public isolator belong???
+# how do we test ('td') before rollout ('public')?
 
 
 	local args	# NB: --testdata needed to shield production DBs!!
+	#args=( -p "$binders_root" --user "$owner" --testdata $tda )
 	args=( -p "$binders_root" --user "$owner" --testdata $tda )
+# zzz XXX this should ALWAYS be set to testdata, never public 
 
 		#perl -Mblib egg "${args[@]}" --force brm $bname; \
 	(cd $src_top; \
@@ -830,7 +836,8 @@ msg=$( mkdir -p 2>&1 $buildout_root \
 	cp -p $bst_root/eggnog_conf $buildout_root/
 }
 
-ln -s $aptop/conf/mime.types $buildout_root/conf/mime.types
+#ln -s $aptop/conf/mime.types $buildout_root/conf/mime.types
+cp -p $aptop/conf/mime.types $buildout_root/conf/mime.types
 ln -s $aptop/modules $buildout_root/modules		# link for modules
 ln -s $aptop/conf.modules.d $buildout_root/conf.modules.d	# load modules
 
@@ -1777,6 +1784,13 @@ function create_rmap {
 # zzz $homedb is a set of args, eg, --home ...
 	cmd+=" --rrm $homedb --user $populator -d $bdrsref_root/$binder"
 	cmd+=" --testdata $tda"	# NB: --testdata shields production DBs!!
+# zzz XXX this should ONLY be set to testdata if ! $pubflag
+# if [[ ! $pubflag ]]
+# then
+#	cmd+=" --testdata $tda"
+# else
+#	cmd+=" --isolator public"
+# fi
 
 	[[ $rlist ]] &&			# caller wanted list of resolvers
 		cmd+=" --resolverlist=\"$rlist\""	# qualify command

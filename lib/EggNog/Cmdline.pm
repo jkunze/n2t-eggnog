@@ -767,33 +767,30 @@ sub launch_commands { my( $mh, $bulkcmdmode, $EmitStatus,
 		my ($cmdr, $cmdr_from_d_flag) =
 			def_cmdr('', '', 'egg', $optR);	# zzz kludge
 
-		my ($isbname, $esbname) =	# default binder if ! $bdr
-			EggNog::Binder::bname_parse($sh, $cmdr, $sh->{smode});
-		my $exists_flag = 2;
-		my ($isbexists, $esbexists) = EggNog::Binder::binder_exists(
-			$sh, $isbname, $esbname, $exists_flag, [ '.' ]);
+		my $exists_flag = 2;		# hard existence check
+		my ($isbname, $esbname, $bn) =	# default binder if ! $bdr
+			EggNog::Binder::bname_parse($sh, $cmdr, $exists_flag,
+				$sh->{smode}, undef, [ '.' ]);
 			# yyy path arg is kludge to get binder_exists to behave
 			#     correctly testing with relative path (eg, td_egg)
 
-
-
+#		my $exists_flag = 2;
+#		my ($isbexists, $esbexists) = EggNog::Binder::binder_exists(
+#			$sh, $isbname, $esbname, $exists_flag, [ '.' ]);
 # zzzxxx drop
-#	my ($isbname, $esbname) =	# default binder if ! $binder
-#		bname_parse($sh, $binder, $sh->{smode});
 #	my $exists_flag = 2; 		# thorough check
 #	my ($isbexists, $esbexists) = binder_exists($sh,
 #		$isbname, $esbname, $exists_flag, [ $minderdir ]);
 
-
-
-
-		if ($sh->{exdb} and ! $esbexists) {
-			addmsg($mh, "resolver \"$esbname\" does not exist");
+		#if ($sh->{exdb} and ! $esbexists) {
+		if ($sh->{exdb} and ! $bn->{eexists}) {
+			addmsg($mh, "resolver \"$bn->{esbname}\" does not exist");
 			outmsg($mh);
 			return 1;	# error!
 		}
-		if ($sh->{indb} and ! $isbexists) {
-			addmsg($mh, "resolver \"$isbname\" does not exist");
+		#if ($sh->{indb} and ! $isbexists) {
+		if ($sh->{indb} and ! $bn->{iexists}) {
+			addmsg($mh, "resolver \"$bn->{isbname}\" does not exist");
 			outmsg($mh);
 			return 1;	# error!
 		}

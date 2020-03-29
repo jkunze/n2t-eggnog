@@ -196,14 +196,14 @@ $x = `$webcl "$ssvbase_u/a/pest/b? i.set moo cow"`;
 like $x, qr{HTTP/\S+\s+200\s+OK.*egg-status: 0}si,
 	'open populator "pest" sets an element without a login/password';
 
-#$x = apachectl('graceful-stop')	and print("$x\n");
-#say "xxxxxxxxxx premature exit";
-#exit;	#########
-
 $y = flvl("< $buildout_root/logs/transaction_log", $x);
 $y and print "error: $y\n";
 like $x, qr{BEGIN.*END SUCCESS}s,
 	'transaction log working';
+
+#$x = apachectl('graceful-stop')	and print("$x\n");
+#say "xxxxxxxxxx premature exit";
+#exit;	#########
 
 $x = `$webcl "$srvbase_u/e/x/feedback.pl"`;
 like $x, qr{Stub feedback.}i,

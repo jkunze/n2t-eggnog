@@ -71,8 +71,6 @@ is $x, "c\n\n",
 
 is $y, "d\n\n", "2nd binder value good (no conflict with 1st binder)";
 
-#say "xxxxxx premature end. x=$x"; exit;
-
 remake_td($td, $tdata);
 $x = `$cmd --verbose -p $td mint 1`;
 shellst_is 1, $x, "binder doesn't know 'mint' command";
@@ -265,7 +263,8 @@ if ($indb) {
   my $trashmdr = "$minderhome/trash/$isbname";
 
   # yyy exdb case: doesn't support binders in trash
-  $x = `$cmd rmbinder foo`;
+  #$x = `$cmd rmbinder foo`;
+  $x = `$cmd --verbose rmbinder foo`;
   like $x, qr|moved.*trash.*\Q$trashmdr\E|s,
   	"removed binder by renaming to trash";
 
@@ -276,6 +275,8 @@ if ($indb) {
   $x = `$cmd -d $trashmdr rmbinder`;
   like $x, qr|removed.*$trashmdr.*from trash|s, "removed binder from trash";
   
+#say "xxxxxx premature end. x=$x"; exit;
+
   $x = `$cmd bshow`;
   like $x, qr|^#.*\n($td/[^\n]*\n){4}#|s, "show exactly 4 known binders";
   

@@ -1,5 +1,10 @@
 package EggNog::Resolver;
 
+# xxx new feature:
+#     for n2t, add rule for 12345 naan that describes example nature of
+#       the NAAN along with the 404 error
+#     similarly for 99999 ids that don't work (instead of simple 404)
+
 use 5.10.1;
 use strict;
 use warnings;
