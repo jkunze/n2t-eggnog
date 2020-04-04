@@ -1,0 +1,195 @@
+service: n2t
+role_account: n2t       # defaults to service name
+contact_email: jak@ucop.edu
+
+hosts:
+  # XXX drop this first entry!
+  ids-n2t2-dev-2b.n2t.net:
+    shell_name: n2bdev		# must be unique
+    class: dev			# may default to what's found in the hostname
+    client_name: dev		# one instance of this class as known to wegn
+    patch_monday: 1
+    prefix_import: 1
+    backup: 1
+
+  ids-n2t2-dev.n2t.net:
+    shell_name: n2dev		# must be unique
+    class: dev			# may default to what's found in the hostname
+    client_name: dev		# one instance of this class as known to wegn
+    patch_monday: 1
+    prefix_import: 1
+    backup: 1
+
+  ids-n2t2-stg.n2t.net:
+    shell_name: n2stg
+    class: stg			# may default to what's found in the hostname
+    client_name: stg		# one instance of this class as known to wegn
+    patch_thursday: 1
+
+  ids-n2t2-prd.n2t.net:
+    shell_name: n2prd
+    class: prd			# may default to what's found in the hostname
+    client_name: prd		# one instance of this class as known to wegn
+    production_data: 1		# causes tests to be run on critical prod data
+    resolver_check: 1
+    backup: 1
+
+redirects:
+  pre_lookup:
+    - "s e/arks_eoi https://bit.ly/2C4fU8f"
+    - "s e/naan_request https://goo.gl/forms/bmckLSPpbzpZ5dix1"
+    - "s e/NAAN_request https://goo.gl/forms/bmckLSPpbzpZ5dix1"
+    - "s e/prefix_request https://docs.google.com/forms/d/18MBLnItDYFOglVNbhNkISqHwB-pE1gN1YAqaARY9hDg"
+    - "s e/prefix_overview https://docs.google.com/document/d/1qwvcEfzZ6GpaB6Fql6SQ30Mt9SVKN_MytaWoKdmqCBI"
+  post_lookup:
+    - "s e/NAAN_request https://goo.gl/forms/bmckLSPpbzpZ5dix1"
+    # xxx special rules for escholarship and OAC; remove when EZID registers
+    # their ARKs, eg, ark:/13030/tf3000038j
+    # xxx no 'r' support, ie, these don't do anything at all (yet)!
+    - "r ark:/13030/qt(.*) https://escholarship.org/uc/item/$1"
+    - "r (ark:/13030/(?:tf|ft|kt).*) http://ark.cdlib.org/$1"
+
+# XXX this file should be more generic, leaving real conf file to be
+# custom built, eg, via build_server_tree
+
+# This is the configuration file for "egg" (v1.00).
+# It is in YAML format and has separate sections (associative arrays)
+# introduced by unindented top-level keys.
+
+# Top-level binder flags section
+# status is one of enabled, disabled, or readonly
+
+flags:
+  status: enabled
+  on_bind: "keyval | playlog"
+  alias: "&P | http://n2t.net/ark:/99166"
+  resolver_ignore_redirect_host: n2t
+
+# Top-level permissions section.
+# XXXX doubles currently also to establish upids for common users. xxx
+#      better to define that mapping separately, and express everything
+#      in this file in human-readable-string form instead of upids
+#   ** see new defagent addition to ruu section
+
+permissions:
+  - "&P/2 | public | 40"
+  - "&P/1 | admin | 77"
+
+# Authentication section.  This should really be in its own file where
+# it could be shared among many minders and maintained independently.
+# You get the given pid with you if you pass the test, eg, "all" (no test),
+# password challenge, or ipaddress test.
+#
+# Some users might proxy for (to) any user.
+# !xxx merge :: permissions section into :: ruu section
+# !xxx Call egg with --defagent 'ezid|&P/mm|NN|proxy'  (NO?!)
+# defagent = agent_login | user_pid | permissions | {proxy,every,<empty>}
+#    where proxy means the user can proxy for others (eg, ezid) and
+#    where 'every' means (a) the default, non-authn'd user (eg, public) 
+#          and (b) that every user possesses at least these rights
+#    and the 'admin' sample below won't work unless --defadmin is given?
+# xxx make sure defagent admin isn't standard, or everyone's default setup
+#    is wide open and public write
+#
+# These are like user classes (admin, public), defining high-level perms.
+
+#ruu:
+uinfo:
+  - "admin | &P/1 | 77 | proxy"
+  - "public | &P/2 | 40 | every"
+
+# ca = condition | agent_group
+# proxyall = agent_login
+# where the agent and login are human readable, eg, login name
+# Everyone is a member of group "public" (xxx has at least agentid public).
+#ca: all | public
+#ca: ipaddr ^127\.0\.0\.\d+ | testgroup
+
+# Software used for internal and external databases.
+# Set dbie to 'i', 'e', or both ('ie').
+db:
+  indb_class: berkeleydb
+  exdb_class: mongodb
+  exdb_connect_string: "mongodb://localhost"
+  dbie: i
+
+##########################
+# 
+# # EggNog service configuration file: N2T
+# # This file defines deployment classes and hostnames for an EggNog service.
+# 
+# # Basic instance variables, plus useful shell variables and aliases.
+# 
+# # ZZZ output these from config file?
+# pubprd=n2t.net
+# idsprda='ids-n2t-prd-2a.n2t.net'
+# 	n2prda="n2t@$idsprda"
+# 	alias n2prda="ssh $n2prda"
+# idsprdb='ids-n2t-prd-2b.n2t.net'
+# 	n2prdb="n2t@idsprdb"
+# 	alias n2prdb="ssh $n2prdb"
+# pubstg=n2t-stg.n2t.net
+# idsstga='ids-n2t-stg-2a.n2t.net'
+# 	n2stga="n2t@idsstga"
+# 	alias n2stga="ssh $n2stga"
+# idsstgb='ids-n2t-stg-2b.n2t.net'
+# 	n2stgb="n2t@idsstgb"
+# 	alias n2stgb="ssh $n2stgb"
+# idsstgc='ids-n2t-stg-2c.n2t.net'
+# 	n2stgc="n2t@idsstgc"
+# 	alias n2stgc="ssh $n2stgc"
+# pubdev=n2t-dev.n2t.net
+# idsdev='ids-n2t-dev.n2t.net'
+# 	n2dev="n2t@idsdev"
+# 	alias n2dev="ssh $n2dev"
+# idsedina='n2tlx.edina.ac.uk'
+# 	n2edina="n2t@$idsedina"
+# 	alias n2edina="ssh $n2edina"
+# 
+# # dsp_class= ? (dev,stg,prd class)
+# hostclass=(
+#     -dev    n2t-dev.n2t.net ids-n2t-dev.n2t.net
+#     -stg    n2t-stg.n2t.net ids-n2t-stg-2{a,b,c}.n2t.net
+#     -prd    n2t.net ids-n2t-prd-2{a,b,c}.n2t.net
+#     -loc    jak-macbook.local
+# 
+#     #-prefix_import stg-2c
+#     #-prod_data     prd-2a
+#     #-rcheck     prd-2a  (resolution check)
+#     #-backup     prd-2a  (for admegn)
+#     #-fulltest   prd-2a  (for t/service_n2t.t)
+# #
+# #    -mac    jak-macbook.local
+# )
+# 
+# # Some true environment variables needed to help the "wegn" client map
+# # the "prd", "stg", and "dev" abbreviations to actual server names.
+# 
+# wegn_tags=(
+#     -dev export EGNAPA_SERVER_dev=n2t-dev.n2t.net
+#     -stg export EGNAPA_SERVER_stg=n2t-stg.n2t.net
+#     -prd export EGNAPA_SERVER_prd=ids-n2t-prd-2a.n2t.net
+# )
+# 
+# # Format: EGN_HOST_CLASS_<service>="<canonical> <host1> ...
+# 
+# export EGN_HOST_CLASS_dev="$pubdev $idsdev"
+# export EGN_HOST_CLASS_stg="$pubstg $idsstga $idsstgb $idsstgc"
+# export EGN_HOST_CLASS_prd="$pubprd $idsprda $idsprdb"
+# export EGN_HOST_CLASS_loc="jak-macbook.local jak-macbook.local"
+# 
+# export EGN_HOST_CLASS_patch_mon="$idsdev"
+# export EGN_HOST_CLASS_patch_tue="$idsstga"
+# export EGN_HOST_CLASS_patch_wed="$idsstgb"
+# export EGN_HOST_CLASS_patch_thu="$idsstgc"
+# #export EGN_HOST_CLASS_patch_fri="$idsprdb"
+# 
+# export EGN_HOST_CLASS_pfxpull="$idsstgc"
+# export EGN_HOST_CLASS_rescheck="$idsprda"
+# export EGN_HOST_CLASS_backup="$idsprda"
+# export EGN_HOST_CLASS_fulltest="$idsprda"
+# 
+# export EGNAPA_SERVER_dev="$pubdev"
+# export EGNAPA_SERVER_stg="$pubstg"
+# export EGNAPA_SERVER_prd="$pubprd"
+
