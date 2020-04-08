@@ -132,6 +132,13 @@ like $x, qr/opening binder.*dummy/,
 #$x = apachectl('graceful-stop'); #	and say "$x";
 #say "######### temporary testing stop #########"; exit;
 
+# XXX need to redo so that we can test each individual resolution, in
+# order, using a data structure, eg, make resolver_stdin_hdr take its
+# pairs of args and initialize a structure, then look at output and
+# match each line with next in (array)
+#
+
+
 # as a batch, test some prefixes important to n2t
 #$x = resolve_stdin_hdr( "--pfxfile $buildout_root/prefixes.yaml",
 $x = resolve_stdin_hdr( "--home $buildout_root -d $td/dummy",

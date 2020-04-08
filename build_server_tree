@@ -65,7 +65,7 @@ declare -x ${evarnames[@]}
 
 [[ -f ~/warts/env.sh ]] &&
 	source ~/warts/env.sh
-
+EGNAPA_HOST_CLASS=$( perl -Mblib egg cfq class )
 
 # Begin by making guesses as to your hostname and Apache instance,
 # which will inform some of the help/usage information we may end up
@@ -1663,10 +1663,10 @@ function create_cgi {
 	PATH=$egpath
 	export PERL5LIB PATH
 
-	MG_CSTRING_HOSTS="$MG_CSTRING_HOSTS"	# exdb mongo database
-	MG_REPSETOPTS="$MG_REPSETOPTS"
-	MG_REPSETNAME="$MG_REPSETNAME"
-	export MG_CSTRING_HOSTS MG_REPSETOPTS MG_REPSETNAME
+	#MG_CSTRING_HOSTS="$MG_CSTRING_HOSTS"	# exdb mongo database
+	#MG_REPSETOPTS="$MG_REPSETOPTS"
+	#MG_REPSETNAME="$MG_REPSETNAME"
+	#export MG_CSTRING_HOSTS MG_REPSETOPTS MG_REPSETNAME
 
 # zzz shouldn't we be exporting EGNAPA_HOST too? since we can't count on
 # Perl's hostname to give us the proper fqdn?
@@ -1805,10 +1805,10 @@ function create_rmap {
 		PATH=$egpath
 		export PERL5LIB PATH
 
-		MG_CSTRING_HOSTS="$MG_CSTRING_HOSTS"	# exdb mongo database
-		MG_REPSETOPTS="$MG_REPSETOPTS"
-		MG_REPSETNAME="$MG_REPSETNAME"
-		export MG_CSTRING_HOSTS MG_REPSETOPTS MG_REPSETNAME
+		#MG_CSTRING_HOSTS="$MG_CSTRING_HOSTS"	# exdb mongo database
+		#MG_REPSETOPTS="$MG_REPSETOPTS"
+		#MG_REPSETNAME="$MG_REPSETNAME"
+		#export MG_CSTRING_HOSTS MG_REPSETOPTS MG_REPSETNAME
 
 # zzz shouldn't we be exporting EGNAPA_HOST too? since we can't count on
 # Perl's hostname to give us the proper fqdn?

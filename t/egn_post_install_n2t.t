@@ -69,7 +69,10 @@ ok -f "$ENV{HOME}/warts/.pswdfile.n2t",
 #if ($ENV{EGNAPA_HOST} =~ /n2t-prd-2a\./) {
 my $home = $ENV{HOME};
 my $eghome = "$home/sv/cur/apache2";
-my $production_data = `egg -q --home $eghome host production_data && echo yes`;
+#my $production_data = `egg -q --home $eghome host production_data && echo yes`;
+
+my $production_data = `egg -q --home $eghome cfq production_data && echo yes`;
+
 if ($production_data eq "yes\n") {
 
 	# Some kludgy tests based on what is hopefully permanent data.

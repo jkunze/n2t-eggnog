@@ -3,7 +3,7 @@ package EggNog::Egg;
 # Author:  John A. Kunze, jak@ucop.edu, California Digital Library
 #		Originally created, UCSF/CKM, November 2002
 # 
-# Copyright 2008-2012 UC Regents.  Open source BSD license.
+# Copyright 2008-2020 UC Regents.  Open source BSD license.
 
 use 5.10.1;
 use strict;
@@ -161,23 +161,30 @@ sub bcount { my( $bh, $amount )=@_;
 	return $result;
 }
 
-my $host_usage_text = << "EOF";
+my $cfq_usage_text = << "EOF";
 
-Usage: egg cfq [ Query ]
+SUBCOMMAND
+   cfq - eggnog configuration query
 
-where Query is a one-word trigger for various kinds of plain text output
-showing configuration information. Except for the reserved words
+SYNOPSIS
+   egg cfq [ Tword ]
+
+where Tword is a trigger word for various kinds of plain text output
+showing configuration information. Except for the reserved forms
 
    _list
-   _listall
+   _list_all
    _help
+   *_today
+   *_N
+   _host_where Key Value
 
-the Query word is normally taken as a verbatim key whose value is returned.
+the Tword is normally taken as a verbatim key whose value is returned.
 If the key doesn't identify a host-specific setting, it will be looked up
 as general service setting. If the key identifies a value of "false", the
 return status to the shell will be non-zero, and otherwise zero (success).
 
-The cfq subcommand support cron. Extra processing occurs when the Query
+The cfq subcommand supports cron. Extra processing occurs when the Tword
 word contains the string "_today". Before lookup, this string is transformed
 into the current day of the week (monday, ..., sunday) or, failing a match,
 day of the month (1, 2, ..., 31). The resulting keys are looked up and the
@@ -189,7 +196,9 @@ first match is returned. For example, these keys
 will cause "egg cfq patch_today" to print the value for patch_tuesday only
 on Tuesdays, and "egg -q cfq rotate_today" to print nothing, but return a
 non-zero exit status only on the first of the month and if the value for
-rotate_1 is non-empty or non-zero.
+rotate_1 is non-empty or non-zero. The _host_where trigger prints those
+configured hostnames for which Key equals Value, eg, "class" equals "prd".
+
 EOF
 
 our @wdays =
@@ -212,35 +221,53 @@ sub outkey { my( $om, $h1cf, $h2cf, $key, $quiet )=@_;
 }
 
 # various configuration queries, used by cron
-# reserved queries: _help, _list, _listall
+# reserved queries: _help, _list, _list_all
 
-sub egg_cfq { my( $bh, $mods, $om, $subcmd )=@_;
+sub egg_cfq { my( $bh, $mods, $om, $subcmd, $hwkey, $hwval )=@_;
 
 	my $sh = $bh->{sh};
+	$sh->{remote} and		# yyy why have this and {WeAreOnWeb}?
+		unauthmsg($sh),
+		return undef;
+
+# return EggNog::Conf::cfq($tword);
+# generic cfq doesn't use $sh, $bh, $mods, $om
 	my $msg;
 	if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {
 		outmsg($sh, $msg);	# failed to configure
 		return undef;
 	}
-	$sh->{remote} and		# yyy why have this and {WeAreOnWeb}?
-		unauthmsg($sh),
-		return undef;
 
 	$subcmd ||= '_help';
 	my $servicecf = $sh->{service_config};
 	my $hcf = $sh->{host_config};
 
+# dependencies: $sh->{service_config}; $sh->{host_config};
+# Data::Dumper, YAML
+# outkey()
+
 	use Data::Dumper 'Dumper';
 	if ($subcmd eq '_help') {
-		say "$host_usage_text";
+		say "$cfq_usage_text";
 		return 1;
 	}
 	elsif ($subcmd eq '_list') {
 		say Dumper $hcf;
 		return 1;
 	}
-	elsif ($subcmd eq '_listall') {
+	elsif ($subcmd eq '_list_all') {
 		say Dumper $servicecf;
+		return 1;
+	}
+	elsif ($subcmd eq '_host_where') {
+		! $hwkey || ! $hwval and
+			return outkey($om, $hcf, $servicecf,
+			 '_host_where needs both key and value args non-empty');
+		my ($host, $attribs);
+		while (($host, $attribs) = each $servicecf->{hosts}) {
+			$attribs->{$hwkey} eq $hwval and
+				say "$host";	# yyy not using $om
+		}
 		return 1;
 	}
 	# All above cases will have returned, so the rest is an "else" case.
@@ -267,10 +294,12 @@ sub egg_cfq { my( $bh, $mods, $om, $subcmd )=@_;
 	outkey($om, $hcf, $servicecf, $keywday, $quiet) and
 		# quietly check if true and if so, output and return
 		return outkey($om, $hcf, $servicecf, $keywday);
+	# if it wasn't a day-of-week key, try day-of-month key
 	outkey($om, $hcf, $servicecf, $keymday, $quiet) and
 		# quietly check if true and if so, output and return
 		return outkey($om, $hcf, $servicecf, $keymday);
-	# yyy NB: if weekday check succeeds, it occludes any monthday match
+	# NB: if weekday check succeeds, it occludes any monthday match
+	return 0;
 
 # Used in boolean testing, Class is one of these attributes:
 # 
@@ -281,8 +310,6 @@ sub egg_cfq { my( $bh, $mods, $om, $subcmd )=@_;
 #     fulltest			- full testing performed (eg, live data)
 #     rslvrcheck			- regular resolver check performed
 #     patch_{mon,tue,wed,thu,fri} - day on which OS patching occurs
-
-	return 0;
 }
 
 # yyy want mkid to be soft if exists, like open WRITE|CREAT
@@ -3259,7 +3286,6 @@ sub get_rawidtree { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id )=@_;
 
 __END__
 
-
 =head1 NAME
 
 Egg - routines to bind and resolve identifier data
@@ -3274,7 +3300,7 @@ Probably.  Please report to jak at ucop dot edu.
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2002-2013 UC Regents.  BSD-type open source license.
+Copyright 2002-2020 UC Regents.  BSD-type open source license.
 
 =head1 SEE ALSO
 

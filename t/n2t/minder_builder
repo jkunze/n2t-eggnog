@@ -47,6 +47,10 @@ RewriteRule ^/(ark:/?99152.*)\$ \\
 #RewriteRule ^/eoi:/?(.*)\$   "_rslv_\${map_xref:doi:\${uc:\$1}.get _t}"
 RewriteRule ^/eoi:/?.*\$ \\
   "_rslv_\${map_xref:%{REQUEST_URI}.resolve \${$hdrblob}}" [NC]
+
+RewriteRule ^/purl:/?.*\$ \\
+  "_rslv_\${map_purl:%{REQUEST_URI}.resolve \${$hdrblob}}" [NC]
+
 #
 # Exception: PURL.org project
 #RewriteRule ^/purl:/?.*\$ \\

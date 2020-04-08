@@ -21,7 +21,7 @@ my $x;
 $x = `$cmd cfq`;
 shellst_is 0, $x, "no args cfq status is ok";
 
-like $x, qr/usage/i, "no args produces cfq help text";
+like $x, qr/SYNOPSIS.*egg cfq/si, "no args produces cfq help text";
 
 $x = `$cmd cfq xyzzy`;
 shellst_is 1, $x, "non-existent key returns error status";

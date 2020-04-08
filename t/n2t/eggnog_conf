@@ -1,30 +1,13 @@
+# This is the master eggnog/n2t configuration file. It defines hosts,
+# classes, cron behavior, certain special redirects, and more.
+
+# NB: changes here do not take effect until the next "n2t rollout".
+
 service: n2t
-role_account: n2t       # defaults to service name
+role_account: n2t		# defaults to service name
 contact_email: jak@ucop.edu
 
 hosts:
-  # XXX drop this first entry!
-  ids-n2t2-dev-2b.n2t.net:
-    shell_name: n2bdev		# must be unique
-    class: dev			# may default to what's found in the hostname
-    client_name: dev		# one instance of this class as known to wegn
-    patch_monday: 1
-    prefix_import: 1
-    backup: 1
-
-  ids-n2t2-dev.n2t.net:
-    shell_name: n2dev		# must be unique
-    class: dev			# may default to what's found in the hostname
-    client_name: dev		# one instance of this class as known to wegn
-    patch_monday: 1
-    prefix_import: 1
-    backup: 1
-
-  ids-n2t2-stg.n2t.net:
-    shell_name: n2stg
-    class: stg			# may default to what's found in the hostname
-    client_name: stg		# one instance of this class as known to wegn
-    patch_thursday: 1
 
   ids-n2t2-prd.n2t.net:
     shell_name: n2prd
@@ -32,8 +15,40 @@ hosts:
     client_name: prd		# one instance of this class as known to wegn
     production_data: 1		# causes tests to be run on critical prod data
     resolver_check: 1
+    syserr_check: 1
+    log_rotate: 1
     backup: 1
+    # NB: no automatic patching in prd
 
+  ids-n2t2-dev.n2t.net:
+    shell_name: n2dev		# must be unique
+    class: dev			# may default to what's found in the hostname
+    client_name: dev		# one instance of this class as known to wegn
+    syserr_check: 1
+    log_rotate: 1
+    backup: 1
+    patch_monday: 1
+
+  ids-n2t2-stg.n2t.net:
+    shell_name: n2stg
+    class: stg			# may default to what's found in the hostname
+    client_name: stg		# one instance of this class as known to wegn
+    prefix_import: 1
+    syserr_check: 1
+    log_rotate: 1
+    backup: 1
+    patch_thursday: 1
+
+  localhost:
+    shell_name: loc
+    class: loc			# may default to what's found in the hostname
+    client_name: loc		# one instance of this class as known to wegn
+    prefix_import: 1
+    syserr_check: 0		# too noisy, eg, on mac os x
+    log_rotate: 1
+
+
+# new prefix request? https://registry.identifiers.org/prefixregistrationrequest
 redirects:
   pre_lookup:
     - "s e/arks_eoi https://bit.ly/2C4fU8f"
