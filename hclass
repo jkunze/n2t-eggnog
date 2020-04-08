@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+
+# Host class service definitions. The primary use is to support crontab on
+# various instances.
+
+# A host class definition is a space-separated list of two or more hostnames.
+# The first name is a canonical external hostname and the remaining names are
+# internal hostnames of all servers in the class. The second name may repeat
+# the first name. 
+
+function hclass {
+
+	local cmd=${1:-help}
+	local out attribs
+	echo cmd = $cmd
+	case $cmd in
+	get)
+		echo $EGNAPA_HOST_CLASS		# report general overall class
+		;;
+	list)
+		perl -Mblib -E '
+			use EggNog::Session ":all";
+			$sh = EggNog::Session->new();
+			say "xxx lin list";
+			read_conf_file();
+		'
+		#echo current host: $h
+		#echo current host service class: $EGNAPA_HOST_CLASS
+		#echo
+		#echo // system host class settings
+		#out=$( env | egrep '^EGN_HOST_CLASS|^EGNAPA_SERVER' | sort )
+		#fgrep "$h" <<< "$out" | sed 's/=.*//'
+		;;
+	is|getall)
+		local h attribtest
+		if [[ "$cmd" == is ]]
+		then
+			h=${EGNAPA_HOST:-}
+			attribtest=${2:-}
+			[[ "$attribtest" ]] || {
+				echo 'error: "is" should be followed by a' \
+					Class attribute argument 1>&2
+				hclass help 1>&2
+				return 1
+			}
+		else
+			h=${2:-${EGNAPA_HOST:-}}
+		fi
+		out=$( env | egrep '^EGN_HOST_CLASS|^EGNAPA_SERVER' | sort )
+		attribs=$( fgrep "$h" <<< "$out" \
+			| sed 's/EGN_HOST_CLASS_\([^=]*\)=.*/\1/' )
+
+		# NB: "$attribs" preserves newlines, while no quotes doesn't
+		if [[ "$cmd" == is ]]
+		then
+			grep "^$attribtest\$" <<< "$attribs" > /dev/null
+			return		# returns status of previous grep
+		else
+			echo host: $h
+			echo attributes: $attribs
+		fi
+		;;
+	help|'')
+		cat << EOT
+Usage:
+	hclass help | list | get | getall [ host ]
+or
+	hclass is Class
+
+Used in boolean testing, Class is one of these attributes:
+
+    dev | stg | prd | loc	- overall class returned by "get" (loc=local)
+     (default is 'loc' if cannot be devined from string embedded in hostname)
+    pfxpull			- prefixes pulled in and tested
+    backup			- backups performed (eg, live data)
+    fulltest			- full testing performed (eg, live data)
+    rslvrcheck			- regular resolver check performed
+    patch_{mon,tue,wed,thu,fri} - day on which OS patching occurs
+zzz patch_today  - true if we patch today
+				  (assume always at same time of day)
+EOT
+		;;
+	*)
+		echo unknown subcommand: $cmd 1>&2
+		return 1
+		;;
+	esac
+	return 0
+}
+
+# where "list" lists all classes and documentation on what each means
+
+hclass "$@"

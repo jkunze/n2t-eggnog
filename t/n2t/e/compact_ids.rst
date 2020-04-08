@@ -9,7 +9,7 @@
 .. _joint N2T/Identifiers.org prefix list: /e/cdl_ebi_prefixes.yaml
 .. _full set of N2T prefix records: /e/n2t_full_prefixes.yaml
 .. _On the road to robust data citation: https://doi.org/10.1038/sdata.2018.95
-.. _add a prefix: /e/prefix_request
+.. _add a prefix: https://registry.identifiers.org/prefixregistrationrequest
 .. _EZID: https://ezid.cdlib.org
 .. _ARK: /e/ark_ids.html
 .. _DOI: https://www.doi.org
