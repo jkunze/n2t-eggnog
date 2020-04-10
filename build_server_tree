@@ -608,7 +608,7 @@ then
 	# yyy not using $chkr
 	if [[ $? -ne 0 ]]
 	then
-		out_of_date_msg="Server needs to be rebuilt, as these "
+		out_of_date_msg="Server needs to be rebuilt, as some of these "
 		out_of_date_msg+="checkfiles are missing:"
 		for i in ${checkfiles[*]}
 		do
