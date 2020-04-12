@@ -23,14 +23,28 @@ use EggNog::ValueTester ':all';
 use File::Value ':all';
 use EggNog::Temper 'etemper';
 
+my $home = $ENV{HOME};
+my $eghome = "$home/sv/cur/apache2";
+
 my $which = `which wegn`;
 $which =~ /wegn/ or plan skip_all => "why: web client \"wegn\" not found";
 
 grep(/\/blib\/lib/, @INC) and plan skip_all =>
     "why: should be run with installed code (eg, \"n2t test\" not with -Mblib)";
 
-! -e "$ENV{HOME}/warts/.pswdfile.n2t" and plan skip_all =>
-    "why: no $ENV{HOME}/.pswdfile.n2t file";
+! -e "$home/warts/.pswdfile.n2t" and plan skip_all =>
+    "why: no $home/.pswdfile.n2t file";
+
+! -e "$eghome/eggnog_conf" and plan skip_all =>
+    "why: no $eghome/eggnog_conf file";
+
+my $c = `egg --home $eghome cfq class | grep .`;
+chop $c;
+foreach my $b ('ezid', 'oca', 'yamz') {
+	my $f = "$eghome/binders/egg_n2t_${c}_public.real_${b}_s_${b}/egg.bdb";
+	! -e $f and plan skip_all =>
+		"why: critical '$b' binder missing ($f)"
+}
 
 plan 'no_plan';		# how we usually roll -- freedom to test whatever
 
@@ -63,13 +77,8 @@ $x =~ /failed.*refused/ and
 	exit 1;
 like $x, qr@99999/fk4\w\w\w@, "minted id matches format";
 
-ok -f "$ENV{HOME}/warts/.pswdfile.n2t",
+ok -f "$home/warts/.pswdfile.n2t",
 	"real passwords set up in ~/warts/ to occlude dummy passwords";
-
-#if ($ENV{EGNAPA_HOST} =~ /n2t-prd-2a\./) {
-my $home = $ENV{HOME};
-my $eghome = "$home/sv/cur/apache2";
-#my $production_data = `egg -q --home $eghome host production_data && echo yes`;
 
 my $production_data = `egg -q --home $eghome cfq production_data && echo yes`;
 
