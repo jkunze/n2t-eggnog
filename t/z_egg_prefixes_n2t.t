@@ -530,12 +530,12 @@ $x = nresolve_stdin_hdr( "--home $buildout_root -d $td/dummy",
 
 $x = apachectl('graceful-stop')	and print("$x\n");
 
-#if (Test::More->builder->is_passing) {
-#	system 'pfx tested_ok';
-#}
-#else {
-#	diag 'at least one prefix test failed';	# from Test::More
-#}
+if (Test::More->builder->is_passing) {	# NB: this step is very important as
+	system 'pfx tested_ok';		# it sets a flag permitting n2t rollout
+}
+else {
+	diag 'at least one prefix test failed';	# from Test::More
+}
 
 remove_td($td, $tdata);
 remove_td($td2, $tdata);
