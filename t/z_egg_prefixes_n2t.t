@@ -24,6 +24,7 @@ use EggNog::ApacheTester ':all';
 my ($td, $cmd, $homedir, $tdata, $hgbase, $indb, $exdb) = script_tester "egg";
 $td or			# if error
 	exit 1;
+
 my ($td2, $cmd2);
 ($td2, $cmd2, $homedir, $tdata, $hgbase, $indb, $exdb) = script_tester "nog";
 $ENV{EGG} = $hgbase;		# initialize basic --home and --testdata values
@@ -142,6 +143,12 @@ my $buildout_root = $ENV{EGNAPA_BUILDOUT_ROOT};
 my $binders_root = $ENV{EGNAPA_BINDERS_ROOT};
 my $minters_root = $ENV{EGNAPA_MINTERS_ROOT};
 my ($ntd, $ntd2) = ($binders_root, $minters_root);
+my $pfxfile = "$buildout_root/prefixes.yaml";
+
+# XXX should this bail with error status or use skip_all?
+! -f "$pfxfile" and
+	print("\n     ERROR: bailing out -- no $pfxfile file!\n\n"),
+	exit 1;
 
 remake_td($td, $tdata);
 remake_td($td2, $tdata);
