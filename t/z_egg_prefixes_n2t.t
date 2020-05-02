@@ -113,8 +113,13 @@ my $cfgdir = "n2t";		# this is an N2T web server test
 
 my $webclient = 'wget';
 my $which = `which $webclient`;
-$which =~ /wget/ or plan skip_all =>
-	"why: web client \"$webclient\" not found";
+#$which =~ /wget/ or plan skip_all =>
+#	"why: web client \"$webclient\" not found";
+# XXX use exit 1 to get build to fail properly instead of silently
+$which =~ /wget/ or
+	say("\n  ERROR: bailing out -- no web client $webclient found\n"),
+	exit 1;
+
 
 # xxx how many of these things returned by prep_server do we actually need?
 my ($msg, $src_top, $webcl,
@@ -123,6 +128,8 @@ my ($msg, $src_top, $webcl,
 $msg and
 	plan skip_all => $msg;
 
+# XXX use exit 1 to get build to fail properly instead of silently
+# XXX use exit 1 to get build to fail properly instead of silently
 ! $ENV{EGNAPA_TOP} and plan skip_all =>
 	"why: no Apache server (via EGNAPA_TOP) detected";
 
@@ -145,7 +152,6 @@ my $minters_root = $ENV{EGNAPA_MINTERS_ROOT};
 my ($ntd, $ntd2) = ($binders_root, $minters_root);
 my $pfxfile = "$buildout_root/prefixes.yaml";
 
-# XXX should this bail with error status or use skip_all?
 ! -f "$pfxfile" and
 	print("\n     ERROR: bailing out -- no $pfxfile file!\n\n"),
 	exit 1;

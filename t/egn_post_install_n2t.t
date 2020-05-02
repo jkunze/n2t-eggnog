@@ -27,15 +27,19 @@ my $home = $ENV{HOME};
 my $eghome = "$home/sv/cur/apache2";
 
 my $which = `which wegn`;
+# XXX use exit 1 to get build to fail properly instead of silently
 $which =~ /wegn/ or plan skip_all => "why: web client \"wegn\" not found";
 
+# XXX use exit 1 to get build to fail properly instead of silently
 grep(/\/blib\/lib/, @INC) and plan skip_all =>
     "why: should be run with installed code (eg, \"n2t test\" not with -Mblib)";
 
+# XXX use exit 1 to get build to fail properly instead of silently
 # XXX should this bail with error status instead of skipping?
 ! -e "$home/warts/.pswdfile.n2t" and plan skip_all =>
     "why: no $home/.pswdfile.n2t file";
 
+# XXX use exit 1 to get build to fail properly instead of silently
 # XXX should this bail with error status instead of skipping?
 ! -e "$eghome/eggnog_conf" and plan skip_all =>
     "why: no $eghome/eggnog_conf file";
@@ -44,6 +48,7 @@ my $c = `egg --home $eghome cfq class | grep .`;
 chop $c;
 foreach my $b ('ezid', 'oca', 'yamz') {
 	my $f = "$eghome/binders/egg_n2t_${c}_public.real_${b}_s_${b}/egg.bdb";
+# XXX use exit 1 to get build to fail properly instead of silently
 	! -e $f and plan skip_all =>
 		"why: critical '$b' binder missing ($f)"
 # XXX should this bail with error status instead of skipping?

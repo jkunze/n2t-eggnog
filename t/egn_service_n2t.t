@@ -56,6 +56,7 @@ my $cfgdir = "n2t";		# this is an N2T web server test
 
 my $webclient = 'wget';
 my $which = `which $webclient`;
+# XXX use exit 1 to get build to fail properly instead of silently
 $which =~ /wget/ or plan skip_all =>
 	"why: web client \"$webclient\" not found";
 
@@ -63,9 +64,11 @@ $which =~ /wget/ or plan skip_all =>
 my ($msg, $src_top, $webcl,
 		$srvport, $srvbase_u, $ssvport, $ssvbase_u,
 	) = prep_server $cfgdir;
+# XXX use exit 1 to get build to fail properly instead of silently
 $msg and
 	plan skip_all => $msg;
 
+# XXX use exit 1 to get build to fail properly instead of silently
 ! $ENV{EGNAPA_TOP} and plan skip_all =>
 	"why: no Apache server (via EGNAPA_TOP) detected";
 

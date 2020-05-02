@@ -1,5 +1,6 @@
 # This is the master eggnog/n2t configuration file. It defines hosts,
 # classes, cron behavior, certain special redirects, and more.
+# Use "egg cfq _list" to check which values are in effect.
 
 # NB: changes here do not take effect until the next "n2t rollout".
 
