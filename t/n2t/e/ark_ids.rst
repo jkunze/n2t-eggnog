@@ -97,6 +97,7 @@ registered, use the `ARK request form`_. Some of the major users are
 - The Internet Archive
 - National Library of France (Bibliothèque nationale de France)
 - Portico Digital Preservation Service
+- Smithsonian Institution
 - University of California Berkeley
 - University of North Texas
 - FamilySearch.org
