@@ -1322,7 +1322,10 @@ sub ibopen { my( $bh, $mdr, $flags, $minderpath, $mindergen )=@_;
 		# xxx should we just call DESTROY??
 		$msg = "abort: $msg";
 		#logmsg($bh, $msg);
-		$bh->{om}->{cgih}->add( { Status => '500 Internal Error' } );
+		my $cgih = $bh->{om}->{cgih};
+		if ($cgih) {
+			$cgih->add( { Status => '500 Internal Error' } );
+		}
 		$bh->{rlog}->out("N: $msg");
 		addmsg($bh, $msg);
 		undef $db;
