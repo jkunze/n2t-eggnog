@@ -401,7 +401,7 @@ my $n2thash = {
 # pdbe (for pdb)
 # pdbj (for pdb)
 
-use MongoDB;
+#use MongoDB;
 
 #=for removal
 #
@@ -693,10 +693,17 @@ sub id_decompose { my( $pfxs, $id )=@_;
 	#        (when x ne "grid")
 	# yyy add url: as scheme?
 
-	if ($id =~ /^urn:([^:]+):(.*)/i) {	# yyy kludgy special case
+	#if ($id =~ /^urn:([^:]+):(.*)/i) {	# yyy kludgy special case
+	if ($id =~ /^urn:([^:]+):((([^:]+):)?(.*))/i) {	# kludgy special case
 		my $nid_raw = $1;
 		my $nid = lc $1;
-		if ($nid eq 'nbn' || $nid eq 'issn' || $nid eq 'isbn' ||
+		my $subnid = $4 ? lc($4) : '';	# look one level deeper
+		if ($nid eq 'nbn' && $subnid eq 'nl') {
+			$scheme = 'nbn_nl';
+			$scheme_raw = "$nid_raw:$4";
+			$id = $5 || '';
+		}
+		elsif ($nid eq 'nbn' || $nid eq 'issn' || $nid eq 'isbn' ||
 				$nid eq 'lsid') {
 			$scheme = $nid;
 			$scheme_raw = $nid_raw;
@@ -707,6 +714,8 @@ sub id_decompose { my( $pfxs, $id )=@_;
 			$id = $1 . ':' . ($2 || '');
 		}
 	}
+	# NB: the FIRST colon is taken to be the separator, which is a reason
+	# that urn:...:...:... has to be handled specially above
 	elsif ($id =~ m|^([^:]+):/*\s*(.*)|) {	# grab scheme name and id,
 		$scheme_raw = $1;		# ignoring spaces after scheme
 		$scheme = lc $1;	# $scheme is now defined and lowercase
@@ -1320,6 +1329,8 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 			tlogger $sh, $txnid, "resolve FATAL ERROR: $msg";
 			return undef;
 		}
+		# XXX somehow ARKs are coming in terminated by ^M -- should
+		#     they perhaps be removed before resolve or store?
 		if ($msg) {	# we have some prefixes and a non-fatal error
 			addmsg($bh, $msg);		# for return
 			$txnid = tlogger $sh, $txnid,

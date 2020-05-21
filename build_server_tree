@@ -65,7 +65,6 @@ declare -x ${evarnames[@]}
 
 [[ -f ~/warts/env.sh ]] &&
 	source ~/warts/env.sh
-EGNAPA_HOST_CLASS=$( perl -Mblib egg cfq class )
 
 # Begin by making guesses as to your hostname and Apache instance,
 # which will inform some of the help/usage information we may end up
@@ -552,6 +551,26 @@ export \
 	env
 	#set
 	exit 0
+}
+
+# NB: this "egg cfq" is an expensive call (0.7 seconds), which can really
+#     slow down the wegn and wegnpw scripts when they call this script;
+#     so we move the call as late as we can
+# yyy question: would EGNAPA_HOST_CLASS be missed from the "env" output?
+#     and if so, how would we speed this up?
+# XXX should EGNAPA_HOST_CLASS be set again (as before) in warts/env.sh,
+# especially because we have installation probz during first rollout, when
+# there's no eggnog_conf already installed?
+
+class=$( perl -Mblib egg cfq class )
+
+# XXXXXX deduce EGNAPA_SERVICE from t/n2t before setting it from cfq
+# yyy a similar situation exists for EGNAPA_SERVICE but we don't check
+
+[[ "$class" != "$EGNAPA_HOST_CLASS" ]] && {
+	echo "WARNING: configured host class ($class) differs from that" \
+		"in ~/warts/env.sh ($EGNAPA_HOST_CLASS)"
+	export EGNAPA_HOST_CLASS="$class"
 }
 
 [[ "$aptop" ]] || {

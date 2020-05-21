@@ -1263,7 +1263,7 @@ sub shoulder { my( $bh, $WeNeed, $id, $opd ) = ( shift, shift, shift, shift );
 
 # set element to value in external db (Mongo)
 
-use MongoDB;
+#use MongoDB;
 
 # Called by egg_set.
 # First arg example:  $bh->{sh}->{exdb}->{binder}, eg, egg.ezid_s_ezid

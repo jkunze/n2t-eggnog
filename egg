@@ -1476,7 +1476,8 @@ sub bdx_version {
 
 	# We take our version number from the module version.
 	#
-	my ($v1bdb, $dbfile, $built, $running, $mongo) = get_dbversion();
+	#my ($v1bdb, $dbfile, $built, $running, $mongo) = get_dbversion();
+	my ($v1bdb, $dbfile, $built, $running) = get_dbversion();
 
 ##my $x = $bh->{ruu}->{client_software};
 #my $x = $ENV{HTTP_USER_AGENT};
@@ -1487,8 +1488,8 @@ sub bdx_version {
 	$om->elem("version",
 		qq@This is "$m_cmd" version $EggNog::Egg::VERSION, @ .
 #"USER_AGENT=$ENV{HTTP_USER_AGENT}, modif=$x, onbof=$onbof, " .
-			"with Berkeley DB version $running" .
-			" and MongoDB.pm $mongo");
+			"with Berkeley DB version $running");
+			#" and MongoDB.pm $mongo");
 
 	return 0			# normal return
 		unless $opt{verbose};

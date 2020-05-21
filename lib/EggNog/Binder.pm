@@ -784,7 +784,7 @@ sub get_bdberr {
 #   $BerkeleyDB::db_ver       (BDB C library version we were built with)
 #   $BerkeleyDB::db_version   (BDB C library version we are running with)
 #
-use MongoDB;
+#use MongoDB;
 sub get_dbversion {
 
 	my $v1bdb;			# global that's true for pre-V2 BDB
@@ -806,7 +806,7 @@ sub get_dbversion {
 	  $BerkeleyDB::VERSION,		# Perl module that we are running with
 	  $BerkeleyDB::db_ver,		# C library version we were built with
 	  $BerkeleyDB::db_version,	# C library version we are running with
-	  $MongoDB::VERSION,		# Mongo version
+	  #$MongoDB::VERSION,		# Mongo version
 	);
 }
 
