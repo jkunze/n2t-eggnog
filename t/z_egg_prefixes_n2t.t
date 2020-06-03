@@ -85,6 +85,10 @@ sub nresolve_stdin_hdr {
 	my $script = '';
 	my ($id, $hdr, $response, $label);
 	while ($id = shift) {			# id arg
+		if ($id eq 'ZZZEXIT') {
+			say "ZZZ premature exit";
+			last;
+		}
 		$hdr = shift || '';		# header arg, if any
 		$hdr and
 			$hdr = ' ' . $hdr;
@@ -208,6 +212,8 @@ $x = nresolve_stdin_hdr( "--home $buildout_root -d $td/dummy",
 	'minid:b97957', '',		# minid to ark test
 	  '302 http://n2t.net/ark:/57799/b97957',
 	  'n2t.net/minid:... redir to n2t.net/ark:... (recursion exception)',
+
+	#'ZZZEXIT', 			# XXXXXX premature exit
 
 	'ark:/67531/metapth346793', '',	# UNT example from ARK docs
 	  '302 http://digital.library.unt.edu/ark:/67531/metapth346793',

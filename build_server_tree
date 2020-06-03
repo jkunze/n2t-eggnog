@@ -207,7 +207,6 @@ xxx sysap     system apache root
 	EGNAPA_BUILDOUT_ROOT=\$buildout_root \\
 	EGNAPA_BINDERS_ROOT=\$binders_root \\
 	EGNAPA_MINTERS_ROOT=\$minters_root \\
-	EGNAPA_PREFIXES_ROOT=\$prefixes_root \\
 	EGNAPA_SHOULDERS_ROOT=\$shoulders_root
 
 EOT
@@ -271,7 +270,6 @@ function is_build_out_of_date {
 		return 1
 	}
 	local out_of_date=$( find $bst_root -newer $fqhconf )
-	#echo XXX build_server_tree 1>&2
 	#ls -l $0 $fqhconf 1>&2
 	[[ $0 -nt $fqhconf ]] &&
 		out_of_date=( $0 ${out_of_date[*]} )
@@ -534,9 +532,9 @@ export \
 	EGNAPA_BUILDOUT_ROOT=$buildout_root \
 	EGNAPA_BINDERS_ROOT=$binders_root \
 	EGNAPA_MINTERS_ROOT=$minters_root \
-	EGNAPA_PREFIXES_ROOT=$prefixes_root \
 	EGNAPA_SHOULDERS_ROOT=$shoulders_root
 
+#	EGNAPA_PREFIXES_ROOT=$prefixes_root 
 # yyy Something equivalent could be achieved, probably, with just shell
 #     variable instead of environment variables.
 # The "env" command (a) lets us see what configuration actually did and
@@ -614,11 +612,14 @@ egg_dbie=
 
 out_of_date_msg=$( is_build_out_of_date $buildout_root )
 
-prefixes_need_rebuilding=$( pfx onboard )	# list of changed files
 # xxx to do: add prefixes to "n2t backup"
+# Get a list of changed files or any error messages. Ignore status code which
+# normally returns status 1 (fail) rebuilding isn't needed.
+
+prefixes_need_rebuilding=$( pfx onboard 2>&1 )
 
 # If it wasn't found out of date on the first test, do a second test.
-#
+
 if [[ ! "$out_of_date_msg" ]]
 then
 	checkdir=$buildout_root
@@ -779,7 +780,7 @@ function make_minders {
 # need to do is to possibly rebuild prefixes, and then rebuild minters,
 # binders (which each maintain state that is altered by testing) to keep
 # the next round of tests clean.
-#
+
 [[ $cmd == make && ! $out_of_date_msg ]] && {
 
 	[[ "$prefixes_need_rebuilding" ]] && {
@@ -873,9 +874,9 @@ ln -s $aptop/conf.modules.d $buildout_root/conf.modules.d	# load modules
 
 #pfx onboard || exit
 #pfx build || exit
-pfx restore $buildout_root ||		# restore saved prefixes
+pfx restore $buildout_root ||		# restore saved prefixes, which might
 	rebuild_prefixes=1
-pfx onboard &&				# which might still need rebuilding
+pfx onboard &&				# still need rebuilding; exit 1 says yes
 	rebuild_prefixes=1
 [[ "$rebuild_prefixes" ]] && {
 	pfx build
