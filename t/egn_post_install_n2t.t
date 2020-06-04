@@ -27,12 +27,13 @@ my $home = $ENV{HOME};
 my $eghome = "$home/sv/cur/apache2";
 
 my $which = `which wegn`;
-# XXX use exit 1 to get build to fail properly instead of silently
-$which =~ /wegn/ or plan skip_all => "why: web client \"wegn\" not found";
 
-# XXX use exit 1 to get build to fail properly instead of silently
+# This exits without error since it's routinely skipped during 'make test'
 grep(/\/blib\/lib/, @INC) and plan skip_all =>
     "why: should be run with installed code (eg, \"n2t test\" not with -Mblib)";
+
+# XXX use exit 1 to get build to fail properly instead of silently
+$which =~ /wegn/ or plan skip_all => "why: web client \"wegn\" not found";
 
 # XXX use exit 1 to get build to fail properly instead of silently
 # XXX should this bail with error status instead of skipping?
@@ -42,7 +43,7 @@ grep(/\/blib\/lib/, @INC) and plan skip_all =>
 # XXX use exit 1 to get build to fail properly instead of silently
 # XXX should this bail with error status instead of skipping?
 ! -e "$eghome/eggnog_conf" and plan skip_all =>
-    "why: no $eghome/eggnog_conf file";
+    "why: no $eghome/eggnog_conf file; have you run \"n2t rollout\"?";
 
 my $c = `egg --home $eghome cfq class | grep .`;
 chop $c;
