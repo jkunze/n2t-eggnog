@@ -241,6 +241,10 @@ EGG=""
 service="$cfgdir"		# yyy "service" is the better var name
 export EGG+=" --service $service "
 
+# Needed for first rollout, before there's any may be eggnog_conf file
+# (which would override it if it existed).
+export EGNAPA_SERVICE="$service"
+
 # Each build has a "signature" so we can run tests twice in a row without
 # rebuilding, but we make sure to rebuild if the signature doesn't match.
 #
@@ -561,9 +565,6 @@ export \
 # there's no eggnog_conf already installed?
 
 class=$( perl -Mblib egg cfq class )
-
-# XXXXXX deduce EGNAPA_SERVICE from t/n2t before setting it from cfq
-# yyy a similar situation exists for EGNAPA_SERVICE but we don't check
 
 [[ "$class" != "$EGNAPA_HOST_CLASS" ]] && {
 	echo "WARNING: configured host class ($class) differs from that" \

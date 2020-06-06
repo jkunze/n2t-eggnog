@@ -549,6 +549,10 @@ $x = `wegn -v resolve 'ark:/12148:'`;
 like $x, qr/Bibliothèque nationale de France/i,
 	'prefix fetch on well-known NAAN preserves UTF-8';
 
+$x = `n2t cron works`;
+$x =~ /disabled/ and
+	say STDERR "\nALERT! -- $x";
+
 exit;
 
 # XXX bug: https://n2t.net/ark:/99999/fk8testn2t gets Forbidden
