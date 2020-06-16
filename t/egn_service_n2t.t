@@ -175,16 +175,38 @@ like $x, qr{HTTP/\S+\s+200\s+OK.*api home page}si,
 my $pps;		# passwords/permissions string
 my $fqsr;		# fully qualified shoulder
 
+$pps = setpps get_user_pwd "ncpt", "ncpt", $cfgdir;
+
+my $ncptshdr = 'ark:/99999/fk3';
+
+my $a0 = "${ncptshdr}n2tegntest";
+$x = `$webcl $pps "$ssvbase_u/a/ncpt/b? --verbose $a0.set _t https://z.example.com"`;
+$x = `$webcl --max-redirect 0 "$ssvbase_u/$a0"`;
+like $x, qr{^Location: https://z.example.com}m,
+	"generic 'ncpt' test shoulder ($ncptshdr) target redirect";
+
 $pps = setpps get_user_pwd "ezid", "ezid", $cfgdir;
+
+$a0 = "ark:/99999/fk2n2tegntest";
+$x = `$webcl $pps "$ssvbase_u/a/ezid/b? --verbose $a0.set _t https://w.example.com"`;
+$x = `$webcl --max-redirect 0 "$ssvbase_u/$a0"`;
+like $x, qr{^Location: https://w.example.com}m,
+	"generic 'ezid' test shoulder target redirect";
+
+$a0 = "ark:/99999/968061_foo";
+#$a0 = "ark:/99999/9s1234567_foo";
+$x = `$webcl --max-redirect 0 "$srvbase_u/$a0"`;
+#like $x, qr{^Location: http://.*/ark:/s1234567/99999/9s1234567_foo}m,
+like $x, qr{^Location: http://.*/ark:/68061/99999/968061_foo}m,
+	"generic local resolver use of 99999 n2t-based resolution";
+
+#$x = apachectl('graceful-stop')	and say($x);
+#exit;	######### premature stop
 
 my $a1 = 'ark:/12345/bcd';
 $x = `$webcl $pps "$ssvbase_u/a/ezid/b? --verbose $a1.set _t http://b.example.com"`;
 like $x, qr{HTTP/\S+\s+200\s+.*egg-status: 0}si,
 	'set resolution target';
-
-#say "webcl=$webcl"; say "srvbase_u=$srvbase_u, ssvbase_u=$ssvbase_u";
-#$x = apachectl('graceful-stop')	and print("$x\n");
-#exit;	#########
 
 use EggNog::Binder ':all';
 my $rrminfo = RRMINFOARK;

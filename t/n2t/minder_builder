@@ -32,7 +32,27 @@ cat <<- EOT > $rwplus.pre
 RewriteRule ^/(ark:/?13960.*)\$ \\
     "_rslv_\${map_oca:\${esc:\$1%{ENV:THUMPER}}.resolve \${$hdrblob}}" [NC]
 
+# YYY this one-off does not scale
+#ark:/99999/fk3                          # ncpt
+#ark:/99999/ffk3                         # ncpt_test
+RewriteRule ^/(ark:/?99999/ff?k3.*)\$ \\
+    "_rslv_\${map_ncpt:\${esc:\$1%{ENV:THUMPER}}.resolve \${$hdrblob}}" [NC]
+
+# YYY this rule works for all registered NAANs
+# This permits local resolvers to publish test/fake 99999-based ARKs via N2T
+RewriteRule ^/ark:/?(99999/9([^_]+)_.*)\$ "/ark:/\$2/\$1" [NC,R=302]
+
 #RewriteRule ^/ark:/?99152.*\$      "_rslv_\${map_yamz:%{REQUEST_URI}.resolve \${$hdrblob}}"
+
+# YYY this one-off does not scale
+#  # This shoulder is designed to support the single ARK, ark:/99152/p0,
+#  # which is registered mainly to support suffix passthrough.
+#ark:/99152/p0:
+#  manager: "ezid"
+#  name: "OpenContext PeriodO"
+#  date: "2015.01.26"
+RewriteRule ^/(ark:/?99152/p0.*)\$ \\
+    "_rslv_\${map_ezid:\${esc:\$1%{ENV:THUMPER}}.resolve \${$hdrblob}}" [NC]
 
 RewriteRule ^/(ark:/?99152.*)\$ \\
     "_rslv_\${map_yamz:\${esc:\$1%{ENV:THUMPER}}.resolve \${$hdrblob}}" [NC]
