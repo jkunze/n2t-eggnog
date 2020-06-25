@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+
 # zzzxxx why the http2 message in error log?
 # commend out current line and uncomment out
 #    #LoadModule mpm_event_module modules/mod_mpm_event.so
