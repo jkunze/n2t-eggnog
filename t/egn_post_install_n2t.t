@@ -86,6 +86,15 @@ $x =~ /failed.*refused/ and
 	exit 1;
 like $x, qr@99999/fk4\w\w\w@, "minted id matches format";
 
+$x = `wegn i.purge`;
+$x =~ /error/i and
+	print("\n    ERROR: main binder won't take simple purge -- panic!\n\n"),
+	exit 1;
+like $x, qr/egg-status:\s*0/, "main binder accepts simple purge";
+
+#say "xxx x=$x, premature exit";
+#exit;
+
 ok -f "$home/warts/.pswdfile.n2t",
 	"real passwords set up in ~/warts/ to occlude dummy passwords";
 
@@ -169,9 +178,6 @@ like $x, qr/usage/i, 'admegn script is executable';
 $x = `wegn -v $ark1.set _t $tgt1`;
 like $x, qr/^egg-status: 0/m,
 	"egg sets target URL for id $ark1";
-
-#print "xxx x=$x, premature exit\n";
-#exit;
 
 $x = `wegn locate "$ark1"`;
 like $x, qr/^Location: \Q$tgt1/m, "bound target value resolved";
