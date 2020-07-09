@@ -212,11 +212,12 @@ use EggNog::Binder ':all';
 my $rrminfo = RRMINFOARK;
 
 # this test won't work in resolve.t, as it needs a running server
-my $hgid = `hg identify | sed 's/ .*//'`;
-chop $hgid;
+#my $hgid = `hg identify | sed 's/ .*//'`;
+my $gitid = `git show --oneline | sed 's/ .*//;q'`;
+chop $gitid;
 #print "comm: $webcl \"$srvbase_u/$rrminfo\"\n";
 $x = `$webcl "$srvbase_u/$rrminfo"`;
-like $x, qr{Location:.*dvcsid=\Q$hgid\E&rmap=}i,
+like $x, qr{Location:.*dvcsid=\Q$gitid\E&rmap=}i,
 	'resolver info with correct dvcsid returned';
 # fe80::c57:e454:73e5:9ed - - [22/Jan/2017:22:39:13 --0800] [jak-macbook.local/sid#7f83b4817728][rid#7f83b5012ca0/initial] (5) map lookup OK: map=map_ezid key=99999/__rrminfo__.resolve ac=*/*!!!ff=!!!ra=fe80::c57:e454:73e5:9ed!!!co=!!!re=!!!ua=Wget/1.15%20(darwin13.1.0) -> val=redir302 
 

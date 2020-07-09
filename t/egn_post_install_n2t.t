@@ -334,11 +334,12 @@ my $prd = 'n2t.net';
 use EggNog::Binder ':all';
 my $rrminfo = RRMINFOARK;
 
-my $hgid = `hg identify | sed 's/ .*//'`;
-chop $hgid;
+#my $hgid = `hg identify | sed 's/ .*//'`;
+my $gitid = `git show --oneline | sed 's/ .*//;q'`;
+chop $gitid;
 #$x = `$wgcl "$srvbase_u/$rrminfo"`;
 $x = `wegn locate "$rrminfo"`;
-$x =~ qr{Location:.*dvcsid=\Q$hgid\E&rmap=}i or say STDERR
+$x =~ qr{Location:.*dvcsid=\Q$gitid\E&rmap=}i or say STDERR
 	"**** WARNING: SOURCE DVCSID DOESN'T MATCH INSTALLED DVCSID ****";
 
 #like $x, qr{Location:.*dvcsid=\Q$hgid\E&rmap=}i,

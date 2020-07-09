@@ -1059,8 +1059,9 @@ homedb="--home $srvref_root"
 # (distributed version control system), eg, hg to git).  The file we
 # save to should already be independent of hg or git.
 # xxx done here and upon rollout, but just here should suffice?
-#
-hg identify $src_top | sed 's/ .*//' > $buildout_root/logs/dvcsid
+#hg identify $src_top | sed 's/ .*//' > $buildout_root/logs/dvcsid
+
+git show --oneline | sed 's/ .*//;q' > $buildout_root/logs/dvcsid
 
 # Possible legend for filename suffixes in an ssl/ directory.
 # .crt – The actual certificate
