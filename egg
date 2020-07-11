@@ -182,7 +182,7 @@ my @valid_commands = qw(
 	man note usage version
 	pr logmark cullrlog resolve exists purge
 	mkbinder rmbinder delbinder
-	dbsave dbload
+	dbsave dbload gethex
 	norm shadow
 	pause unpause
 	bname bxname bpname bshow brmgroup bmake brm bmv
@@ -1244,6 +1244,36 @@ sub bdx_getfetch { my( $formal, @elems )=@_;
 	return 0;
 }
 
+sub bdx_gethex { my( @elems )=@_;
+
+	my $om = $bh->{om_formal};
+	#my $om = $formal ? $bh->{om_formal} : $bh->{om};
+
+	my $minderpath = $cmdr_from_d_flag ?
+		"" : $bh->{minderpath};		# search unless -d used
+
+	# yyy need to configure so we can test $sh->{exdb} below
+	my $msg;
+	if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {
+		outmsg($sh, $msg);      # failed to configure
+		return 1;
+	}
+	$sh->{exdb} and ! $cmdr_from_d_flag and
+		$cmdr = '';	# binder name _is_ -d arg, not inside it
+
+	bopen($bh, $cmdr, DB_RDONLY, $minderpath) or
+		outmsg($bh), return 1;
+
+	$bh->{GETHEX} = 1;	# kludgy message meant for get_rawidtree! yyy
+	EggNog::Egg::egg_fetch($bh, $mods, $om,
+			undef, undef, $bindid, @elems) or
+		delete($bh->{GETHEX}),
+		outmsg($bh), return 1;
+	delete($bh->{GETHEX});	# kludge! yyy
+
+	return 0;
+}
+
 # mostly to make it easier to test resolution under inflections
 
 sub bdx_inflect { my( @elems )=@_;
@@ -1592,14 +1622,16 @@ must not start with a literal ':', '&', or '@' unless it is encoded.
 Other literals that must be encoded are any of the characters in
 "|;()[]=:" anywhere in the strings i and n, and any '<' at the start of i.
 
-Encoding can be done with the :hx modifier (below) or avoided entirely
-with indirect tokens.  If any of i, n, or d begins with a literal '@',
-it specifies an indirect token to be taken from elsewhere, as follows:
+Input encoding can be done with the :hx modifier (below), or mostly avoided
+with indirect tokens.  If on a command line any of i, n, or d begins with a
+literal '@', it specifies an indirect token to be taken from elsewhere.
+Usually starting from the first character of the next line, elsewhere is
+defined as follows:
 
-  @       from stdin up to end of line
+  @       from stdin up to the end of the line
   @-      from stdin up to a blank line (two newlines in a row)
   @--     from stdin up to end-of-file
-  @-N     from stdin up to N+6 octets, the last 6 being "\n#eot\n"
+  @-N     from stdin consuming up to N+6 octets (last 6 being "\n#eot\n")
   @-XYZ   from stdin up to "\nXYZ\n" (string XYZ bounded by newlines)
   @XYZ    from the entire contents of a file named XYZ
 

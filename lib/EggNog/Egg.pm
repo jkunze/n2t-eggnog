@@ -2811,6 +2811,9 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 
 	my $txnid;		# undefined until first call to tlogger
 
+	# we may have been called by user from egg, with or w.o. an element,
+	# or been called by get_rawidtree() with a specific element
+
 	if ($#elems < 0 and $om) {	# process and return (no fall through)
 	
 		# We're here because no elems were specified, so find them.
@@ -2822,11 +2825,6 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 		$txnid = tlogger $sh, $txnid, "BEGIN $lcmd $id";
 
 		if ($sh->{fetch_exdb}) {	# if EGG_DBIE is e or ei
-
-# zzz remove debug
-#			tlogger $sh, $txnid, "XXX bindername:"
-#				. " $bh->{exdbname}"
-#				. " cstring: $sh->{exdb}->{connect_string}";
 
 			my $rfs = flex_enc_exdb($id, @elems);	# yyy no @elems
 
@@ -2888,6 +2886,7 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 			#	$s = $om->elem($out_elem, $v);
 				#$s = elems_output($om, $k, $v);
 				#($p && (($st &&= $s), 1) || ($st .= $s));
+				# yyy GETHEX not implemented for exdb
 				($ndups, $ast, $s) = elems_output($om, $k, $v);
 				($p && (($st &&= $ast), 1) || ($st .= $s));
 				$nelems += $ndups;
@@ -2919,6 +2918,7 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 	}
 
 	# If we get here, elements or element sets to fetch were specified.
+	# yyy or $om was not defined -- what case is that good for?
 
 	# XXX need to issue END before every error return below
 	# xxx we're starting a bit late (so timing may look a little faster)
@@ -3117,6 +3117,8 @@ sub get_rawidtree { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id )=@_;
 	$mods->{did_rawidtree} = 1;	# xxx kludgish; side-effects?? of
 				# setting a $mods entry for downstream calls?
 
+	my $gethex = $bh->{GETHEX};	# yyy big kludge, set by "egg gethex"
+
 	my $irfs = flex_enc_indb($id);
 	$id = $irfs->{id};		# because we need $id ready-for-storage
 
@@ -3149,6 +3151,8 @@ sub get_rawidtree { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id )=@_;
 	my $all = defined($mods->{all})
 		? $mods->{all}		# zero ok; for overriding --all
 		: $bh->{opt}->{all} || '';
+	defined($gethex) and		# overridden by gethex, meaning a
+		$all = 1;		# hex dump of the whole record
 	my ($spat, $skipregex);
 	! $all and			# case 1: skip usual support elements
 		$spat = SUPPORT_ELEMS_RE,
@@ -3205,6 +3209,12 @@ sub get_rawidtree { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id )=@_;
 		" id: " . $out_id, "1#"));
 		#" id: " . ($id ne '' ? $id : '""'), "1#"));
 	($p && (($st &&= $s), 1) || ($st .= $s));
+	if ($gethex and $om) {
+		my $hexid = $id;
+		$hexid =~ s{(.)}{sprintf("%02x", ord($1))}seg;
+		($s = $om->elem('hexid', " hexid: " . $hexid, "2#")),
+		($p && (($st &&= $s), 1) || ($st .= $s));
+	}
  
 	my $nelems = 0;
 	# kludge for a very unlikely element ("" is too likely)
@@ -3225,12 +3235,22 @@ sub get_rawidtree { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id )=@_;
 			#	s/\^([[:xdigit:]]{2})/chr hex $1/eg;
 
 			# If $om is defined, do some output now.
-			$om and ($s = $om->elem(
+			if ($gethex and $om) {
+				my $hexelem = $out_elem;
+				my $hexval = $value;
+				$hexelem =~ s{(.)}{sprintf("%02x", ord($1))}seg;
+				$hexval =~ s{(.)}{sprintf("%02x", ord($1))}seg;
+				($s = $om->elem($hexelem, $hexval)),
+				($p && (($st &&= $s), 1) || ($st .= $s));
+			}
+			elsif ($om) {
+				($s = $om->elem(
 				$out_elem,
 				#($elem ne '' ? $elem : '""'),
 				#($key =~ /^[^|]*\|(.*)/ ? $1 : $key),
 				$value)),
 				($p && (($st &&= $s), 1) || ($st .= $s));
+			}
 
 			# This last line is a fast and compact (if
 			# cryptic) way to accumulate $om->method calls.
