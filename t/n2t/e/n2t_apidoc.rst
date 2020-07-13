@@ -7,6 +7,7 @@
 .. |X| unicode:: U+02713 .. check mark
 
 .. _n2t: https://n2t.net
+.. _please let us know: https://docs.google.com/forms/d/1ylEeI3hUVHcLl-wNtDI7-F7JReBtVbgx65y9Uiy78q8
 .. _Identifier Basics: https://ezid.cdlib.org/learn/id_basics
 .. _Identifier Conventions: https://ezid.cdlib.org/learn/id_concepts
 .. _Suffix Passthrough Explained: https://ezid.cdlib.org/learn/suffix_passthrough
@@ -134,8 +135,13 @@ Under the hood, N2T.net uses the `EggNog software`_, with egg binders and
 nog (nice opaque generator) minters behind an Apache HTTP server.
 Minting and binding require HTTP Basic authentication over SSL.  The base
 `test server`_ URL for operating the API is https://n2t-stg.n2t.net,
-abbreviated as $b below.  You'll need an N2T user name (known as a
+abbreviated as $b below.  You would need an N2T user name (known as a
 *populator*, ``sam`` below) and a password (``xyzzy``, not a real password).
+(Due to current resource constraints, we can only add new N2T users in
+exchange for benefit to the ARKsInTheOpen.org effort, for example,
+contributions of staff time for technical or promotional work;
+`please let us know`_ if you are interested.)
+
 The following shell definitions are used to shorten examples in this
 document. ::
 
