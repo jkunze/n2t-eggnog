@@ -4,6 +4,9 @@ package EggNog::Egg;
 #		Originally created, UCSF/CKM, November 2002
 # 
 # Copyright 2008-2020 UC Regents.  Open source BSD license.
+#
+# XXX add low-level check for binder opened RDONLY since BDB silently fails
+#     with no messag
 
 use 5.10.1;
 use strict;
@@ -19,6 +22,7 @@ our @EXPORT = qw();
 our @EXPORT_OK = qw(
 	exdb_get_dup indb_get_dup exdb_get_id egg_inflect
 	flex_enc_exdb flex_enc_indb
+	iddump idload
 	PERMS_ELEM OP_READ
 	EXsc PKEY
 );
@@ -2188,6 +2192,192 @@ sub dbinfo { my( $bh, $mods, $level )=@_;
 	$cursor->c_close();
 	undef($cursor);
 	return 1;
+}
+
+# Read ids one per line from STDIN. For each id, fetch all elements and print
+# a block dump in hex format. If no elements, indicate with special block.
+
+sub iddump { my( $bh, $mods )=@_;
+
+	my $om = $bh->{om_formal};
+	my ($id, $rfs, $elemsR, $valsR);
+	my $errcnt = 0;
+	while (<STDIN>) {
+		chop;
+		if (! $bh->{sh}->{fetch_exdb}) { # yyy no exdb, only indb case
+			! dumphexid($bh, $mods, $_) and
+				outmsg($bh),	# XXX use stderr
+				initmsg($bh),
+				$errcnt++,
+				return 1;
+		}
+	}
+	$errcnt > 0 and
+		return 0;
+	return 1;
+}
+
+sub dumphexid { my( $bh, $mods, $id )=@_;
+
+	my ($elemsR, $valsR) = ([], []);
+	my $hexid;
+	($hexid = $id) =~ s{(.)}{sprintf("%02x", ord($1))}eg;
+
+	say("# id: $id");	# yyy ignoring print/say error status throughout
+	say("# hexid: $hexid");
+
+	my $rfs = flex_enc_indb($id);	# for get_rawidtree fetch of
+	$mods->{all} = 1;		# all, including admin elements
+	! get_rawidtree($bh, $mods,
+		undef,		# here OM arg undefined because
+		$elemsR,	# here want elem names returned
+		$valsR,		# and here want values returned
+			$rfs->{id}) and
+		return 0;
+
+	my ($elem, $val, $hexelem, $hexval);
+	my $ecnt = 0;		# element count
+	foreach (@$elemsR) {	# for each element name ($_)
+		$ecnt++;
+
+		# some found raw element name encodings need to be decoded
+		$hexelem = flex_dec_for_display($_);	# initialize elem name
+		$hexval = shift @$valsR;		# corresponding value
+		$hexelem =~ s{(.)}{sprintf("%02x", ord($1))}eg;	# hexify
+		$hexval =~ s{(.)}{sprintf("%02x", ord($1))}eg;	# hexify
+
+		say("$hexelem: $hexval");
+	}
+	say("# elements bound under $id: $ecnt");
+	say("");		# block/paragraph separator
+}
+
+# Read id dump blocks from STDIN. For each id, purge it, and if there are
+# accompanying elements, add them. If there are no such elements, the id is
+# considered to have been purged. This kind of input is deemed sufficient to
+# bring this binder, wrt to this input, into alignment with another binder.
+#
+# Even though id creation date will be initialized as of moment of calling,
+# loading a complete dump will overwrite creation/mod date with old time.
+# To get duplicates correct, we insert elements with "add", not "set".
+
+sub idload { my( $bh, $mods )=@_;
+
+	# Read input one "paragraph" block at a time.
+	# Process blocks that look like this example (from i.set a b)
+	#
+	#   # id: i
+	#   # hexid: 69
+	#   5f2e6563: 31343931373533323037
+	#   5f2e6570: 703a7c7c3736
+	#   61: 62
+	#   # elements bound under i: 3
+	#
+	# A block starts with \n# id: <id>
+	# A block ends with \n# elements bound under <id>: <numelems>
+	# When <numelems> is zero, that means simple purge, else
+	# it means we purge and then set all elements given.
+	# The hexid line gives the hex version of the id to set.
+	# The remaining lines give the hex elements and values to set.
+	# 
+	# XXX ? All ids, element names, and values are raw? and ready for
+	# storage encoding?  VERIFY rationale
+
+	my $formal = 1;			# ? needed?
+	my ($lcnt, $ecnt) = (0, 0);	# line count and element count
+	my ($displayid, $hexid);	# encoded in one way or another
+	my ($id, $elem, $val);		# unencoded
+	my $numelems;			# number of elements expected
+	my $errcnt = 0;
+	local $/ = '';			# read input in paragraph mode
+	while (<STDIN>) {		# read each line from input
+		$lcnt++;
+		if (! s/^# id: (.*)\n# hexid: (.*)\n//) {
+			say STDERR "ERROR: malformed preamble in " .
+				"record starting on line $lcnt";
+			$lcnt += (tr/\n// - 1);
+			$_ = '';
+			next;
+		}
+		($displayid, $hexid) = ($1, $2);
+		$lcnt += 2;		# because we removed 2 lines
+
+		if (! s/# elements bound under.*: (\d+)\n\n$//) {
+			say STDERR "ERROR: malformed footer in " .
+				"record starting on line $lcnt";
+			$lcnt += (tr/\n// - 1);
+			$_ = '';
+			next;
+		}
+		$numelems = $1;		# number of elements expected
+		$lcnt += 2;		# because we removed 2 lines
+
+		if ($numelems == 0 and m/./) {	# if purge but elems given
+			say STDERR "ERROR: elem count 0 but elements exist " .
+				"in record starting on line $lcnt";
+			$lcnt += (tr/\n// - 1);
+			$_ = '';
+			next;
+		}
+
+		say "XXX displayid=$displayid; hexid=$hexid, numelems expected=$numelems";
+		($id = $hexid) =~ s/([[:xdigit:]]{2})/chr hex $1/eg;
+
+# XXX create tests that reflect changes in binder1 to binder2
+# XXX back to iddump: re-implement it by calling get_rawidtree directly,
+#          and as module-level code
+		! egg_purge($bh, $mods, "purge", $formal, $id) and
+			outmsg($bh),
+			initmsg($bh),		#  clear error messages
+			$errcnt++;
+
+#
+# XXX can I turn a linux1 binder readonly during DNS transition
+#     when some clients will still have old ip addr?
+# XXX what about Linux1 OCA minter? can I make it readonly? should I
+#     artificially advance that minter (since can't pause it)?
+
+		# For dupes, use "add" not "set"; ok since we did purge first.
+		# If we were doing bulk commands, we might encode like this
+		#      @.add @ @
+		#      $id
+		#      $elem
+		#      $val
+
+		$ecnt = 0;
+		while ($ecnt < $numelems) {	# process one line at a time
+			if (! s/^([[:xdigit:]]*): ([[:xdigit:]]*)\n//) {
+				say STDERR "ERROR: malformed element in " .
+					"record starting on line $lcnt";
+				$lcnt += (tr/\n// - 1);
+				$_ = '';
+			}
+			($elem, $val) = ($1, $2);
+			$elem =~ s/([[:xdigit:]]{2})/chr hex $1/eg;
+			$val  =~ s/([[:xdigit:]]{2})/chr hex $1/eg;
+			! egg_set($bh, $mods, 'add', 0, 0,
+					EggNog::Egg::HOW_ADD,
+					$id, $elem, $val) and
+				outmsg($bh),
+				initmsg($bh),		#  clear error messages
+				$errcnt++;
+			$ecnt++;
+			$lcnt++;
+		}
+		if ($ecnt != $numelems) {
+			say STDERR "ERROR: elem count expected ($numelems) " .
+				"different from number of elements found in " .
+				"record starting on line $lcnt";
+			$lcnt += (tr/\n// - 1);
+			$_ = '';
+			next;
+		}
+	}
+	$errcnt > 0 and
+		outmsg($bh, "Error count is $errcnt"),
+		return 1;
+
+	return 0;
 }
 
 # yyy dbsave and dbload built for the old DB_File.pm environment

@@ -634,7 +634,7 @@ sub badauthmsg { my( $bh )=@_;
 	return 1;
 }
 
-sub initmsg { my( $bh )=@_;
+sub initmsg { my( $bh )=@_;	# initialize or clear binder messages
 	$bh->{msg_a} = [];		# regular message array
 	$bh->{http_msg_a} = [];		# http message array
 }
@@ -672,6 +672,7 @@ sub addmsg { my( $bh, $msg, $msg_name )=@_;
 	return 1;
 }
 
+# XXX this outmsg() is also defined in Session.pm -- why?
 # XXX need OM way to temporarily capture outputs to a string, independent of
 #     user setting of outhandle (so we can insert notes in ...README files)
 

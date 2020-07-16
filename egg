@@ -130,6 +130,10 @@ System Commands - a binder name is short or a FSBN (full system binder name)
   bmv b1 b2         rename binder b1 to b2, which must be a FSBN
   brmgroup g [u]    remove external binder group g (just external binders now)
   mstat             show various binder counts
+
+Commands to synchronize binders with hex bindings (like db_dump and db_load)
+  iddump b          in binder b, from stdin ids, print --all elems from fetch
+  idload b          in binder b, from stdin bindings, purge/load or just purge
  
 Examples:
   egg ark:/12345/x9876r.set who 'Smith, Laurie'
@@ -182,7 +186,7 @@ my @valid_commands = qw(
 	man note usage version
 	pr logmark cullrlog resolve exists purge
 	mkbinder rmbinder delbinder
-	dbsave dbload gethex
+	dbsave dbload gethex iddump idload
 	norm shadow
 	pause unpause
 	bname bxname bpname bshow brmgroup bmake brm bmv
@@ -1097,8 +1101,110 @@ sub bdx_testlock { my( $secs, $locktype )=@_;
 	outmsg("held $locktype lock for $secs seconds");
 }
 
+sub bdx_gethex { my( @elems )=@_;
+
+	my $om = $bh->{om_formal};
+	#my $om = $formal ? $bh->{om_formal} : $bh->{om};
+
+	my $minderpath = $cmdr_from_d_flag ?
+		"" : $bh->{minderpath};		# search unless -d used
+
+	# yyy need to configure so we can test $sh->{exdb} below
+	my $msg;
+	if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {
+		outmsg($sh, $msg);      # failed to configure
+		return 1;
+	}
+	$sh->{exdb} and ! $cmdr_from_d_flag and
+		$cmdr = '';	# binder name _is_ -d arg, not inside it
+
+	bopen($bh, $cmdr, DB_RDONLY, $minderpath) or
+		outmsg($bh), return 1;
+
+	$bh->{GETHEX} = 1;	# kludgy message meant for get_rawidtree! yyy
+	EggNog::Egg::egg_fetch($bh, $mods, $om,
+			undef, undef, $bindid, @elems) or
+		delete($bh->{GETHEX}),
+		outmsg($bh), return 1;
+	delete($bh->{GETHEX});	# kludge! yyy
+
+	return 0;
+}
+
+# purge/load hex bindings or just purge
+
+sub bdx_iddump { my( $ubname, $smode )=@_;	# $smode not used, defaults yyy
+
+	# yyy need to configure so we can test $sh->{exdb} below
+	my $msg;
+	if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {
+		outmsg($sh, $msg);      # failed to configure
+		return 1;
+	}
+	$sh->{exdb} and ! $cmdr_from_d_flag and
+		$cmdr = '';	# binder name _is_ -d arg, not inside it
+	my $minderpath = $cmdr_from_d_flag ?
+		"" : $bh->{minderpath};		# search unless -d used
+
+	my $exists_flag = 2;			# hard existence check
+	my ($isbname, $esbname, $bn) =
+		EggNog::Binder::bname_parse($sh, $ubname, $exists_flag, $smode,
+			undef, $minderpath);
+		# yyy undocumented what $smode does
+	defined($isbname) or
+		outmsg($sh),
+		return 1;
+
+	bopen($bh, $isbname, DB_RDONLY, $minderpath) or
+		outmsg($bh),
+		return 1;
+
+	EggNog::Egg::iddump($bh, $mods, @_) or
+		outmsg($bh),
+		return 1;
+	return 0;
+}
+
+# purge/load hex bindings or just purge
+
+sub bdx_idload { my( $ubname, $smode )=@_;	# $smode not used, defaults yyy
+
+	my $om = $bh->{om_formal};
+
+	# yyy need to configure so we can test $sh->{exdb} below
+	my $msg;
+	if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {
+		outmsg($sh, $msg);      # failed to configure
+		return 1;
+	}
+	$sh->{exdb} and ! $cmdr_from_d_flag and
+		$cmdr = '';	# binder name _is_ -d arg, not inside it
+	my $minderpath = $cmdr_from_d_flag ?
+		"" : $bh->{minderpath};		# search unless -d used
+
+	my $exists_flag = 2;			# hard existence check
+	my ($isbname, $esbname, $bn) =
+		EggNog::Binder::bname_parse($sh, $ubname, $exists_flag, $smode,
+			undef, $minderpath);
+		# yyy undocumented what $smode does
+	defined($isbname) or
+		outmsg($sh),
+		return 1;
+
+	#bopen($bh, $cmdr, DB_RDWR, $minderpath) or
+	bopen($bh, $isbname, DB_RDWR, $minderpath) or
+		outmsg($bh), return 1;
+
+	EggNog::Egg::idload($bh, $mods, @_) or
+		outmsg($bh),
+		return 1;
+	return 0;
+}
+
 # xxx dbsave and dbload built for the old DB_File.pm environment
 # xxx should probably be updated for BerkeleyDB.pm and MongoDB.pm
+#
+# XXX dbsave and dbload should be deprecated
 
 sub bdx_dbsave { my( $destfile )=@_;	# arg may name a directory
 
@@ -1240,36 +1346,6 @@ sub bdx_getfetch { my( $formal, @elems )=@_;
 
 	EggNog::Egg::egg_fetch($bh, $mods, $om, undef, undef, $bindid, @elems) or
 		outmsg($bh), return 1;
-
-	return 0;
-}
-
-sub bdx_gethex { my( @elems )=@_;
-
-	my $om = $bh->{om_formal};
-	#my $om = $formal ? $bh->{om_formal} : $bh->{om};
-
-	my $minderpath = $cmdr_from_d_flag ?
-		"" : $bh->{minderpath};		# search unless -d used
-
-	# yyy need to configure so we can test $sh->{exdb} below
-	my $msg;
-	if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {
-		outmsg($sh, $msg);      # failed to configure
-		return 1;
-	}
-	$sh->{exdb} and ! $cmdr_from_d_flag and
-		$cmdr = '';	# binder name _is_ -d arg, not inside it
-
-	bopen($bh, $cmdr, DB_RDONLY, $minderpath) or
-		outmsg($bh), return 1;
-
-	$bh->{GETHEX} = 1;	# kludgy message meant for get_rawidtree! yyy
-	EggNog::Egg::egg_fetch($bh, $mods, $om,
-			undef, undef, $bindid, @elems) or
-		delete($bh->{GETHEX}),
-		outmsg($bh), return 1;
-	delete($bh->{GETHEX});	# kludge! yyy
 
 	return 0;
 }
