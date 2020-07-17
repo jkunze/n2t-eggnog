@@ -16,7 +16,7 @@ $td or			# if error
 $ENV{EGG} = $hgbase;		# initialize basic --home and --testdata values
 
 # Use this subroutine to get actual commands onto STDIN (eg, bulkcmd).
-#
+
 sub run_cmds_on_stdin { my( $cmdblock )=@_;
 
 	my $msg = file_value("> $td/getcmds", $cmdblock, "raw");

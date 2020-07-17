@@ -2257,9 +2257,11 @@ sub dumphexid { my( $bh, $mods, $id )=@_;
 # considered to have been purged. This kind of input is deemed sufficient to
 # bring this binder, wrt to this input, into alignment with another binder.
 #
-# Even though id creation date will be initialized as of moment of calling,
-# loading a complete dump will overwrite creation/mod date with old time.
-# To get duplicates correct, we insert elements with "add", not "set".
+# We use "add" not "set", so that all duplicated arrive. However, we have to
+# handle _,ec and _,ep differently since they are initialized by egg_set()
+# for a new id (which is how it looks after our earlier "purge"). In this
+# case we do overwrite with "set" and the incoming values. This makes sure
+# that the original id creation/mod times are reflected in the idload.
 
 sub idload { my( $bh, $mods )=@_;
 
@@ -2323,15 +2325,11 @@ sub idload { my( $bh, $mods )=@_;
 		say "XXX displayid=$displayid; hexid=$hexid, numelems expected=$numelems";
 		($id = $hexid) =~ s/([[:xdigit:]]{2})/chr hex $1/eg;
 
-# XXX create tests that reflect changes in binder1 to binder2
-# XXX back to iddump: re-implement it by calling get_rawidtree directly,
-#          and as module-level code
 		! egg_purge($bh, $mods, "purge", $formal, $id) and
 			outmsg($bh),
 			initmsg($bh),		#  clear error messages
 			$errcnt++;
 
-#
 # XXX can I turn a linux1 binder readonly during DNS transition
 #     when some clients will still have old ip addr?
 # XXX what about Linux1 OCA minter? can I make it readonly? should I
@@ -2344,6 +2342,7 @@ sub idload { my( $bh, $mods )=@_;
 		#      $elem
 		#      $val
 
+		my ($opstring, $op);
 		$ecnt = 0;
 		while ($ecnt < $numelems) {	# process one line at a time
 			if (! s/^([[:xdigit:]]*): ([[:xdigit:]]*)\n//) {
@@ -2355,9 +2354,26 @@ sub idload { my( $bh, $mods )=@_;
 			($elem, $val) = ($1, $2);
 			$elem =~ s/([[:xdigit:]]{2})/chr hex $1/eg;
 			$val  =~ s/([[:xdigit:]]{2})/chr hex $1/eg;
-			! egg_set($bh, $mods, 'add', 0, 0,
-					EggNog::Egg::HOW_ADD,
-					$id, $elem, $val) and
+
+			# Special handling elements:
+			#	use constant PERMS_EL_EX => '_,ep';
+			#	use constant CTIME_EL_EX => '_,ec';
+			# Don't delete these elems first, or the first 
+			# element "add" operation may create them again as
+			# a side effect before they're added. The safest
+			# thing is to clobber with "set".
+			#
+			($opstring, $op) =
+				$elem eq CTIME_EL_EX || $elem eq PERMS_EL_EX
+					? ('set', EggNog::Egg::HOW_SET)
+					: ('add', EggNog::Egg::HOW_ADD);
+#$elem eq CTIME_EL_EX || $elem eq PERMS_EL_EX and
+say "XXXXXX id=$id, elem=$elem, opstring=$opstring";
+			#! egg_set($bh, $mods, 'add', 0, 0,
+			#		EggNog::Egg::HOW_ADD,
+			#		$id, $elem, $val) and
+			! egg_set($bh, $mods, $opstring, 0, 0,
+					$op, $id, $elem, $val) and
 				outmsg($bh),
 				initmsg($bh),		#  clear error messages
 				$errcnt++;
@@ -2375,9 +2391,9 @@ sub idload { my( $bh, $mods )=@_;
 	}
 	$errcnt > 0 and
 		outmsg($bh, "Error count is $errcnt"),
-		return 1;
+		return 0;
 
-	return 0;
+	return 1;
 }
 
 # yyy dbsave and dbload built for the old DB_File.pm environment
