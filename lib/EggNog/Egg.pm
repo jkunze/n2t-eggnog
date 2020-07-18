@@ -509,14 +509,18 @@ sub egg_purge { my( $bh, $mods, $lcmd, $formal, $id )=@_;
 
 		my $delst;			# delete status
 		my $prev_elem = "";	# init to something unlikely
+		my $out_elem;
 		for my $elem (@elems) {
 			# previous element dupes deleted by egg_del already
 			$elem eq $prev_elem and
 				next;	# so skip another call to avoid error
 			$retval &&= (
-				# calling with UNencoded $id and $elem
-				$delst = egg_del($bh, $mods, '', $formal,
-					$id, $elem), 
+				# $id is NOT rfs but $elem IS rfs, so we undo
+				# the rfs for $elem before calling egg_del()
+				($out_elem = flex_dec_for_display($elem)),
+				($delst = egg_del($bh, $mods, '', $formal,
+					$id, $out_elem)), 
+					#$id, $elem)), 
 				($delst or outmsg($bh)),
 			$delst ? 1 : 0);
 		}
@@ -1524,7 +1528,7 @@ sub egg_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 	# logging and not binding key/value pairs in BDB, then we can avoid
 	# unnecessary instantiation in memory and just copy stdin to the log.
 	# yyy add other tests
-	#
+
 	my $args_in_memory = 0;
 	$mods->{on_bind} ||= $bh->{on_bind};	# default actions if needed
 	$mods->{on_bind} & BIND_KEYVAL and	# yyy drop BIND_KEYVAL?
@@ -1540,6 +1544,16 @@ sub egg_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 		addmsg($bh, "configuration doesn't permit any binding"),
 		return undef
 	;
+
+	# Some elements are not meant ever to exists as dupes. For example,
+	# preventing these two elements from being dupes (since they're
+	# auto-created by egg_init_id) allows us to synchronize one binder
+	# from another; to prevent dupes we set the $delete flag for them
+	# in case it's "add", so when they're auto-created (with incorrect
+	# new values), they're replaced (not duplicated) with the old values.
+
+	! $delete and ($elem eq CTIME_EL_EX || $elem eq PERMS_EL_EX) and
+		$delete = 1;
 
 	$bh->{sh}->{exdb} and
 		exdb_set( $bh, $mods, $lcmd, $delete,
@@ -2221,18 +2235,21 @@ sub dumphexid { my( $bh, $mods, $id )=@_;
 
 	my ($elemsR, $valsR) = ([], []);
 	my $hexid;
+	# we record hexid in form that is NOT rfs, since receiver do that
 	($hexid = $id) =~ s{(.)}{sprintf("%02x", ord($1))}eg;
 
 	say("# id: $id");	# yyy ignoring print/say error status throughout
 	say("# hexid: $hexid");
 
-	my $rfs = flex_enc_indb($id);	# for get_rawidtree fetch of
-	$mods->{all} = 1;		# all, including admin elements
+	my $rfs = flex_enc_indb($id);	# prep get_rawidtree fetch of --all,
+	$mods->{all} = 1;		# elements, including admin elements
 	! get_rawidtree($bh, $mods,
 		undef,		# here OM arg undefined because
 		$elemsR,	# here want elem names returned
 		$valsR,		# and here want values returned
-			$rfs->{id}) and
+		$id,		# UNencoded $id
+			#$rfs->{id}) and
+	) and
 		return 0;
 
 	my ($elem, $val, $hexelem, $hexval);
@@ -2240,9 +2257,14 @@ sub dumphexid { my( $bh, $mods, $id )=@_;
 	foreach (@$elemsR) {	# for each element name ($_)
 		$ecnt++;
 
-		# some found raw element name encodings need to be decoded
+		# Element name returned by get_rawidtree IS rfs, we we reverse
+		# it so that it will be correct when receiver re-encodes it to
+		# be rfs.
+
 		$hexelem = flex_dec_for_display($_);	# initialize elem name
-		$hexval = shift @$valsR;		# corresponding value
+		#$hexelem = $_;			# initialize element name
+		$hexval = shift @$valsR;	# init the corresponding value
+
 		$hexelem =~ s{(.)}{sprintf("%02x", ord($1))}eg;	# hexify
 		$hexval =~ s{(.)}{sprintf("%02x", ord($1))}eg;	# hexify
 
@@ -2281,9 +2303,6 @@ sub idload { my( $bh, $mods )=@_;
 	# it means we purge and then set all elements given.
 	# The hexid line gives the hex version of the id to set.
 	# The remaining lines give the hex elements and values to set.
-	# 
-	# XXX ? All ids, element names, and values are raw? and ready for
-	# storage encoding?  VERIFY rationale
 
 	my $formal = 1;			# ? needed?
 	my ($lcnt, $ecnt) = (0, 0);	# line count and element count
@@ -2322,7 +2341,6 @@ sub idload { my( $bh, $mods )=@_;
 			next;
 		}
 
-		say "XXX displayid=$displayid; hexid=$hexid, numelems expected=$numelems";
 		($id = $hexid) =~ s/([[:xdigit:]]{2})/chr hex $1/eg;
 
 		! egg_purge($bh, $mods, "purge", $formal, $id) and
@@ -2342,7 +2360,6 @@ sub idload { my( $bh, $mods )=@_;
 		#      $elem
 		#      $val
 
-		my ($opstring, $op);
 		$ecnt = 0;
 		while ($ecnt < $numelems) {	# process one line at a time
 			if (! s/^([[:xdigit:]]*): ([[:xdigit:]]*)\n//) {
@@ -2355,25 +2372,10 @@ sub idload { my( $bh, $mods )=@_;
 			$elem =~ s/([[:xdigit:]]{2})/chr hex $1/eg;
 			$val  =~ s/([[:xdigit:]]{2})/chr hex $1/eg;
 
-			# Special handling elements:
-			#	use constant PERMS_EL_EX => '_,ep';
-			#	use constant CTIME_EL_EX => '_,ec';
-			# Don't delete these elems first, or the first 
-			# element "add" operation may create them again as
-			# a side effect before they're added. The safest
-			# thing is to clobber with "set".
-			#
-			($opstring, $op) =
-				$elem eq CTIME_EL_EX || $elem eq PERMS_EL_EX
-					? ('set', EggNog::Egg::HOW_SET)
-					: ('add', EggNog::Egg::HOW_ADD);
-#$elem eq CTIME_EL_EX || $elem eq PERMS_EL_EX and
-say "XXXXXX id=$id, elem=$elem, opstring=$opstring";
-			#! egg_set($bh, $mods, 'add', 0, 0,
-			#		EggNog::Egg::HOW_ADD,
-			#		$id, $elem, $val) and
-			! egg_set($bh, $mods, $opstring, 0, 0,
-					$op, $id, $elem, $val) and
+			! egg_set($bh, $mods, 'add',
+					0, 0,		# no delete, no polite
+					HOW_ADD,	# "add" operation
+					$id, $elem, $val) and
 				outmsg($bh),
 				initmsg($bh),		#  clear error messages
 				$errcnt++;
@@ -2767,8 +2769,8 @@ sub egg_inflect { my ( $bh, $mods, $om, $id )=@_;
 			undef,		# here OM arg undefined because
 			$elemsR,	# here we want element names returned
 			$valsR,		# and here we want values returned
-				$rfs->{id}) or
-				#$id) or
+				#$rfs->{id}) or
+				$id) or
 			return '';
 	}
 
@@ -3295,7 +3297,8 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 # !! assume $elemsR and $valsR, if defined, are ready to push onto
 # yyy maybe we should have a special (faster) call just to get names
 #
-# NB: input id and element names are already encoded ready-for-storage,
+# NB: input id is NOT encodeded (ready-for-storage)
+# The element names return ARE already encoded ready-for-storage.
 # (eg, | and ^), which means (a) beware not to encode them again and
 # (b) you will probably want to decode before output.
 #

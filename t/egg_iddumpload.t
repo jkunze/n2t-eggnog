@@ -155,6 +155,14 @@ if ($indb) {
 
 }	# close if ($indb)
 
+$cmdblock = "
+'\$t.^x'.purge
+'\$t.^x'.purge
+";
+$x = run_cmds_on_stdin($cmdblock);
+like $x, qr/under \$t\.\^x: 4.*under \$t\.\^x: 0/s,
+	"purge really did purge nasty elements";
+
 say "xxxxxx premature end."; exit;
 #say "xxxxxx premature end. x=$x"; exit;
 
