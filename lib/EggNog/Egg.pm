@@ -2231,6 +2231,20 @@ sub iddump { my( $bh, $mods )=@_;
 	return 1;
 }
 
+# Format:
+# # id: <id>
+# # hexid: ...
+# <hex_element_name>
+#   <hex_element_value>
+# <hex_element_name>
+#   <hex_element_value>
+# ...		# NB: name unindented
+#   ..		# NB: value indented by two spaces
+# # elements bound under <id>: <N>
+
+# Put element name and value on separate lines in case of very long strings
+# that might run afoul of some transport mechanism's line length constraints.
+
 sub dumphexid { my( $bh, $mods, $id )=@_;
 
 	my ($elemsR, $valsR) = ([], []);
@@ -2268,10 +2282,11 @@ sub dumphexid { my( $bh, $mods, $id )=@_;
 		$hexelem =~ s{(.)}{sprintf("%02x", ord($1))}eg;	# hexify
 		$hexval =~ s{(.)}{sprintf("%02x", ord($1))}eg;	# hexify
 
-		say("$hexelem: $hexval");
+		say($hexelem);
+		say('  ', $hexval);
 	}
 	say("# elements bound under $id: $ecnt");
-	say("");		# block/paragraph separator
+	say('');		# block/paragraph separator
 }
 
 # Read id dump blocks from STDIN. For each id, purge it, and if there are
@@ -2362,13 +2377,21 @@ sub idload { my( $bh, $mods )=@_;
 
 		$ecnt = 0;
 		while ($ecnt < $numelems) {	# process one line at a time
-			if (! s/^([[:xdigit:]]*): ([[:xdigit:]]*)\n//) {
-				say STDERR "ERROR: malformed element in " .
-					"record starting on line $lcnt";
+			#if (! s/^([[:xdigit:]]*): ([[:xdigit:]]*)\n//) {
+			if (! s/^([[:xdigit:]]*)\n//) {
+				say STDERR "ERROR: malformed element name " .
+					"in record starting on line $lcnt";
 				$lcnt += (tr/\n// - 1);
 				$_ = '';
 			}
-			($elem, $val) = ($1, $2);
+			$elem = $1;
+			if (! s/^  ([[:xdigit:]]*)\n//) {
+				say STDERR "ERROR: malformed element value " .
+					"in record starting on line $lcnt";
+				$lcnt += (tr/\n// - 1);
+				$_ = '';
+			}
+			$val = $1;
 			$elem =~ s/([[:xdigit:]]{2})/chr hex $1/eg;
 			$val  =~ s/([[:xdigit:]]{2})/chr hex $1/eg;
 
@@ -3094,7 +3117,6 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 			#	$s = $om->elem($out_elem, $v);
 				#$s = elems_output($om, $k, $v);
 				#($p && (($st &&= $s), 1) || ($st .= $s));
-				# yyy GETHEX not implemented for exdb
 				($ndups, $ast, $s) = elems_output($om, $k, $v);
 				($p && (($st &&= $ast), 1) || ($st .= $s));
 				$nelems += $ndups;
@@ -3326,8 +3348,6 @@ sub get_rawidtree { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id )=@_;
 	$mods->{did_rawidtree} = 1;	# xxx kludgish; side-effects?? of
 				# setting a $mods entry for downstream calls?
 
-	my $gethex = $bh->{GETHEX};	# yyy big kludge, set by "egg gethex"
-
 	my $irfs = flex_enc_indb($id);
 	$id = $irfs->{id};		# because we need $id ready-for-storage
 
@@ -3360,8 +3380,6 @@ sub get_rawidtree { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id )=@_;
 	my $all = defined($mods->{all})
 		? $mods->{all}		# zero ok; for overriding --all
 		: $bh->{opt}->{all} || '';
-	defined($gethex) and		# overridden by gethex, meaning a
-		$all = 1;		# hex dump of the whole record
 	my ($spat, $skipregex);
 	! $all and			# case 1: skip usual support elements
 		$spat = SUPPORT_ELEMS_RE,
@@ -3418,12 +3436,6 @@ sub get_rawidtree { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id )=@_;
 		" id: " . $out_id, "1#"));
 		#" id: " . ($id ne '' ? $id : '""'), "1#"));
 	($p && (($st &&= $s), 1) || ($st .= $s));
-	if ($gethex and $om) {
-		my $hexid = $id;
-		$hexid =~ s{(.)}{sprintf("%02x", ord($1))}seg;
-		($s = $om->elem('hexid', " hexid: " . $hexid, "2#")),
-		($p && (($st &&= $s), 1) || ($st .= $s));
-	}
  
 	my $nelems = 0;
 	# kludge for a very unlikely element ("" is too likely)
@@ -3444,22 +3456,12 @@ sub get_rawidtree { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id )=@_;
 			#	s/\^([[:xdigit:]]{2})/chr hex $1/eg;
 
 			# If $om is defined, do some output now.
-			if ($gethex and $om) {
-				my $hexelem = $out_elem;
-				my $hexval = $value;
-				$hexelem =~ s{(.)}{sprintf("%02x", ord($1))}seg;
-				$hexval =~ s{(.)}{sprintf("%02x", ord($1))}seg;
-				($s = $om->elem($hexelem, $hexval)),
-				($p && (($st &&= $s), 1) || ($st .= $s));
-			}
-			elsif ($om) {
-				($s = $om->elem(
+			$om and ($s = $om->elem(
 				$out_elem,
 				#($elem ne '' ? $elem : '""'),
 				#($key =~ /^[^|]*\|(.*)/ ? $1 : $key),
 				$value)),
 				($p && (($st &&= $s), 1) || ($st .= $s));
-			}
 
 			# This last line is a fast and compact (if
 			# cryptic) way to accumulate $om->method calls.

@@ -186,7 +186,7 @@ my @valid_commands = qw(
 	man note usage version
 	pr logmark cullrlog resolve exists purge
 	mkbinder rmbinder delbinder
-	dbsave dbload gethex iddump idload
+	dbsave dbload iddump idload
 	norm shadow
 	pause unpause
 	bname bxname bpname bshow brmgroup bmake brm bmv
@@ -1099,36 +1099,6 @@ sub bdx_testlock { my( $secs, $locktype )=@_;
 		outmsg($bh), return 1;
 	sleep $secs;
 	outmsg("held $locktype lock for $secs seconds");
-}
-
-sub bdx_gethex { my( @elems )=@_;
-
-	my $om = $bh->{om_formal};
-	#my $om = $formal ? $bh->{om_formal} : $bh->{om};
-
-	my $minderpath = $cmdr_from_d_flag ?
-		"" : $bh->{minderpath};		# search unless -d used
-
-	# yyy need to configure so we can test $sh->{exdb} below
-	my $msg;
-	if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {
-		outmsg($sh, $msg);      # failed to configure
-		return 1;
-	}
-	$sh->{exdb} and ! $cmdr_from_d_flag and
-		$cmdr = '';	# binder name _is_ -d arg, not inside it
-
-	bopen($bh, $cmdr, DB_RDONLY, $minderpath) or
-		outmsg($bh), return 1;
-
-	$bh->{GETHEX} = 1;	# kludgy message meant for get_rawidtree! yyy
-	EggNog::Egg::egg_fetch($bh, $mods, $om,
-			undef, undef, $bindid, @elems) or
-		delete($bh->{GETHEX}),
-		outmsg($bh), return 1;
-	delete($bh->{GETHEX});	# kludge! yyy
-
-	return 0;
 }
 
 # purge/load hex bindings or just purge
