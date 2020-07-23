@@ -1535,6 +1535,7 @@ sub egg_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 		# yyy does not expand beyond single value token,
 		#     eg, id.set a b @ -> a: b @
 		# yyy instantiate NEEDs $elem not to be null
+			! $mods->{did_rawidtree} and	# eg, iddump/idload
 		(EggNog::Cmdline::instantiate($bh,
 				$mods->{hx}, $id, $elem, $value) or
 			return undef),
@@ -1826,6 +1827,8 @@ sub egg_init_id { my( $bh, $id, $optime )=@_;
 			! defined $dbh->{$id_permkey}) {	# if no permkey
 		$dbh->{ $id_permkey } = $id_value;
 		$dbh->{ $id . CTIME_ELEM } = $optime;
+		# XXX probable bug: what if $id.CTIME_ELEM exists? then this
+		#     next bindings_count will be wrong!
 		arith_with_dups($dbh, "$A/bindings_count", +2);
 		# yyy no error check
 	}
@@ -2279,8 +2282,9 @@ sub dumphexid { my( $bh, $mods, $id )=@_;
 		#$hexelem = $_;			# initialize element name
 		$hexval = shift @$valsR;	# init the corresponding value
 
-		$hexelem =~ s{(.)}{sprintf("%02x", ord($1))}eg;	# hexify
-		$hexval =~ s{(.)}{sprintf("%02x", ord($1))}eg;	# hexify
+		# need 's' modifier with substitution since there may be \n's
+		$hexelem =~ s{(.)}{sprintf("%02x", ord($1))}seg;# hexify
+		$hexval =~ s{(.)}{sprintf("%02x", ord($1))}seg;	# hexify
 
 		say($hexelem);
 		say('  ', $hexval);
@@ -2320,41 +2324,40 @@ sub idload { my( $bh, $mods )=@_;
 	# The remaining lines give the hex elements and values to set.
 
 	my $formal = 1;			# ? needed?
-	my ($lcnt, $ecnt) = (0, 0);	# line count and element count
-	my ($displayid, $hexid);	# encoded in one way or another
+	my ($lcnt, $ecnt) = (1, 0);	# line count and element count
+	my ($plainid, $hexid);		# encoded in one way or another
 	my ($id, $elem, $val);		# unencoded
 	my $numelems;			# number of elements expected
 	my $errcnt = 0;
+	my $old_did_rawidtree = $mods->{did_rawidtree};
+	$mods->{did_rawidtree} = 1;	# act like get_rawidtree got us our
+	# elements, since it did and we don't want egg_set calling instantiate()
+
 	local $/ = '';			# read input in paragraph mode
 	while (<STDIN>) {		# read each line from input
-		$lcnt++;
 		if (! s/^# id: (.*)\n# hexid: (.*)\n//) {
 			say STDERR "ERROR: malformed preamble in " .
-				"record starting on line $lcnt";
-			$lcnt += (tr/\n// - 1);
-			$_ = '';
+				"$plainid record starting on line $lcnt";
+			$lcnt += tr/\n//;
 			next;
 		}
-		($displayid, $hexid) = ($1, $2);
-		$lcnt += 2;		# because we removed 2 lines
+		($plainid, $hexid) = ($1, $2);
 
 		if (! s/# elements bound under.*: (\d+)\n\n$//) {
 			say STDERR "ERROR: malformed footer in " .
-				"record starting on line $lcnt";
-			$lcnt += (tr/\n// - 1);
-			$_ = '';
+				"$plainid record starting on line $lcnt";
+			$lcnt += tr/\n//;
 			next;
 		}
 		$numelems = $1;		# number of elements expected
-		$lcnt += 2;		# because we removed 2 lines
 
 		if ($numelems == 0 and m/./) {	# if purge but elems given
 			say STDERR "ERROR: elem count 0 but elements exist " .
-				"in record starting on line $lcnt";
-			$lcnt += (tr/\n// - 1);
-			$_ = '';
+				"in $plainid record starting on line $lcnt";
+			$lcnt += tr/\n//;
 			next;
 		}
+		$lcnt += 2;		# because we removed 2 header lines
 
 		($id = $hexid) =~ s/([[:xdigit:]]{2})/chr hex $1/eg;
 
@@ -2377,23 +2380,25 @@ sub idload { my( $bh, $mods )=@_;
 
 		$ecnt = 0;
 		while ($ecnt < $numelems) {	# process one line at a time
-			#if (! s/^([[:xdigit:]]*): ([[:xdigit:]]*)\n//) {
 			if (! s/^([[:xdigit:]]*)\n//) {
 				say STDERR "ERROR: malformed element name " .
-					"in record starting on line $lcnt";
-				$lcnt += (tr/\n// - 1);
-				$_ = '';
+					"for $plainid on line $lcnt";
+				$lcnt += tr/\n//;
+				last;
 			}
+			$lcnt++;
 			$elem = $1;
 			if (! s/^  ([[:xdigit:]]*)\n//) {
 				say STDERR "ERROR: malformed element value " .
-					"in record starting on line $lcnt";
-				$lcnt += (tr/\n// - 1);
-				$_ = '';
+					"for $plainid on line $lcnt";
+				$lcnt += tr/\n//;
+				last;
 			}
+			$lcnt++;
 			$val = $1;
 			$elem =~ s/([[:xdigit:]]{2})/chr hex $1/eg;
 			$val  =~ s/([[:xdigit:]]{2})/chr hex $1/eg;
+			$ecnt++;
 
 			! egg_set($bh, $mods, 'add',
 					0, 0,		# no delete, no polite
@@ -2402,18 +2407,18 @@ sub idload { my( $bh, $mods )=@_;
 				outmsg($bh),
 				initmsg($bh),		#  clear error messages
 				$errcnt++;
-			$ecnt++;
-			$lcnt++;
 		}
+		$lcnt += 2;	# we removed 2-line footer before while loop
+
 		if ($ecnt != $numelems) {
 			say STDERR "ERROR: elem count expected ($numelems) " .
 				"different from number of elements found in " .
-				"record starting on line $lcnt";
-			$lcnt += (tr/\n// - 1);
-			$_ = '';
+				"$plainid record ending on line $lcnt";
 			next;
 		}
 	}
+
+	$mods->{did_rawidtree} = $old_did_rawidtree;	# restore value
 	$errcnt > 0 and
 		outmsg($bh, "Error count is $errcnt"),
 		return 0;
