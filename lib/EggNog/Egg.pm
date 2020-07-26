@@ -430,9 +430,11 @@ sub egg_purge { my( $bh, $mods, $lcmd, $formal, $id )=@_;
 	#		unauthmsg($bh),
 	#		return undef;
 
-	EggNog::Cmdline::instantiate($bh, $mods->{hx}, $id) or
+	if (! $mods->{did_rawidtree}) {
+		EggNog::Cmdline::instantiate($bh, $mods->{hx}, $id) or
 		addmsg($bh, "instantiate failed from purge"),
 		return undef;
+	}
 
 	# Set "all" flag so we act even on admin elements, eg, get_rawidtree().
 	#
@@ -825,6 +827,8 @@ sub egg_del { my( $bh, $mods, $lcmd, $formal, $id, $elem )=@_;
 
 	! egg_authz_ok($bh, $id, OP_DELETE) and
 		return undef;
+
+	#my $out_id = flex_dec_for_display($id);
 
 	# an empty $lcmd means we were called by purge -- don't log
 	my $txnid;		# undefined until first call to tlogger
@@ -1582,6 +1586,9 @@ sub indb_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 	# yyy do bulk defs for $value
 	# yyy document default values for element and value
 
+	# save original form for tlogger
+	# XXX not doing $logblob for exdb case
+	my $logblob = $id . $Se . $elem;
 	# ready-for-storage versions of id, elem, ...
 	my $rfs = flex_enc_indb($id, $elem);
 	my $key;
@@ -1608,7 +1615,8 @@ sub indb_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 	# more of something that has a start and an end time.
 
 	my $txnid;		# undefined until first call to tlogger
-	$txnid = tlogger $sh, $txnid, "BEGIN $id$Se$elem.$lcmd $slvalue";
+	#$txnid = tlogger $sh, $txnid, "BEGIN $id$Se$elem.$lcmd $slvalue";
+	$txnid = tlogger $sh, $txnid, "BEGIN $logblob.$lcmd $slvalue";
 
 	my $oldvalcnt = indb_get_dup($db, $key);
 	! defined($oldvalcnt) and
@@ -1692,7 +1700,8 @@ sub indb_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 		# XXX NOT setting doing this for external db. DROP for indb?
 		$bh->{sh}->{indb} and
 			$msg = $bh->{rlog}->out("C: $id$Se$elem.$lcmd $slvalue");
-		tlogger $sh, $txnid, "END SUCCESS $id$Se$elem.$lcmd ...";
+		tlogger $sh, $txnid, "END SUCCESS $logblob.$lcmd ...";
+		#tlogger $sh, $txnid, "END SUCCESS $id$Se$elem.$lcmd ...";
 		$msg and
 			addmsg($bh, $msg),
 			return undef;
@@ -2214,16 +2223,20 @@ sub dbinfo { my( $bh, $mods, $level )=@_;
 # Read ids one per line from STDIN. For each id, fetch all elements and print
 # a block dump in hex format. If no elements, indicate with special block.
 
-sub iddump { my( $bh, $mods )=@_;
+#sub iddump { my( $bh, $mods )=@_;
+sub iddump { my( $bh )=@_;
 
 	my $om = $bh->{om_formal};
 	my ($id, $rfs, $elemsR, $valsR);
 	my $errcnt = 0;
+	my $mods = {};
 	while (<STDIN>) {
 		chop;
+		! $_ and
+			next;
 		if (! $bh->{sh}->{fetch_exdb}) { # yyy no exdb, only indb case
 			! dumphexid($bh, $mods, $_) and
-				outmsg($bh),	# XXX use stderr
+				outmsg($bh),	# XXX use stderr?
 				initmsg($bh),
 				$errcnt++,
 				return 1;
@@ -2259,15 +2272,18 @@ sub dumphexid { my( $bh, $mods, $id )=@_;
 	say("# hexid: $hexid");
 
 	my $rfs = flex_enc_indb($id);	# prep get_rawidtree fetch of --all,
+	my $old_mods_all = $mods->{all};
 	$mods->{all} = 1;		# elements, including admin elements
-	! get_rawidtree($bh, $mods,
+	if (! get_rawidtree($bh, $mods,
 		undef,		# here OM arg undefined because
 		$elemsR,	# here want elem names returned
 		$valsR,		# and here want values returned
 		$id,		# UNencoded $id
 			#$rfs->{id}) and
-	) and
+	)) {
+		$mods->{all} = $old_mods_all;		# restore value
 		return 0;
+	}
 
 	my ($elem, $val, $hexelem, $hexval);
 	my $ecnt = 0;		# element count
@@ -2291,6 +2307,8 @@ sub dumphexid { my( $bh, $mods, $id )=@_;
 	}
 	say("# elements bound under $id: $ecnt");
 	say('');		# block/paragraph separator
+	$mods->{all} = $old_mods_all;		# restore value
+	return 1;
 }
 
 # Read id dump blocks from STDIN. For each id, purge it, and if there are
@@ -2304,7 +2322,8 @@ sub dumphexid { my( $bh, $mods, $id )=@_;
 # case we do overwrite with "set" and the incoming values. This makes sure
 # that the original id creation/mod times are reflected in the idload.
 
-sub idload { my( $bh, $mods )=@_;
+#sub idload { my( $bh, $mods )=@_;
+sub idload { my( $bh )=@_;
 
 	# Read input one "paragraph" block at a time.
 	# Process blocks that look like this example (from i.set a b)
@@ -2329,15 +2348,22 @@ sub idload { my( $bh, $mods )=@_;
 	my ($id, $elem, $val);		# unencoded
 	my $numelems;			# number of elements expected
 	my $errcnt = 0;
-	my $old_did_rawidtree = $mods->{did_rawidtree};
-	$mods->{did_rawidtree} = 1;	# act like get_rawidtree got us our
-	# elements, since it did and we don't want egg_set calling instantiate()
+	#my $old_did_rawidtree = $mods->{did_rawidtree};
+
+	my $mods = {};
+	$mods->{did_rawidtree} = 1;	# act like get_rawidtree got
+		# us our elements, since it did (via iddump) and we
+		# don't want egg_set or egg_purge calling instantiate()
+		# to replace stuff like '@' and '&' (instead we want
+		# just a literal transfer of hex-encoded content).
+
 
 	local $/ = '';			# read input in paragraph mode
 	while (<STDIN>) {		# read each line from input
 		if (! s/^# id: (.*)\n# hexid: (.*)\n//) {
-			say STDERR "ERROR: malformed preamble in " .
-				"$plainid record starting on line $lcnt";
+			say STDERR "ERROR: malformed preamble (",
+				substr($_, 0, 80),
+				"...) in record starting on line $lcnt";
 			$lcnt += tr/\n//;
 			next;
 		}
@@ -2361,10 +2387,11 @@ sub idload { my( $bh, $mods )=@_;
 
 		($id = $hexid) =~ s/([[:xdigit:]]{2})/chr hex $1/eg;
 
-		! egg_purge($bh, $mods, "purge", $formal, $id) and
+		if (! egg_purge($bh, $mods, "purge", $formal, $id)) {
 			outmsg($bh),
 			initmsg($bh),		#  clear error messages
 			$errcnt++;
+		}
 
 # XXX can I turn a linux1 binder readonly during DNS transition
 #     when some clients will still have old ip addr?
@@ -2417,12 +2444,9 @@ sub idload { my( $bh, $mods )=@_;
 			next;
 		}
 	}
-
-	$mods->{did_rawidtree} = $old_did_rawidtree;	# restore value
 	$errcnt > 0 and
 		outmsg($bh, "Error count is $errcnt"),
 		return 0;
-
 	return 1;
 }
 

@@ -198,11 +198,16 @@ like $x, qr/^$/s, "'rm' op with nasty chars";
 
 $x = `$cmd -d $td/foo '\$t.^x.set' '\$u.|e' nasty`;
 $x = `$cmd -d $td/foo '\$t.^x.purge'`;
-
 like $x, qr/under \$t\.\^x: 3\n/s, "'purge' op with nasty chars";
 
+$x = `$cmd -d $td/foo '\$t.^x.purge'`;
+like $x, qr/under \$t\.\^x: 0\n/s,
+	"second purge finds no elements to purge";
+
+# xxx the test for 'exists' is pretty poor, eg, it didn't catch that the second
+# purge above actually found some elements before a bug was fixed
 $x = `$cmd -d $td/foo '\$t.^x.exists'`;
-like $x, qr/^0\n/, "and 'exists' agrees that it's gone";
+like $x, qr/^0\n/, "and 'exists' believes that it's gone";
 
 remove_td($td, $tdata);
 }

@@ -1129,7 +1129,7 @@ sub bdx_iddump { my( $ubname, $smode )=@_;	# $smode not used, defaults yyy
 		outmsg($bh),
 		return 1;
 
-	EggNog::Egg::iddump($bh, $mods, @_) or
+	EggNog::Egg::iddump($bh, @_) or
 		outmsg($bh),
 		return 1;
 	return 0;
@@ -1165,7 +1165,7 @@ sub bdx_idload { my( $ubname, $smode )=@_;	# $smode not used, defaults yyy
 	bopen($bh, $isbname, DB_RDWR, $minderpath) or
 		outmsg($bh), return 1;
 
-	EggNog::Egg::idload($bh, $mods, @_) or
+	EggNog::Egg::idload($bh, @_) or
 		outmsg($bh),
 		return 1;
 	return 0;
