@@ -136,9 +136,15 @@ o
 
 # XXX logging bug: we only log user and not binder name! for public binder
 #     accesses we can (for now) assume user => binder name (eg, ezid=>ezid)
+my $rwind = '^==* report window .* to \([0-9].*\)$';
 my $changed_ids = `tlog --mods $changetime $td/logs/transaction_log \\
-	| sed -n 's/^.=mod== [^ ][^ ]* //p'`;
-#chop $changed_ids;
+	| sed -n -e 's/^.=mod== [^ ][^ ]* //p' -e 's/$rwind/# end: \\1/p'`;
+
+my $report_end_time;	# in practice, a tlog parameter for next harvest
+$changed_ids =~ s/^# end: (.*)\n// and
+	$report_end_time = $1;
+like $report_end_time, qr/^\d\d\d\d\.\d\d\.\d\d\_\d\d:\d\d:\d\d\.?\d*$/,
+	"report end time captured";
 
 is $changed_ids, $sorted_changed_ids,
 	"transaction_log has all the changed_ids";
@@ -146,7 +152,9 @@ is $changed_ids, $sorted_changed_ids,
 my $msg;
 # quoting problems make putting it in a file easier than shell <<<
 $msg = file_value("> $td/changed_ids", $changed_ids, "raw");
-like $msg, qr//, "saved changed_ids harvested from transaction_log";
+is $msg, '', "saved changed_ids harvested from transaction_log";
+
+#say "xxxxxx premature end. changed_ids=$changed_ids"; exit;
 
 $x = `$cmd iddump $td/foo < $td/changed_ids > $td/iddump`;
 $msg = file_value("< $td/iddump", $x);
