@@ -38,6 +38,12 @@ RewriteRule ^/(ark:/?13960.*)\$ \\
 RewriteRule ^/(ark:/?99999/ff?k3.*)\$ \\
     "_rslv_\${map_ncpt:\${esc:\$1%{ENV:THUMPER}}.resolve \${$hdrblob}}" [NC]
 
+# YYY this one-off does not scale
+#ark:/99999/fq3                          # idra
+#ark:/99999/ffq3                         # idra_test
+RewriteRule ^/(ark:/?99999/ff?q3.*)\$ \\
+    "_rslv_\${map_idra:\${esc:\$1%{ENV:THUMPER}}.resolve \${$hdrblob}}" [NC]
+
 # YYY this rule works for all registered NAANs
 # This permits local resolvers to publish test/fake 99999-based ARKs via N2T
 RewriteRule ^/ark:/?(99999/9([^_]+)_.*)\$ "/ark:/\$2/\$1" [NC,R=302]

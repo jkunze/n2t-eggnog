@@ -174,16 +174,37 @@ like $x, qr{HTTP/\S+\s+200\s+OK.*api home page}si,
 
 my $pps;		# passwords/permissions string
 my $fqsr;		# fully qualified shoulder
+my $a0;
 
 $pps = setpps get_user_pwd "ncpt", "ncpt", $cfgdir;
 
+# XXX NB: for this kind of resolution to work we need to add apache rule!!!
+# YYY this one-off does not scale
+#ark:/99999/fk3                          # ncpt
+#ark:/99999/ffk3                         # ncpt_test
+# RewriteRule ^/(ark:/?99999/ff?k3.*)\$ \\
+#     "_rslv_\${map_ncpt:\${esc:\$1%{ENV:THUMPER}}.resolve \${$hdrblob}}" [NC]
+
 my $ncptshdr = 'ark:/99999/fk3';
 
-my $a0 = "${ncptshdr}n2tegntest";
+$a0 = "${ncptshdr}n2tegntest";
 $x = `$webcl $pps "$ssvbase_u/a/ncpt/b? --verbose $a0.set _t https://z.example.com"`;
 $x = `$webcl --max-redirect 0 "$ssvbase_u/$a0"`;
 like $x, qr{^Location: https://z.example.com}m,
 	"generic 'ncpt' test shoulder ($ncptshdr) target redirect";
+
+$pps = setpps get_user_pwd "idra", "idra", $cfgdir;
+
+my $idrashdr = 'ark:/99999/fq3';
+
+$a0 = "${idrashdr}n2tegntest";
+$x = `$webcl $pps "$ssvbase_u/a/idra/b? --verbose $a0.set _t https://z.example.com"`;
+$x = `$webcl --max-redirect 0 "$ssvbase_u/$a0"`;
+like $x, qr{^Location: https://z.example.com}m,
+	"generic 'idra' test shoulder ($idrashdr) target redirect";
+
+#$x = apachectl('graceful-stop')	and say($x);
+#exit;	######### premature stop
 
 $pps = setpps get_user_pwd "ezid", "ezid", $cfgdir;
 
@@ -199,9 +220,6 @@ $x = `$webcl --max-redirect 0 "$srvbase_u/$a0"`;
 #like $x, qr{^Location: http://.*/ark:/s1234567/99999/9s1234567_foo}m,
 like $x, qr{^Location: http://.*/ark:/68061/99999/968061_foo}m,
 	"generic local resolver use of 99999 n2t-based resolution";
-
-#$x = apachectl('graceful-stop')	and say($x);
-#exit;	######### premature stop
 
 my $a1 = 'ark:/12345/bcd';
 $x = `$webcl $pps "$ssvbase_u/a/ezid/b? --verbose $a1.set _t http://b.example.com"`;
