@@ -2348,7 +2348,7 @@ sub idload { my( $bh )=@_;
 	# The remaining lines give the hex elements and values to set.
 
 	my $formal = 1;			# ? needed?
-	my ($lcnt, $ecnt) = (1, 0);	# line count and element count
+	my ($lcnt, $ecnt, $icnt) = (1, 0, 0);	# line, element, and id counts
 	my ($plainid, $hexid);		# encoded in one way or another
 	my ($id, $elem, $val);		# unencoded
 	my $numelems;			# number of elements expected
@@ -2373,6 +2373,7 @@ sub idload { my( $bh )=@_;
 			next;
 		}
 		($plainid, $hexid) = ($1, $2);
+		$icnt++;
 
 		if (! s/# elements bound under.*: (\d+)\n\n$//) {
 			say STDERR "ERROR: malformed footer in " .
@@ -2445,7 +2446,7 @@ sub idload { my( $bh )=@_;
 		}
 	}
 	#outmsg($bh, "idload processed $lcnt lines", '# note');
-	say "# Done. Processed $ecnt elements on $lcnt lines.";
+	say "# Done. Processed $icnt ids on $lcnt lines.";
 	$errcnt > 0 and
 		outmsg($bh, "Error count is $errcnt"),
 		return 0;
