@@ -189,6 +189,8 @@ shellst_is 0, $x,
 
 unlike $x, qr/error: /i, "no idload errors reported";
 
+like $x, qr/^# .*lines/m, "idload reports lines processed";
+
 if ($indb) {
 
   # we're going to do new dumps and comparisons

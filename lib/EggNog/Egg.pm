@@ -8,6 +8,11 @@ package EggNog::Egg;
 # XXX add low-level check for binder opened RDONLY since BDB silently fails
 #     with no messag
 
+# XXX can I turn a linux1 binder readonly during DNS transition
+#     when some clients will still have old ip addr?
+# XXX what about Linux1 OCA minter? can I make it readonly? should I
+#     artificially advance that minter (since can't pause it)?
+
 use 5.10.1;
 use strict;
 use warnings;
@@ -2393,11 +2398,6 @@ sub idload { my( $bh )=@_;
 			$errcnt++;
 		}
 
-# XXX can I turn a linux1 binder readonly during DNS transition
-#     when some clients will still have old ip addr?
-# XXX what about Linux1 OCA minter? can I make it readonly? should I
-#     artificially advance that minter (since can't pause it)?
-
 		# For dupes, use "add" not "set"; ok since we did purge first.
 		# If we were doing bulk commands, we might encode like this
 		#      @.add @ @
@@ -2444,6 +2444,8 @@ sub idload { my( $bh )=@_;
 			next;
 		}
 	}
+	#outmsg($bh, "idload processed $lcnt lines", '# note');
+	say "# Done. Processed $ecnt elements on $lcnt lines.";
 	$errcnt > 0 and
 		outmsg($bh, "Error count is $errcnt"),
 		return 0;
