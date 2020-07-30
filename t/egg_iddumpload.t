@@ -28,6 +28,8 @@ $ENV{TMPDIR} = $td;			# for db_dump and db_load
 remake_td($td, $tdata);
 my $x;
 
+say "XXX this is incomplete in terms of new bsync2remote";
+
 $x = `$cmd --verbose -p $td mkbinder foo`;
 shellst_is 0, $x, "make binder named foo";
 
@@ -137,24 +139,41 @@ o
 # XXX logging bug: we only log user and not binder name! for public binder
 #     accesses we can (for now) assume user => binder name (eg, ezid=>ezid)
 my $rwind = '^==* report window .* to \([0-9].*\)$';
-my $changed_ids = `tlog --mods $changetime $td/logs/transaction_log \\
-	| sed -n -e 's/^.=mod== [^ ][^ ]* //p' -e 's/$rwind/# end: \\1/p'`;
+#my $changed_ids = `tlog --mods $changetime $td/logs/transaction_log \\
+#	| sed -n -e 's/^.=mod== [^ ][^ ]* //p' -e 's/$rwind/# end: \\1/p'`;
+my $changed_ids = `tlog --iddump $changetime $td/logs/transaction_log`;
 
 my $report_end_time;	# in practice, a tlog parameter for next harvest
-$changed_ids =~ s/^# end: (.*)\n// and
+$changed_ids =~ s/^# next harvest: (\S+) \S+\n//m and
 	$report_end_time = $1;
 like $report_end_time, qr/^\d\d\d\d\.\d\d\.\d\d\_\d\d:\d\d:\d\d\.?\d*$/,
 	"report end time captured";
 
+## ======== 2020.07.29_17:20:08 to 2020.07.29_17:20:08.933651
+## from log ['td_egg/logs/transaction_log']
+# +n2t @
+# +n2t ^$txyz
+# +n2t i
+# +n2t j
+# +n2t m
+# +n2t n
+# +n2t o
+## report end time: 2020.07.29_17:20:08.933651
+##      7 mods from 2020.07.29_17:20:08 to 2020.07.29_17:20:08.933651
+## next harvest: 2020.07.29_17:20:08.933651 /apps/n2t/sv/cur/apache2/logs/transaction_log
+
+$changed_ids =~ s/^#.*\n//gm;
+$changed_ids =~ s/^ (\S+) //gm;		# drop binder name, eg, "+n2t"
+
 is $changed_ids, $sorted_changed_ids,
 	"transaction_log has all the changed_ids";
+
+#say "xxxxxx premature end. changed_ids=$changed_ids"; exit;
 
 my $msg;
 # quoting problems make putting it in a file easier than shell <<<
 $msg = file_value("> $td/changed_ids", $changed_ids, "raw");
 is $msg, '', "saved changed_ids harvested from transaction_log";
-
-#say "xxxxxx premature end. changed_ids=$changed_ids"; exit;
 
 $x = `$cmd iddump $td/foo < $td/changed_ids > $td/iddump`;
 $msg = file_value("< $td/iddump", $x);
