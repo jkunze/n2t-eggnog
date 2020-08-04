@@ -1409,7 +1409,9 @@ sub bdx_del { my( $lcmd, $formal )=( shift, shift );
 	return 0;
 }
 
-# XXX currently no way to use this $formal
+# XXX currently the only way to use this $formal is with an arg like 1 in
+#        egg i.purge 1
+
 sub bdx_purge { my( $formal )=shift;
 
 	$bindelem and

@@ -2347,7 +2347,7 @@ sub idload { my( $bh )=@_;
 	# The hexid line gives the hex version of the id to set.
 	# The remaining lines give the hex elements and values to set.
 
-	my $formal = 1;			# ? needed?
+	my $formal = 0;			# make things a little quieter
 	my ($lcnt, $ecnt, $icnt) = (1, 0, 0);	# line, element, and id counts
 	my ($plainid, $hexid);		# encoded in one way or another
 	my ($id, $elem, $val);		# unencoded

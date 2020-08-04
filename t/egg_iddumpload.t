@@ -94,7 +94,10 @@ if ($indb) {
 
 }	# close if ($indb)
 
-my $changetime = `date '+%Y.%m.%d_%H:%M:%S'`;	# starttime of changes
+# starttime of changes; need subsecond accurracy in order not to accidentally
+# sweep in changes prior to the $cmdblock below
+
+my $changetime = `date '+%Y.%m.%d_%H:%M:%S.%N'`;
 chop $changetime;
 
 # XXX bug: this next doesn't log properly -- need to fix

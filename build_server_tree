@@ -2317,22 +2317,22 @@ RewriteRule ^(.*)$ - [env=proto:https]
 
 # Edge case rule to send stuff intended for the API over to https (/a/...).
 # xxx should this use the permanent redirect code?
-#
-RewriteRule ^(/a/.+)\$ https://$shostport\$1 [R=302,L]
+
+RewriteRule ^(/a/.+)\$ https://$EGNAPA_HOST\$1 [R=302,L]
 
 # Note that these files are Include'd once for HTTP and once for HTTPS,
 # which means that there are two RewriteMap processes for each binder.
 #
 ####### Include rewrite1-setup.conf for HTTP
-#
+
 Include $srvref_root/conf/rewrite1-setup.conf
 
 ####### Include rewrite2-server.conf for HTTP
-#
+
 Include $srvref_root/conf/rewrite2-server.conf
 
 ####### Include rewrite3-generic.conf for HTTP
-#
+
 Include $srvref_root/conf/rewrite3-generic.conf
 
 </VirtualHost>

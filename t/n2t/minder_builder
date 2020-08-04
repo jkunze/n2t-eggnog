@@ -51,6 +51,11 @@ RewriteRule ^/ark:/?(99999/9([^_]+)_.*)\$ "/ark:/\$2/\$1" [NC,R=302]
 #RewriteRule ^/ark:/?99152.*\$      "_rslv_\${map_yamz:%{REQUEST_URI}.resolve \${$hdrblob}}"
 
 # YYY this one-off does not scale
+#ark:/99152/t3				# TemaTres vocabulary shoulder
+RewriteRule ^/(ark:/?99152/t3.*)\$ \\
+    "https://vocabularyserver.com/\$1" [R=302,L,NC]
+
+# YYY this one-off does not scale
 #  # This shoulder is designed to support the single ARK, ark:/99152/p0,
 #  # which is registered mainly to support suffix passthrough.
 #ark:/99152/p0:
