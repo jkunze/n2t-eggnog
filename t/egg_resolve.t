@@ -263,10 +263,21 @@ like $x, qr{redir302 zaf.*redir302 zaf}s,
 like $x, qr{redir302 zafD245/67},
 	"SPT on shoulder-as-id target";
 
+$x = resolve_stdin_hdr("-d $td/foo", $url, "!!!ac=text/turtle!!!");
+like $x, qr|^inflect.*op=cn.text/turtle|,
+	"script called (conneg) with simple, unambiguous Accept: header";
+
+$x = resolve_stdin_hdr("-d $td/foo", $url, "!!!ac=text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9!!!");
+like $x, qr{redir302 zaf},
+	"script NOT called (ie, no conneg) with modern browser Accept: header";
+
+#say "XXX premature exit, x=$x"; exit;
+
 $url = 'ark:/98765/f3';
 $x = `$cmd -d $td/foo $url.set _t 'bar\${suffix}zaf\${suffix}foo'`;
 $x = `$cmd -d $td/foo $url.get _t`;
-like $x, qr|{suffix}zaf\${suffix}|, "target set with embedded suffix";
+like $x, qr|{suffix}zaf\${suffix}|,
+	"target set with embedded suffix, to be expanded by inflect script";
 
 my ($shadow_doi1, $shadow_doi2) = ('ark:/b0089/xt4%77%77q', 'ark:/c5072/Xt9');
 my ($doi1, $doi2) = ('doi:10.89/XT4WWQ', 'doi:10.15072/XT9');
@@ -335,9 +346,6 @@ $x = resolve_stdin_hdr("-d $td/fon",
 );
 like $x, qr|^redir302.*nersc/mysuffix|,
        "redirect called for single target conneg and SPT";
-
-#print "x=$x";
-#print "####### temporary stop ########\n"; exit;
 
 $x = `$cmd -d $td/fon $url.add _t skink`;
 $x = resolve_stdin("-d $td/fon", $url);

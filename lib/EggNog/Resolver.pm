@@ -498,11 +498,17 @@ sub get_headers { my( $hdrinfo )=@_;
 	$hdrinfo =~ /!!!ac=(.*?)!!!/;		# non-greedy
 	$accept = $1 || '';
 
-	# NB: browsers seem to set the Accept: header to '*/*' instead
-	#     of just leaving it empty.
+	# NB: In the past, browsers would put nothing or just '*/*' in
+	# the Accept: header, which we would take to mean "no special
+	# format requested", ie, no content negotiation or "request".
+	# Modern browsers, however, seem to put lots into that header,
+	# which we don't really want to parse. To make life simple for
+	# ourselves, we will take the presence of '*/*' inside it to
+	# mean "no content negotiation".
 
-	$accept eq '*/*' and	# if anything accepted then
-		$accept = '';		# no content negotiation
+	#$accept eq '*/*' and	# if anything accepted then
+	$accept =~ m|\*/\*| and		# if anything is accepted, it's the
+		$accept = '';		# same as no content negotiation
 
 	# xxx why was the whitelist below ever in effect?
 	#$accept eq '*/*' and	# if anything accepted then

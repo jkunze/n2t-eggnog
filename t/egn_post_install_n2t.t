@@ -556,6 +556,11 @@ $x = `wegn -v resolve 'ark:/12148:'`;
 like $x, qr/Bibliothèque nationale de France/i,
 	'prefix fetch on well-known NAAN preserves UTF-8';
 
+my $hostname = `hostname -f`;
+chop $hostname;
+say "NB: For an end-user check, open this in your browser (eg, Cmd-Click):\n",
+	"    https://$hostname/$cdl_ark";
+
 $x = `n2t cron works`;
 $x =~ /disabled/ and
 	say STDERR "\nALERT! -- $x";
