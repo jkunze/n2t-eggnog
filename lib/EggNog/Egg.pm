@@ -413,9 +413,6 @@ sub egg_purge { my( $bh, $mods, $lcmd, $formal, $id )=@_;
 	my @elems = ();
 	my $om = $bh->{om};
 
-	my $txnid;		# undefined until first call to tlogger
-	$txnid = tlogger $sh, $txnid, "BEGIN $id.$lcmd";
-
 	# A possibility of redundancy since we also check authz in egg_del,
 	# but purge has special sweeping powers and it's only one extra check.
 	#
@@ -444,6 +441,9 @@ sub egg_purge { my( $bh, $mods, $lcmd, $formal, $id )=@_;
 	# Set "all" flag so we act even on admin elements, eg, get_rawidtree().
 	#
 	$mods->{all} = 1;			# xxx downstream side-effects?
+
+	my $txnid;		# undefined until first call to tlogger
+	$txnid = tlogger $sh, $txnid, "BEGIN $id.$lcmd";
 
 	my $num_elems;
 	my $retval = 1;
@@ -2446,7 +2446,7 @@ sub idload { my( $bh )=@_;
 		}
 	}
 	#outmsg($bh, "idload processed $lcnt lines", '# note');
-	say "# Done. Processed $icnt ids on $lcnt lines.";
+	say "# Done. Processed $icnt ids on $lcnt lines, $errcnt errors.";
 	$errcnt > 0 and
 		outmsg($bh, "Error count is $errcnt"),
 		return 0;

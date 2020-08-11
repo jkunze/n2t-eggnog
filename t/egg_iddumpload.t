@@ -190,7 +190,7 @@ $x = `$cmd idload $td/bar < $td/iddump`;
 shellst_is 0, $x,
 	"idload into $td/bar from $td/iddump";
 
-unlike $x, qr/error: /i, "no idload errors reported";
+like $x, qr/ 0 errors/i, "no idload errors reported";
 
 like $x, qr/^# .*lines/m, "idload reports lines processed";
 
