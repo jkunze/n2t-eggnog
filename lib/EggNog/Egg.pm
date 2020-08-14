@@ -387,6 +387,7 @@ sub egg_exists { my( $bh, $mods, $id, $elem )=@_;
 	}
 
 	my $st = $om->elem("exists", $exists);
+	#my $st = $om->elem($id, $exists);
 	# XXX this om return status is being ignored
 
 	return 1;
