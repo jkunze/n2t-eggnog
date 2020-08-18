@@ -846,7 +846,7 @@ echo Building skeleton server structure extensions.
 # yyy what's httpauth for? var/state? should we use var/{run,lock}?
 msg=$( mkdir -p 2>&1 $buildout_root \
 	$buildout_root/{htdocs,conf,cgi-bin,logs} \
-	$buildout_root/htdocs/{a,e,r,e/pop,e/{images,x,css}} )
+	$buildout_root/htdocs/{a,e,r,e/{pop,pub},e/{images,x,css}} )
 
 [[ -e $bst_root/eggnog_conf ]] && {
 	echo Copying $bst_root/eggnog_conf
