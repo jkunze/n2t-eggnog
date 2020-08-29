@@ -10,11 +10,11 @@
 .. _EZID: https://ezid.cdlib.org
 .. _ARK: /e/ark_ids.html
 .. _ARK request form: https://goo.gl/forms/bmckLSPpbzpZ5dix1
-.. _ARKs FAQ: https://wiki.duraspace.org/display/ARKs/ARK+Identifiers+FAQ
+.. _ARKs FAQ: https://wiki.lyrasis.org/display/ARKs/ARK+Identifiers+FAQ
 .. _DOI: https://www.doi.org
 .. _EZID.cdlib.org: https://ezid.cdlib.org
 .. _DataCite: https://www.datacite.org
-.. _ARKs in the Open: https://wiki.duraspace.org/display/ARKs/ARKs+in+the+Open+Project
+.. _ARKs in the Open: https://wiki.lyrasis.org/display/ARKs/ARKs+in+the+Open+Project
 .. _California Digital Library: https://www.cdlib.org
 .. _N2T Partners: /e/partners.html
 .. _N2T API Documentation: /e/n2t_apidoc.html

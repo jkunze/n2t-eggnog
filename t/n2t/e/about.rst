@@ -11,7 +11,7 @@
 .. _ARKs in the Open: http://ARKsInTheOpen.org
 .. _DOI: https://www.doi.org
 .. _suffix passthrough: https://ezid.cdlib.org/learn/suffix_passthrough
-.. _DuraSpace: http://duraspace.org/
+.. _DuraSpace: http://lyrasis.org/
 .. _EZID.cdlib.org: https://ezid.cdlib.org
 .. _Internet Archive: https://archive.org
 .. _YAMZ.net metadictionary: https://yamz.net
@@ -97,15 +97,21 @@ Organizational Backing
 ----------------------
 
 N2T is maintained at the `California Digital Library`_ (CDL) within the
-University of California (UC) Office of the President. CDL supports
+University of California (UC) Office of the President (UCOP). CDL supports
 electronic library services for ten UC campuses and affiliated law
 schools, medical centers, and national laboratories, as well as hundreds
 of museums, herbaria, botanical gardens, etc.
 
+N2T runs in the AWS (Amazon Web Services) cloud. Security and privacy
+rests on the foundational physical, network, and procedural security
+maintained within AWS datacenters based in the United States of America,
+with additional CDL and UCOP privacy safeguards, patching policies, access
+restrictions, firewall controls, etc. layered on top of that.
+
 Recognizing the important global role that the resolver plays, in 2018 CDL
-and DuraSpace_ launched an initiative, called `ARKs in the Open`_, to
-establish broad and sustainable community ownership of N2T's
-technological, administrative, and policy infrastructure.
+and DuraSpace_ (now LYRASIS) launched an initiative, called
+`ARKs in the Open`_, to establish broad and sustainable community ownership
+of N2T's technological, administrative, and policy infrastructure.
 With support from 31 organizations on 4 continents, the initiative
 has three active working groups.
 
@@ -117,8 +123,9 @@ has three active working groups.
 Maintenance Window
 ------------------
 
-N2T may occasionally be suspended or interrupted for up to one hour
-during routine server maintenance on Sundays beginning at 08:00 in
-California, UTC-08:00 (standard time), UTC-07:00 (daylight savings).
+The N2T service may occasionally be suspended or interrupted for up to one hour
+during the routine maintenance window. If maintenance is scheduled, it takes
+place on Sundays beginning at 08:00 in California, UTC-08:00 (standard time),
+UTC-07:00 (daylight savings).
 
 //END//

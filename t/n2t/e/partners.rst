@@ -18,7 +18,7 @@
 .. _Crossref: https://crossref.org
 .. _European Bioinformatics Institute: https://www.ebi.ac.uk
 .. _California Digital Library: https://www.cdlib.org
-.. _DuraSpace: http://duraspace.org/
+.. _DuraSpace: http://lyrasis.org/
 .. _Uniform Resolution of Compact Identifiers for Biomedical Data: https://doi.org/10.1101/101279
 .. _Prefix Commons: https://prefixcommons.org
 .. _SNAC: http://snaccooperative.org
@@ -46,7 +46,7 @@ Individual identifiers are stored in N2T.net by a number of partners.
 - `European Bioinformatics Institute`_ - identifiers.org
 - `Prefix Commons`_ - prefixcommons.org
 
-In February 2018 the `California Digital Library`_ and DuraSpace_
+In February 2018 the `California Digital Library`_ and DuraSpace_ (now LYRASIS)
 announced the `ARKs in the Open`_ project, a collaboration aimed at
 building an open, international community around Archival Resource Keys
 (ARKs_) and their use as persistent identifiers in the scholarly ecosystem.
