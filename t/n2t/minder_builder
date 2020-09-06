@@ -39,6 +39,13 @@ RewriteRule ^/(ark:/?99999/ff?k3.*)\$ \\
     "_rslv_\${map_ncpt:\${esc:\$1%{ENV:THUMPER}}.resolve \${$hdrblob}}" [NC]
 
 # YYY this one-off does not scale
+# to create shoulder, do: make_shdr ark:/99166/p3 ncpt
+# XXX need way for this to happen on server build???
+#ark:/99166/p3    # ncpt agents, since by default all 99166 goes to EZID binder
+RewriteRule ^/(ark:/?99166/p3.*)\$ \\
+    "_rslv_\${map_ncpt:\${esc:\$1%{ENV:THUMPER}}.resolve \${$hdrblob}}" [NC]
+
+# YYY this one-off does not scale
 #ark:/99999/fq3                          # idra
 #ark:/99999/ffq3                         # idra_test
 RewriteRule ^/(ark:/?99999/ff?q3.*)\$ \\
@@ -299,6 +306,11 @@ else
 	)
 fi
 
+# XXX add minter: field to each shared shoulder!!
+#
+#
+#
+#
 # This legacy minter, created 2013.02.12, minted 4,030,509 spings in two
 # big batches.
 # yyy On 2015.0.25 nog (on ec2) minted 4M spings in one run, taking 15 mins.

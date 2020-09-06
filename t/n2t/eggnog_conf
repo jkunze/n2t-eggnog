@@ -20,6 +20,16 @@ hosts:
     backup: 1
     # NB: no automatic patching in prd
 
+  ids-n2t2-stg.n2t.net:
+    shell_name: n2stg
+    class: stg			# may default to what's found in the hostname
+    client_name: stg		# one instance of this class as known to wegn
+    prefix_import: 1
+    syserr_check: 1
+    log_rotate: 1
+    backup: 1
+    patch_thursday: 1
+
   ids-n2t2-dev.n2t.net:
     shell_name: n2dev		# must be unique
     class: dev			# may default to what's found in the hostname
@@ -28,16 +38,6 @@ hosts:
     log_rotate: 1
     backup: 0
     patch_monday: 1
-
-  ids-n2t2-stg.n2t.net:
-    shell_name: n2stg
-    class: stg			# may default to what's found in the hostname
-    client_name: stg		# one instance of this class as known to wegn
-    prefix_import: 1
-    syserr_check: 1
-    log_rotate: 1
-    backup: 0
-    patch_thursday: 1
 
   localhost:
     shell_name: loc
@@ -52,8 +52,10 @@ hosts:
 redirects:
   pre_lookup:
     - "s e/arks_eoi https://bit.ly/2C4fU8f"
+    - "s e/shoulder_request https://forms.gle/Pv84NYP1LCSdiLaFA"
     - "s e/naan_request https://goo.gl/forms/bmckLSPpbzpZ5dix1"
     - "s e/NAAN_request https://goo.gl/forms/bmckLSPpbzpZ5dix1"
+    - "s e/request2naan https://goo.gl/forms/bmckLSPpbzpZ5dix1"
     - "s e/prefix_request https://docs.google.com/forms/d/18MBLnItDYFOglVNbhNkISqHwB-pE1gN1YAqaARY9hDg"
     - "s e/prefix_overview https://docs.google.com/document/d/1qwvcEfzZ6GpaB6Fql6SQ30Mt9SVKN_MytaWoKdmqCBI"
   post_lookup:
