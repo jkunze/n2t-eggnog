@@ -913,9 +913,10 @@ sub bdx_next_list { my( $max, $nextkey, @inkeys )=@_;
 	defined($num_ids) or
 		outmsg($bh), return 1;
 
-	my $summary = " produced $num_ids ids with an average of "
-			. ($num_ids ? ($num_bindings / $num_ids) : 0)
-			. " bindings per id";
+	my $summary =
+		" produced $num_ids ids, $num_bindings bindings (average "
+		. sprintf("%.2f", ($num_ids ? ($num_bindings / $num_ids) : 0))
+		. " bindings per id)";
 	$bh->{om}->elem('summary', $summary, '1#');
 	return 0;
 }

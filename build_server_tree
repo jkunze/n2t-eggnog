@@ -1255,8 +1255,10 @@ SSLCertificateChainFile \"$sslchain\""
 # xxx does this remove need to create td_{egg,nog} from {apache,dura}base.t??
 mkdir $binders_root 2>&1
 cat > $binders_root/README << EOT
-This directory contains egg binders.  See ../htdocs/a for the web-facing
-paths and scripts that access them (a=api).
+This directory contains egg binders. See ../htdocs/a for the web-facing
+paths and scripts that access them (a=api). Place a file called NOBACKUP
+here to prevent all binder backups, or inside a binder directory to prevent
+backing up any particular binder (backups are first enabled in eggnog_conf).
 EOT
 mkdir $minters_root 2>&1
 cat > $minters_root/README << EOT
