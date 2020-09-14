@@ -564,8 +564,14 @@ export \
 # XXX should EGNAPA_HOST_CLASS be set again (as before) in warts/env.sh,
 # especially because we have installation probz during first rollout, when
 # there's no eggnog_conf already installed?
+# >>> trial: semi-kludge to override --home setting from EGG env var (since
+#     that home dir setting doesn't exist yet) by using an explicit --home
+#     arg pointing into the source tree so that config file is found;
+#     instead probably should add new "--config file" arg to egg
 
-class=$( perl -Mblib egg cfq class )
+# kludgy fake home directory
+class=$( perl -Mblib egg --home $bst_root cfq class )
+#class=$( perl -Mblib egg cfq class )
 
 [[ "$class" != "$EGNAPA_HOST_CLASS" ]] && {
 	echo "WARNING: configured host class ($class) differs from that" \
