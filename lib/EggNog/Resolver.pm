@@ -699,7 +699,6 @@ sub id_decompose { my( $pfxs, $id )=@_;
 	#        (when x ne "grid")
 	# yyy add url: as scheme?
 
-	#if ($id =~ /^urn:([^:]+):(.*)/i) {	# yyy kludgy special case
 	if ($id =~ /^urn:([^:]+):((([^:]+):)?(.*))/i) {	# kludgy special case
 		my $nid_raw = $1;
 		my $nid = lc $1;
@@ -727,7 +726,6 @@ sub id_decompose { my( $pfxs, $id )=@_;
 		$scheme = lc $1;	# $scheme is now defined and lowercase
 		$id = $2 || '';		# $id now w.o. scheme or initial spaces
 	}
-	#elsif ($id !~ /:/) {		# if no colon-y bit, infer scheme
 	elsif (! $has_colon) {		# if no colon-y bit, infer scheme
 		if ($id =~ /^10\.\d+/o) {			# DOI Prefix
 			$scheme = 'doi';
@@ -815,7 +813,13 @@ sub id_decompose { my( $pfxs, $id )=@_;
 		return $idx;
 	}
 
-	$idx->{scheme} = $scheme;	# shouldn't change before we return
+	# XXX document
+	# To facilitate testing by scheme owners, if scheme ends in "-dev"
+	$scheme =~ s|(-dev)$|| and	# eg, foo-dev, prep to use extension
+		$idx->{pfxextension} = $1;	# with target hostname
+
+	$idx->{scheme} = $scheme;
+	# Neither $idx->{scheme} nor $scheme should change before we return.
 
 	# Now that we have a decent idea of what the scheme is, and having
 	# dispensed with any received http or https "id", detach any query
@@ -892,6 +896,11 @@ sub id_decompose { my( $pfxs, $id )=@_;
 		$idx->{naan} = '';		# no $naan
 	}
 	$rid = $id;			# update default root id
+
+	# To facilitate testing by NAAN holders, if the NAAN contains a hyphen
+	$idx->{naan} =~ s|(-.+)|| and		# eg, 12345-dev, prep to use
+		$idx->{pfxextension} = $1;	# extension with target hostname
+
 	# By the time we get here, we'll be done defining $idx->{naan} and
 	# $idx->{naan_sep}.
 
@@ -905,9 +914,9 @@ sub id_decompose { my( $pfxs, $id )=@_;
 #     they were ids ... maybe need to set flag here that, if set,
 #     causes resolve() to check for exact match to shoulder record
 
-	# NB: $kludge holds the inital '/' that begins (for now) ARK NAANs
+	# NB: $kludge holds '' or the '/' that begins (for now) ARK NAANs
 	# but is empty otherwise; $idx->{naan} does NOT have an initial '/'.
-	#
+
 	my $fqnaan = $scheme . ':' . $kludge . $idx->{naan};
 	$idx->{fqnaan} = $fqnaan;
 
@@ -1536,7 +1545,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 #
 #	# The shoulder we parsed out of the id might itself be stored
 #	#
-#	#   1. as an id in a binder (eg, John Deck's ark:/21547/R2), or
+#	#   1. as an id in a binder (eg, ark:/21547/R2), or
 #	#   2. as a "shoulder" type prefix in our prefix database.
 #	#
 #	# We choose the first one where we find target redirection info,
@@ -1716,11 +1725,11 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 			$id, [ ], $idx, "partial=$partial" );
 	}
 
-	# If still nothing, try new rule-based mapping.
+	# If still nothing, try rule-based mapping.
 	# Select which redirection prefix we'll use (info obtained
 	# earlier by id_decompose), choosing the first, most-specific
 	# redirect rule that we find.
-	# yyy when/where do we use the info blocks except for a thest
+	# yyy when/where do we use the info blocks except for a test
 	#     that we found a redirect? the info itself will be provided
 	#     by calling out to pfx (at least for now).
 
@@ -1754,15 +1763,21 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 
 		$proto ||= 'http';		# usually set in $hdrinfo
 		my $redirect = $rpinfo->{redirect};
+
 		#   ${a} replaced with string "after" the colon
 		#   ${blade} replaced with blade part of id
 		# $redirect =~ s/\${a}/$idx->{ slid }/g;	# maybe later
-#print "xxx before re=$redirect, ";
 		$redirect =~ s/\${blade}/$idx->{blade}/g;
 		$redirect =~ s/\$id\b/$idx->{slid}/g;
-# XXX proto preservation should work for ALL targets, not just rule-based
+# xxx proto preservation should work for ALL targets, not just rule-based
 		$redirect =~ m|https?://| or	# if proto not specified by rule
 			$redirect =~ s|^|$proto://|;	# go with user's choice
+
+		my $pxt =	# if non-null extends top-level of target host,
+			$idx->{pfxextension};   # eg, a.b.org -> a-dev.b.org
+		$pxt and
+			$redirect =~ s|^(https?://[^.]+)\.|$1$pxt.|;
+
 		return cnflect( $bh, $txnid, $db, $rpinfo, $accept,
 			$id, [ $redirect ], $idx, "rulebased" );
 	}
@@ -1904,6 +1919,8 @@ my $Ti = EggNog::Binder::TRGT_INFLECTION; # target for inflection
 # block containing a redirect rule that supplied the target URL.
 
 # Content Negotiation/Inflection
+# Mainstream case (no inflection or conneg) comes at end after eliminating
+# other cases.
 
 sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id, 
 				$dupsR, $idx, $op, $tag )=@_;
@@ -1940,7 +1957,7 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 	# word char (xxx meaning we don't honor generalized THUMP requests!?)
 	# Note that we don't check for multiple targets when doing inflection
 	# or content negotation.
-	#
+
 	my $returnline = '';
 	my $target = '';
 	my $eset = 'brief';
@@ -1954,6 +1971,7 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 				"op=partial", "partial=$partial" ))
 	}
 
+	# Define the correct function to fetch the target.
 	my $get_one = $bh->{sh}->{fetch_exdb}	# {ex,in}db-agnostic get 1 elem
 		? \&exdb_get_one
 		: \&indb_get_one
@@ -1983,7 +2001,7 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 #			$db->db_get("$rid$Rs$Ti", $target) and	# unless found
 #				$target = '';			# not found
 
-+		#say "xxx after before returnline target=$target";
+		#say "xxx after before returnline target=$target";
 		$target and		# if $target found, redirect to it
 		# xxx conneg uses redir303, but inflections are different
 		#     is that a good idea?
@@ -2025,7 +2043,6 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 					"op=cn.$accept"))
 		;
 	}
-	#say "xxx before ! returnline";
 	if (! $returnline) {
 		my $newstr = $suffix || '';	# make sure it's defined string
 
@@ -2449,7 +2466,7 @@ sub id2shadow { my( $id )=@_;
 		$id =~ s/-//g,	# ok for shadow ARKs, but not for PURLs
 		$id =~ s{^urn:uuid:([^/.]*)}{ark:/97720/\L$1\E},
 
-		# Greg's URN:UUID encoding
+		# ezid dev URN:UUID encoding
 		#$id = "urn:uuid:430c5f08-017e-11e1-858f-0025bce7cc84";
 		# urn:uuid:f81d4fae-7dec-11d0-a765-00a0c91e6bf6
 		# RFC 4122 implies that hyphens aren't significant in
@@ -2969,7 +2986,7 @@ sub check_naan { my( $bh, $naan, $id, $element )=@_;
 # XXXX suffix_pass routine should probably be called ancestor_match_spt
 #      or something similar
 
-# XXX Work with John Deck and Hank Bromley on these
+# XXX Work with biocode and IA on these
 # _t_am_equals X	# NO: go to T only on "proper" AM match"; go to X
 #			# on identical match (requires checking on every
 #			# sucessful lookup to see if _t_am_equals exists,

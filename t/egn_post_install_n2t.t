@@ -75,8 +75,6 @@ my $snachost = 'socialarchive.iath.virginia.edu';
 #         random timeofday value test for target to avoid effects
 #         of having old values make tests pass that should fail
 
-#my $srvbase_u = 'https://jak-macbook.local:18443';
-#my $srvbase_u = 'http://jak-macbook.local:18880';
 my $srvbase_u = 'http://localhost:18880';
 
 # First test a simple mint.  Make sure to error out if server isn't even up.
@@ -137,11 +135,17 @@ if ($production_data eq "yes\n") {
 	# xxx currently this perio.do works by SPT on a short id (.../p0)
 	#     should it not work with a shoulder redirect rule?
 
-	# Ryan Shaw, Eric Kansa ("periodo" ezid customers), with one
-	# identifier (p0) in the 99152 namespace.
-	$x = `wegn locate "ark:/99152/p0vn2frcz8h"`;
+	my $a0 = "ark:/99152/p0vn2frcz8h";
+	# one identifier (p0) in the 99152 namespace.
+	$x = `wegn locate "$a0"`;
+	#$x = `wegn locate "ark:/99152/p0vn2frcz8h"`;
 	like $x, qr{^Location: https://data.perio.do.*}m,
 		"Perio.do target redirect";
+
+	# YYY early use of curl, not wget! (wget/wegn won't return all headers?)
+	$x = `curl --max-redirs 0 --silent -I "$srvbase_u/$a0" | grep -i 'Access-Control-' | sort`;
+	like $x, qr{Allow-Methods:.*Allow-Origin:.*Expose-Headers:}si,
+		'CORS supported headers present on redirect';
 
 	print "--- END production-data tests (potentially volatile)\n";
 }

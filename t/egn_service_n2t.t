@@ -214,6 +214,11 @@ $x = `$webcl --max-redirect 0 "$ssvbase_u/$a0"`;
 like $x, qr{^Location: https://w.example.com}m,
 	"generic 'ezid' test shoulder target redirect";
 
+# YYY first use of curl, not wget!
+$x = `curl --max-redirs 0 --silent -I "$srvbase_u/$a0" | grep -i 'Access-Control-' | sort`;
+like $x, qr{Allow-Methods:.*Allow-Origin:.*Expose-Headers:}si,
+	'CORS supported headers present on redirect';
+
 $a0 = "ark:/99999/968061_foo";
 #$a0 = "ark:/99999/9s1234567_foo";
 $x = `$webcl --max-redirect 0 "$srvbase_u/$a0"`;

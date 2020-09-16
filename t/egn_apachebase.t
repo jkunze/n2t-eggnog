@@ -204,10 +204,6 @@ $y and print "error: $y\n";
 like $x, qr{BEGIN.*END SUCCESS}s,
 	'transaction log working';
 
-#$x = apachectl('graceful-stop')	and print("$x\n");
-#say "xxxxxxxxxx premature exit";
-#exit;	#########
-
 $x = `$webcl "$srvbase_u/e/x/feedback.pl"`;
 like $x, qr{Stub feedback.}i,
 	'publicly executable feedback form';

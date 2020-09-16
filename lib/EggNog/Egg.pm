@@ -67,7 +67,7 @@ our $SL = length $separator;
 
 our $BSTATS;	# flex_encoded exdb record id/elem hash for binder stats
 
-# yyy test bulk commands at scale -- 2011.04.24 Greg sez it bombed
+# yyy test bulk commands at scale -- 2011.04.24 ezid dev sez it bombed
 #     out with a 1000 commands at a time; maybe lock timed out?
 
 # yyy The database must hold nearly arbitrary user-level identifiers
@@ -1495,7 +1495,7 @@ sub egg_authz_ok { my( $bh, $id, $op )=@_;
 #ZXXX disable	! authz($bh->{ruu}, $WeNeed, $bh, $id, $key) and
 #ZXXX disable		# xxx $bh->{rlog}->out("D: WeNeed=$WeNeed, id=$id, opd=$opd, ruu_agentid=" .
 #ZXXX disable		# XXX soon, don't do unauthmsg, so as not to
-#ZXXX disable		#	interfere with Greg's code
+#ZXXX disable		#	interfere with ezid dev code
 #ZXXX disable		unauthmsg($bh, "xxxb"),
 #ZXXX disable		return undef;
 	}
@@ -2580,7 +2580,7 @@ sub logmark { my( $bh, $mods, $string )=@_;
 sub egg_pr { my( $bh, $mods )=( shift, shift );
 	# remaining args are concatenated
 
-	# yyy before processing $() and ${}, must warn Greg!
+	# yyy before processing $() and ${}, must warn ezid developer!
 	my $om = $bh->{om};
 	return $om->elem('', join( ' ' => @_ ));
 }

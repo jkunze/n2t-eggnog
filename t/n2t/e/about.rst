@@ -67,6 +67,8 @@ Unique Features
   number of individual identifiers that providers need to maintain.
 - It supports "inflections" and "content negotiation", which allow you to
   request descriptive information for identifiers that have it.
+- It supports CORS (Cross-Origin Resource Sharing) to securely enable
+  JavaScript access to public content with identifiers based at N2T.
 - N2T.net is unusual among resolvers because it is not a silo that works
   with only one kind of identifier. It stores individual identifiers of
   any kind, including both ARK_\ s and DOI_\ s, and provides equal
@@ -74,11 +76,19 @@ Unique Features
 - As a result N2T easily supports feature combinations that some have
   found startling, such as ARK-style inflections for DOIs, and ARKs that
   return DataCite_ DOI metadata via content negotiation.
-- N2T.net is also a "meta-resolver". In collaboration with identifiers.org,
-  it recognizes over 600 well-known identifier types and knows where their
+- N2T.net is a "meta-resolver". It recognizes over 900 well-known identifier
+  types, including all those known to identifiers.org, and knows where their
   respective servers are. Failing to find forwarding information for a
   specific individual identifier, it uses the identifier's type to look
   for an overall target rule.
+- It supports developers with "prefix extension", which permits a tester to
+  extend a scheme or an ARK NAAN (which "prefix" an identifier) with ``-dev``
+  in order to forward to an alternate destination. For example, if the NAAN,
+  ``12345``, forwards to domain ``a.b.org``, then ``ark:/12345-dev/678``,
+  forwards to ``a-dev.b.org/678``. It works similarly for schemes, for example,
+  if ``xyzzy`` forwards to ``a.b.org``, then ``xyzzy-dev:foo`` forwards to
+  ``a-dev.b.org/foo``.
+  
 
 Audience
 --------
@@ -102,11 +112,11 @@ electronic library services for ten UC campuses and affiliated law
 schools, medical centers, and national laboratories, as well as hundreds
 of museums, herbaria, botanical gardens, etc.
 
-N2T runs in the AWS (Amazon Web Services) cloud. Security and privacy
-rests on the foundational physical, network, and procedural security
-maintained within AWS datacenters based in the United States of America,
-with additional CDL and UCOP privacy safeguards, patching policies, access
-restrictions, firewall controls, etc. layered on top of that.
+N2T runs in the AWS (Amazon Web Services) cloud. Security and privacy rests on
+CDL and UCOP privacy safeguards, patching policies, access restrictions, and
+firewall controls, layered over the foundational physical, network, and
+procedural security maintained in AWS datacenters based in the United
+States of America.
 
 Recognizing the important global role that the resolver plays, in 2018 CDL
 and DuraSpace_ (now LYRASIS) launched an initiative, called

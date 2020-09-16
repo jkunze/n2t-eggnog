@@ -215,6 +215,14 @@ $x = nresolve_stdin_hdr( "--home $buildout_root -d $td/dummy",
 
 	#'ZZZEXIT', 			# XXXXXX premature exit
 
+	'ark:/12148-foo.bar/zaf', '',	# NAAN with alt-host
+	  '302 http://ark-foo.bar.bnf.fr/ark:/12148/zaf',
+	  'ark naan (BnF) with alt host doing "basepassthrough"',
+
+	'pdb-dev:foo', '',		# Scheme with alt-host
+	  '302 https://www-dev.rcsb.org/pdb/explore/explore.do?structureId=foo',
+	  'scheme (pdb) with alt host doing "basepassthrough"',
+
 	'ark:/67531/metapth346793', '',	# UNT example from ARK docs
 	  '302 http://digital.library.unt.edu/ark:/67531/metapth346793',
 	  'ark naan (UNT) prefix redirect from ARK documentation',

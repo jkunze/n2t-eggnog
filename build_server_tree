@@ -1484,13 +1484,53 @@ ServerAdmin ${ServerAdmin:=you@example.com}
 
 RequestReadTimeout header=20-40,MinRate=500 body=20,MinRate=500
 
-# Now enable CORS support for cross-site forwarding, but only for GET requests.
+# CORS (Cross-Origin Resource Sharing) support for cross-site forwarding
+# for universal JavaScript/browser access. Test with something like
+#
+#   curl --max-redirs 0 -I https://n2t-stg.n2t.net/ark:/99152/p0
+#
 # Should be safe because (a) we use "*" below and (b) we don't use cookies.
-# yyy CORS support not known to work yet
+# Use "always" so it happens no matter what the status, eg, 2XX, 3XX, etc.
 
-UnSetEnv GET_REQUEST
-SetEnvIf Request_Method ^GET\$ GET_REQUEST=1
-Header set Access-Control-Allow-Origin "*" env=GET_REQUEST
+# Via user request (2020.05.28):
+# In modern web browsers, making requests from JavaScript (JS) to URLs with
+# domains that differ from the one where the JavaScript originated is
+# forbidden by default. Servers that wish to allow JS requests from other
+# domains can indicate this by setting an Access-Control-Allow-Origin header
+# [1], e.g.
+# 
+#   Access-Control-Allow-Origin: *
+
+Header always set Access-Control-Allow-Origin "*" \\
+    "expr=%{REQUEST_METHOD} in { 'GET', 'HEAD', 'OPTIONS' }"
+
+# to allow JS requests from any domain. Since JS applications working with N2T
+# URLs need to be able to make GET requests to those URLs, in order to discover
+# the resources to which they point, then it makes sense for N2T to set this
+# header. Since a 302 redirect response is useless without the Location header,
+# and CORS by default does not expose the Location header to JS, it also makes
+# sense for N2T to expose that header by setting an
+# Access-Control-Expose-Headers header [2], e.g.:
+# 
+#   Access-Control-Expose-Headers: Location
+
+Header always set Access-Control-Expose-Headers "Location"
+
+# Finally, in order to ensure that Javascript on arbitrary domains can only
+# read and not write to n2t.net, it would also make sense to only allow GET
+# requests by setting an Access-Control-Allow-Methods header [3], e.g.:
+# 
+#   Access-Control-Allow-Methods: GET
+
+Header always set Access-Control-Allow-Methods "GET, HEAD, OPTIONS"
+
+# By setting these three headers, N2T URLs would become usable from JS running
+# in browsers, without compromising the security of N2T servers.
+# 
+# [1] https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Origin
+# [2] https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Expose-Headers
+# [3] https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Methods
+
 
 <Directory />
     Options FollowSymLinks
