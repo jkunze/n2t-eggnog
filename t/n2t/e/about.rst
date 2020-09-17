@@ -60,35 +60,37 @@ such as temporary outage or insufficient permission at the target server,
 N2T can nonetheless return persistent information about the identified
 object.
 
-Unique Features
----------------
+Features Unique to the N2T Resolver
+-----------------------------------
 
-- N2T supports "`suffix passthrough`_", which drastically reduces the
-  number of individual identifiers that providers need to maintain.
-- It supports "inflections" and "content negotiation", which allow you to
-  request descriptive information for identifiers that have it.
-- It supports CORS (Cross-Origin Resource Sharing) to securely enable
+- **Suffix passthrough.** N2T supports "`suffix passthrough`_", which
+  drastically reduces the number of individual identifiers that providers need
+  to maintain.
+- **Inflections.** It supports "inflections" and "content negotiation", which
+  allow you to request descriptive information for identifiers that have it.
+- **Identifier-scheme-agnostic.** N2T.net is unusual among resolvers because it
+  is not a silo that works with only one kind of identifier. It stores
+  individual identifiers of any kind, including both ARK_\ s and DOI_\ s, and
+  provides equal services to all kinds, regardless of origin.
+- **CORS.** It supports CORS (Cross-Origin Resource Sharing) to securely enable
   JavaScript access to public content with identifiers based at N2T.
-- N2T.net is unusual among resolvers because it is not a silo that works
-  with only one kind of identifier. It stores individual identifiers of
-  any kind, including both ARK_\ s and DOI_\ s, and provides equal
-  services to all kinds, regardless of origin.
-- As a result N2T easily supports feature combinations that some have
-  found startling, such as ARK-style inflections for DOIs, and ARKs that
-  return DataCite_ DOI metadata via content negotiation.
-- N2T.net is a "meta-resolver". It recognizes over 900 well-known identifier
-  types, including all those known to identifiers.org, and knows where their
-  respective servers are. Failing to find forwarding information for a
-  specific individual identifier, it uses the identifier's type to look
-  for an overall target rule.
-- It supports developers with "prefix extension", which permits a tester to
-  extend a scheme or an ARK NAAN (which "prefix" an identifier) with ``-dev``
-  in order to forward to an alternate destination. For example, if the NAAN,
-  ``12345``, forwards to domain ``a.b.org``, then ``ark:/12345-dev/678``,
-  forwards to ``a-dev.b.org/678``. It works similarly for schemes, for example,
-  if ``xyzzy`` forwards to ``a.b.org``, then ``xyzzy-dev:foo`` forwards to
-  ``a-dev.b.org/foo``.
-  
+- **Cross-scheme features.** As a result N2T easily supports feature
+  combinations that some have found surprising, such as ARK-style inflections
+  for DOIs, ARKs that return DataCite_ DOI metadata via content negotiation,
+  and CORS support for DOIs (only from N2T).
+- **Resolver and Meta-resolver.** Unusually, N2T.net is a "meta-resolver" that
+  also stores about 50 million identifiers. As a meta-resolver, it recognizes
+  over 900 well-known identifier types, including all those known to
+  identifiers.org, and knows where their respective servers are. Failing to
+  find forwarding information for an identifier it stores, it uses the
+  identifier's type to look for an overall target rule.
+- **Prefix extension.** N2T supports a "prefix extension" feature that permits
+  developers to extend a scheme or an ARK NAAN (both of which "prefix" an
+  identifier) with ``-dev`` in order to forward to an alternate destination.
+  For example, if the NAAN ``12345`` forwards to domain ``a.b.org`` then
+  ``ark:/12345-dev/678`` forwards to ``a-dev.b.org/678``. It works similarly
+  for schemes, for example, if scheme ``xyzzy`` forwards to ``a.b.org``, then
+  ``xyzzy-dev:foo`` forwards to ``a-dev.b.org/foo``.
 
 Audience
 --------
@@ -98,10 +100,11 @@ engaged in research, academic, and cultural heritage endeavors. Together
 with our primary partners_, EZID_ and `Internet Archive`_, we work with
 national, university, and public libraries, academic and society
 publishers, natural history and art museums, as well as companies and
-funders that support education and research. N2T identifiers are used for
-everything from citing scholarly works to referencing tissue samples.
-They link to cutting edge scientific datasets, historic botanists,
-evolving semantic web term definitions, and living people.
+funders that support education and research.
+
+N2T identifiers are used for everything from citing scholarly works to
+referencing tissue samples. They link to cutting edge scientific datasets,
+historic botanists, evolving semantic web term definitions, and living people.
 
 Organizational Backing
 ----------------------
