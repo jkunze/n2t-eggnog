@@ -1,4 +1,4 @@
-package EggNog::Rlog;
+package EggNog::xRlog;
 
 # XXX how to record --sif and other, eg, --force in deltas?
 # Unsure how sophisticated to make this.  Current use suggests

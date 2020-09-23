@@ -140,7 +140,7 @@ $x = `$cmd -d $td/foo x.set y z`;
 #say "xxx very premature exit. x=$x"; exit;
 
 my $wrl;
-$wrl = 'ark:/12345/b.c^d\ e';	# yyy not a well-named variable?
+#$wrl = 'ark:/12345/b.c^d\ e';	# yyy not a well-named variable?
 $wrl = 'doi:10.12345/B.C^D\ E';	# yyy not a well-named variable?
 #$wrl = 'doi:10.12345/b.c^d\ e';	# yyy not a well-named variable?
 
@@ -159,6 +159,13 @@ like $x, qr/error: resolver.*food.*exist/i,
 $x = resolve_stdin("-d $td/foo", $wrl);
 like $x, qr/^redir302 waf\n/,
 	"resolution for id with difficult chars";
+
+$x = `$cmd -d $td/foo $wrl.set _t '303 http://a.b.org'`;  # target like URL
+my $devwrl = $wrl;
+$devwrl =~ s|doi:10.12345|doi:10.12345-dev-2a|;
+$x = resolve_stdin("-d $td/foo", $devwrl);
+like $x, qr|^redir303 http://a-dev-2a.b.org\n|,
+	"dev prefix extension for stored id (a DOI)";
 
 #say "xxx premature exit"; exit;
 

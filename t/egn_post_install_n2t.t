@@ -245,6 +245,10 @@ $x = `wegn $cdl_ark.set erc.who CDL`;
 $x = `wegn $cdl_ark.set erc.when 2014`;
 like $x, qr/^egg-status: 0/m, "egg sets date for $cdl_ark";
 
+$x = `wegn locate "ark:/12345-dev/fk1234"`;
+like $x, qr|^Location: \Qhttps://cdlib-dev.org/services|m,
+	"prefix extension for stored ARK";
+
 $x = `wegn locate "$cdl_ark$cdl_ext"`;
 like $x, qr/^Location: \Q$cdl_tgt$cdl_ext/m,
 	"documented suffix passthrough 'locate' for cdl_ark $cdl_ark";

@@ -267,7 +267,6 @@ sub config { my( $sh )=@_;
 
 	# yyy {home} should be where binders and minters go too
 	# yyy drop this and drop per-binder config (for now) soon
-	# yyy should open rlog file(s) here too
 
 	my $msg;
 	$msg = read_conf_file($sh) and
@@ -582,7 +581,7 @@ sub session_close { my( $sh )=@_;
 			"closing minder handler: $sh->{fiso}"));
 	defined($sh->{log})
 		and close $sh->{log};	# XXX delete
-	undef $sh->{rlog};		# calls rlog's DESTROY method
+#	undef $sh->{rlog};		# calls rlog's DESTROY method
 	undef $sh->{db};	# yyy?
 	undef $sh->{ruu};
 	# yyy should and array minder handlers live under a session handler?

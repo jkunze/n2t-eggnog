@@ -356,9 +356,11 @@ how                   yes      a *metatype* constructed from the following
                                service, agent, human, project, event, oba``;
 			       optionally followed by a human-readable object
 			       (resource) type
-\_t                   yes      a target URL for redirecting content requests;
-                               if the URL is preceded by an integer and a
-                               space, the integer is used as a redirect code
+\_t                   yes      a target URL for redirecting content requests
+                               (a well-formed URL is recommended but not
+                               required); if the URL is preceded by an integer
+                               and a space, the integer is used as a redirect
+                               code
 \_,eTm,\ *contype*    no       (optional) a target URL for redirecting metadata
                                requests for a given ContentType contype
 \_,eTi,\ *inflection* no       (optional) a target URL for redirecting

@@ -58,7 +58,8 @@ link) for an identifier, as well as any kind or amount of metadata
 (descriptive information). When forwarding doesn't work for some reason,
 such as temporary outage or insufficient permission at the target server,
 N2T can nonetheless return persistent information about the identified
-object.
+object. N2T also supports CORS (Cross-Origin Resource Sharing) to securely
+enable JavaScript access to public content with identifiers based at N2T.
 
 Features Unique to the N2T Resolver
 -----------------------------------
@@ -72,13 +73,10 @@ Features Unique to the N2T Resolver
   is not a silo that works with only one kind of identifier. It stores
   individual identifiers of any kind, including both ARK_\ s and DOI_\ s, and
   provides equal services to all kinds, regardless of origin.
-- **CORS.** It supports CORS (Cross-Origin Resource Sharing) to securely enable
-  JavaScript access to public content with identifiers based at N2T.
 - **Cross-scheme features.** As a result N2T easily supports feature
   combinations that some have found surprising, such as ARK-style inflections
-  for DOIs, ARKs that return DataCite_ DOI metadata via content negotiation,
-  and CORS support for DOIs (only from N2T).
-- **Resolver and Meta-resolver.** Unusually, N2T.net is a "meta-resolver" that
+  for DOIs and ARKs that return DataCite_ DOI metadata via content negotiation.
+- **Resolver and meta-resolver.** Unusually, N2T.net is a "meta-resolver" that
   also stores about 50 million identifiers. As a meta-resolver, it recognizes
   over 900 well-known identifier types, including all those known to
   identifiers.org, and knows where their respective servers are. Failing to
@@ -89,8 +87,8 @@ Features Unique to the N2T Resolver
   identifier) with ``-dev`` in order to forward to an alternate destination.
   For example, if the NAAN ``12345`` forwards to domain ``a.b.org`` then
   ``ark:/12345-dev/678`` forwards to ``a-dev.b.org/678``. It works similarly
-  for schemes, for example, if scheme ``xyzzy`` forwards to ``a.b.org``, then
-  ``xyzzy-dev:foo`` forwards to ``a-dev.b.org/foo``.
+  for schemes, for example, if scheme ``xyzzy`` forwards to ``a.b.org/$id``,
+  then ``xyzzy-dev:foo`` forwards to ``a-dev.b.org/foo``.
 
 Audience
 --------

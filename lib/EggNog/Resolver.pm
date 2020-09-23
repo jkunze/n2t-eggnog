@@ -1773,11 +1773,6 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 		$redirect =~ m|https?://| or	# if proto not specified by rule
 			$redirect =~ s|^|$proto://|;	# go with user's choice
 
-		my $pxt =	# if non-null extends top-level of target host,
-			$idx->{pfxextension};   # eg, a.b.org -> a-dev.b.org
-		$pxt and
-			$redirect =~ s|^(https?://[^.]+)\.|$1$pxt.|;
-
 		return cnflect( $bh, $txnid, $db, $rpinfo, $accept,
 			$id, [ $redirect ], $idx, "rulebased" );
 	}
@@ -1918,9 +1913,12 @@ my $Ti = EggNog::Binder::TRGT_INFLECTION; # target for inflection
 # $rpinfo normally undefined; if defined, it is a hash for a prefix info
 # block containing a redirect rule that supplied the target URL.
 
-# Content Negotiation/Inflection
-# Mainstream case (no inflection or conneg) comes at end after eliminating
-# other cases.
+# This routine implements the final  leaves of an extensive decision tree for
+# resolution. The name "cnflect" correctly connotes the Content Negotiation
+# and Inflection steps that it implements, which are options that must first
+# be eliminated from consideration. The name doesn't reveal, however, that
+# the final step and main point of the routine is the mainstream resolution
+# step shows up only at the end of the routine.
 
 sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id, 
 				$dupsR, $idx, $op, $tag )=@_;
@@ -2091,7 +2089,14 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 		$tgt =~ /^([34][01][012347]) +(.*)/ and		# if it does
 			($redircode, $tgt) = ($1, $2);	# isolate real target
 		$returnline =				# redirNNN+space+target
-			"redir$redircode $tgt"		# $tgt might be empty
+			"redir$redircode $tgt";		# $tgt might be empty
+
+		# If non-null, pfxextension extends top-level of target host,
+		my $pxt =
+			$idx->{pfxextension};   # eg, a.b.org -> a-dev.b.org
+		# use \b in case there's a redir status, eg, 302
+		$pxt and	# use \.? just in case there's no "."
+			$returnline =~ s{\b([^. ]+)(\.|$)}{$1$pxt.};
 	}
 #		my @tparts = split " ", $dupsR->[0];	# tokenize
 #		my $tcnt = scalar @tparts;		# token count
