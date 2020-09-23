@@ -212,16 +212,16 @@ $x = `$webcl "$ssvbase_u/a/pest/b? --verbose i.fetch moo"`;
 like $x, qr{HTTP/\S+\s+200\s+OK.*remote user: \?.*moo:\s*cow}si,
 	'open populator "pest" returns that element for still unknown user';
 
-if ($indb) {		# rlog being phased out, esp for exdb case
-
-$isbname = `$cmd --dbie i --user pest bname $ntd/pest`;	# indb sys binder name
-$isbname =~ s/\n*$//;
-
-#$y = flvl("< $ntd/pest/egg.rlog", $x);
-$y = flvl("< $isbname/egg.rlog", $x);
-like $x, qr{^\? }m,
-	'anonymous user logged as "?"';
-}
+#if ($indb) {		# rlog being phased out, esp for exdb case
+#
+#$isbname = `$cmd --dbie i --user pest bname $ntd/pest`;	# indb sys binder name
+#$isbname =~ s/\n*$//;
+#
+##$y = flvl("< $ntd/pest/egg.rlog", $x);
+#$y = flvl("< $isbname/egg.rlog", $x);
+#like $x, qr{^\? }m,
+#	'anonymous user logged as "?"';
+#}
 
 # xxxxxx add indb arg as for test_binders?
 test_minters $cfgdir, 'pestx', 'pesty', @fqshoulders;

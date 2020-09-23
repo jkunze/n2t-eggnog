@@ -438,9 +438,9 @@ sub mkminter { my( $mh, $mods, $minder, $template, $minderdir )=@_;
 
 	my $nog = $mh->{tied_hash_ref};
 
-	$msg = $mh->{rlog}->out("M: mkminter $minder $template") and
-		addmsg($mh, $msg),
-		return undef;
+#	$msg = $mh->{rlog}->out("M: mkminter $minder $template") and
+#		addmsg($mh, $msg),
+#		return undef;
 # xxx log this in the caster's log
 
 	# Now initialize lots of database info.  It is required that
@@ -1112,7 +1112,7 @@ sub genid { my( $mh )=@_;
 			$m = "problem with action (" . $$nog{"$A/atlast"} .
 				") defined after last generated sping: $tnum";
 			addmsg($mh, $m);
-			$mh->{rlog}->out("N: $m");
+#			$mh->{rlog}->out("N: $m");
 			return (undef, $atlast, $tnum);
 		}
 		# If we get here, $tnum should be a non-negative integer.
@@ -1152,7 +1152,7 @@ sub genid { my( $mh )=@_;
 					"template (" . $$nog{"$A/template"} .
 					"): $m";
 				addmsg($mh, $m);
-				$mh->{rlog}->out("N: $m");
+#				$mh->{rlog}->out("N: $m");
 				return (undef, $atlast, $tnum);
 			}
 
@@ -1199,7 +1199,7 @@ sub genid { my( $mh )=@_;
 			$m = "chars added (via $atlast) to template "
 				. "'$oldtemplate' to create '$template'";
 			addmsg($mh, $m, 'note');
-			$mh->{rlog}->out("N: $m");
+#			$mh->{rlog}->out("N: $m");
 		}
 		elsif ($$nog{"$A/atlast"} =~ /^stop/) {
 			dbunlock();
@@ -1208,7 +1208,7 @@ sub genid { my( $mh )=@_;
 			$m = "spings exhausted (configured to stop at " .
 				$$nog{"$A/oatop"} . ").";
 			addmsg($mh, $m, 'note');
-			$mh->{rlog}->out($m);
+#			$mh->{rlog}->out($m);
 			return (undef, $atlast, $tnum);
 		}
 		elsif ($$nog{"$A/atlast"} =~ /^wrap/) {
@@ -1218,7 +1218,7 @@ sub genid { my( $mh )=@_;
 				"spings will be re-issued";
 			addmsg($mh, $m, 'note');
 			$m = temper() . ": $m";
-			$mh->{rlog}->out("N: $m");
+#			$mh->{rlog}->out("N: $m");
 			# We don't return, even though we left a message.
 
 			#if ($$nog{"$A/type"} =~ /^seq/) {
@@ -1466,10 +1466,10 @@ sub hold { my( $mh, $mods, $lcmd, $on_off, @ids )=@_;
 		#     "reserved for future use" or "reserved, never issued"
 		#
 	}
-	my $m;
-	$m = $mh->{rlog}->out("C: $on_off $lcmd " . join(" ", @ids)) and
-		addmsg($mh, $m),
-		return undef;
+#	my $m;
+#	$m = $mh->{rlog}->out("C: $on_off $lcmd " . join(" ", @ids)) and
+#		addmsg($mh, $m),
+#		return undef;
 	return \@reterrs;
 }
 
@@ -1501,7 +1501,7 @@ sub hold_release { my( $mh, $id )=@_;
 		my $m = "error: hold count (" . $$nog{"$A/held"}
 			. ") going negative on id $id";
 		addmsg($mh, $m);
-		$mh->{rlog}->out("N: $m");
+#		$mh->{rlog}->out("N: $m");
 		return 0;
 	}
 	return 1;
@@ -1649,7 +1649,7 @@ sub mint { my( $mh, $mods, $lcmd, $pepper )=@_;
 			$m = "error: queued count (" . $$nog{"$A/queued"}
 				. ") going negative on id $id";
 			addmsg($mh, $m);
-			$mh->{rlog}->out("N: $m");
+#			$mh->{rlog}->out("N: $m");
 			return undef;
 		}
 
@@ -1692,17 +1692,17 @@ sub mint { my( $mh, $mods, $lcmd, $pepper )=@_;
 
 		# If we get here, our string has now passed its tests.
 
-		$m = $mh->{rlog}->out("C: $lcmd") and
-			addmsg($mh, $m),
-			return undef;
-		$m = $mh->{rlog}->out("N: $lcmd from queue") and
-			addmsg($mh, $m),
-			return undef;
+#		$m = $mh->{rlog}->out("C: $lcmd") and
+#			addmsg($mh, $m),
+#			return undef;
+#		$m = $mh->{rlog}->out("N: $lcmd from queue") and
+#			addmsg($mh, $m),
+#			return undef;
 		# XXXXXXX log test!! need to log the fact that we got it
 		#         from the queue
-		$m = "mint: " . logfmt($id, $currdate,
-			"from queue", $$nog{"$A/oacounter"});
-		$mh->{rlog}->out("N: $m");
+#		$m = "mint: " . logfmt($id, $currdate,
+#			"from queue", $$nog{"$A/oacounter"});
+#		$mh->{rlog}->out("N: $m");
 		$om->elem(SPING, $id);
 
 		tlogger $mh, $txnid, "END SUCCESS $lcmd: $id";
@@ -1772,8 +1772,8 @@ sub mint { my( $mh, $mods, $lcmd, $pepper )=@_;
 		# in the previous while loop), we'll generate another id.
 		# 
 		if (inqueue($nog, $id)) {
-			$mh->{rlog}->out("skip: " . logfmt(
-				"genid() gave $id, which was in the queue"));
+			#$mh->{rlog}->out("skip: " . logfmt(
+			#	"genid() gave $id, which was in the queue"));
 			next;
 		}
 
@@ -1781,13 +1781,11 @@ sub mint { my( $mh, $mods, $lcmd, $pepper )=@_;
 		#     to up before beginning the operation
 		# xxx in its place put an N: line showing the result in the
 		#    form N: who_asked | got what_id_minted | sub-counter used?
-		$m = $mh->{rlog}->out("C: $lcmd") and
-			addmsg($mh, $m),
-			return undef;
+#		$m = $mh->{rlog}->out("C: $lcmd") and
+#			addmsg($mh, $m),
+#			return undef;
 		$m = "mint: " . logfmt($id, $currdate,
 			"from genid()", $$nog{"$A/oacounter"});
-		# yyy this next log line is commented out as too verbose
-		#$mh->{rlog}->out("N: $m");
 		$lzskipped and
 			$$nog{"$A/lzskipcount"} += $lzskipped;
 		$maskskipped and
@@ -2177,7 +2175,7 @@ sub queue { my( $mh, $mods, $lcmd, $when, @ids )=@_;
 			$m = qq@a hold has been set for "$id" and @
 				. "must be released before the string can "
 				. "be queued for minting.",
-			$mh->{rlog}->out("N: error: $m"),
+#			$mh->{rlog}->out("N: error: $m"),
 			$om->elem("error", $m),
 			push(@reterrs, $id),
 			next
@@ -2187,7 +2185,7 @@ sub queue { my( $mh, $mods, $lcmd, $when, @ids )=@_;
 		if ($inq && ! $delete) {
 			$m = qq@id "$id" cannot be queued @
 				. "since it is queued already.";
-			$mh->{rlog}->out("N: error: $m");
+#			$mh->{rlog}->out("N: error: $m");
 			$om->elem("error", $m);
 			push(@reterrs, $id),
 			next;
@@ -2195,7 +2193,7 @@ sub queue { my( $mh, $mods, $lcmd, $when, @ids )=@_;
 		elsif (! $inq && $delete) {
 			$m = "id $id cannot be unqueued "
 				. "since it is not currently queued.";
-			$mh->{rlog}->out("N: error: $m");
+#			$mh->{rlog}->out("N: error: $m");
 			$om->elem("error", $m);
 			push(@reterrs, $id),
 			next;
@@ -2211,7 +2209,7 @@ sub queue { my( $mh, $mods, $lcmd, $when, @ids )=@_;
 			$qposition = $$nog{"$A/queued_ids/$id"};
 			$m = "c: " . logfmt("$when $id",
 				$currdate, $qposition, $$nog{"$A/oacounter"});
-			$mh->{rlog}->out("N: $m");
+			#$mh->{rlog}->out("N: $m");
 			# xxx check status of these deletes?  ->del(key))
 			# xxx needs more tests?
 			delete($$nog{"$A/queued_ids/$id"});
@@ -2220,7 +2218,7 @@ sub queue { my( $mh, $mods, $lcmd, $when, @ids )=@_;
 				$m = "error: queued count ("
 					. $$nog{"$A/queued"}
 					. ") going negative on id $id";
-				$mh->{rlog}->out("N: $m");
+				#$mh->{rlog}->out("N: $m");
 				@reterrs = undef;
 				last;
 			}
@@ -2237,7 +2235,7 @@ sub queue { my( $mh, $mods, $lcmd, $when, @ids )=@_;
 		$$nog{"$A/queued_ids/$id"} = $qposition;
 		$m = "c: " . logfmt("queue $when $id",
 			$currdate, $qposition, $$nog{"$A/oacounter"});
-		$mh->{rlog}->out("N: $m");
+		#$mh->{rlog}->out("N: $m");
 
 		dbunlock();
 
@@ -2255,9 +2253,9 @@ sub queue { my( $mh, $mods, $lcmd, $when, @ids )=@_;
 		$$nog{"$A/gseqnum"} = $seqnum,
 	1;
 	# XXX rlog more info, eg, qposition, oacounter?
-	$m = $mh->{rlog}->out("C: $lcmd $when " . join(" ", @ids)) and
-		addmsg($mh, $m),
-		return undef;
+#	$m = $mh->{rlog}->out("C: $lcmd $when " . join(" ", @ids)) and
+#		addmsg($mh, $m),
+#		return undef;
 	dbunlock();
 	return \@reterrs;
 }

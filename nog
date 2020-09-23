@@ -112,6 +112,7 @@ Some nog options:
  -d minter   relative or absolute path to minter, ignoring any path
  -p path     search path to minter, used to look up 'm' (default ~/.minders)
  -m format   output format, one of ANVL, XML, JSON, Plain (default)
+ --txnlog=L  nog can record all transactions in file L (default: no logging)
 
 EOF
 

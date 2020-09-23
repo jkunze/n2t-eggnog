@@ -151,7 +151,8 @@ Some options:
   -m format    an output format, one of ANVL, XML, JSON, Plain (default)
   -q|--quiet   no output, if possible, just error status, useful in crontab
   --ack        acknowledge changes with an oxum value (#octets.#elements)
-  --txnlog Log transaction log (default ~/.eggnog/logs/transaction_log.rlog)
+  --txnlog Log egg records all transactions in ~/.eggnog/logs/transaction_log
+               by default, and this changes or disables(?) that
   --dbie=[ie]  database class: internal (i, default), external (e), both (ie)
   --home=Dir   eggnog home directory (~/.eggnog), containing configuration,
                logs, binders (indb only), minters (exdb only), prefixes, etc.
@@ -1811,7 +1812,8 @@ not map '+' to SPACE in query strings.)
   --ack       acknowledge changes with an oxum value (#octets.#elements)
   --all       get/fetch all elements by default (use :allnot to override)
   --api       enable API mode
-  --txnlog=L  transaction log file (default ~/.eggnog/logs/transaction_log.rlog)
+  --txnlog Log egg records all transactions in ~/.eggnog/logs/transaction_log
+               by default, and this changes or disables(?) that
   --dbie=[ie] database class: internal (i, default), external (e), both (ie)
   --home=Dir  eggnog home directory (~/.eggnog), containing configuration,
               logs, binders, minters, prefixes, etc.

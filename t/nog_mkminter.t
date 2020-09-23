@@ -22,8 +22,8 @@ shellst_is 0, $x, "simple mkminter for minter named fz";
 is +(-f "$td/fz/nog.bdb"), 1,
 	'created minter upper directory and bdb file';
 
-is +(-f "$td/fz/nog_README" && -f "$td/fz/nog.rlog"
-		&& -f "$td/fz/nog_lock"), 1,
+#is +(-f "$td/fz/nog_README" && -f "$td/fz/nog.rlog"
+is +(-f "$td/fz/nog_README" && -f "$td/fz/nog_lock"), 1,
 	'created minter README, log, and lock files';
 # xxx create routine to auto-verify health of a minder, add namaste tags, etc
 

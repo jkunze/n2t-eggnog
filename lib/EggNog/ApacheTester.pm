@@ -528,15 +528,15 @@ sub test_binders { my( $egnhome, $cfgdir, $binders_root, $indb, $bindersR, $owne
 	my ($isbname, $esbname) =
 		EggNog::Binder::bname_parse($sh, $b, $exists_flag,
 			$sh->{smode}, $owner);
-	if ($indb) {
-	    # yyy "tail" not portable to Windows; prefer File::ReadBackwards
-	    #$y = flvl("< $binders_root/$b/egg.rlog", $x);
-
-	    #$x = `tail -1 $binders_root/$b/egg.rlog`;
-	    $x = `tail -1 $binders_root/$isbname/egg.rlog`;
-	    like $x, qr{^\*\Q$u }m,
-	    	"previous operation's HTTP_ACTING_FOR user logged";
-	}
+#	if ($indb) {
+#	    # yyy "tail" not portable to Windows; prefer File::ReadBackwards
+#	    #$y = flvl("< $binders_root/$b/egg.rlog", $x);
+#
+#	    #$x = `tail -1 $binders_root/$b/egg.rlog`;
+#	    $x = `tail -1 $binders_root/$isbname/egg.rlog`;
+#	    like $x, qr{^\*\Q$u }m,
+#	    	"previous operation's HTTP_ACTING_FOR user logged";
+#	}
 
 	# XXX should perhaps add HTTP_ACTING_FOR to txnlog?
 

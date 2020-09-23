@@ -37,7 +37,7 @@ use File::Path qw( make_path mkpath rmtree );
 use File::Pairtree ":all";	# barely used, could drop easily yyy
 use File::Namaste;
 use File::Find;
-use EggNog::Rlog;
+#use EggNog::Rlog;
 use EggNog::RUU;
 use Try::Tiny;			# to use try/catch as safer than eval
 use Safe::Isa;
@@ -268,7 +268,7 @@ sub omclose { my( $bh )=@_;
 		($bh->{om} and $bh->{om}->elem("note",
 			"closing binder handler: $bh->{fiso}"));
 	defined($bh->{log})		and close $bh->{log};	# XXX delete
-	undef $bh->{rlog};		# calls rlog's DESTROY method
+#	undef $bh->{rlog};		# calls rlog's DESTROY method
 	undef $bh->{db};
 	undef $bh->{ruu};
 	my $hash = $bh->{tied_hash_ref};
@@ -557,9 +557,9 @@ sub authz { my(  $ruu, $WeNeed,   $bh,   $id,  $opd ) =
 	my $permstring =		# stringify it for regex matching
 		join("\n", @bigperms) || '';
 	
-	$bh->{rlog}->out("D: WeNeed=$WeNeed, id=$id, opd=$opd,
-		ruu_agentid=" . "$ruu->{agentid},
-		otherids=" . join(", " => @{$ruu->{otherids}}));
+#	$bh->{rlog}->out("D: WeNeed=$WeNeed, id=$id, opd=$opd,
+#		ruu_agentid=" . "$ruu->{agentid},
+#		otherids=" . join(", " => @{$ruu->{otherids}}));
 
 	$permstring =~
 		/^p:\Q$_\E\|.*?(\d+)$/m 	# isolate perms per agent and
@@ -1147,17 +1147,17 @@ sub ibopen { my( $bh, $mdr, $flags, $minderpath, $mindergen )=@_;
 		#'ruu '. length($bh->{sh}->{conf_ruu}));
 	}
 
-	#
-	# Log file set up.
-	# 
-	# yyy do we need to open the rlog so early?? how about after tie()??
-
-	$bh->{rlog} = EggNog::Rlog->new(
-		$basename, {
-			preamble => "$ruu->{who} $ruu->{where}",
-			header => "H: $bh->{cmdname} $bh->{version}",
-		}
-	);
+#	#
+#	# Log file set up.
+#	# 
+#	# yyy do we need to open the rlog so early?? how about after tie()??
+#
+#	$bh->{rlog} = EggNog::Rlog->new(
+#		$basename, {
+#			preamble => "$ruu->{who} $ruu->{where}",
+#			header => "H: $bh->{cmdname} $bh->{version}",
+#		}
+#	);
 
 	$bh->{txnlog} = $bh->{sh}->{txnlog};
 
@@ -1317,8 +1317,8 @@ sub ibopen { my( $bh, $mdr, $flags, $minderpath, $mindergen )=@_;
 		unless $creating;		# only if we're not creating
 
 	#if ($msg) ...		# if we get version mismatch
-	# yyy we should define rlog early on or in session handler ($sh)
-	#if ($msg and $bh->{rlog}) ...		# if we get version mismatch
+#	# yyy we should define rlog early on or in session handler ($sh)
+#	#if ($msg and $bh->{rlog}) ...		# if we get version mismatch
 	if ($msg) {		# if we get version mismatch
 		# xxx should we just call DESTROY??
 		$msg = "abort: $msg";
@@ -1327,7 +1327,7 @@ sub ibopen { my( $bh, $mdr, $flags, $minderpath, $mindergen )=@_;
 		if ($cgih) {
 			$cgih->add( { Status => '500 Internal Error' } );
 		}
-		$bh->{rlog}->out("N: $msg");
+#		$bh->{rlog}->out("N: $msg");
 		addmsg($bh, $msg);
 		undef $db;
 		omclose($bh);
@@ -2355,10 +2355,12 @@ sub mkibinder { my( $sh, $mods, $binder, $user, $what, $minderdir )=@_;
 	$what ||= "arbitrary elements and values beneath identifiers";
 
 	my $msg;
-# XXX should record in txnlog
-	#$msg = $bh->{rlog}->out("M: mkbinder $binder") and
-	#	addmsg($sh, $msg),
-	#	return undef;
+# XXX should we record mkbinder event in txnlog? we did when using rlog
+
+
+#	#$msg = $bh->{rlog}->out("M: mkbinder $binder") and
+#	#	addmsg($sh, $msg),
+#	#	return undef;
 
 	# iii=internal db assumed
 	my $tagdir = fiso_uname($bdr);	# iii
@@ -2740,18 +2742,8 @@ sub rmibinder { my( $sh, $mods, $mdr, $user, $minderpath )=@_;
 	# directory is $mdrdir.
 	#
 	my $mdrdir = fiso_uname($mdrfile);
-# xxx txnlog
-	#$bh->{rlog} = EggNog::Rlog->new(		# log this important event
-	#	catfile($mdrdir, FS_OBJECT_TYPE), {
-	#		preamble => $sh->{opt}->{rlog_preamble},
-	#		header => $sh->{opt}->{rlog_header},
-	#	}
-	#);
+# xxx txnlog -- log this event?
 
-	#$msg = $bh->{rlog}->out("M: $lcmd $mdrdir") and
-	#	addmsg($sh, $msg),
-	#	return undef;
-	
 	# We remove (rather than rename) in two cases: (a) if the minder
 	# is already in the trash or (b) if caller defines (deliberately
 	# one hopes) $sh->trashers to be empty.  xxx DOCUMENT!
@@ -2782,9 +2774,7 @@ sub rmibinder { my( $sh, $mods, $mdr, $user, $minderpath )=@_;
 		return 1;
 	}
 
-# xxx txnlog
-	#$msg = $bh->{rlog}->out("N: will try to move $mdr to $trashd") and
-	#	addmsg($sh, $msg);		# not a fatal error
+# xxx txnlog -- log this event?
 
 	# We now want a unique name to rename it to in the trash directory.
 	# But first create the trash directory if it doesn't yet exist.
@@ -3242,7 +3232,7 @@ sub prep_default_binder { my( $sh, $ie, $flags, $minderpath, $mindergen )=@_;
 
 		my $mtype = $sh->{type} || ND_BINDER;	# yyy drop?
 		my $opt = $mtype eq ND_MINTER ?  $implicit_minter_opt : {};
-		$opt->{rlog_preamble} = $sh->{opt}->{rlog_preamble};
+#		$opt->{rlog_preamble} = $sh->{opt}->{rlog_preamble};
 		$opt->{om_formal} = $sh->{om_formal};
 		$opt->{version} = $sh->{version};
 			# XXX this probably corrupts $implicit_minter_opt
@@ -3348,7 +3338,7 @@ sub gen_minder { my( $sh, $minderpath )=@_;
 	# We use some of the old handler's values to initialize.
 	#
 	my $c_opt = $implicit_caster_opt;
-	$c_opt->{rlog_preamble} = $sh->{opt}->{rlog_preamble};
+#	$c_opt->{rlog_preamble} = $sh->{opt}->{rlog_preamble};
 	#$c_opt->{version} = $bh->{opt}->{version};
 		# XXX this probably corrupts $implicit_caster_opt
 	#my $cmh = EggNog::Binder->new($bh->{sh}, ND_MINTER, 
@@ -3409,7 +3399,7 @@ sub gen_minder { my( $sh, $minderpath )=@_;
 	# of this routine.
 	#
 	my $opt = $implicit_minter_opt;
-	$opt->{rlog_preamble} = $sh->{opt}->{rlog_preamble};
+#	$opt->{rlog_preamble} = $sh->{opt}->{rlog_preamble};
 		# XXX this probably corrupts $implicit_minter_opt
 	#my $submh = EggNog::Binder->new($bh->{sh}, ND_MINTER, 
 	my $submh = EggNog::Binder->new($sh, ND_MINTER, 

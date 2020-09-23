@@ -58,18 +58,18 @@ $x = `$cmd mkminter -t seq --atlast stop fk ddeek`;
 $y = flvl("< $td/fk/nog_README", $x);
 like $x, qr/ sequential /, 'created minter';
 
-# yyy this has already been covered above
-$y = flvl("< $td/fk/nog.rlog", $x);
-like $x, qr/H: .*rlog.*M: mkminter.*ddeek/si,
-	'creation reflected in minter log file';
+## yyy this has already been covered above
+#$y = flvl("< $td/fk/nog.rlog", $x);
+#like $x, qr/H: .*rlog.*M: mkminter.*ddeek/si,
+#	'creation reflected in minter log file';
 
-$x = `$cmd fk.mint 3`;
-$y = file_value("< $td/fk/nog.rlog", $x);
-like $x, qr/(C: mint.*){3}/s, 'mint reflected in minter log file';
+#$y = file_value("< $td/fk/nog.rlog", $x);
+#like $x, qr/(C: mint.*){3}/s, 'mint reflected in minter log file';
 
 ## xxxxxxxx make better log message
 
 #$y = file_value("< $td/txnlog.rlog", $x);
+$x = `$cmd fk.mint 3`;
 $y = file_value("< $td/txnlog", $x);
 like $y, qr/^$/, 'read txnlog file';
 

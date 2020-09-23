@@ -96,18 +96,6 @@ my $v1bdb = ($x =~ /DB version 1/);
 $x = `$cmd --verbose mkbinder foo`;
 like $x, qr/created.*foo/, 'make binder named foo';
 
-# yyy mkbinder doesn't create per-binder rlog file
-#$y = file_value("< $td/foo/egg.rlog", $x);
-#like $y, qr/^$/, 'read binder log file';
-#
-#like $x, qr/H: .*rlog.*M: mkbinder/si,
-#	'creation reflected in binder log file';
-
-#use EggNog::Temper ':all';
-#while (my ($key, $value) = each %c64i) {
-#	print "key=$key, value=$value\n";
-#}
-
 my $cmdblock;
 
 $cmdblock = "
@@ -124,14 +112,11 @@ my $isbname;
 $isbname = `$cmd --dbie i bname $td/binders/foo`;	# indb system binder name
 $isbname =~ s/\n*$//;
 
-if ($indb) {	# phasing out rlog means not doing it for exdb
-$y = file_value("< $isbname/egg.rlog", $x);
-like $x, qr/ H: .* C: i\|a.set 3.*(?: C: .*){4}i.purge/s,
-	'bind value reflected in binder log file';
-}
-
-#say "premature exit XXX x=$x";	#####################
-#exit;
+#if ($indb) {	# phasing out rlog means not doing it for exdb
+#$y = file_value("< $isbname/egg.rlog", $x);
+#like $x, qr/ H: .* C: i\|a.set 3.*(?: C: .*){4}i.purge/s,
+#	'bind value reflected in binder log file';
+#}
 
 # NOTE: must precede @ in "" if it looks like possible array ref
 $cmdblock = "
@@ -153,13 +138,15 @@ $x = resolve_stdin('', $doi);	# do a prefix-based resolution; ignore return
 
 # now check effects of those commands on the log
 
-if ($indb) {
-$y = file_value("< $isbname/egg.rlog", $x);
-like $x, qr/mline.*%0athis.*%0athis/s,
-	'multi-line bind correctly encoded in logfile (for EDINA replication)';
-}
+#if ($indb) {
+#$y = file_value("< $isbname/egg.rlog", $x);
+#like $x, qr/mline.*%0athis.*%0athis/s,
+#	'multi-line bind correctly encoded in logfile (for EDINA replication)';
+#}
 
-#$y = file_value("< $txnlog.rlog", $x);
+#say "premature exit XXX x=$x";	#####################
+#exit;
+
 $y = file_value("< $txnlog", $x);
 like $y, qr/^$/, 'read txnlog file';
 

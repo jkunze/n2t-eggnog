@@ -507,10 +507,10 @@ sub egg_purge { my( $bh, $mods, $lcmd, $formal, $id )=@_;
 			return undef;
 		$num_elems = scalar(@elems);
 
-		my $msg;	# NB: no rlog for exdb case
-		$msg = $bh->{rlog}->out("C: $id.$lcmd") and
-			addmsg($bh, $msg),
-			return undef;
+#		my $msg;	# NB: no rlog for exdb case
+#		$msg = $bh->{rlog}->out("C: $id.$lcmd") and
+#			addmsg($bh, $msg),
+#			return undef;
 
 		# Give '' instead of $lcmd so that egg_del won't create multiple
 		# log events (for each element), as we just logged one 'purge'.
@@ -1259,12 +1259,12 @@ sub arith_with_dups { my( $dbh, $key, $amount )= (shift, shift, shift);
 
 sub shoulder { my( $bh, $WeNeed, $id, $opd ) = ( shift, shift, shift, shift );
 
-	# XXX yuck -- what a mess -- clean this up
-	#	my $agid = $bh->{ruu}->{agentid};
-	$bh->{rlog}->out(
-		"D: shoulder WeNeed=$WeNeed, id=$id, opd=$opd, remote=" .
-		  "$bh->{remote}, ruu_agentid=$bh->{ruu}->{agentid}, otherids="
-		  . join(", " => @{$bh->{sh}->{ruu}->{otherids}}));
+#	# XXX yuck -- what a mess -- clean this up
+#	#	my $agid = $bh->{ruu}->{agentid};
+#	$bh->{rlog}->out(
+#		"D: shoulder WeNeed=$WeNeed, id=$id, opd=$opd, remote=" .
+#		  "$bh->{remote}, ruu_agentid=$bh->{ruu}->{agentid}, otherids="
+#		  . join(", " => @{$bh->{sh}->{ruu}->{otherids}}));
 
 	$bh->{remote} or		# if from shell, you are approved
 		return 1;
@@ -1700,12 +1700,12 @@ sub indb_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 
 	my $msg;
 	if ($mods->{on_bind} & BIND_PLAYLOG) {
-		# NB: Must keep writing this rlog because EDINA replication
-		# depends on it!
-
-		# XXX NOT setting doing this for external db. DROP for indb?
-		$bh->{sh}->{indb} and
-			$msg = $bh->{rlog}->out("C: $id$Se$elem.$lcmd $slvalue");
+#		# NB: Must keep writing this rlog because EDINA replication
+#		# depends on it!
+#
+#		# XXX NOT setting doing this for external db. DROP for indb?
+#		$bh->{sh}->{indb} and
+#			$msg = $bh->{rlog}->out("C: $id$Se$elem.$lcmd $slvalue");
 		tlogger $sh, $txnid, "END SUCCESS $logblob.$lcmd ...";
 		#tlogger $sh, $txnid, "END SUCCESS $id$Se$elem.$lcmd ...";
 		$msg and
@@ -1806,18 +1806,14 @@ sub exdb_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 
 	#my $msg;
 	if ($mods->{on_bind} & BIND_PLAYLOG) {		# yyy drop BIND_PLAYLOG?
-		# yyy dropping this for exdb
-		# NB: Must keep writing this rlog because EDINA replication
-		# depends on it!
-
-		# XXX NOT setting doing this for external db. DROP for indb?
-		#$bh->{sh}->{indb} and
-		#    $msg = $bh->{rlog}->out("C: $id$Se$elem.$lcmd $slvalue");
+#		# yyy dropping this for exdb
+#		# NB: Must keep writing this rlog because EDINA replication
+#		# depends on it!
+#
+#		# XXX NOT setting doing this for external db. DROP for indb?
+#		#$bh->{sh}->{indb} and
+#		#    $msg = $bh->{rlog}->out("C: $id$Se$elem.$lcmd $slvalue");
 		tlogger $sh, $txnid, "END SUCCESS $id$Se$elem.$lcmd ...";
-
-		#$msg and
-		#	addmsg($bh, $msg),
-		#	return undef;
 	}
 	$bh->{opt}->{ack} and			# do oxum
 		$om->elem("oxum", length($value) . ".1"); # yyy ignore status
@@ -2504,20 +2500,21 @@ sub dbload { my( $bh, $mods, $srcfile )=@_;
 	return 1;
 }
 
-sub cullrlog { my( $bh, $mods )=@_;
-
-	$bh->{remote} and		# no can do if you're on web
-		unauthmsg($bh),
-		return undef;
-
-	my ($status, $msg) = $bh->{rlog}->cull;
-	$status or
-		addmsg($bh, "cullrlog failed: $status"),
-		return 0;
-	$msg and		# if non-empty, it's probably "nothing to cull"
-		addmsg($bh, $msg, 'note');
-	return 1;
-}
+## This is called by "replay" script (old EDINA replication).
+#sub cullrlog { my( $bh, $mods )=@_;
+#
+#	$bh->{remote} and		# no can do if you're on web
+#		unauthmsg($bh),
+#		return undef;
+#
+#	my ($status, $msg) = $bh->{rlog}->cull;
+#	$status or
+#		addmsg($bh, "cullrlog failed: $status"),
+#		return 0;
+#	$msg and		# if non-empty, it's probably "nothing to cull"
+#		addmsg($bh, $msg, 'note');
+#	return 1;
+#}
 
 # yyy eventually thought we would like to do fancy fine-grained locking with
 #     BerkeleyDB features.  For now, lock before tie(), unlock after untie().
