@@ -570,6 +570,8 @@ sub new {		# call with WeAreOnWeb, om, om_formal, optref
 	# caching for performance xxx keep?
 	$self->{last_need_authz} = 0;	# holds OP_WRITE, OP_EXTEND, etc.
 
+	$self->{svars} = {};		# yyy maybe should do this on config?
+
 	return $self;
 }
 

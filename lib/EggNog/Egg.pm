@@ -210,6 +210,27 @@ configured hostnames for which Key equals Value, eg, "class" equals "prd".
 
 EOF
 
+my $minters_usage_text = << "EOF";
+
+SUBCOMMAND
+   minters - operate binder-specific nog minters
+
+SYNOPSIS
+   egg minters mint N [ NickName ]
+   egg minters nab N
+   egg minters set NickName FilePath ...
+   egg minters show
+
+The first form generates N spings using the nog mint method on the named
+minter, or the first binder-specific minter found. The second form generates
+N spings using the nog nab method.
+
+The third form redefines the entire set of minters associated with the egg
+binder in question, taking any number of pairs of Nickname and FilePath.
+The fourth form lists the set of binder-specific minters, if any.
+
+EOF
+
 our @wdays =
 	qw( sunday monday tuesday wednesday thursday friday saturday );
 
@@ -2571,6 +2592,54 @@ sub logmark { my( $bh, $mods, $string )=@_;
 	return 1;
 }
 
+# usage: var x value args
+# where x is a single lower case letter
+
+sub egg_var { my( $bh, $mods, $var )=( shift, shift, shift );
+	# remaining args are concatenated
+
+	if ($var !~ /^[a-z]$/) {
+		addmsg($bh, "var name ($var) is not one lower-case letter");
+		return undef;
+	}
+	return $bh->{sh}->{svars}->{$var}
+		= join(' ' => @_);
+}
+
+sub egg_minters { my( $bh, $mods, $subcmd )=( shift, shift, shift );
+
+	$subcmd ||= 'help';
+	if ($subcmd eq 'mint') {
+		addmsg($bh, "'$subcmd' not implemented yet; try 'help'");
+		return undef;
+	}
+	elsif ($subcmd eq 'nab') {
+		addmsg($bh, "'$subcmd' not implemented yet; try 'help'");
+		return undef;
+	}
+	elsif ($subcmd eq 'show') {
+		addmsg($bh, "'$subcmd' not implemented yet; try 'help'");
+		return undef;
+	}
+	elsif ($subcmd eq 'set') {
+		addmsg($bh, "'$subcmd' not implemented yet; try 'help'");
+		return undef;
+	}
+	elsif ($subcmd eq 'help') {
+		say "$minters_usage_text";
+		return 1;
+	}
+	else {
+		addmsg($bh, "Unknown subcommand ($subcmd); try 'help'");
+		return undef;
+	}
+	#outmsg("$A/authorized_minters not implemented yet");
+	#bdx_get("$A/authorized_minters");
+	#outmsg("$A/authorized_minters not implemented yet");
+	#bdx_get("$A/erc");
+	return 1;
+}
+
 # print args after possible substitution
 # don't log
 
@@ -2579,7 +2648,15 @@ sub egg_pr { my( $bh, $mods )=( shift, shift );
 
 	# yyy before processing $() and ${}, must warn ezid developer!
 	my $om = $bh->{om};
-	return $om->elem('', join( ' ' => @_ ));
+	my $svars = $bh->{sh}->{svars};
+	my $line = join(' ' => @_);
+	while ($line =~ /&([a-z])/g) {
+		say "xxx found $1";
+	}
+	$line =~ s/&([a-z])/$svars->{$1}/g;
+
+	return $om->elem('', $line);
+	#return $om->elem('', join( ' ' => @_ ));
 }
 
 # yyy deprecated

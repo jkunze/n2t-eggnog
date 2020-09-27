@@ -29,49 +29,56 @@ cat <<- EOT > $rwplus.pre
 
 #RewriteRule ^/ark:/?13960.*\$      "_rslv_\${map_oca:%{REQUEST_URI}.resolve \${$hdrblob}}"
 
+# Internet Archive YYY this one-off does not scale
 RewriteRule ^/(ark:/?13960.*)\$ \\
     "_rslv_\${map_oca:\${esc:\$1%{ENV:THUMPER}}.resolve \${$hdrblob}}" [NC]
 
-# YYY this one-off does not scale
-#ark:/99999/fk3                          # ncpt
-#ark:/99999/ffk3                         # ncpt_test
-RewriteRule ^/(ark:/?99999/ff?k3.*)\$ \\
+# Added "[^/]*" to end of NAAN below to accommodate NAAN-dev constructs.
+
+# INCIPIT YYY this one-off does not scale
+#ark:/99999/fk3                         # ncpt
+#ark:/99999/ffk3                        # ncpt_test
+#ark:/68061				# ncpt
+RewriteRule ^/(ark:/?68061.*)\$ \\
+    "_rslv_\${map_ncpt:\${esc:\$1%{ENV:THUMPER}}.resolve \${$hdrblob}}" [NC]
+RewriteRule ^/(ark:/?99999[^/]*/ff?k3.*)\$ \\
     "_rslv_\${map_ncpt:\${esc:\$1%{ENV:THUMPER}}.resolve \${$hdrblob}}" [NC]
 
-# YYY this one-off does not scale
+# INCIPIT YYY this one-off does not scale
 # to create shoulder, do: make_shdr ark:/99166/p3 ncpt
 # XXX need way for this to happen on server build???
 #ark:/99166/p3    # ncpt agents, since by default all 99166 goes to EZID binder
-RewriteRule ^/(ark:/?99166/p3.*)\$ \\
+RewriteRule ^/(ark:/?99166[^/]*/p3.*)\$ \\
     "_rslv_\${map_ncpt:\${esc:\$1%{ENV:THUMPER}}.resolve \${$hdrblob}}" [NC]
 
-# YYY this one-off does not scale
+# Islandora YYY this one-off does not scale
 #ark:/99999/fq3                          # idra
 #ark:/99999/ffq3                         # idra_test
-RewriteRule ^/(ark:/?99999/ff?q3.*)\$ \\
+RewriteRule ^/(ark:/?99999[^/]*/ff?q3.*)\$ \\
     "_rslv_\${map_idra:\${esc:\$1%{ENV:THUMPER}}.resolve \${$hdrblob}}" [NC]
 
 # YYY this rule works for all registered NAANs
 # This permits local resolvers to publish test/fake 99999-based ARKs via N2T
-RewriteRule ^/ark:/?(99999/9([^_]+)_.*)\$ "/ark:/\$2/\$1" [NC,R=302]
+RewriteRule ^/ark:/?(99999[^/]*/9([^_]+)_.*)\$ "/ark:/\$2/\$1" [NC,R=302]
 
 #RewriteRule ^/ark:/?99152.*\$      "_rslv_\${map_yamz:%{REQUEST_URI}.resolve \${$hdrblob}}"
 
-# YYY this one-off does not scale
+# TemaTres YYY this one-off does not scale
 #ark:/99152/t3				# TemaTres vocabulary shoulder
-RewriteRule ^/(ark:/?99152/t3.*)\$ \\
+RewriteRule ^/(ark:/?99152[^/]*/t3.*)\$ \\
     "https://vocabularyserver.com/\$1" [R=302,L,NC]
 
-# YYY this one-off does not scale
+# Periodo YYY this one-off does not scale
 #  # This shoulder is designed to support the single ARK, ark:/99152/p0,
 #  # which is registered mainly to support suffix passthrough.
 #ark:/99152/p0:
 #  manager: "ezid"
 #  name: "OpenContext PeriodO"
 #  date: "2015.01.26"
-RewriteRule ^/(ark:/?99152/p0.*)\$ \\
+RewriteRule ^/(ark:/?99152[^/]*/p0.*)\$ \\
     "_rslv_\${map_ezid:\${esc:\$1%{ENV:THUMPER}}.resolve \${$hdrblob}}" [NC]
 
+# YAMZ YYY this one-off does not scale
 RewriteRule ^/(ark:/?99152.*)\$ \\
     "_rslv_\${map_yamz:\${esc:\$1%{ENV:THUMPER}}.resolve \${$hdrblob}}" [NC]
 

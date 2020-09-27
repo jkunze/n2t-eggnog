@@ -193,6 +193,22 @@ $x = `$webcl --max-redirect 0 "$ssvbase_u/$a0"`;
 like $x, qr{^Location: https://z.example.com}m,
 	"generic 'ncpt' test shoulder ($ncptshdr) target redirect";
 
+$ncptshdr = 'ark:/99999-dev-2a.b/fk3';
+$a0 = "${ncptshdr}n2tegntest";
+$x = `$webcl --max-redirect 0 "$ssvbase_u/$a0"`;
+like $x, qr{^Location: https://z-dev-2a.b.example.com}m,
+	"'ncpt' test shoulder with -dev-2a.b NAAN modifier";
+
+$ncptshdr = 'ark:/68061/fk3';
+$a0 = "${ncptshdr}n2tegntest";
+$x = `$webcl $pps "$ssvbase_u/a/ncpt/b? --verbose $a0.set _t https://z.example.com"`;
+$x = `$webcl --max-redirect 0 "$ssvbase_u/$a0"`;
+like $x, qr{^Location: https://z.example.com}m,
+	"'ncpt' real shoulder ($ncptshdr) target redirect";
+
+#$x = apachectl('graceful-stop')	and say($x);
+#exit;	######### premature stop
+
 $pps = setpps get_user_pwd "idra", "idra", $cfgdir;
 
 my $idrashdr = 'ark:/99999/fq3';
@@ -202,9 +218,6 @@ $x = `$webcl $pps "$ssvbase_u/a/idra/b? --verbose $a0.set _t https://z.example.c
 $x = `$webcl --max-redirect 0 "$ssvbase_u/$a0"`;
 like $x, qr{^Location: https://z.example.com}m,
 	"generic 'idra' test shoulder ($idrashdr) target redirect";
-
-#$x = apachectl('graceful-stop')	and say($x);
-#exit;	######### premature stop
 
 $pps = setpps get_user_pwd "ezid", "ezid", $cfgdir;
 

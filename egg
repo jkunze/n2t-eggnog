@@ -113,6 +113,7 @@ order in the subcommands listed below.
   i.shadow          like norm but return i as shadow ARK if applicable
   -                 do bulk (batch) commands from stdin or http request body
   logmark string    write string to mark a place in the txnlog file
+  var c string ...  set session variable (letter c) to concatenated strings
   pr string ...     print strings
 [not working for exdb case]
   list m [k...]     list up to m (0=unlimited) ids (or ids under keys k)
@@ -185,7 +186,8 @@ my @valid_commands = qw(
 	el elem ex expr bl blob fi file
 	bind dbinfo fetch get hello help inflect
 	man note usage version
-	pr logmark cullrlog resolve exists purge
+	var pr mint nab minters
+	logmark cullrlog resolve exists purge
 	mkbinder rmbinder delbinder
 	dbsave dbload iddump idload
 	norm shadow
@@ -1509,18 +1511,28 @@ sub bdx_logmark { my( $string )=@_;
 	return 0;
 }
 
+sub bdx_var {		# pass @_ on through
+
+	EggNog::Egg::egg_var($bh, $mods, @_) or
+		outmsg($bh), return 1;
+	return 0;
+}
+
+sub bdx_mint	{ bdx_minters("mint", 0, @_) }
+sub bdx_nab	{ bdx_minters("nab", 0, @_) }
+sub bdx_minters { my( $cmd )=( shift );	# pass remaining args in @_
+
+	EggNog::Egg::egg_minters($bh, $mods, $cmd, @_) or
+		outmsg($bh), return 1;
+	return 0;
+}
+
 sub bdx_pr {		# pass @_ on through
 
 	EggNog::Egg::egg_pr($bh, $mods, @_) or
 		outmsg($bh), return 1;
 	return 0;
 }
-
-# yyy what about a "winnow" routine that is either started
-#     from cron or is started when an exiting noid call notices
-#     that there's some harvesting/garbage collecting to do and
-#     schedules it for, say, 10 minutes hence (by not exiting,
-#     but sleeping for 10 minutes and then harvesting)?
 
 sub bdx_note { my( $key, $value )=@_;
 
@@ -1540,6 +1552,12 @@ sub bdx_note { my( $key, $value )=@_;
 	#Noid::dbclose($bh);
 	return 0;
 }
+
+# yyy what about a "winnow" routine that is either started
+#     from cron or is started when an exiting noid call notices
+#     that there's some harvesting/garbage collecting to do and
+#     schedules it for, say, 10 minutes hence (by not exiting,
+#     but sleeping for 10 minutes and then harvesting)?
 
 # Called as the default command when no args were given
 #
