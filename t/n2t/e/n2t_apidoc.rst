@@ -252,6 +252,20 @@ where Operation may be ``set``, ``add``, ``rm``, ``purge``, ``exists``, etc, and
 Modifier, Element, and Value are conditionally present (see below).
 The API closely resembles Eggnog's CLI (command line interface).
 
+Prefix extension
+----------------
+
+N2T supports a "prefix extension" feature that permits developers to extend
+a scheme or an ARK NAAN (both of which "prefix" an identifier) with ``-dev`` in
+order to forward to an alternate destination. For example, if the NAAN
+``12345`` forwards to domain ``a.b.org``, then ``ark:/12345-dev/678`` forwards
+to ``a-dev.b.org/678``.
+
+It works similarly for schemes, for example, if scheme
+``xyzzy`` forwards to ``a.b.org/$id``, then ``xyzzy-dev:foo`` forwards to
+``a-dev.b.org/foo``. Just for NAANs, the ``-dev`` part can actually be a hyphen
+(``-``) followed by any string that works in a hostname.
+
 Deleting
 --------
 
