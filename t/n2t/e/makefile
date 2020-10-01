@@ -1,4 +1,4 @@
-all: about.html ark_ids.html compact_ids.html noid.html n2t_apidoc.html partners.html index.html
+all: about.html ark_ids.html compact_ids.html noid.html n2t_apidoc.html partners.html index.html admin/naanq2e.html
 
 about.html: about.rst makehtml.py
 	./makehtml.py about.rst "About N2T.net"
@@ -25,3 +25,5 @@ test: all
 	# *.html means homepage.html changes also get copied in
 	cp -pr *.html *.txt *.pdf *.gz css fonts images \
 		$(HOME)/sv/cur/apache2/htdocs/e/
+	cp -pr admin/*.html \
+		$(HOME)/sv/cur/apache2/htdocs/e/admin/

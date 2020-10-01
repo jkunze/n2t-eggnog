@@ -852,7 +852,7 @@ echo Building skeleton server structure extensions.
 # yyy what's httpauth for? var/state? should we use var/{run,lock}?
 msg=$( mkdir -p 2>&1 $buildout_root \
 	$buildout_root/{htdocs,conf,cgi-bin,logs} \
-	$buildout_root/htdocs/{a,e,r,e/{pop,pub},e/{images,x,css}} )
+	$buildout_root/htdocs/{a,e,r,e/{pop,pub,admin},e/{images,x,css}} )
 
 [[ -e $bst_root/eggnog_conf ]] && {
 	echo Copying $bst_root/eggnog_conf
@@ -900,11 +900,11 @@ robots=$buildout_root/htdocs/robots.txt
 	cp /dev/null $robots		# to prevent routine log errors
 
 # yyy drop this form now that google form is available
-# Establish a simple, publicly executable feedback form.
+# Establish a simple, executable form to assist NAAN curation.
 #
-feedback=$buildout_root/htdocs/e/x/feedback.pl
-[[ -e $feedback ]] || {
-	cat > $feedback <<- EOT
+naancure=$buildout_root/htdocs/e/admin/q2e.pl
+[[ -e $naancure ]] || {
+	cat > $naancure <<- EOT
 	#!/bin/sh
 
 	PERL5LIB=$PERL5LIB
@@ -918,22 +918,22 @@ feedback=$buildout_root/htdocs/e/x/feedback.pl
 	##  printenv -- demo CGI program which just prints its environment
 	##
 
-	print "Content-type: text/plain; charset=iso-8859-1\n\n";
-	print "xxx Stub feedback.\n";
-	#foreach $var (sort(keys(%ENV))) {
-	#    $val = $ENV{$var};
-	#    $val =~ s|\n|\\n|g;
-	#    $val =~ s|"|\\"|g;
-	#    print "${var}=\"${val}\"\n";
-	#}
+	print "Content-type: text/plain; charset=UTF-8\n\n";
+	print "xxx Stub q2e.\n";
+	my (\$var, \$val);
+	foreach \$var (sort(keys(%ENV))) {
+	    \$val = \$ENV{\$var};
+	    \$val =~ s|\n|\\n|g;
+	    \$val =~ s|"|\\"|g;
+	    print "\${var}=\"\${val}\"\n";
+	}
 	EOS
 
 	EOT
 
-	chmod 755 $feedback
+	chmod 755 $naancure
 }
 
-# XXX do we need the above feedback thing?
 # Establish a script to handle inflections and content negotiation.
 # CrossRef handles these:
 # application/rdf+xml
@@ -965,7 +965,7 @@ inflect=$buildout_root/htdocs/e/x/inflect
 	use strict;
 	use warnings;
 
-	print	"Content-type: text/plain; charset=utf-8\n",
+	print	"Content-type: text/plain; charset=UTF-8\n",
 		"THUMP-Status: 0.7 200 OK\n",
 		"\n";
 
@@ -1557,7 +1557,8 @@ AddType text/html .html
 AddOutputFilter INCLUDES .html
 
 <Directory "$srvref_root/htdocs/e">
-	Options +Includes 
+	Options Includes 
+#	Options +Includes 
 </Directory>
 
 # This <Directory> directive makes things in htdocs/e/x/ executable.
@@ -1570,6 +1571,19 @@ AddOutputFilter INCLUDES .html
 #        Order allow,deny
 #        Allow from all
 	SetHandler cgi-script
+	Options +ExecCGI
+</Directory>
+
+# This <Directory> directive makes things in htdocs/e/admin/ executable.
+# This is instead of opening up cgi-bin/.
+#
+<Directory "$srvref_root/htdocs/e/admin">
+        AllowOverride None
+	Options FollowSymLinks Includes 
+        Require all granted
+#        Order allow,deny
+#        Allow from all
+	AddHandler cgi-script .pl
 	Options +ExecCGI
 </Directory>
 
@@ -2171,71 +2185,6 @@ BrowserMatch "MSIE [2-5]" \
 #CustomLog logs/ssl_request_log \
 #          "%t %h %{SSL_PROTOCOL}x %{SSL_CIPHER}x \"%r\" %b"
 
-
-#################################################### start old
-
-### xxx how much of this is redundant with the altered lines from original?
-### xxx does this mean that the default port is HTTPS? 
-### xxx how does this Listen square with the earlier Listen?
-###     can we listen on both HTTP and HTTPS ports at once, and
-###     outside of vhost sections?
-#
-##### SSL section
-##
-## This section should closely parallel the extra/httpd-ssl.conf file that
-## comes with Apache.  That file should be consulted for additions and
-## changes as its helpful comments have been suppressed in this section.
-## This section should be reviewed for relevant updates as that file
-## changes when updating your server release beyond Apache/2.2.21.
-#
-#SSLPassPhraseDialog  builtin
-#SSLSessionCache   "shmcb:$srvref_root/logs/ssl_scache(512000)"
-#SSLSessionCacheTimeout  300
-#SSLMutex          "file:$srvref_root/logs/ssl_mutex"
-#
-## Temporary co-hosting of the arks.org website
-##<VirtualHost arks.org:$port_hprs>
-##DocumentRoot "$document_root/arks.org"
-##</VirtualHost>
-##<VirtualHost arks.org:$port_hpr>
-##DocumentRoot "$document_root/arks.org"
-##</VirtualHost>
-#
-#<VirtualHost _default_:$port_hprs>
-#
-## start new log file every week (7 * 24) hours
-#ErrorLog "|$rotatelogs $srvref_root/logs/error_log.%Y.%m.%d 604800"
-# xxx commenting out, as it contradicts previous setting, right?
-#TransferLog "$srvref_root/logs/access_log"
-#
-#SSLEngine on
-#SSLProtocol All -SSLv2 -SSLv3
-##SSLProtocol -ALL +TLSv1	# on SLES until 2015.02.20 
-##SSLProtocol -ALL +SSLv3 +TLSv1	# prior to Oct 15
-##SSLProtocol All -SSLv2 -SSLv3	# Oct 15, 2014 recommendation POODLE exploit
-#SSLCipherSuite ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA:ECDHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA256:DHE-RSA-AES128-SHA256:DHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA:ECDHE-RSA-DES-CBC3-SHA:EDH-RSA-DES-CBC3-SHA:AES256-GCM-SHA384:AES128-GCM-SHA256:AES256-SHA256:AES128-SHA256:AES256-SHA:AES128-SHA:DES-CBC3-SHA:HIGH:!aNULL:!eNULL:!EXPORT:!DES:!MD5:!PSK:!RC4
-##SSLCipherSuite ALL:!ADH:RC4+RSA:+HIGH:+MEDIUM:!LOW:!SSLv2:!EXPORT	# on SLES until 2015.02.20 
-##SSLCipherSuite ALL:!ADH:!EXPORT56:RC4+RSA:+HIGH:+MEDIUM:+LOW:+SSLv2:+EXP:+eNULL
-#
-#$sslcertblock
-#
-## xxx unused?
-#<FilesMatch "\.(cgi|shtml|phtml|php)$">
-#    SSLOptions +StdEnvVars
-#</FilesMatch>
-#<Directory "$srvref_root/cgi-bin">
-#    SSLOptions +StdEnvVars
-#</Directory>
-#BrowserMatch ".*MSIE.*" \
-#         nokeepalive ssl-unclean-shutdown \
-#         downgrade-1.0 force-response-1.0
-#
-## Here ends the part that closely parallels extra/httpd-ssl.conf.
-
-#################################################### end old
-
-
-
 # What follows are lots of additions to support the binder for
 # calls coming in via https, which are required to use the API.
 
@@ -2366,7 +2315,11 @@ RewriteRule ^(.*)$ - [env=proto:https]
 # Edge case rule to send stuff intended for the API over to https (/a/...).
 # xxx should this use the permanent redirect code?
 
-RewriteRule ^(/a/.+)\$ https://$EGNAPA_HOST\$1 [R=302,L]
+#RewriteRule ^(/a/.+)\$ https://$EGNAPA_HOST\$1 [R=302,L]
+RewriteRule ^(/a/.+)\$ https://$shostport\$1 [R=302,L]
+
+# Secure admin interface
+RewriteRule ^(/e/admin/.+)\$ https://$shostport\$1 [R=302,L]
 
 # Note that these files are Include'd once for HTTP and once for HTTPS,
 # which means that there are two RewriteMap processes for each binder.

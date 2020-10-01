@@ -26,7 +26,7 @@ our @ISA = qw(Exporter);
 our @EXPORT = qw();
 our @EXPORT_OK = qw(
 	exdb_get_dup indb_get_dup exdb_get_id egg_inflect
-	flex_enc_exdb flex_enc_indb
+	flex_enc_exdb flex_enc_indb egg_minters
 	iddump idload
 	PERMS_ELEM OP_READ
 	EXsc PKEY
@@ -218,8 +218,8 @@ SUBCOMMAND
 SYNOPSIS
    egg minters mint N [ NickName ]
    egg minters nab N
-   egg minters set NickName FilePath ...
-   egg minters show
+   egg minters set NickName.FilePath ...
+   egg minters set
 
 The first form generates N spings using the nog mint method on the named
 minter, or the first binder-specific minter found. The second form generates
@@ -2592,20 +2592,6 @@ sub logmark { my( $bh, $mods, $string )=@_;
 	return 1;
 }
 
-# usage: var x value args
-# where x is a single lower case letter
-
-sub egg_var { my( $bh, $mods, $var )=( shift, shift, shift );
-	# remaining args are concatenated
-
-	if ($var !~ /^[a-z]$/) {
-		addmsg($bh, "var name ($var) is not one lower-case letter");
-		return undef;
-	}
-	return $bh->{sh}->{svars}->{$var}
-		= join(' ' => @_);
-}
-
 sub egg_minters { my( $bh, $mods, $subcmd )=( shift, shift, shift );
 
 	$subcmd ||= 'help';
@@ -2617,13 +2603,29 @@ sub egg_minters { my( $bh, $mods, $subcmd )=( shift, shift, shift );
 		addmsg($bh, "'$subcmd' not implemented yet; try 'help'");
 		return undef;
 	}
-	elsif ($subcmd eq 'show') {
-		addmsg($bh, "'$subcmd' not implemented yet; try 'help'");
-		return undef;
-	}
 	elsif ($subcmd eq 'set') {
-		addmsg($bh, "'$subcmd' not implemented yet; try 'help'");
-		return undef;
+		if (! scalar(@_)) {	# show minters stored in binder
+			my $minters = $bh->{minters};
+			if (! scalar(%$minters)) {
+				say "no minters set for current binder";
+				return 1;
+			}
+			foreach my $k (sort keys %$minters) {
+				$bh->{om_formal}->elem($k, $minters->{$k});
+			}
+			return 1;
+		}
+		# if we get here, set (don't show) minters in binder
+		foreach my $pair (@_) {
+			if ($pair !~ /^([^.]+)\.(.+)$/) {
+				say STDERR "skipping malformed " .
+					"NickName.Path pair ($pair)";
+				next;
+			}
+			# egg_set(:/minters/$1 -> $2)
+			$bh->{minters}->{$1} = $2;
+		}
+		return 1;
 	}
 	elsif ($subcmd eq 'help') {
 		say "$minters_usage_text";
@@ -2640,23 +2642,53 @@ sub egg_minters { my( $bh, $mods, $subcmd )=( shift, shift, shift );
 	return 1;
 }
 
+# usage: var name value args
+
+sub egg_var { my( $bh, $mods )=( shift, shift );
+	# remaining args are concatenated
+
+	EggNog::Cmdline::instantiate($bh, $mods->{hx}, @_) or
+		addmsg($bh, "instantiate failed from egg_pr"),
+		return undef;
+	my $svars = $bh->{sh}->{svars};
+	my $om = $bh->{om_formal};
+
+	my $var = shift;
+	if (! defined $var) {		# if no key args, show all vars
+		foreach my $svname (sort(keys %$svars)) {
+			$om->elem($svname, $svars->{$svname});
+		}
+		return 1;
+	}
+	if ($var !~ /^[a-z]\w*$/i) {
+		addmsg($bh, "malformed var name ($var)");
+		return undef;
+	}
+	if (! scalar @_) {		# if no values, show all vars
+		return
+			$om->elem($var, $svars->{$var})
+	}
+	$svars->{$var} = join(' ' => @_);
+	return 1;
+}
+
 # print args after possible substitution
 # don't log
 
 sub egg_pr { my( $bh, $mods )=( shift, shift );
 	# remaining args are concatenated
 
-	# yyy before processing $() and ${}, must warn ezid developer!
+	EggNog::Cmdline::instantiate($bh, $mods->{hx}, @_) or
+		addmsg($bh, "instantiate failed from egg_pr"),
+		return undef;
 	my $om = $bh->{om};
 	my $svars = $bh->{sh}->{svars};
 	my $line = join(' ' => @_);
 	while ($line =~ /&([a-z])/g) {
 		say "xxx found $1";
 	}
-	$line =~ s/&([a-z])/$svars->{$1}/g;
 
 	return $om->elem('', $line);
-	#return $om->elem('', join( ' ' => @_ ));
 }
 
 # yyy deprecated

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!--#include virtual="/e/prelim.html" -->
+  <title>Create a new NAAN entry from a NAAN request</title>
+</head>
+<body>
+<div class="content">
+<!--#include virtual="/e/header.html" -->
+<div class="container-narrowest">
+<div class="section" id="naanq2e">
+<h1>Create a new NAAN entry from a NAAN request</h1>
+<p>
+For more detailed instructions and guidelines, click XXXhere.
+<br/>
+<form id="naanform" action="/e/admin/q2e.pl">
+</p><p>1. Paste an unused NAAN (5 digits) from the list XXX to the right
+       into the NAAN box. Example: 12345
+  <br/><br/>&nbsp;&nbsp;&nbsp;
+  <label for="unusednaan">Unused NAAN:</label>
+  <input type="text" id="unusednaan" name="unusednaan"><br/>
+</p><p>2. Paste the NAAN request form output into the next box.
+  <br/>&nbsp;&nbsp;&nbsp;
+<!--  <label for="formout">Form Output:</label> -->
+  <textarea name="formout" cols="80" rows="10" id="formout" form="naanform"></textarea>
+</p><p>3. Click &nbsp;&nbsp;
+  <input type="submit" value="Submit">
+</form>
+
+</div>
+</div>
+</div>
+</div>
+<!--#include virtual="/e/footer.html" -->
+</body>
+</html>
+<!--  <input type="text" id="formout" size="60" name="formout"><br/> -->

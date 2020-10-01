@@ -180,6 +180,7 @@ sub new { # call with $sh, type, WeAreOnWeb, om, optref
 	$self->{dbgpr} = $self->{opt}->{dbgpr};	# defined (or not) by caller
 	#$self->{om_msg} = $self->{opt}->{om_msg} || $self->{om};
 	$self->{om_formal} = $self->{opt}->{om_formal} || $self->{om};
+	$self->{minters} = {};		# NickName => MinterPath
 
 	# Some type-specific settings.  This might have been done with
 	# heavier object-oriented artillery, but it didn't seem worth it.

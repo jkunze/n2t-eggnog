@@ -204,9 +204,16 @@ $y and print "error: $y\n";
 like $x, qr{BEGIN.*END SUCCESS}s,
 	'transaction log working';
 
-$x = `$webcl "$srvbase_u/e/x/feedback.pl"`;
-like $x, qr{Stub feedback.}i,
-	'publicly executable feedback form';
+$x = `$webcl "$srvbase_u/e/admin/q2e.pl"`;
+like $x, qr{HTTP/\S+\s+302.*Location: https://}si,
+	'http rewritten to https for secure admin area';
+
+# XXX but make sure this is protected from public execution
+like $x, qr{xxx Stub q2e.}i,
+	'executable naan curation form';
+
+#say "XXX x=$x";
+#$x = apachectl('graceful-stop')	and say "$x"; exit;	#########
 
 $x = `$webcl "$ssvbase_u/a/pest/b? --verbose i.fetch moo"`;
 like $x, qr{HTTP/\S+\s+200\s+OK.*remote user: \?.*moo:\s*cow}si,
@@ -231,9 +238,6 @@ my @binders = ( qw(pestx pesty) );
 my @owners =  ( qw(pestx pesty) );
 
 test_binders $buildout_root, $cfgdir, $ntd, $indb, \@binders, \@owners;
-
-#say "XXX x=$x";
-#$x = apachectl('graceful-stop')	and say "$x"; exit;	#########
 
 
 # xxx document that doi minters are put under ark for convenience of the

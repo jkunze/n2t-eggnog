@@ -113,7 +113,8 @@ order in the subcommands listed below.
   i.shadow          like norm but return i as shadow ARK if applicable
   -                 do bulk (batch) commands from stdin or http request body
   logmark string    write string to mark a place in the txnlog file
-  var c string ...  set session variable (letter c) to concatenated strings
+  var [k [v ...]]   set session variable k; no args shows all; no v shows k
+                    use token &k or &{k} to expand value of k
   pr string ...     print strings
 [not working for exdb case]
   list m [k...]     list up to m (0=unlimited) ids (or ids under keys k)
@@ -1735,6 +1736,8 @@ are silently ignored.
   dbinfo [all]    show binder database information
   -               do bulk (batch) commands on stdin or http request body
   logmark string  write string to mark a place in the txnlog file
+  var [k [v ...]]   set session variable k; no args shows all; no v shows k
+                    use token &k or &{k} to expand value of k
   pr string ...   print strings
 
 Modifiers may appear in front of commands.  To enter arbitrary data for any

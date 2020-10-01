@@ -885,16 +885,40 @@ sub launch_commands { my( $mh, $bulkcmdmode, $EmitStatus,
 	return $ret;
 }
 
+sub xxxmint {
+	return "xxxmintN";
+}
+
 our $default_regexp = qr/\^([0-9a-fA-F]{2})/o;
 
 # Modifies arguments 2, 3, etc, returning 1 on success, undef on error.
 # DON'T call this routine with identifiers and element names that are
 # output by get_rawidtree(). xxx document
 # $hexchar arg can be undef ?
-# 
+
 sub instantiate { my( $mh, $hexchar ) = ( shift, shift );
 
 	# NOTE: remaining args in @_ are all MODIFIED in place.
+
+	# Before hex decode step, look for a '&(' beginning a token, and if
+	# found, then look for a closing ')'. If both are found, replace the
+	# whole found structure with the output of running the command inside.
+
+# XXX add tests like echo -e "var xx t\nvar &xx 8998\npr a &xx &{t}set\nvar"
+
+=for skip
+	use EggNog::Egg qw(egg_minters);
+	my $argc = scalar @_;
+	my $i = 0;
+	while ($i < $argc) {
+		print "XXX arg $i: |$_[$i]|, after: ";
+  $_[$i] =~ s/&\(([^) ]+)( *([^) ]+))?\)/xxxmint('', $1, $3)/eg;
+  #$_[$i] =~ s/&\(([^) ]+)( *([^) ]+))?\)/"egg_minters($mh, '', $1, $3)"/eg;
+		#$_[$i] =~ s/&\(([^) ]+)( *([^) ]+))?\)/egg_minters $mh, '', $1, $3/eg;
+		say "|$_[$i]|";
+		$i++;
+	}
+=cut
 
 	my ($regexp, $indirect, $line_count);
 
@@ -917,6 +941,7 @@ sub instantiate { my( $mh, $hexchar ) = ( shift, shift );
 			($line_count, $_) = expand_token($mh, $_),
 			(defined($line_count) or
 				return undef)
+			# XXX what happens to returned $line_count?
 		),				# end of loop command list
 	foreach (@_);				# loop control
 
@@ -928,7 +953,7 @@ sub instantiate { my( $mh, $hexchar ) = ( shift, shift );
 # side-effect.  In the presence of redundant modifiers, keeps only the
 # last one.  Called with something like
 #   $modlist = extract_modifiers( \@_ );
-#
+
 sub extract_modifiers { my( $alist ) = ( shift );
 
 	# XXX is there a more memory efficient way than creating new modifier
@@ -969,15 +994,16 @@ sub extract_modifiers { my( $alist ) = ( shift );
 	return \%modifiers;
 }
 
-# XXXXXXXXX this breaks $lineno!! since we're not updating it based on
-#    lines read from tokens.
-
+# This routine detects and replaces a token or part of a token when '@'
+# or '&' appear at the start of shellword. Limited to only one substitution
+# per token. In '&' case, can use {} to shield name, eg, &{foo}bar.
+#
 # Expands a token into memory as a variable value.  If you just need to
 # copy token content onto a log file, more efficient (especially for large
 # file content) to use (xxx?) copy_token().  If the token is read from
 # stdin, count newlines to permit accurate bulk file error reporting.
 #
-# Returns line count and token.
+# Returns line count consumed by the token and the expanded token itself.
 # If token is not from stdin, that line count is 0.
 # On error, that line count is undef and token is an error message.
 # XXXX hard to distinguish undef and 0?
@@ -995,21 +1021,26 @@ sub expand_token { my( $mh, $tk, $strip ) = ( shift, shift, shift );
 	local $/;		# $/ === $INPUT_RECORD_SEPARATOR
 	my ($n, $msg, $token);
 	my $token_ends_after_N_octets = 0;
+	my ($session_var, $svname, $svval) = (0, '', '');
 
 	$tk ||= '';
-	$tk =~ s/^\@// or	# xxx we don't yet support &tokens
+	$tk =~ /^&/ and
+		$session_var = 1;
+	#$tk =~ s/^\@// or
+	$tk =~ s/^[@&]// or
 		addmsg($mh, "unknown token type: $tk"),
 		return (undef, '');
-	#
+
 	# @	up to end of line
 	# @-	up to end of paragraph
 	# @--	up to end of file
 	# @-N	up to N octets plus 6 (\012#eot\012)
 	# @-XYZ	up to \nXYZ\n
+	# xxx maybe @foo should be @+foo
 	# @foo	whole file named foo  (need admin rights)
 	# @zaf	whole response body at URL zaf		# yyy not yet
-	# &bar	db value bar  (need read rights to bar)
-	#
+	# &bar	value of session variable bar
+
 	$tk eq '' and		# normal line-at-a-time mode from stdin
 		$/ = NL,
 	1
@@ -1033,7 +1064,8 @@ sub expand_token { my( $mh, $tk, $strip ) = ( shift, shift, shift );
 		addmsg($mh, "unsupported token expansion: $tk"),
 		return (undef, ''),
 	1
-	or $tk =~ /^([^-].*)/ and	# expect value to be contents of file
+	or $tk =~ /^([^-].*)/ && ! $session_var and
+		# Expect value to be contents of file
 		# Note: we do not fall through this branch.
 		($mh->{remote} and		# you don't have admin rights
 			unauthmsg($mh),		# so you don't get access to
@@ -1045,6 +1077,18 @@ sub expand_token { my( $mh, $tk, $strip ) = ( shift, shift, shift );
 		),
 		return (0, $token),	# read and return, 0 lines from stdin
 	1
+	or $session_var and
+		($tk =~ s/^\{([a-z]\w*)\}//i and	# bracket {name}
+			$svname = $1
+		 or
+		 $tk =~ s/^([a-z]\w*)//i and		# unbracketed form
+			$svname = $1
+		 or
+		 	$svval = '&'
+		),
+		($svval ||= $mh->{sh}->{svars}->{$svname} // ''),
+		return (0, $svval . $tk),
+	1
 	or
 		addmsg($mh, "unknown token expansion: $tk"),
 		return (undef, ''),
@@ -1054,6 +1098,7 @@ sub expand_token { my( $mh, $tk, $strip ) = ( shift, shift, shift );
 
 	$token = <STDIN> || '';		# the actual read is here
 
+	# xxx check if $line_counts are accurate
 	my $line_count =	# so we can continue accurate input reporting
 		$token =~ tr/\n//;	# this tr COUNTS but does NOT replace
 
@@ -1072,71 +1117,6 @@ sub expand_token { my( $mh, $tk, $strip ) = ( shift, shift, shift );
 
 	return ($line_count, $token);
 }
-
-=for removal
-
-# xxx dump this
-sub get_stdin_token { my( $tkarg, $strip ) = ( shift, shift );
-
-	local $/;		# $/ === $INPUT_RECORD_SEPARATOR
-
-	defined($strip) or	# default is to strip record separator
-		$strip = 1;
-
-	my $token_ends_after_N_octets = 0;
-	$tkarg ||= '';
-	! $tkarg and		# if $tkarg is '' or 0 (zero length) then use
-		$/ = NLNL,	# strict "paragraph" mode (exactly 2 \n's ends
-				# input record, not 2+ \n's implied by $/ = '')
-	1
-	or $tkarg =~ /^\d+$/ and	# if a number, read that many octets
-		$strip = 0,
-		$token_ends_after_N_octets = 1,
-		$/ = \$tkarg,
-	1
-	or			# else it's like <<$tkarg (a "here" document)
-		$/ = NL . $tkarg . NL,
-	1;
-
-	my $token = <STDIN> || '';	# the actual read is here
-
-	my $eot_comment;
-	my $line_count =	# so we can continue accurate input reporting
-		$token =~ tr/\n//;	# this tr counts but does NOT replace
-	$token_ends_after_N_octets and
-		$line_count += 2,
-		$/ = \EOTLEN,
-		$eot_comment = <STDIN>;	# read and toss token end comment
-
-	$strip and
-		$token =~ s|$/$||;
-
-	return ($line_count, $token);
-}
-
-# Use "^" for encodings because it's rarer than "%" in our expected inputs.
-#
-sub nlencode { my $s = shift;
-
-	$s =~ s{
-		([\x0a\x0d^])			# replace NL, CR, and ^
-	}{
-		sprintf("^%02x", ord($1))	# with "^" and hex code
-	}xeg;
-	return $s;
-}
-
-sub nldecode { my $s = shift;
-
-	$s =~ s{
-		\^([0-9a-fA-F]{2})
-	}{
-		chr(hex("0x"."$1"))
-	}xeg;
-	return $s;
-}
-
-=cut
 
 # this :config allows -h24w80 for '‐h 24 ‐w 80', -vax for --vax or --Vax
 use Getopt::Long qw(:config bundling_override);
