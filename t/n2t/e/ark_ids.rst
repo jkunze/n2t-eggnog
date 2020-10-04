@@ -87,23 +87,39 @@ Some advantages of ARKs:
 - impact – ARKs appear in the Data Citation Index |sm| and in
   ORCID researcher profiles
 
-Since 2001 over 600 organizations spread across fifteen countries registered
+Since 2001 over 650 organizations across the world registered
 to assign ARKs. `The registry`_ includes libraries, archives, museums
 (Smithsonian), publishers, government agencies, academic institutions
 (Princeton), and technology companies (Google). To have your institution
 registered, use the `ARK request form`_. Some of the major users are
 
-- The California Digital Library
-- The Internet Archive
-- National Library of France (Bibliothèque nationale de France)
-- Portico Digital Preservation Service
-- Smithsonian Institution
-- University of California Berkeley
-- University of North Texas
-- FamilySearch.org
-- University of Chicago
-- University College Dublin
-- The British Library
+..
+   see https://stackoverflow.com/questions/4550021/working-example-of-floating-image-in-restructured-text
+
+.. container:: twocol
+
+   .. container:: leftside
+
+      - The California Digital Library
+      - The Internet Archive
+      - National Library of France (Bibliothèque nationale de France)
+      - Portico Digital Preservation Service
+      - Smithsonian Institution
+      - University of California Berkeley
+      - University of California San Francisco
+      - University of North Texas
+      - Institute of Scientific and Technical Information
+      - FamilySearch.org
+      - University of Utah
+      - University of Chicago
+      - University College Dublin
+      - The British Library
+
+   .. container:: rightside
+
+      .. image:: /e/images/naan_growth.png
+         :width: 30 %
+         :alt: Numbers of ARK-assigning organizations since 2001.
 
 There is a discussion group for ARKs (Archival Resource Keys) at
 

@@ -355,7 +355,12 @@ prefixes_root=$buildout_root/prefixes	# xxx drop? change?
 # see also: $cgiref_egg
 
 document_root=$srvref_root/htdocs	# paths referenced in files
+arks_document_root=$srvref_root/htdocs/arks.org
+ruu_document_root=$srvref_root/htdocs/ruu.app
 rmap_root=$srvref_root/htdocs/a		# more paths referenced
+
+arksorg="n2t-dev.n2t.net"		# xxx get this from config
+ruuapp=
 
 template_root=$src_top/$sstub/$cfgdir	# paths to build input files
 
@@ -852,7 +857,9 @@ echo Building skeleton server structure extensions.
 # yyy what's httpauth for? var/state? should we use var/{run,lock}?
 msg=$( mkdir -p 2>&1 $buildout_root \
 	$buildout_root/{htdocs,conf,cgi-bin,logs} \
+	$buildout_root/htdocs/{arks.org,ruu.app} \
 	$buildout_root/htdocs/{a,e,r,e/{pop,pub,admin},e/{images,x,css}} )
+(cd $buildout_root/htdocs/arks.org; ln -s ../e e)
 
 [[ -e $bst_root/eggnog_conf ]] && {
 	echo Copying $bst_root/eggnog_conf
@@ -901,7 +908,10 @@ robots=$buildout_root/htdocs/robots.txt
 
 # yyy drop this form now that google form is available
 # Establish a simple, executable form to assist NAAN curation.
-#
+
+# XXX bug: can fetch this with curl (https://ids-n2t2-dev.n2t.net/favicon.ico),
+# but not with Brave/Chrome
+#cp $favicon $buildout_root/htdocs/e/admin/	# yyy hoping to quite errors
 naancure=$buildout_root/htdocs/e/admin/q2e.pl
 [[ -e $naancure ]] || {
 	cat > $naancure <<- EOT
@@ -1306,10 +1316,11 @@ function build_passwd {
 		return 0		# don't create a password file
 
 	local n i pfile bc flp
-# xxx true in Apache 2.4?
-	bc=$EGNAPA_TOP/bin/htpasswd	# xxx remove after linux2 conversion
-	[[ -e $bc ]] ||			# xxx remove after linux2 conversion
-		bc=htpasswd		# eg, in /usr/bin
+## xxx true in Apache 2.4?
+#	bc=$EGNAPA_TOP/bin/htpasswd	# xxx remove after linux2 conversion
+#	[[ -e $bc ]] ||			# xxx remove after linux2 conversion
+#		bc=htpasswd		# eg, in /usr/bin
+	bc=htpasswd			# eg, in /usr/bin
 	flp=( $pwdfile )		# expand to file/login/password triples
 
 	echo -n "Making "
@@ -1336,6 +1347,42 @@ function build_passwd {
 
 build_passwd || {
 	echo Error building password file
+	exit 1
+}
+
+# create password file pwdfile_naan_curators for NAAN curators from input:
+#    Working Email       Generated Password
+#    jak@ucop.edu        lkajsjfoiwe
+#    bertrand@bnf.fr     woruouweuou
+# generate 12-char password for every member of NAAN WG
+# yyy       date +%s | md5sum | head -c 12
+# yyy (mac) date +%s | md5    | head -c 12
+
+function build_ncure_passwd {
+
+	[[ "$ncurepwdfile" ]] ||	# if the list or 1st item is empty
+		return 0		# don't create a password file
+
+	local n i bc flp
+	bc=htpasswd
+	ep=( $pwdfile )			# expand to email/password pairs
+
+	local pfile=pwdfile_naan_curators
+	[[ ! -e $pfile ]] && {
+		# initialize the password file that needs to be built
+		$bc -b -c $pfile dummy dummy > /dev/null 2>&1
+		chmod 600 $pfile
+	}
+	# actually set the passwords
+	n=${#ep[*]}
+	for (( i=0; i < $n; i+=2 )) do
+		$bc -b $pfile ${ep[ $i ]} "${ep[ $i+1 ]}" > /dev/null 2>&1
+	done
+	return 0
+}
+
+build_ncure_passwd || {
+	echo Error building NAAN curators password file
 	exit 1
 }
 
@@ -1585,6 +1632,12 @@ AddOutputFilter INCLUDES .html
 #        Allow from all
 	AddHandler cgi-script .pl
 	Options +ExecCGI
+
+    AuthType Basic
+    AuthName "Email address"
+    AuthBasicProvider file
+    AuthUserFile /apps/n2t/sv/cv2/apache2/conf/pwdfile_ezid
+    Require valid-user
 </Directory>
 
 # NB: we don't set Indexes option, so server won't auto-generate listings
@@ -1593,9 +1646,6 @@ AddOutputFilter INCLUDES .html
 </IfModule>
 
 <FilesMatch "^\\.ht">
-#    Order allow,deny
-#    Deny from all
-#    Satisfy All
     Require all denied
 </FilesMatch>
 
@@ -2315,11 +2365,10 @@ RewriteRule ^(.*)$ - [env=proto:https]
 # Edge case rule to send stuff intended for the API over to https (/a/...).
 # xxx should this use the permanent redirect code?
 
-#RewriteRule ^(/a/.+)\$ https://$EGNAPA_HOST\$1 [R=302,L]
-RewriteRule ^(/a/.+)\$ https://$shostport\$1 [R=302,L]
+RewriteRule ^(/a/.+)\$ https://$EGNAPA_HOST\$1 [R=302,L]
 
 # Secure admin interface
-RewriteRule ^(/e/admin/.+)\$ https://$shostport\$1 [R=302,L]
+RewriteRule ^(/e/admin/.+)\$ https://$EGNAPA_HOST\$1 [R=302,L]
 
 # Note that these files are Include'd once for HTTP and once for HTTPS,
 # which means that there are two RewriteMap processes for each binder.
@@ -2335,6 +2384,78 @@ Include $srvref_root/conf/rewrite2-server.conf
 ####### Include rewrite3-generic.conf for HTTP
 
 Include $srvref_root/conf/rewrite3-generic.conf
+
+</VirtualHost>
+
+<VirtualHost _default_:$port_hpr>
+
+# http (not https) ://arks.org virtual hosting -- send all to https
+
+# These <VirtualHost> directives must come after the N2T virtualhost
+# directive to avoid their taking precedence.
+
+ServerName $arksorg
+ServerAlias www.$arksorg
+
+# Send all http traffic to https
+Redirect permanent / https://$EGNAPA_HOST/
+
+# XXX is this the best way??
+# XXX logs?
+
+</VirtualHost>
+
+<VirtualHost _default_:$port_hprs>
+
+# https://arks.org virtual hosting
+
+ServerName $arksorg
+ServerAlias www.$arksorg
+
+DocumentRoot "$arks_document_root"
+
+# xxx not recommended for security reasons -- move this to $sstub/n2t/...?
+AllowEncodedSlashes On
+
+#   Enable/Disable SSL for this virtual host.
+SSLEngine on
+SSLProtocol all -SSLv3
+SSLCipherSuite HIGH:MEDIUM:!aNULL:!MD5:!SEED:!IDEA
+
+$sslcertblock
+
+<Files ~ "\.(cgi|shtml|phtml|php3?)$">
+    SSLOptions +StdEnvVars
+</Files>
+<Directory "$srvref_root/cgi-bin">
+    SSLOptions +StdEnvVars
+</Directory>
+
+BrowserMatch "MSIE [2-5]" \
+         nokeepalive ssl-unclean-shutdown \
+         downgrade-1.0 force-response-1.0
+
+# xxx needed?
+# !! RewriteEngine On required in VirtualHost section [jak]
+RewriteEngine On
+# !! RewriteOptions Inherit required in VirtualHost section [jak]
+#RewriteOptions Inherit
+
+RewriteRule ^/$ "$arks_document_root/arks.html" [L]
+RewriteRule ^(/favicon.ico.*)$ "$arks_document_root$1" [L]
+
+# Note that Indexes has been removed from Options.
+<Directory "$arks_document_root">
+    Options FollowSymLinks Includes
+    AllowOverride None
+    Require all granted
+</Directory>
+
+## Turn on UTF-8 and Server Side Includes for HTML pages served from htdocs/e.
+##
+#AddDefaultCharset utf-8
+#AddType text/html .html
+#AddOutputFilter INCLUDES .html
 
 </VirtualHost>
 
