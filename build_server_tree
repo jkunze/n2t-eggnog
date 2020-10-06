@@ -359,9 +359,6 @@ arks_document_root=$srvref_root/htdocs/arks.org
 ruu_document_root=$srvref_root/htdocs/ruu.app
 rmap_root=$srvref_root/htdocs/a		# more paths referenced
 
-arksorg="n2t-dev.n2t.net"		# xxx get this from config
-ruuapp=
-
 template_root=$src_top/$sstub/$cfgdir	# paths to build input files
 
 # ddddd  once these locations aren't used any longer for self-signed
@@ -577,6 +574,10 @@ export \
 # kludgy fake home directory
 class=$( perl -Mblib egg --home $bst_root cfq class )
 #class=$( perl -Mblib egg cfq class )
+
+arksorg=$( perl -Mblib egg --home $bst_root cfq vhost_arksorg )
+#ruuapp=
+#arksorg="n2t-dev.n2t.net"		# xxx get this from config
 
 [[ "$class" != "$EGNAPA_HOST_CLASS" ]] && {
 	echo "WARNING: configured host class ($class) differs from that" \
@@ -2389,16 +2390,19 @@ Include $srvref_root/conf/rewrite3-generic.conf
 
 <VirtualHost _default_:$port_hpr>
 
-# http (not https) ://arks.org virtual hosting -- send all to https
+# HTTP (not https) ://arks.org virtual hosting -- send all to https
 
 # These <VirtualHost> directives must come after the N2T virtualhost
 # directive to avoid their taking precedence.
 
+# xxx don't know if can test via scripts unless we alter $shostport
 ServerName $arksorg
 ServerAlias www.$arksorg
 
+RewriteEngine On
 # Send all http traffic to https
-Redirect permanent / https://$EGNAPA_HOST/
+RewriteRule ^(.*)$ https://$arksorg\$1 [L]
+#Redirect permanent / https://$arksorg/
 
 # XXX is this the best way??
 # XXX logs?
@@ -2407,7 +2411,7 @@ Redirect permanent / https://$EGNAPA_HOST/
 
 <VirtualHost _default_:$port_hprs>
 
-# https://arks.org virtual hosting
+# HTTPS://arks.org virtual hosting
 
 ServerName $arksorg
 ServerAlias www.$arksorg
@@ -2442,7 +2446,9 @@ RewriteEngine On
 #RewriteOptions Inherit
 
 RewriteRule ^/$ "$arks_document_root/arks.html" [L]
-RewriteRule ^(/favicon.ico.*)$ "$arks_document_root$1" [L]
+#RewriteRule ^(/favicon.ico.*)$ "$arks_document_root$1" [L]
+RewriteRule ^/favicon.ico $arks_document_root/favicon.ico [L]
+RewriteRule ^/css/(.+) $document_root/e/css/\$1 [L]
 
 # Note that Indexes has been removed from Options.
 <Directory "$arks_document_root">
@@ -2465,6 +2471,10 @@ EOT
 # special chars, by having them appear only as result of parameter expansion.
 #
 cat << EOT >> conf/rewrite1-setup.conf
+
+# Some common requests for both HTTP and HTTPS.
+RewriteRule ^/favicon.ico $document_root/e/images/favicon.ico [L]
+RewriteRule ^/css/(.+) $document_root/e/css/\$1 [L]
 
 # XXX why not using %{ENV:XFF}?
 # Establish some shorthand and set the XFF environment variable.
@@ -2496,7 +2506,11 @@ EOT
 cat << EOT >> conf/rewrite3-generic.conf
 
 # We fall through to these rewrite rules only if nothing was found before.
-# This is the post database lookup processing.
+
+#############
+# NOTE: if we're in this section, the "uri" we're trying to match has already
+# been looked up via RewriteMap, ie, we're POST database lookup processing.
+#############
 
 # xxx maybe a good idea for speed:  RewriteRule ^/ark:/?(13960/.*)\$  ...
 
@@ -2516,27 +2530,6 @@ RewriteRule ^(.*)\$ "\$1?thump=0&show=brief&as=anvl/erc"
 # Two question mark case:  ?? -> ?thump=0&show=support&as=anvl/erc
 RewriteCond %{QUERY_STRING} ^\\?$
 RewriteRule ^(.*)\$ "\$1?thump=0&show=support&as=anvl/erc"
-
-RewriteRule ^/favicon.ico $document_root/e/images/favicon.ico [L]
-RewriteRule ^/css/(.+) $document_root/e/css/\$1 [L]
-
-# XXXXX move old stuff into n2t-specific code
-### OLD stuff next
-# These next rules cascade to follow-on rules on successful lookup.
-#
-# The first rule checks if the Internet Archive binder knows about it.
-#RewriteRule ^/ark:/?(13960/.*)\$      "_rslv_\${rslvoca:get \$1 goto}"
-#RewriteRule ^/(ark:/?13960/.*)\$      "_rslv_\${rslvoca:\$1.get _t}"
-#
-# The next rule checks if EZID knows about it.  Don't try to optimize
-# and skip what EZID might not know about, as it might know about _any_
-# ARK (currently we only check what it knows about ARKs, eg, not DOIs).
-#RewriteRule ^/ark:/?(\\w\\w\\w\\w\\w/.*)\$ "_rslv_\${rslvcdl:get \$1 _t}"
-#RewriteRule ^/ark:/?((13030|b5060|b5061|99999)/.*)\$ "_rslv_\${rslvcdl:get \$1 _t}"
-#RewriteRule ^/(ark:/?\\w\\w\\w\\w\\w/.*)\$ "_rslv_\${rslvr:\$1.get _t}"
-#?? RewriteRule ^/(ark:/?\\w+/.*)\$ "_rslv_\${rslvcdl:\$1.get _t}"
-#RewriteRule ^/urn:uuid:(*)\$ "_rslv_\${rslvcdl:get \$1 _t}"
-#RewriteRule ^/(urn:uuid:*)\$ "_rslv_\${rslvcdl:\$1.get _t}"
 
 # !! convert encoded ':' (%3A) case-insensitive (NC) into ':' [jak]
 # xxx this only substitutes the first occurrence, and seems silly
@@ -2571,10 +2564,6 @@ RewriteRule "^_rslv_redir3.. \$"      %{REQUEST_URI}
 # trigger a redirect that re-uses the incoming port, which won't work
 # when we're port fowarding/mapping with a load balancer and firewalls.
 
-## xxx big fat kludges
-#RewriteRule ^/e/prefix_request(\.|\.html?)?\$ https://docs.google.com/forms/d/18MBLnItDYFOglVNbhNkISqHwB-pE1gN1YAqaARY9hDg [L]
-#RewriteRule ^/e/prefix_overview(\.|\.html?)?\$ https://docs.google.com/document/d/1qwvcEfzZ6GpaB6Fql6SQ30Mt9SVKN_MytaWoKdmqCBI [L]
-
 RewriteRule ^/e\$ $document_root/e/index.html [L]
 RewriteRule ^(/e/.*)\$ $document_root\$1 [L]
 RewriteRule ^/\$ $document_root/e/homepage.html [L]
@@ -2590,11 +2579,17 @@ RewriteRule ^/([ar])/*\$ /\$1/ [PT]
 # This is the last section and therefore the final attempt to make sense
 # of the user's request.  To start, don't waste time on it unless it
 # looks like something beginning with a scheme name ending in a colon
-# (it could even start with a colon); just pass through for a 404 error.
+# (it could even start with a colon), ie, if it doesn't look like that,
+# just pass it through for a 404 error.
 #
 # XXXX untested
 RewriteCond %{REQUEST_URI} !^/[^:]*:.+\$
 RewriteRule (.*)    \$1 [R=404,L]
+
+#############
+# NOTE: if we're in this section, the "uri" we're trying to match
+# has been RESTORED to its PRE-database lookup state.
+#############
 
 # yyy add Greg's N2T rules
 
@@ -2602,30 +2597,6 @@ RewriteRule (.*)    \$1 [R=404,L]
 RewriteRule ^/ark:/*13030/qt(.*)\$ "http://escholarship.org/uc/item/\$1" [R=302,L,NC]
 # yyy special rule for OAC; remove when EZID registers their ARKs
 RewriteRule ^/ark:/*(13030/(?:tf|ft|kt).*)\$ "http://ark.cdlib.org/ark:/\$1" [R=302,L,NC]
-
-# yyy all the NC flags in these rules are untested
-## DOIs
-#RewriteRule ^/doi:(.*)\$      "http://doi.org/\$1" [R=302,L,NC]
-# Handles
-#RewriteRule ^/hdl:(.*)\$      "http://hdl.handle.net/\$1" [R=302,L,NC]
-
-## URNs
-#RewriteRule ^/(urn:nbn:se:.*)\$         "http://urn.kb.se/resolve?urn=\$1" [R=302,L,NC]
-#RewriteRule ^/(urn:nbn:no-.*)\$         "http://idtjeneste.nb.no/\$1" [R=302,L,NC]
-#RewriteRule ^/(urn:nbn:fi.*)\$          "http://urn.fi/\$1" [R=302,L,NC]
-#RewriteRule ^/(urn:isbn:978-95[12].*)\$ "http://urn.fi/\$1" [R=302,L,NC]
-#RewriteRule ^/(urn:nbn:nl:ui:.*)\$      "http://www.persistent-identifier.nl/?identifier=\$1" [R=302,L,NC]
-
-## yyy is the lsid resolver working at all?
-## LSIDs
-#RewriteRule ^/(urn:)?(lsid:.*)\$        "http://lsid.tdwg.org/summary/urn:\$2" [R=302,L,NC]
-##
-##http://lsid.tdwg.org/summary/urn:lsid:ubio.org:namebank:11815
-##http://lsid.tdwg.org/summary/urn:lsid:ubio.org:classificationbank:1164063
-##http://lsid.tdwg.org/summary/urn:lsid:taxonomy.org.au:TherevidMandala:MEI023602
-
-## PURLs
-#RewriteRule ^/(purl:/?(.*))\$    "http://purl.org/\$2" [R=302,L,NC]
 
 # XXX move 'url:' out of apache and into code
 # URLs.  This place-holder prevents "url:" label from going to lsrn.org.
@@ -2786,12 +2757,24 @@ RewriteRule ^/r/$b/+(.*)\$ \"_rslv_\${map_$b:\$1.resolve \${$hdrblob}}\"" >> $rw
 		( cd $( dirname $file ) ; make )
 	done
 
-	# copy .html files with paths intact
-	for file in $( cd $template_root; \
-			find . -name '*.html' -o -name '*.txt' )
+	for dir in a e r arks.org ruu.app
 	do
-		cp $template_root/$file htdocs/$file	# copy path "as is"
+		# yyy skip if $dir is missing; this is a kludge that props up
+		# support in t/n2t for virtualhosts arks.org and ruu.app
+		[[ ! -d $template_root/$dir ]] &&
+			continue
+		(shopt -s nullglob;
+			cp -p $template_root/$dir/*.{html,txt} htdocs/$dir)
 	done
+#	(shopt -s nullglob; cp -p $template_root/?/*.{html,txt} htdocs/e)
+#	local a=arks.org
+#	(shopt -s nullglob; cp -p $template_root/$a/*.{html,txt} htdocs/$a/)
+#	for file in $( cd $template_root; \
+#			find . -name '*.html' -o -name '*.txt' )
+#	do
+#		# copy path "as is"
+#		cp $template_root/$file htdocs/$file
+#	done
 	# yyy used to have .html files generated by bash << EOT in order to get
 	# variables substituted (not needed at the moment); makefiles could
 	# also take care of this

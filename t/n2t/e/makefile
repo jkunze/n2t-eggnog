@@ -10,7 +10,7 @@ ark_ids.html: ark_ids.rst makehtml.py
 	./makehtml.py ark_ids.rst "ARK"
 	# xxx temporary
 	egrep -v '(header|footer|breadcrumb_ark_ids).html' ark_ids.html \
-		> arks.org/arks.html
+		> ../arks.org/arks.html
 
 compact_ids.html: compact_ids.rst makehtml.py
 	./makehtml.py compact_ids.rst "Compact Identifiers"
@@ -30,8 +30,8 @@ test: all
 		$(HOME)/sv/cur/apache2/htdocs/e/
 	cp -pr admin/*.html \
 		$(HOME)/sv/cur/apache2/htdocs/e/admin/
-	cp -pr arks.org/*.html \
+	cp -pr ../arks.org/*.html \
 		$(HOME)/sv/cur/apache2/htdocs/arks.org/
 	# xxx temporary
-	cp -pr arks.org/*.html \
-		$(HOME)/sv/cur/apache2/htdocs/e/
+	#cp -pr arks.org/*.html \
+	#	$(HOME)/sv/cur/apache2/htdocs/e/

@@ -212,6 +212,12 @@ like $x, qr{HTTP/\S+\s+302.*Location: https://}si,
 like $x, qr{xxx Stub q2e.}i,
 	'executable naan curation form';
 
+$x = `$webcl "$srvbase_u/favicon.ico"`;
+like $x, qr{Content-Type: image.*icon}i, "favicon fetched via http";
+
+$x = `$webcl "$ssvbase_u/favicon.ico"`;
+like $x, qr{Content-Type: image.*icon}i, "favicon fetched via https";
+
 #say "XXX x=$x";
 #$x = apachectl('graceful-stop')	and say "$x"; exit;	#########
 
