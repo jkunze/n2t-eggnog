@@ -30,7 +30,7 @@
 
 # xxx change from filval to File::Slurp ?
 
-# xxx add SNAC account? (to deal with this thing once and for all, since
+# xxx add SNACC account? (to deal with this thing once and for all, since
 #     EZID's batch interface probably won't ever support bulk minting
 
 # xxxx bug: $sstub/apachebase.t fails on machines where only ports 80 and 443
@@ -355,7 +355,6 @@ prefixes_root=$buildout_root/prefixes	# xxx drop? change?
 # see also: $cgiref_egg
 
 document_root=$srvref_root/htdocs	# paths referenced in files
-arks_document_root=$srvref_root/htdocs/arks.org
 ruu_document_root=$srvref_root/htdocs/ruu.app
 rmap_root=$srvref_root/htdocs/a		# more paths referenced
 
@@ -575,9 +574,7 @@ export \
 class=$( perl -Mblib egg --home $bst_root cfq class )
 #class=$( perl -Mblib egg cfq class )
 
-arksorg=$( perl -Mblib egg --home $bst_root cfq vhost_arksorg )
-#ruuapp=
-#arksorg="n2t-dev.n2t.net"		# xxx get this from config
+ruuapp=$( perl -Mblib egg --home $bst_root cfq vhost_ruuapp )
 
 [[ "$class" != "$EGNAPA_HOST_CLASS" ]] && {
 	echo "WARNING: configured host class ($class) differs from that" \
@@ -858,9 +855,9 @@ echo Building skeleton server structure extensions.
 # yyy what's httpauth for? var/state? should we use var/{run,lock}?
 msg=$( mkdir -p 2>&1 $buildout_root \
 	$buildout_root/{htdocs,conf,cgi-bin,logs} \
-	$buildout_root/htdocs/{arks.org,ruu.app} \
+	$buildout_root/htdocs/ruu.app \
 	$buildout_root/htdocs/{a,e,r,e/{pop,pub,admin},e/{images,x,css}} )
-(cd $buildout_root/htdocs/arks.org; ln -s ../e e)
+(cd $buildout_root/htdocs/ruu.app; ln -s ../e e)
 
 [[ -e $bst_root/eggnog_conf ]] && {
 	echo Copying $bst_root/eggnog_conf
@@ -1631,8 +1628,8 @@ AddOutputFilter INCLUDES .html
         Require all granted
 #        Order allow,deny
 #        Allow from all
-	AddHandler cgi-script .pl
 	Options +ExecCGI
+	AddHandler cgi-script .pl
 
     AuthType Basic
     AuthName "Email address"
@@ -2390,19 +2387,19 @@ Include $srvref_root/conf/rewrite3-generic.conf
 
 <VirtualHost _default_:$port_hpr>
 
-# HTTP (not https) ://arks.org virtual hosting -- send all to https
+# HTTP (not https) ://ruu.app virtual hosting -- send all to https
 
 # These <VirtualHost> directives must come after the N2T virtualhost
 # directive to avoid their taking precedence.
 
 # xxx don't know if can test via scripts unless we alter $shostport
-ServerName $arksorg
-ServerAlias www.$arksorg
+ServerName $ruuapp
+ServerAlias www.$ruuapp
 
 RewriteEngine On
 # Send all http traffic to https
-RewriteRule ^(.*)$ https://$arksorg\$1 [L]
-#Redirect permanent / https://$arksorg/
+RewriteRule ^(.*)$ https://$ruuapp\$1 [L]
+#Redirect permanent / https://$ruuapp/
 
 # XXX is this the best way??
 # XXX logs?
@@ -2411,12 +2408,12 @@ RewriteRule ^(.*)$ https://$arksorg\$1 [L]
 
 <VirtualHost _default_:$port_hprs>
 
-# HTTPS://arks.org virtual hosting
+# HTTPS://ruu.app virtual hosting
 
-ServerName $arksorg
-ServerAlias www.$arksorg
+ServerName $ruuapp
+ServerAlias www.$ruuapp
 
-DocumentRoot "$arks_document_root"
+DocumentRoot "$ruu_document_root"
 
 # xxx not recommended for security reasons -- move this to $sstub/n2t/...?
 AllowEncodedSlashes On
@@ -2445,23 +2442,18 @@ RewriteEngine On
 # !! RewriteOptions Inherit required in VirtualHost section [jak]
 #RewriteOptions Inherit
 
-RewriteRule ^/$ "$arks_document_root/arks.html" [L]
-#RewriteRule ^(/favicon.ico.*)$ "$arks_document_root$1" [L]
-RewriteRule ^/favicon.ico $arks_document_root/favicon.ico [L]
+# xxx change this to index.html?
+RewriteRule ^/$ "$ruu_document_root/arks.html" [L]
+#RewriteRule ^(/favicon.ico.*)$ "$ruu_document_root$1" [L]
+RewriteRule ^/favicon.ico $ruu_document_root/favicon.ico [L]
 RewriteRule ^/css/(.+) $document_root/e/css/\$1 [L]
 
 # Note that Indexes has been removed from Options.
-<Directory "$arks_document_root">
+<Directory "$ruu_document_root">
     Options FollowSymLinks Includes
     AllowOverride None
     Require all granted
 </Directory>
-
-## Turn on UTF-8 and Server Side Includes for HTML pages served from htdocs/e.
-##
-#AddDefaultCharset utf-8
-#AddType text/html .html
-#AddOutputFilter INCLUDES .html
 
 </VirtualHost>
 
@@ -2757,10 +2749,10 @@ RewriteRule ^/r/$b/+(.*)\$ \"_rslv_\${map_$b:\$1.resolve \${$hdrblob}}\"" >> $rw
 		( cd $( dirname $file ) ; make )
 	done
 
-	for dir in a e r arks.org ruu.app
+	for dir in a e r ruu.app
 	do
 		# yyy skip if $dir is missing; this is a kludge that props up
-		# support in t/n2t for virtualhosts arks.org and ruu.app
+		#     support in t/n2t for virtualhost ruu.app
 		[[ ! -d $template_root/$dir ]] &&
 			continue
 		(shopt -s nullglob;

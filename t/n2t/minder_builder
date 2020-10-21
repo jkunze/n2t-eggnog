@@ -84,7 +84,7 @@ RewriteRule ^/(ark:/?99152.*)\$ \\
 
 # xxx The handful of Exceptions below should be done via scheme/shoulder DB
 #
-## Exception: SNAC project (has own resolver)
+## Exception: SNACC project (has own resolver)
 ## Using 303 redirects to indicate surrogacy, per Linked Open Data demands.
 #RewriteRule ^/ark:/?(99166/w6.*)\$   http://socialarchive.iath.virginia.edu/ark:/\$1 [R=303,L,NC]
 
@@ -321,7 +321,7 @@ fi
 # This legacy minter, created 2013.02.12, minted 4,030,509 spings in two
 # big batches.
 # yyy On 2015.0.25 nog (on ec2) minted 4M spings in one run, taking 15 mins.
-ppltr=snac	# yyy not actually a populator, but it gets its own directory
+ppltr=snacc	# yyy not actually a populator, but it gets its own directory
 naanshdr=99166/w6
 mtemplate=eedeek
 # -Mblib again, since pre-installation code only callable from source tree.
@@ -332,11 +332,11 @@ then
 else
 	echo Creating $ppltr/ark/$naanshdr from scratch.
 	(cd $src_top;
-		# These next lines are customized for the SNAC project.
+		# These next lines are customized for the SNACC project.
 		mkdir -p $minters_root/$ppltr/ark
 		$cmd -p $minters_root/$ppltr/ark mkminter \
 			--type rand --atlast add3 $naanshdr $mtemplate
-		echo "To start a SNAC minter from scratch:"
+		echo "To start a SNACC minter from scratch:"
 		echo "    cp -pr $minters_root/$ppltr ~/minters"
 	)
 fi

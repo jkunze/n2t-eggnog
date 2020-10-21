@@ -69,7 +69,7 @@ my $eoi_tgt = 'https://crossref.org/';
 my $eoi_ref = 'eoi:10.5072/EOITEST';	# normalized reference
 my $eoi_ref_lc = 'eoi:10.5072/eoitest';	# unnormalized reference
 
-my $snachost = 'socialarchive.iath.virginia.edu';
+my $snacchost = 'socialarchive.iath.virginia.edu';
 
 # xxx add to t/apachebase.t
 #         random timeofday value test for target to avoid effects
@@ -484,8 +484,8 @@ like $x, qr/response.*302 .*\nLocation: \Q$target/,
 #print "xxx disabled test: EC -- rule-based target redirect\n";
 
 $x = `wegn -v locate "ark:/99166/w6foo"`;
-like $x, qr/response.*303 .*\nLocation: http:..\Q$snachost/,
-	"SNAC target redirect with 303 status";
+like $x, qr/response.*303 .*\nLocation: http:..\Q$snacchost/,
+	"SNACC target redirect with 303 status";
 
 $x = `wegn locate "e/naan_request"`;
 like $x, qr|Location: .*goo.gl/forms|,

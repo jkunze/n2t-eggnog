@@ -18,7 +18,7 @@ hosts:
     syserr_check: 1
     log_rotate: 1
     backup: 1
-    vhost_arksorg: arks.org
+    #vhost_arksorg: arks.org
     vhost_ruuapp: ruu.app
     # NB: no automatic patching in prd
 
@@ -31,7 +31,7 @@ hosts:
     log_rotate: 1
     backup: 1
     patch_thursday: 1
-    vhost_arksorg: ids-arks-stg.arks.org
+    #vhost_arksorg: ids-arks-stg.arks.org
     vhost_ruuapp: ids-ruu-stg.ruu.app
 
   ids-n2t2-dev.n2t.net:
@@ -43,7 +43,7 @@ hosts:
     backup: 0
     patch_monday: 1
     #vhost_arksorg: ids-arks-dev.arks.org
-    vhost_arksorg: n2t-dev.n2t.net
+    #vhost_arksorg: n2t-dev.n2t.net
     vhost_ruuapp: ids-ruu-dev.ruu.app
 
   localhost:

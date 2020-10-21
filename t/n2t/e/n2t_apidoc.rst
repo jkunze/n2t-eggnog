@@ -97,27 +97,41 @@ Opaque identifier strings, which reveal little about the objects they identify
 or their origins, are generally considered good choices for persistent
 identifiers because they age and travel well. Often, however, organizations
 feel pressure to include branding in their strings to aid with visibility,
-promotion, and funding. How best to accommodate these seemingly conflictual
-aims of identifier and organizational sustainability?
+promotion, and funding. If your ARKs are stored in N2T (eg, by the EZID
+service), how best to accommodate these seemingly conflictual aims of
+identifier and organizational sustainability?
 
-The approach advocated by N2T is to set up a specially branded DNS CNAME
-pointing to n2t.net and use it to advertise their identifiers. For example, if
-"Acme Rockets" has an identifier ark:/12345/6789, instead of publishing it as
-the opaque identifier,
+The approach advocated by N2T is for your organization to set up a very small
+web server under its own specially branded hostname that appears to users like
+a local resolver but that actually works by simply forwarding incoming ARK
+requests to N2T for resolution. In the explanation that follows we assume
+hypothetically that your organization, the Acme Archeology Board (AAB), has the
+domain name aab.org and an identifier ark:/12345/6789. The usual way of
+publishing that ARK would be (unbranded)
 
-  n2t.net/ark:/12345/6789
+  https://n2t.net/ark:/12345/6789
 
-they would publish it as the dual-branded,
+For a branded ARK, we recommend instead publishing it as,
 
-  n2t.acme.example.org/ark:/12345/6789
+  https://n2t.aab.org/ark:/12345/6789
 
-where n2t.acme.example.org is a CNAME that Acme Rockets' DNS administrator will
-have set up to forward all traffic to n2t.net. The CNAME provides branding and
-needs almost no maintenance. Should the acme.example.org domain ever lapse, the
-published identifier will no longer resolve "as is", but since the N2T brand is
-also present, it provides a social hint to future recipients that the
-well-known n2t.net resolver might still be able to resolve the part of the
-identifier after the hostname.
+The special dual-branded (AAB and N2T) hostname, n2t.aab.org, is where the
+small forwarding web server resides. There is a one-time set up step described
+below. Should the aab.org domain ever lapse, the published identifier will no
+longer resolve "as is", but since the N2T brand is also present, it provides
+a social hint to future recipients that the well-known n2t.net resolver might
+still be able to resolve the part of the identifier after the hostname.
+
+There are other ways to do it, but the forwarding server is usually implemented
+as a "virtual host" on a server that may already exist for another reason (eg,
+it's a load balancer). Follow normal procedures for setting up a virtual host
+that works with both http and https, such as creating the new DNS name and its
+TLS/SSL certificate, and then add forwarding instructions. In an Apache server
+configuration, for example, that could be just this one line: ::
+
+  Redirect permanent / https://n2t.net/
+
+You may need separate virtual hosts for http and https.
 
 This document
 -------------
@@ -196,7 +210,7 @@ time). Auto-expansion allows you to enjoy shorter spings to start with
 while not having to worry about running out of unique spings. So in
 general it is best not to rely on spings being of a fixed length.
 
-Typically, N2T API minting calls look like 
+Typically, N2T API minting calls look like ::
 
   wg "$b/a/sam/m/<Minter>?mint <Number>"
 
@@ -244,7 +258,7 @@ For the above target, the following identifier resolutions would occur::
 
 See `Suffix Passthrough Explained`_ for more information.
 
-Typically, N2T API binder calls look like 
+Typically, N2T API binder calls look like ::
 
   wg "$b/a/<User>/b?<Modifier> <Identifier>.<Operation> <Element> <Value>"
 

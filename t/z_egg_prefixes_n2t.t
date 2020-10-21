@@ -226,9 +226,15 @@ $x = nresolve_stdin_hdr( "--home $buildout_root -d $td/dummy",
 	'ark:/67531/metapth346793', '',	# UNT example from ARK docs
 	  '302 http://digital.library.unt.edu/ark:/67531/metapth346793',
 	  'ark naan (UNT) prefix redirect from ARK documentation',
-	'ark:/99166/w6qz2nsx', '',	# SNAC (303)
+	'ark:/99152/t3foo', '',		# TemaTres
+	  'https://vocabularyserver.com/ark:/99152/t3foo',
+	  'ark TemaTres shoulder prefix',
+	'ark:/99152/b4foo', '',		# MRC historical ontologies
+	  'https://id.cci.drexel.edu/ark:/99152/b4foo',
+	  'ark MRC shoulder prefix',
+	'ark:/99166/w6qz2nsx', '',	# SNACC (303)
 	  '303 http://socialarchive.iath.virginia.edu/ark:/99166/w6qz2nsx',
-	  'ark naan (SNAC) prefix redirect with 303 redirect',
+	  'ark SNACC shoulder prefix redirect with 303 redirect',
 	'ark:/76951/jhcs23vum3', '',	# SPMC, using n2t.net by agreement
 	  'http://ark.spmcpapers.com/ark:/76951/jhcs23vum3',
 	  'remotely managed ark naan (SPMC) prefix redirect via n2t',
@@ -379,7 +385,7 @@ $x = nresolve_stdin_hdr( "--home $buildout_root -d $td/dummy",
 # 	'ark:12148/btv1b8426258c', '',	# BnF, and no :/
 # 	'minid:b97957', '',		# minid to ark test
 # 	'ark:/67531/metapth346793', '',	# UNT example from ARK docs
-# 	'ark:/99166/w6qz2nsx', '',	# SNAC (303)
+# 	'ark:/99166/w6qz2nsx', '',	# SNACC (303)
 # 	'ark:/76951/jhcs23vum3', '',	# SPMC, using n2t.net by agreement
 # 	'urn:nbn:fi:tkk-004781', '',	# URN:NBN -> NBN:
 # 	'rrid:AB_262044', '',		# service level agreement via DCIP
@@ -461,7 +467,7 @@ $x = nresolve_stdin_hdr( "--home $buildout_root -d $td/dummy",
 # isnt index($x, '302 http://digital.library.unt.edu/ark:/67531/metapth346793'),
 # 	-1, 'ark naan (UNT) prefix redirect from ARK documentation'; 
 # isnt index($x, '303 http://socialarchive.iath.virginia.edu/ark:/99166/w6qz2nsx'), -1,
-# 	'ark naan (SNAC) prefix redirect with 303 redirect'; 
+# 	'ark naan (SNACC) prefix redirect with 303 redirect'; 
 # isnt index($x, 'http://ark.spmcpapers.com/ark:/76951/jhcs23vum3'), -1,
 # 	'remotely managed ark naan (SPMC) prefix redirect via n2t'; 
 # isnt index($x, 'http://nbn-resolving.org/resolver?identifier=urn:nbn:fi:tkk-004781&verb=redirect'), -1,
