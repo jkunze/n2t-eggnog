@@ -122,8 +122,8 @@ sub prep_server { my( $cfgdir )=@_;
 			EGNAPA_SRVREF_ROOT
 			EGNAPA_SSL_CERTFILE
 			EGNAPA_SSL_KEYFILE
-			EGNAPA_SSL_CHAINFILE
 			) ) {
+	#		EGNAPA_SSL_CHAINFILE
 		$ENV{$v} or
 			push @server_errs, "$v not defined";
 	}

@@ -187,7 +187,7 @@ xxx sysap     system apache root
     EGNAPA_HOST             eg, n2t.net
     EGNAPA_SSL_KEYFILE      eg, ~sam/ssl/2019-07-19/fran.key
     EGNAPA_SSL_CERTFILE     eg, ~sam/ssl/2019-07-19/fran.crt
-    EGNAPA_SSL_CHAINFILE    eg, ~sam/ssl/2019-07-19/gd_bundle-g2-g1.crt
+#    EGNAPA_SSL_CHAINFILE    eg, ~sam/ssl/2019-07-19/gd_bundle-g2-g1.crt
 
   Some other important variables are
 
@@ -366,7 +366,7 @@ template_root=$src_top/$sstub/$cfgdir	# paths to build input files
 #    ?? what about ...ref vars?
 sslcert=$EGNAPA_SSL_CERTFILE
 sslcertkey=$EGNAPA_SSL_KEYFILE
-sslchain=$EGNAPA_SSL_CHAINFILE
+#sslchain=$EGNAPA_SSL_CHAINFILE
 
 #sslcertref=$sslref_root/server.crt
 #sslcertkeyref=$sslref_root/server.key
@@ -1089,10 +1089,12 @@ git show --oneline | sed 's/ .*//;q' > $buildout_root/logs/dvcsid
 # x=$sv/apache2/conf
 # export EGNAPA_SSL_CERTFILE=$x/server.crt EGNAPA_SSL_KEYFILE=$x/server.key
 
+# removing this check because new Let's Encrypt certs don't use this
+#[[ "$EGNAPA_SSL_CHAINFILE" ]]	|| err+=' EGNAPA_SSL_CHAINFILE'
+
 err=			# 3 environment variables should be non-empty
 [[ "$EGNAPA_SSL_CERTFILE" ]]	|| err+=' EGNAPA_SSL_CERTFILE'
 [[ "$EGNAPA_SSL_KEYFILE" ]]	|| err+=' EGNAPA_SSL_KEYFILE'
-[[ "$EGNAPA_SSL_CHAINFILE" ]]	|| err+=' EGNAPA_SSL_CHAINFILE'
 [[ "$err" ]] && {
 	echo "Error: one or more certificate file variables -$err -" \
 		"aren't defined" 1>&2
@@ -1102,13 +1104,14 @@ err=			# 3 environment variables should be non-empty
 let ncertfiles=0
 [[ -f "$EGNAPA_SSL_CERTFILE" ]]		&&  let ncertfiles++
 [[ -f "$EGNAPA_SSL_KEYFILE" ]]		&&  let ncertfiles++
-[[ -f "$EGNAPA_SSL_CHAINFILE" ]]	&&  let ncertfiles++
-[[ $ncertfiles -eq 0 || $ncertfiles -eq 3 ]] || {	# eg, one file exists
+#[[ -f "$EGNAPA_SSL_CHAINFILE" ]]	&&  let ncertfiles++
+#[[ $ncertfiles -eq 0 || $ncertfiles -eq 3 ]] || {	# eg, one file exists
+[[ $ncertfiles -eq 0 || $ncertfiles -eq 2 ]] || {	# eg, one file exists
 							# but not the other two
 	echo "Error: either none or all of these certificate files must exist:
     $EGNAPA_SSL_CERTFILE
-    $EGNAPA_SSL_KEYFILE
-    $EGNAPA_SSL_CHAINFILE" 1>&2
+    $EGNAPA_SSL_KEYFILE" 1>&2
+#    $EGNAPA_SSL_CHAINFILE" 1>&2
 	exit 1
 }
 
@@ -1130,7 +1133,7 @@ let ncertfiles=0
 			echo Error: openssl failed: "$err"
 
 	# For self-signed, we repurpose the cert for the intermediate file.
-	cp -p $EGNAPA_SSL_CERTFILE $EGNAPA_SSL_CHAINFILE
+	#cp -p $EGNAPA_SSL_CERTFILE $EGNAPA_SSL_CHAINFILE
 
 	# To get a certificate signed by a CA, you first need to create
 	# a keypair and a certificate request (note no -x509):
@@ -1222,7 +1225,8 @@ let ncertfiles=0
 # fi
 
 chmod 600 $sslcertkey		# should be root-readable only
-chmod 644 $sslcert $sslchain	# must be readable to Apache user
+chmod 644 $sslcert		# must be readable to Apache user
+#chmod 644 $sslcert $sslchain	# must be readable to Apache user
 
 # Enabling or disabling cert checking actually done at the client, but we
 # announce whether it should or shouldn't be in effect.  A client will
@@ -1246,10 +1250,11 @@ echo "  EXPIRES $enddate"
 # Now that the files are created, create a text block that we'll use for
 # referencing them from the Apache config files.
 
+#SSLCertificateChainFile \"$sslchain\""
+
 sslcertblock="
 SSLCertificateFile \"$sslcert\"
-SSLCertificateKeyFile \"$sslcertkey\"
-SSLCertificateChainFile \"$sslchain\""
+SSLCertificateKeyFile \"$sslcertkey\""
 
 #SSLCertificateFile \"$sslcertref\"
 #SSLCertificateKeyFile \"$sslcertkeyref\""
