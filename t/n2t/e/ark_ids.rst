@@ -102,7 +102,7 @@ registered, use the `ARK request form`_. Some of the major users are
 
       - The California Digital Library
       - The Internet Archive
-      - National Library of France (Bibliothèque nationale de France)
+      - National Library of France
       - Portico Digital Preservation Service
       - Smithsonian Institution
       - University of California Berkeley
@@ -114,11 +114,12 @@ registered, use the `ARK request form`_. Some of the major users are
       - University of Chicago
       - University College Dublin
       - The British Library
+      - Princeton University
 
    .. container:: rightside
 
       .. image:: /e/images/naan_growth.png
-         :width: 30 %
+         :width: 42 %
          :alt: Numbers of ARK-assigning organizations since 2001.
 
 There is a discussion group for ARKs (Archival Resource Keys) at

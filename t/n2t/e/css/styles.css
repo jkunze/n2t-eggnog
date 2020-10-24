@@ -19,6 +19,7 @@
 html, body {
   font-family: "SourceSansPro", "Helvetica", "Arial", sans-serif;
   height: 100%;
+  line-height: 1.6;
 }
 body {
   display: flex;
@@ -189,24 +190,25 @@ h2 {
 }
 .header-logo-left {
   margin: 0;
-  color: #00778a;
-  font-size: 2.5em;
-  font-weight: 700;
-  text-transform: uppercase;
+//  color: #00778a;
+//  font-size: 2.5em;
+//  font-weight: 700;
+//  text-transform: uppercase;
   text-align: right;
 }
-@media (min-width: 32em) {
+@media (min-width: 1em) {
   .header-logo-left {
-    font-size: 3.6em;
+    font-size: 1.1em;
   }
 }
 .header-logo-right {
   margin: 0;
   text-align: left;
+  line-height: 1.0;
 }
-@media (min-width: 32em) {
+@media (min-width: 31em) {
   .header-logo-right {
-    font-size: 1.1em;
+    font-size: 1.0em;
   }
 }
 // rethink header2; does not really make sense
@@ -234,4 +236,6 @@ div.leftside {
 div.rightside {
     margin-left: 425px;
 }
-
+p.single-space {
+  line-height: 1.0;
+}
