@@ -21,6 +21,7 @@
 .. _California Digital Library: https://www.cdlib.org
 .. _Uniform Resolution of Compact Identifiers for Biomedical Data: https://doi.org/10.1101/101279
 .. _Prefix Commons: https://prefixcommons.org
+.. _RFC 2168: https://tools.ietf.org/rfc/rfc2168
 .. _SNAC: http://snaccooperative.org
 .. _NIH: http://www.nih.gov
 .. _Force11: https://www.force11.org/
@@ -39,12 +40,13 @@
 About N2T.net
 =============
 
-N2T.net (Name-to-Thing) is a "resolver," a kind of web server that stores
-little content itself and usually forwards incoming requests to other
-servers. Similar to URL shorteners like bit.ly, N2T serves content
-*indirectly*.
+N2T.net (Name-to-Thing) is a "resolver," a kind of server that specializes
+in *indirection* by forwarding most incoming requests to other servers.
+N2T works mainly with HTTP, similar to URL shorteners like bit.ly, but its
+name was inspired by the general URN mapping operations N2R, N2L, and N2C
+envisioned in 1997 (`RFC 2168`_).
 
-The main use of N2T is "persistent identifiers." An archive or publisher
+The main use of N2T is for "persistent identifiers." An archive or publisher
 who gives out content links (URLs) starting with n2t.net doesn't need to
 worry about their breaking. That's because even though content eventually
 moves to different servers, links starting with n2t.net are stable and
