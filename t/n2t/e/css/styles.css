@@ -237,5 +237,7 @@ div.rightside {
     margin-left: 425px;
 }
 p.single-space {
-  line-height: 1.0;
+  line-height: 1.1;
+  padding-left: 1px;
+  padding-right: 4px;
 }

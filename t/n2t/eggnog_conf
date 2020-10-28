@@ -2,7 +2,8 @@
 # classes, cron behavior, certain special redirects, and more.
 # Use "egg cfq _list" to check which values are in effect.
 
-# NB: changes here do not take effect until the next "n2t rollout".
+# Note: changes made here do not take effect until the next "n2t rollout".
+# xxx this file contains info that maybe shouldn't be in public repo
 
 service: n2t
 role_account: n2t		# defaults to service name
@@ -18,7 +19,7 @@ hosts:
     syserr_check: 1
     log_rotate: 1
     backup: 1
-    #new_cert_action: echo 'do manual cert update'	# email to cron $MAILTO
+    #new_cert_action: notify	# email to cron $MAILTO
     vhost_ruuapp: ruu.app
     # NB: no automatic patching in prd
 
@@ -31,8 +32,7 @@ hosts:
     log_rotate: 1
     backup: 1
     patch_thursday: 1
-    #new_cert_action: echo 'do manual cert update'	# email to cron $MAILTO
-    new_cert_action: init.d/apache restart	# for cert_sync.sh restartcmd
+    new_cert_action: restart	# for cert_sync.sh restartcmd
     vhost_ruuapp: ids-ruu-stg.ruu.app
 
   ids-n2t2-dev.n2t.net:
@@ -43,7 +43,7 @@ hosts:
     log_rotate: 1
     backup: 0
     patch_monday: 1
-    new_cert_action: init.d/apache restart	# for cert_sync.sh restartcmd
+    new_cert_action: restart	# for cert_sync.sh restartcmd
     vhost_ruuapp: ids-ruu-dev.ruu.app
 
   localhost:
