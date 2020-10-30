@@ -12,6 +12,7 @@
 .. _DOI: https://www.doi.org
 .. _suffix passthrough: https://ezid.cdlib.org/learn/suffix_passthrough
 .. _DuraSpace: http://lyrasis.org/
+.. _LYRASIS: http://lyrasis.org/
 .. _EZID.cdlib.org: https://ezid.cdlib.org
 .. _Internet Archive: https://archive.org
 .. _YAMZ.net metadictionary: https://yamz.net
@@ -42,9 +43,18 @@ About N2T.net
 
 N2T.net (Name-to-Thing) is a "resolver," a kind of server that specializes
 in *indirection* by forwarding most incoming requests to other servers.
-N2T works mainly with HTTP, similar to URL shorteners like bit.ly, but its
-name was inspired by the general URN mapping operations N2R, N2L, and N2C
+N2T works mainly with HTTP, somewhat similar to URL shorteners like bit.ly.
+Its name was inspired by a suite of URN mapping operations, N2R, N2L, and N2C
 envisioned in 1997 (`RFC 2168`_).
+
+N2T arose out of demand for a global ARK (Archival Resource Key) resolver.
+A resolver really just does table lookup given a string, but rather than
+creating yet another silo in the DOI/Handle/PURL mold and making lookups fail
+except for certain parts of the alphabet -- which would be artificial,
+exclusionary, and extra work -- designers followed basic principles of openness
+to create something general-purpose and scheme-agnostic. The result is
+a resolver for over 900 types of identifier, including ARKs, DOIs, Handles,
+PURLs, URNs, ORCIDs, ISSNs, etc.
 
 The main use of N2T is for "persistent identifiers." An archive or publisher
 who gives out content links (URLs) starting with n2t.net doesn't need to
@@ -124,7 +134,7 @@ procedural security maintained in AWS datacenters based in the United
 States of America.
 
 Recognizing the important global role that the resolver plays, in 2018 CDL
-and DuraSpace_ (now LYRASIS) launched an initiative, called
+and DuraSpace_ (now LYRASIS_) launched an initiative, called
 `ARKs in the Open`_, to establish broad and sustainable community ownership
 of N2T's technological, administrative, and policy infrastructure.
 With support from 31 organizations on 4 continents, the initiative

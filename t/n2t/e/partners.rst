@@ -19,9 +19,10 @@
 .. _European Bioinformatics Institute: https://www.ebi.ac.uk
 .. _California Digital Library: https://www.cdlib.org
 .. _DuraSpace: http://lyrasis.org/
+.. _LYRASIS: http://lyrasis.org/
 .. _Uniform Resolution of Compact Identifiers for Biomedical Data: https://doi.org/10.1101/101279
 .. _Prefix Commons: https://prefixcommons.org
-.. _SNAC: http://snaccooperative.org
+.. _SNACC: http://snaccooperative.org
 .. _NIH: http://www.nih.gov
 .. _Force11: https://www.force11.org/
 .. _IMLS: https://www.imls.gov/
@@ -29,6 +30,8 @@
 .. _n2t: https://n2t.net
 .. _Identifier Basics: https://ezid.cdlib.org/learn/id_basics
 .. _Identifier Conventions: https://ezid.cdlib.org/learn/id_concepts
+.. _INCIPIT: https://twitter.com/incipit_ark
+.. _Islandora: https://islandora.ca
 
 //BEGIN//
 
@@ -37,19 +40,24 @@ N2T.net Partners
 
 Individual identifiers are stored in N2T.net by a number of partners.
 
-- `EZID.cdlib.org`_ - making long-term identifiers easy (CDL)
+- `EZID.cdlib.org`_ - making long-term identifiers easy
 - `Archive.org`_ - the Internet Archive
-- `YAMZ.net metadictionary`_ - open vocabulary of metadata terms (CDL)
+- `YAMZ.net metadictionary`_ - open vocabulary of metadata terms
+
+Development partners include
+
+- INCIPIT_ - an identifer service for a consortium of Swiss universities
+- Islandora_ - open source digital asset management
 
 `Compact identifiers`_ are implemented with scheme (prefix) records stored in N2T.net in partnership with
 
 - `European Bioinformatics Institute`_ - identifiers.org
 - `Prefix Commons`_ - prefixcommons.org
 
-In February 2018 the `California Digital Library`_ and DuraSpace_ (now LYRASIS)
-announced the `ARKs in the Open`_ project, a collaboration aimed at
-building an open, international community around Archival Resource Keys
-(ARKs_) and their use as persistent identifiers in the scholarly ecosystem.
+In February 2018 the `California Digital Library`_ and DuraSpace_ (now
+LYRASIS_) announced the `ARKs in the Open`_ project, a collaboration aimed at
+building an open, international community around Archival Resource Keys (ARKs_)
+and their use as persistent identifiers in the scholarly ecosystem.
 
 While not currently storing individual identifiers for them, N2T stores
 "NAAN" and "shoulder" (described in `Identifier Basics`_) forwarding
@@ -61,7 +69,7 @@ records for over 600 different ARK providers, including
 - The University of North Texas
 - The British Library
 - The University of Chicago
-- Social Networks and Archival Context (SNAC_)
+- Social Networks and Archival Context Cooperative (SNACC_)
 
 We also have replication arrangements with
 

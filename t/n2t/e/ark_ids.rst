@@ -135,7 +135,7 @@ with and learning from others about how ARKs have been or could be used in
 identifier applications.
 
 The groups are also intended as a mechanism for the `ARKs in the Open`_ project
-and the CDL, in its role as the ARK scheme maintenance agency, to seek
+and the California Digital Library (CDL), in its role as the ARK scheme maintenance agency, to seek
 community feedback on a number of longer term issues and activities, including
 
 - finalizing the ARK specification as an Internet RFC,
@@ -207,20 +207,20 @@ might become ::
 NAAN: the Name Assigning Authority Number
 =========================================
 
-The NAAN part, following the "``ark:``" label, uniquely identifies the organization
-that assigned the Name part of the ARK. Often the initial access provider (the
-first NMA) coincides with the original namer (represented by the NAAN),
-however, access may be provided by one or more different entities instead of or
-in addition to the original naming authority.
+The NAAN part, following the "``ark:``" label, uniquely identifies the
+organization that assigned the Name part of the ARK. Often the initial access
+provider (the first NMA) coincides with the original namer (represented by the
+NAAN), however, access may be provided by one or more different entities
+instead of or in addition to the original naming authority.
 
-The NAAN used above, 13030, represents the California Digital Library. As of
-2020, over 600 organizations have registered for ARK NAANs, including numerous
-universities, Google, the Internet Archive, WIPO, the British Library, and
-other national libraries.
+The NAAN used above, 13030, represents the California Digital Library (CDL). As
+of 2020, over 600 organizations have registered for ARK NAANs, including
+numerous universities, Google, the Internet Archive, WIPO, the British Library,
+and other national libraries.
 
 Any stable memory organization may obtain a NAAN at no cost and begin assigning
-ARKs. Please contact the CDL if you are interested in generating and using ARKs
-for your information objects.
+ARKs. Please fill out the `ARK request form`_ if you are interested in
+generating and using ARKs for your information objects.
 
 CDL maintains a complete registry of all currently assigned NAANs, which is
 mirrored at the (U.S.) National Library of Medicine and the Bibliothèque
@@ -298,16 +298,16 @@ as ::
  when: 1963
  where: http://texashistory.unt.edu/ark:/67531/metapth346793/
 
-Adding '``??``' to the end should return a policy statement. It is a side-benefit of
-ARKs that an object's metadata doesn't need an identifier different from that
-for the object, which cuts in half the number of identifiers that need to be
-generated and managed.
+Adding '``??``' to the end should return a policy statement. It is
+a side-benefit of ARKs that an object's metadata doesn't need an identifier
+different from that for the object, which cuts in half the number of
+identifiers that need to be generated and managed.
 
-CDL Name Assignment and Support Policy Statements
-==================================================
+Name Assignment and Support Policy Statements
+=============================================
 
-The CDL assigns identifiers within the ARK domain under the NAAN 13030 and
-according to the following principles:
+As an example, the California Digital Library (CDL) assigns identifiers within
+the ARK domain under the NAAN 13030 and according to the following principles:
 
 - No ARK shall be re-assigned; that is, once an ARK-to-object association has
   been made public, that association shall be considered unique into the
