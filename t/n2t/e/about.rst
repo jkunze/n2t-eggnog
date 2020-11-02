@@ -43,27 +43,36 @@ About N2T.net
 
 N2T.net (Name-to-Thing) is a "resolver," a kind of server that specializes
 in *indirection* by forwarding most incoming requests to other servers.
-N2T works mainly with HTTP, somewhat similar to URL shorteners like bit.ly.
-Its name was inspired by a suite of URN mapping operations, N2R, N2L, and N2C
-envisioned in 1997 (`RFC 2168`_).
+Rather than serving content directly (this page is an exception), resolvers
+are good at redirecting requests to content servers, similar to URL shorteners
+like bit.ly.
 
-N2T arose out of demand for a global ARK (Archival Resource Key) resolver.
-A resolver really just does table lookup given a string, but rather than
-creating yet another silo in the DOI/Handle/PURL mold and making lookups fail
-except for certain parts of the alphabet -- which would be artificial,
-exclusionary, and extra work -- designers followed basic principles of openness
-to create something general-purpose and scheme-agnostic. The result is
-a resolver for over 900 types of identifier, including ARKs, DOIs, Handles,
-PURLs, URNs, ORCIDs, ISSNs, etc.
+Origins of N2T
+--------------
+
+N2T's name was inspired by a set of URN mapping operations, N2R (Name to
+Resource), N2L (Name to URL), and N2C (Name to URC) envisioned in 1997 (`RFC
+2168`_). The technical infrastructure arose out of a demand for a global ARK
+(Archival Resource Key) resolver. All a basic resolver needs is software to do
+table lookup given an incoming string and issue a "server redirect", as
+found in every web server since 1992. One approach, taken by the Handle and
+DOI systems, is to create a "silo" that only works for one type of identifier.
+Since making lookups fail except for certain parts of the alphabet would be
+artificial, exclusionary, and extra work, the ARK resolver took a different
+approach following basic principles of openness and generality. The result was
+N2T, a scheme-agnostic resolver that currently works for over 900 types of
+identifier, including ARKs, DOIs, Handles, PURLs, URNs, ORCIDs, ISSNs, etc.
 
 The main use of N2T is for "persistent identifiers." An archive or publisher
-who gives out content links (URLs) starting with n2t.net doesn't need to
-worry about their breaking. That's because even though content eventually
-moves to different servers, links starting with n2t.net are stable and
-still work when forwarding rules at N2T are updated. While all persistent
-identifier services work similarly (ARK, DOI, Handle, PURL, URN), N2T.net
-is unusually open and flexible in extending services to all identifier
-types rather than excluding all but just one type.
+who gives out content links (URLs) starting with n2t.net doesn't need to worry
+about their breaking. That's because even though content eventually moves to
+different servers, links starting with n2t.net remain stable and still work
+provided forwarding rules at N2T are updated. While all persistent identifier
+services work similarly (ARK, DOI, Handle, PURL, URN), N2T.net is unusually
+open and flexible in including services to all identifier types.
+
+Features Unique to the N2T Resolver
+-----------------------------------
 
 Unlike URL shorteners, N2T can store more than one "target" (forwarding
 link) for an identifier, as well as any kind or amount of metadata
@@ -72,9 +81,6 @@ such as temporary outage or insufficient permission at the target server,
 N2T can nonetheless return persistent information about the identified
 object. N2T also supports CORS (Cross-Origin Resource Sharing) to securely
 enable JavaScript access to public content with identifiers based at N2T.
-
-Features Unique to the N2T Resolver
------------------------------------
 
 - **Suffix passthrough.** N2T supports "`suffix passthrough`_", which
   drastically reduces the number of individual identifiers that providers need

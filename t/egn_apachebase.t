@@ -208,6 +208,7 @@ $x = `$webcl "$srvbase_u/e/admin/q2e.pl"`;
 like $x, qr{HTTP/\S+\s+302.*Location: https://}si,
 	'http rewritten to https for secure admin area';
 
+# XXX bug: the redirect went from test server to prd server: no-no
 # XXX but make sure this is protected from public execution
 like $x, qr{xxx Stub q2e.}i,
 	'executable naan curation form';
