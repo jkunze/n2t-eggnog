@@ -52,11 +52,18 @@ Origins of N2T
 
 N2T's name was inspired by a set of URN mapping operations, N2R (Name to
 Resource), N2L (Name to URL), and N2C (Name to URC) envisioned in 1997 (`RFC
-2168`_). The technical infrastructure arose out of a demand for a global ARK
-(Archival Resource Key) resolver. All a basic resolver needs is software to do
-table lookup given an incoming string and issue a "server redirect", as
-found in every web server since 1992. One approach, taken by the Handle and
-DOI systems, is to create a "silo" that only works for one type of identifier.
+2168`_). The name is relatively unique and easy to search for. N2T is also
+fairly opaque, which helps URLs based at n2t.net to age and travel well; brand-
+and language-neutrality are thought to shield URLs from political, legal, and
+usability pressures that can threaten adoption or continued commitment. The
+name is also short, which saves time and space during transcription and
+citation.
+
+N2T's technical infrastructure arose out of a demand for a global ARK (Archival
+Resource Key) resolver. All a basic resolver needs is software to look up
+a given incoming string in a table and to issue a "server redirect", as found
+in every web server since 1992. One approach, taken by the Handle and DOI
+systems, is to create a "silo" that only works for one type of identifier.
 Since making lookups fail except for certain parts of the alphabet would be
 artificial, exclusionary, and extra work, the ARK resolver took a different
 approach following basic principles of openness and generality. The result was
