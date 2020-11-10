@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!--#include virtual="/e/prelim.html" -->
+  <title>Generate a new NAAN entry from a NAAN request</title>
+</head>
+<body>
+<div class="content">
+<!--#include virtual="/e/header.html" -->
+<div class="container-narrowest">
+<div class="section" id="naanq2e">
+<h1>Generate a new NAAN entry from a NAAN request</h1>
+<p>
+This form makes no NAAN registry changes, but only proposes what might be
+carried forward. So it can be submitted as often as you wish without doing
+harm. It is pre-populated with fake request information that you can submit
+to see how it works. For detailed instructions click hereXXX.
+<br/>
+<form id="naanform" action="/e/admin/xq2e.pl">
+</p><p>1. Paste an unused NAAN (5 digits, from github repo) into the NAAN box.
+  <br/><br/>&nbsp;&nbsp;&nbsp;
+  <label for="unusednaan">Unused NAAN:</label>
+  <input type="text" id="unusednaan" name="unusednaan"
+  	value="24680">
+  <br/>
+</p><p>2. Paste the NAAN request that you're processing into the next box.
+  <br/>&nbsp;&nbsp;&nbsp;
+<!--  <label for="request">Request Form Output:</label> -->
+  <textarea name="request" cols="84" rows="9" id="request" form="naanform">
+Contact name:	Justin Trudeau
+Contact email address:	jt@ottawa.ca
+Organization name:	Institut national des voisins
+Position in organization:	Data architect
+Organization address:	4 avenue de la Paix, 94366 Bry-sur-Marne
+Organization base URL:	http://ottawa.ca
+Organization status:	Not-for-profit
+Service provider contact information: Sam Smith, ss@aaa.example.org, Acme Archiving</textarea>
+</p><p>3. Your name (for signature line).
+  <br/><br/>&nbsp;&nbsp;&nbsp;
+  <label for="name">Name:</label>
+  <input type="text" size="60" id="name" name="name"
+  	value="Sam Smith">
+  <br/>
+</p><p>4. Where to send this form's response.
+  <br/><br/>&nbsp;&nbsp;&nbsp;
+  <label for="email">Email:</label>
+  <input type="email" size="50" id="email" name="email"
+  	placeholder="Leave empty to see raw html response in browser.">
+  <br/>
+<!-- placeholder="123-45-678"
+  pattern="[0-9]{3}-[0-9]{2}-[0-9]{3}" -->
+</p><p>4. Click &nbsp;&nbsp;
+  <input type="submit" value="Submit">
+</form>
+
+</div>
+</div>
+</div>
+</div>
+<!--#include virtual="/e/footer.html" -->
+</body>
+</html>
+<!--  <input type="text" id="request" size="60" name="request"><br/> -->

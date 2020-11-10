@@ -907,10 +907,8 @@ robots=$buildout_root/htdocs/robots.txt
 # yyy drop this form now that google form is available
 # Establish a simple, executable form to assist NAAN curation.
 
-# XXX bug: can fetch this with curl (https://ids-n2t2-dev.n2t.net/favicon.ico),
-# but not with Brave/Chrome
-#cp $favicon $buildout_root/htdocs/e/admin/	# yyy hoping to quite errors
 naancure=$buildout_root/htdocs/e/admin/q2e.pl
+# https://n2t-dev.n2t.net/e/admin/q2e.pl?unusednaan=12345&formout=name%3A+value%0D%0Akey%3A+value
 [[ -e $naancure ]] || {
 	cat > $naancure <<- EOT
 	#!/bin/sh
@@ -2451,6 +2449,7 @@ RewriteEngine On
 RewriteRule ^/$ "$ruu_document_root/arks.html" [L]
 #RewriteRule ^(/favicon.ico.*)$ "$ruu_document_root$1" [L]
 RewriteRule ^/favicon.ico $ruu_document_root/favicon.ico [L]
+RewriteRule ^/robots.txt $document_root/e/robots.txt [L]
 RewriteRule ^/css/(.+) $document_root/e/css/\$1 [L]
 
 # Note that Indexes has been removed from Options.
@@ -2471,6 +2470,7 @@ cat << EOT >> conf/rewrite1-setup.conf
 
 # Some common requests for both HTTP and HTTPS.
 RewriteRule ^/favicon.ico $document_root/e/images/favicon.ico [L]
+RewriteRule ^/robots.txt $document_root/e/robots.txt [L]
 RewriteRule ^/css/(.+) $document_root/e/css/\$1 [L]
 
 # XXX why not using %{ENV:XFF}?
@@ -2782,8 +2782,8 @@ RewriteRule ^/r/$b/+(.*)\$ \"_rslv_\${map_$b:\$1.resolve \${$hdrblob}}\"" >> $rw
 		cp -r $template_root/e/css $buildout_root/htdocs/e
 	[[ -e $template_root/e/fonts ]] &&
 		cp -r $template_root/e/fonts $buildout_root/htdocs/e
-	[[ -e $template_root/robots.txt ]] &&
-		cp $template_root/robots.txt $robots
+	#[[ -e $template_root/robots.txt ]] &&
+	#	cp $template_root/robots.txt $robots
 
 	echo Creating resolver map scripts.
 

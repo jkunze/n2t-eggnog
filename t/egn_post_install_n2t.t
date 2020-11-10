@@ -491,6 +491,11 @@ $x = `wegn locate "e/naan_request"`;
 like $x, qr|Location: .*goo.gl/forms|,
 	"NAAN request form is available";
 
+#$x = `wegn resolve "robots.txt"`;
+$x = `curl --silent "$srvbase_u/robots.txt"`;
+like $x, qr|disallow:|i,
+	"robots.txt is available and non-empty";
+
 $x = `wegn resolve "e/cdl_ebi_prefixes.yaml"`;
 like $x, qr|- namespace: pubmed|, "prefix registry file is available";
 
