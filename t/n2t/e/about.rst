@@ -31,6 +31,7 @@
 .. _N2T Architecture: /e/images/N2T_Anatomy.jpg
 .. _Compact, prefixed identifiers at N2T.net: /e/compact_ids.html
 .. _Original N2T vision: /e/n2t_vision.html
+.. _IETF: https://www.ietf.org/
 
 .. _n2t: https://n2t.net
 .. _Identifier Basics: https://ezid.cdlib.org/learn/id_basics
@@ -42,41 +43,42 @@ About N2T.net
 =============
 
 N2T.net (Name-to-Thing) is a "resolver," a kind of server that specializes
-in *indirection* by forwarding most incoming requests to other servers.
-Rather than serving content directly (this page is an exception), resolvers
-are good at redirecting requests to content servers, similar to URL shorteners
-like bit.ly.
+in *indirection*. Resolvers serve content indirectly by forwarding most
+incoming requests to other servers rather than serving content directly
+(this page being an exception). Resolvers are good at redirecting requests
+to content servers, similar to URL shorteners like bit.ly and t.co.
 
 Origins of N2T
 --------------
 
-N2T's name was inspired by a set of URN mapping operations, N2R (Name to
-Resource), N2L (Name to URL), and N2C (Name to URC) envisioned in 1997 (`RFC
-2168`_). The name is relatively unique and easy to search for. N2T is also
-fairly opaque, which helps URLs based at n2t.net to age and travel well; brand-
-and language-neutrality are thought to shield URLs from political, legal, and
-usability pressures that can threaten adoption or continued commitment. The
-name is also short, which saves time and space during transcription and
-citation.
+The name "n2t" was chosen for several reasons. First, it is unique enough to be
+easy to search for. Second, "n2t" is fairly opaque, which helps URLs based at
+n2t.net to age and travel well; brand- and language-neutrality help shield URLs
+from future extermination due to long term evolving political, legal, and
+usability pressures. The name is also short, which saves time and space – both
+storage and visual "page real estate" – across often-repeated acts of
+transcription and citation. Finally, N2T's name was patterned after a set of
+IETF_ (the premier Internet standards body) mapping operations for the URN
+(Uniform Resource Name) dating from 1997 (`RFC 2168`_): N2R (Name to Resource),
+N2L (Name to URL), and N2C (Name to URC, 'C' = Characteristics/Citation).
 
-N2T's technical infrastructure arose out of a demand for a global ARK (Archival
-Resource Key) resolver. All a basic resolver needs is software to look up
+N2T's technical infrastructure arose from demand for a global ARK (Archival
+Resource Key) resolver. All that a basic resolver needs is software to look up
 a given incoming string in a table and to issue a "server redirect", as found
 in every web server since 1992. One approach, taken by the Handle and DOI
 systems, is to create a "silo" that only works for one type of identifier.
-Since making lookups fail except for certain parts of the alphabet would be
-artificial, exclusionary, and extra work, the ARK resolver took a different
-approach following basic principles of openness and generality. The result was
-N2T, a scheme-agnostic resolver that currently works for over 900 types of
+Since making lookups fail except for certain parts of the alphabet seemed
+artificial, exclusionary, and extra work, the ARK resolver design instead
+followed basic principles of openness and generality. The result was N2T,
+a scheme-agnostic resolver that currently works for over 900 types of
 identifier, including ARKs, DOIs, Handles, PURLs, URNs, ORCIDs, ISSNs, etc.
 
 The main use of N2T is for "persistent identifiers." An archive or publisher
 who gives out content links (URLs) starting with n2t.net doesn't need to worry
-about their breaking. That's because even though content eventually moves to
-different servers, links starting with n2t.net remain stable and still work
-provided forwarding rules at N2T are updated. While all persistent identifier
-services work similarly (ARK, DOI, Handle, PURL, URN), N2T.net is unusually
-open and flexible in including services to all identifier types.
+about their breaking when content eventually moves to different servers.
+Provided forwarding rules at N2T are updated, links starting with n2t.net
+remain stable (actually, all persistent identifier systems use this same basic
+principle).
 
 Features Unique to the N2T Resolver
 -----------------------------------
