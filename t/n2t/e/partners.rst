@@ -24,6 +24,7 @@
 .. _Prefix Commons: https://prefixcommons.org
 .. _SNACC: http://snaccooperative.org
 .. _NIH: http://www.nih.gov
+.. _NSF: https://www.nsf.gov/
 .. _Force11: https://www.force11.org/
 .. _IMLS: https://www.imls.gov/
 
@@ -60,8 +61,8 @@ building an open, international community around Archival Resource Keys (ARKs_)
 and their use as persistent identifiers in the scholarly ecosystem.
 
 While not currently storing individual identifiers for them, N2T stores
-"NAAN" and "shoulder" (described in `Identifier Basics`_) forwarding
-records for over 600 different ARK providers, including
+forwarding records for "shoulders" (described in `Identifier Basics`_), as well
+as for "NAANs" on behalf of over 600 different ARK providers, including
 
 - Portico Digital Preservation Service
 - The National Library of France
@@ -77,7 +78,7 @@ We also have replication arrangements with
 - US National Library of Medicine
 - University of Edinburgh
 
-and we engage in ongoing projects and funded work (NIH_, IMLS_, Force11_)
+and we engage in ongoing projects and funded work (NSF_, NIH_, IMLS_, Force11_)
 with consortia of data archives and publishers such as
 
 - DataCite_

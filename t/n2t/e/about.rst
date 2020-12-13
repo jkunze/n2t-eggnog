@@ -54,10 +54,10 @@ Origins of N2T
 The name "n2t" was chosen for several reasons. First, it is unique enough to be
 easy to search for. Second, "n2t" is fairly opaque, which helps URLs based at
 n2t.net to age and travel well; brand- and language-neutrality help shield URLs
-from future extermination due to long term evolving political, legal, and
-usability pressures. The name is also short, which saves time and space – both
-storage and visual "page real estate" – across often-repeated acts of
-transcription and citation. Finally, N2T's name was patterned after a set of
+from future embarrassment and retirement due to long term evolving political,
+legal, and usability pressures. The name is also short, which saves time and
+space – both in storage and "visual real estate" – across often-repeated acts
+of transcription and citation. Finally, N2T's name was patterned after a set of
 IETF_ (the premier Internet standards body) mapping operations for the URN
 (Uniform Resource Name) dating from 1997 (`RFC 2168`_): N2R (Name to Resource),
 N2L (Name to URL), and N2C (Name to URC, 'C' = Characteristics/Citation).
@@ -67,18 +67,18 @@ Resource Key) resolver. All that a basic resolver needs is software to look up
 a given incoming string in a table and to issue a "server redirect", as found
 in every web server since 1992. One approach, taken by the Handle and DOI
 systems, is to create a "silo" that only works for one type of identifier.
-Since making lookups fail except for certain parts of the alphabet seemed
-artificial, exclusionary, and extra work, the ARK resolver design instead
-followed basic principles of openness and generality. The result was N2T,
-a scheme-agnostic resolver that currently works for over 900 types of
+Since forcing lookups to fail except for certain parts of the alphabet is
+artificial, exclusionary, and requires extra code, the ARK resolver design
+instead followed basic principles of openness and generality. The result was
+N2T, a scheme-agnostic resolver that currently works for over 900 types of
 identifier, including ARKs, DOIs, Handles, PURLs, URNs, ORCIDs, ISSNs, etc.
 
 The main use of N2T is for "persistent identifiers." An archive or publisher
 who gives out content links (URLs) starting with n2t.net doesn't need to worry
 about their breaking when content eventually moves to different servers.
 Provided forwarding rules at N2T are updated, links starting with n2t.net
-remain stable (actually, all persistent identifier systems use this same basic
-principle).
+remain stable. (All persistent identifier systems rely on this same basic
+principle.)
 
 Features Unique to the N2T Resolver
 -----------------------------------
@@ -90,6 +90,7 @@ such as temporary outage or insufficient permission at the target server,
 N2T can nonetheless return persistent information about the identified
 object. N2T also supports CORS (Cross-Origin Resource Sharing) to securely
 enable JavaScript access to public content with identifiers based at N2T.
+Some other unique features:
 
 - **Suffix passthrough.** N2T supports "`suffix passthrough`_", which
   drastically reduces the number of individual identifiers that providers need
@@ -101,8 +102,8 @@ enable JavaScript access to public content with identifiers based at N2T.
   individual identifiers of any kind, including both ARK_\ s and DOI_\ s, and
   provides equal services to all kinds, regardless of origin.
 - **Cross-scheme features.** As a result N2T easily supports feature
-  combinations that some have found surprising, such as ARK-style inflections
-  for DOIs and ARKs that return DataCite_ DOI metadata via content negotiation.
+  combinations that some find surprising, such as ARK-style inflections
+  for DOIs, and ARKs that return DataCite_ DOI metadata via content negotiation.
 - **Resolver and meta-resolver.** Unusually, N2T.net is a "meta-resolver" that
   also stores about 50 million identifiers. As a meta-resolver, it recognizes
   over 900 well-known identifier types, including all those known to
@@ -131,7 +132,8 @@ funders that support education and research.
 
 N2T identifiers are used for everything from citing scholarly works to
 referencing tissue samples. They link to cutting edge scientific datasets,
-historic botanists, evolving semantic web term definitions, and living people.
+historic botanists, evolving semantic web term definitions, living people,
+and many other things.
 
 Organizational Backing
 ----------------------
@@ -164,8 +166,8 @@ Maintenance Window
 ------------------
 
 The N2T service may occasionally be suspended or interrupted for up to one hour
-during the routine maintenance window. If maintenance is scheduled, it takes
-place on Sundays beginning at 08:00 in California, UTC-08:00 (standard time),
+during the routine maintenance window. If maintenance is to take place, it
+happens on Sundays beginning at 08:00 in California, UTC-08:00 (standard time),
 UTC-07:00 (daylight savings).
 
 //END//
