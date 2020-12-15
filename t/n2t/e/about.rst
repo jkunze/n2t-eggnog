@@ -10,7 +10,7 @@
 .. _ARK: /e/ark_ids.html
 .. _ARKs in the Open: http://ARKsInTheOpen.org
 .. _DOI: https://www.doi.org
-.. _suffix passthrough: https://ezid.cdlib.org/learn/suffix_passthrough
+.. _suffix passthrough: /e/suffix_passthrough.html
 .. _DuraSpace: http://lyrasis.org/
 .. _LYRASIS: http://lyrasis.org/
 .. _EZID.cdlib.org: https://ezid.cdlib.org

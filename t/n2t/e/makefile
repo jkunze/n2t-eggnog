@@ -1,4 +1,9 @@
-all: about.html ark_ids.html compact_ids.html noid.html n2t_apidoc.html partners.html index.html admin/naanq2e.html
+all: about.html ark_ids.html compact_ids.html noid.html n2t_apidoc.html partners.html suffix_passthrough.html index.html admin/naanq2e.html
+
+# The makehtml.py script calls standard rst2html transformation; second arg
+# is the title to stick in the <title> tag; for info on markdown used, see
+# https://docutils.sourceforge.io/docs/ref/rst/directives.html with basics
+# at https://docutils.sourceforge.io/docs/ref/rst/restructuredtext.html
 
 about.html: about.rst makehtml.py
 	./makehtml.py about.rst "About N2T.net"
@@ -23,6 +28,9 @@ n2t_apidoc.html: n2t_apidoc.rst makehtml.py
 
 partners.html: partners.rst makehtml.py
 	./makehtml.py partners.rst "N2T partners"
+
+suffix_passthrough.html: suffix_passthrough.rst makehtml.py
+	./makehtml.py suffix_passthrough.rst "Suffix Passthrough Explained"
 
 test: all
 	# *.html means homepage.html changes also get copied in

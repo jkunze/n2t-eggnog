@@ -189,7 +189,7 @@ Here is a diagrammed example: ::
 
 The ARK syntax can be summarized, ::
 
-[http://NMA/]ark:/NAAN/Name[Qualifier]
+ [http://NMA/]ark:/NAAN/Name[Qualifier]
 
 The NMA part, which makes the ARK actionable (clickable in a web browser), is
 in brackets to indicate that it is optional and replaceable. ARKs are intended

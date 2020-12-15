@@ -2,6 +2,7 @@
 .. role:: hl2
 .. role:: ext-icon
 
+.. |date| date::
 .. |lArr| unicode:: U+021D0 .. leftwards double arrow
 .. |rArr| unicode:: U+021D2 .. rightwards double arrow
 .. |X| unicode:: U+02713 .. check mark
@@ -10,7 +11,7 @@
 .. _please let us know: https://docs.google.com/forms/d/1ylEeI3hUVHcLl-wNtDI7-F7JReBtVbgx65y9Uiy78q8
 .. _Identifier Basics: https://ezid.cdlib.org/learn/id_basics
 .. _Identifier Conventions: https://ezid.cdlib.org/learn/id_concepts
-.. _Suffix Passthrough Explained: https://ezid.cdlib.org/learn/suffix_passthrough
+.. _suffix passthrough: /e/suffix_passthrough.html
 .. _test server: https://n2t-stg.n2t.net/
 .. _EggNog software: https://bitbucket.org/cdl/n2t-eggnog
 .. _inflections: /e/ark_ids.html
@@ -256,7 +257,7 @@ For the above target, the following identifier resolutions would occur::
  ark:/99999/fk4f30n/doc999      -> http://example.org/d?suffix=doc999
  ark:/99999/fk4f30n/doc8/chap7  -> http://example.org/d?suffix=doc8/chap7
 
-See `Suffix Passthrough Explained`_ for more information.
+There is also a separate explanation of `suffix passthrough`_.
 
 Typically, N2T API binder calls look like ::
 
@@ -574,5 +575,7 @@ is in the same form as what is presented to n2t.net:
   \https://n2t.net/ark:/12345/fk3
 
 More generally, the form follows n2t.net/*scheme:[/]naan/string*.
+
+*Last modified:* |date|
 
 //END//
