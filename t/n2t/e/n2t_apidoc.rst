@@ -10,11 +10,12 @@
 .. _n2t: https://n2t.net
 .. _please let us know: https://docs.google.com/forms/d/1ylEeI3hUVHcLl-wNtDI7-F7JReBtVbgx65y9Uiy78q8
 .. _Identifier Basics: https://ezid.cdlib.org/learn/id_basics
+.. _ARK Alliance: https://arks.org
 .. _Identifier Conventions: https://ezid.cdlib.org/learn/id_concepts
 .. _suffix passthrough: /e/suffix_passthrough.html
 .. _test server: https://n2t-stg.n2t.net/
-.. _EggNog software: https://bitbucket.org/cdl/n2t-eggnog
-.. _inflections: /e/ark_ids.html
+.. _EggNog software: https://github.com/jkunze/n2t-eggnog
+.. _inflections: https://arks.org/about/ark-features/
 .. _metatype: https://n2t.net/ark:/99152/h3865
 .. _set: https://n2t.net/ark:/99152/h3866
 .. _text: https://n2t.net/ark:/99152/h3867
@@ -153,7 +154,7 @@ Minting and binding require HTTP Basic authentication over SSL.  The base
 abbreviated as $b below.  You would need an N2T user name (known as a
 *populator*, ``sam`` below) and a password (``xyzzy``, not a real password).
 (Due to current resource constraints, we can only add new N2T users in
-exchange for benefit to the ARKsInTheOpen.org effort, for example,
+exchange for benefit to the `ARK Alliance`_ effort, for example,
 contributions of staff time for technical or promotional work;
 `please let us know`_ if you are interested.)
 

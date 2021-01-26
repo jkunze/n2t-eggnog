@@ -7,7 +7,8 @@
 .. |X| unicode:: U+02713 .. check mark
 
 .. _EZID: https://ezid.cdlib.org
-.. _ARKs: /e/ark_ids.html
+.. _ARKs: https://arks.org
+.. _ARK Alliance: https://arks.org
 .. _ARKs in the Open: http://ARKsInTheOpen.org
 .. _DOI: https://www.doi.org
 .. _EZID.cdlib.org: https://ezid.cdlib.org
@@ -58,7 +59,10 @@ Development partners include
 In February 2018 the `California Digital Library`_ and DuraSpace_ (now
 LYRASIS_) announced the `ARKs in the Open`_ project, a collaboration aimed at
 building an open, international community around Archival Resource Keys (ARKs_)
-and their use as persistent identifiers in the scholarly ecosystem.
+and their use as persistent identifiers in the scholarly ecosystem. In 2021
+this mature community was rebranded as
+
+- `ARK Alliance`_ - community supporting the open global ARK infrastructure
 
 While not currently storing individual identifiers for them, N2T stores
 forwarding records for "shoulders" (described in `Identifier Basics`_), as well

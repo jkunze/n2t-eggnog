@@ -8,6 +8,7 @@
 
 .. _EZID: https://ezid.cdlib.org
 .. _ARK: /e/ark_ids.html
+.. _ARK Alliance: https://arks.org
 .. _ARKs in the Open: http://ARKsInTheOpen.org
 .. _DOI: https://www.doi.org
 .. _suffix passthrough: /e/suffix_passthrough.html
@@ -150,12 +151,9 @@ firewall controls, layered over the foundational physical, network, and
 procedural security maintained in AWS datacenters based in the United
 States of America.
 
-Recognizing the important global role that the resolver plays, in 2018 CDL
-and DuraSpace_ (now LYRASIS_) launched an initiative, called
-`ARKs in the Open`_, to establish broad and sustainable community ownership
-of N2T's technological, administrative, and policy infrastructure.
-With support from 31 organizations on 4 continents, the initiative
-has three active working groups.
+N2T is a critical piece of global infrastructure under the purview of
+the `ARK Alliance`_. Founded by the CDL and LYRASIS_, the ARK Alliance now
+enjoys the support of some 40 institutions.
 
 - N2T partners_
 - `N2T API Documentation`_

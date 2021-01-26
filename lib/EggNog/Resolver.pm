@@ -616,6 +616,7 @@ sub idx_init { my( $idx )=@_;
 
 	$idx->{origid} =	# original identifier string
 		$idx->{ur_origid} =
+		$idx->{log_ok_ur_origid} =
 		$idx->{full_id} =
 		$idx->{slid} =
 		$idx->{naan} =
@@ -1367,6 +1368,11 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 		#     look a little faster) but we'll get less noise from each
 		#     recursive call when resolverlist support gets added.
 	my $exget = $sh->{fetch_exdb} // 0;
+
+
+	my $log_ok_ur_origid = $ur_origid;
+	$log_ok_ur_origid =~ s/\n/%0a/g;	# replace any literal newlines
+
 	#$txnid = tlogger $sh, $txnid, "BEGIN $lcmd $ur_origid $hdrinfo";
 	$txnid = tlogger $sh, $txnid, "BEGIN"
 		# yyy what's the indb equivalent?
@@ -1374,7 +1380,8 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 # xxx document use of tlogger and $exget for debugging
 #		. ($exget ? " bindername: $bh->{exdbname}" .
 #			" connect_string: $sh->{exdb}->{connect_string}" : "")
-		. " $lcmd $ur_origid $hdrinfo";
+		#. " $lcmd $ur_origid $hdrinfo";
+		. " $lcmd $log_ok_ur_origid $hdrinfo";
 
 	my $db = $bh->{db};
 	my $rpinfo = undef;	# redirect prefix info
@@ -1416,6 +1423,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 		return undef;
 	}
 	$idx->{ur_origid} = $ur_origid;
+	$idx->{log_ok_ur_origid} = $log_ok_ur_origid;
 
 	#### Step 0 Redirect directives to look for _before_ binder lookup
 	#  yyy as Last Step look up $SCHEMELESS ids post-binder-lookup
@@ -2130,7 +2138,8 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 	if ($txnid) {
 		my $msg = 'END '
 			. ($fail || ! $st ? 'FAIL' : 'SUCCESS');
-		$msg .= " $ur_origid ($id)";
+		#$msg .= " $ur_origid ($id)";
+		$msg .= " $idx->{log_ok_ur_origid} ($id)";
 		$rpinfo and
 			$msg .= " PFX $rpinfo->{key}";
 		$msg .= " -> $returnline";
