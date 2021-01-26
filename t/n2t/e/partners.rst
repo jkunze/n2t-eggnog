@@ -32,7 +32,7 @@
 .. _n2t: https://n2t.net
 .. _Identifier Basics: https://ezid.cdlib.org/learn/id_basics
 .. _Identifier Conventions: https://ezid.cdlib.org/learn/id_concepts
-.. _INCIPIT: https://twitter.com/incipit_ark
+.. _ARKetype: https://twitter.com/ARKetype_ch
 .. _Islandora: https://islandora.ca
 
 //BEGIN//
@@ -48,7 +48,7 @@ Individual identifiers are stored in N2T.net by a number of partners.
 
 Development partners include
 
-- INCIPIT_ - an identifer service for a consortium of Swiss universities
+- ARKetype_ - an identifer service for a consortium of Swiss universities under the INCIPIT project
 - Islandora_ - open source digital asset management
 
 `Compact identifiers`_ are implemented with scheme (prefix) records stored in N2T.net in partnership with
