@@ -363,6 +363,7 @@ $x = resolve_stdin_hdr("-d $td/fon",
 	$url, "!!!ac=text/turtle!!!",
 	"$url\?", '',
 	"$url\?\?", '',
+	"$url\?info", '',
 	"$url/", '',
 	"$url./", '',
 );
@@ -375,6 +376,10 @@ like $x, qr|^inflect.*suffix=%3f|, "script called for ? inflection";
 
 $x =~ s/^.*\n//;				# remove top line
 like $x, qr|^inflect.*suffix=%3f%3f|, "script called for ?? inflection";
+
+$x =~ s/^.*\n//;				# remove top line
+like $x, qr|^inflect.*suffix=%3f%3f|,
+	"script called for ?info (as if ?? used) inflection";
 
 $x =~ s/^.*\n//;				# remove top line
 like $x, qr|^inflect.*suffix=/|, "script called for / inflection";

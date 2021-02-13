@@ -1992,6 +1992,11 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 
 	#say "xxx before returnline=$returnline, fail=$fail, suffix=$suffix";
 
+	# xxx temporary kludge to make ?info return something (same as '??')
+	#     for those who try it before it's implemented
+	$suffix and $suffix eq '?info' and
+		$idx->{suffix} = $suffix = '??';
+
 	if (! $returnline and ! $fail and $suffix and $suffix !~ /\w/) {
 		# recall: $Rp is reserved sub-element prefix
 		#     and $Rs is reserved sub-element separator prefix
