@@ -34,6 +34,8 @@ sub resolve_stdin { my( $opt_string, @ids )=@_;
 }
 
 # Args ( $opt_string, $id1, $hdr1, $id2, $hdr2, ... )
+# xxx major limitation: no prefix rules are consulted here;
+#     see t/z_egg_prefixes_n2t for enhanced resolve_stdin_hdr
 sub resolve_stdin_hdr {
 	my $opt_string = shift;
 	my $script = '';
@@ -367,6 +369,9 @@ $x = resolve_stdin_hdr("-d $td/fon",
 	"$url/", '',
 	"$url./", '',
 );
+#say "xxx x=$x";
+#say "xxx premature exit"; exit; ###########################
+
 like $x, qr|^inflect.*op=cn.text/turtle|,
 	"script called for content negotiation";
 

@@ -1532,7 +1532,6 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 	# NB: EZID once supported this as a kind of alias for non-ARK ids,
 	#     so we try to honor these
 
-#say STDERR "xxx before shadow2id id=$id";
 	if ($idx->{scheme} eq 'ark' and $idx->{naan} =~ /^[b-z]\d\d\d\d$/) {
 		my $real_id = shadow2id($id);
 		my $real_rfs = $exget
@@ -1717,7 +1716,9 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 
 # xxx problem: this is capturing web server file paths as if they were partial
 # ids to send to pfx for lookup
-	# If still nothing, see if we have a probable partial match.
+	# If still nothing, see if we have a probable "partial" match.
+	# A partial match means with thinkg the user is not asking about an
+	# identifier, but about a prefix that they want the info record for.
 	# This is risky as we might occlude rule-based redirection if
 	# we'd flagged as partial something that ought to simply redirect.
 
@@ -1733,7 +1734,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 			$id, [ ], $idx, "partial=$partial" );
 	}
 
-	# If still nothing, try rule-based mapping.
+	# If still nothing, prepare for rule-based mapping.
 	# Select which redirection prefix we'll use (info obtained
 	# earlier by id_decompose), choosing the first, most-specific
 	# redirect rule that we find.
@@ -1757,9 +1758,10 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 #print Dumper $idx;
 
 	if ($rpinfo) {
-		# If we get here, we will redirect to the result of a
-		# prefix-based redirect rule found in $rpinfo, into which
-		# we insert the id to create the target URL.
+		# If we get here, we will redirect to a string resulting from
+		# a prefix-based redirect rule found in $rpinfo, into which we
+		# insert the id to make the string that becomes the target URL.
+		# This is how IGSN, Addgene, PMID, etc. ids get redirected.
 
 		# xxx we're not currently sensitive to whether the request
 		#     came in via HTTP or HTTPS, and using that in case
@@ -1921,12 +1923,12 @@ my $Ti = EggNog::Binder::TRGT_INFLECTION; # target for inflection
 # $rpinfo normally undefined; if defined, it is a hash for a prefix info
 # block containing a redirect rule that supplied the target URL.
 
-# This routine implements the final  leaves of an extensive decision tree for
+# This routine implements the final leaves of an extensive decision tree for
 # resolution. The name "cnflect" correctly connotes the Content Negotiation
 # and Inflection steps that it implements, which are options that must first
-# be eliminated from consideration. The name doesn't reveal, however, that
+# be eliminated from consideration. The name does NOT reveal, however, that
 # the final step and main point of the routine is the mainstream resolution
-# step shows up only at the end of the routine.
+# step that shows up only at the end of the routine.
 
 sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id, 
 				$dupsR, $idx, $op, $tag )=@_;
@@ -1943,11 +1945,14 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 	# SPT has been attempted by now, xxx explain better in comments how
 	# inflections work!!  I don't understand this code any more.
 
-	# If we failed, $fail will already be defined near last call
-	# to this routine, so something in @$dupsR means success.
-	#
+	# If we failed to find anything -- stored id, stored rule, partial
+	# match, etc. -- $idx->{fail} will have been set to 1 near the end
+	# of the resolve() routine. So if $idx->{fail} is undefined, then
+	# something in @$dupsR means success.
+
 	! defined($fail) && scalar(@$dupsR) and
 		$fail = 0;			# success - found something
+
 	# From here on, scalar(@$dupsR) > 0 and $fail says if we failed.
 	# Now we start defining script arguments that we might be using.
 
@@ -1961,6 +1966,7 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 	# Now check for inflections, which may redirect or call a script.
 	# Don't test on $fail, an empty $suffix, or $suffix containing a
 	# word char (xxx meaning we don't honor generalized THUMP requests!?)
+	#           (    but note except below for '?info')
 	# Note that we don't check for multiple targets when doing inflection
 	# or content negotation.
 
@@ -1969,7 +1975,6 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 	my $eset = 'brief';
 	my $format = 'anvl';
 
-#say STDERR "xxx before inflect_cmd: idx_rid=$idx->{rid}";
 	if ($op =~ /^partial=(.*)/) {	# just scheme given, maybe naan too
 		my $partial = $1;
 		$returnline = quote_args(
@@ -1993,7 +1998,7 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 	#say "xxx before returnline=$returnline, fail=$fail, suffix=$suffix";
 
 	# xxx temporary kludge to make ?info return something (same as '??')
-	#     for those who try it before it's implemented
+	#     for those who try it before it's properly implemented
 	$suffix and $suffix eq '?info' and
 		$idx->{suffix} = $suffix = '??';
 
@@ -2039,7 +2044,7 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
  	# (ie, if id was found but no valid inflection was detected).
 	# Here we check $id, not $rid.
 
-	if (! $returnline and ! $fail and ! $suffix and $accept) {
+	if (! $returnline and ! $fail and ! $suffix and ! $rpinfo and $accept) {
 
 		# yyy old xref binder element names use _mT* not ._eT*
 
@@ -2071,7 +2076,7 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 
 	# Check for multiple redirection if $returnline is still empty
 	# (ie, id was found but no inflection or content negotation).
-	#
+
 	! $returnline and scalar(@$dupsR) > 1 and
 		# double quote each target and end list of targets with --
 		$returnline = quote_args(
@@ -2082,6 +2087,7 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 	# Mainstream case.
 	# At this point $returnline will still be empty if we're doing
 	# ordinary redirection or if no id was found (and $dups[0] is "").
+	# Note that rule-based (rpinfo) redirection uses this path too.
 	# xxx should be sensing shoulder for default redirect code?
 
 	# This list of "known" http redirect status codes comes from purl.org.
@@ -2092,8 +2098,7 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 	# 307	Temporary redirect to a target URL	Temporary Redirect
 	# 404	Temporarily gone			Not Found
 	# 410	Permanently gone			Gone
-	#
-#say "xxx before unless returnline=$returnline, dups0=<", $dupsR->[0], ">";
+
 	unless ($returnline) {		# if $returnline not already set
 
 		my $redircode = '302';			# default; $tgt might
@@ -2120,7 +2125,7 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 #		$returnline = "redir$redircode "	# redirNNN + space +
 #			. (! $dupsR->[0] ? '' :		# last token, which
 #				$tparts[ $tcnt - 1 ]);	# might be empty
-#	}
+
 	#$returnline or			# if $returnline not already set
 	#	$returnline = "redir302 $dupsR->[0]";
 

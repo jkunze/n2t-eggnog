@@ -265,6 +265,9 @@ $x = nresolve_stdin_hdr( "--home $buildout_root -d $td/dummy",
 	'igsn:SSH000SUA', '',		# n2tadds
 	  '302 http://hdl.handle.net/10273/SSH000SUA',
 	  'igsn scheme redirect',
+	'igsn:SSH000SUA', '!!!ac=application/json!!!',	# n2tadds
+	  '302 http://hdl.handle.net/10273/SSH000SUA',
+	  'igsn scheme redirect unaffected by Accept (content-negotiation)',
 	'purl:dc/terms/creator', '',	# n2tadds
 	  '302 http://purl.org/dc/terms/creator',
 	  'purl scheme redirect',
