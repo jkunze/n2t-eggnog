@@ -143,7 +143,7 @@ Example 2. One stored ARK standing in for any number of Wikipedia article "ARKs"
 Example 3. One stored ARK standing in for any number of internet search "ARKs".
 
 - Stored: ark:/12345/fk3
-- Its target URL: http://www.google.com/#q=
+- Its target URL: http://www.google.com/search?q=
 - Extended ARK: http://n2t.net/ark:/12345/fk3pqrst
 
 You can experiment easily by pasting this stored ARK, ::

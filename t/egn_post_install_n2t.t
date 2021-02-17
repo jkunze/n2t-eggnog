@@ -307,11 +307,10 @@ like $x, qr/^Location: \Q$wkp_tgt$wkp_ext/m,
 	"documented suffix passthrough works for wkp_ark $wkp_ark";
 
 my $srch_ark = 'ark:/12345/fk3';
-my $srch_tgt = 'https://www.google.com/#q=';
-my $enc_srch_tgt = 'https://www.google.com/%23q=';	# encoded form
+#my $srch_tgt = 'https://www.google.com/#q=';
+my $srch_tgt = 'https://www.google.com/search?q=';
+my $enc_srch_tgt = 'https://www.google.com/search?q=';	# encoded form
 my $srch_ext = 'pqrst';
-#xxx fix wiki doc (An e)xtended ARK: http://n2t.net/ark:/12345/fk3pqrst
-#    high level intro could be simpler too
 
 $x = `wegn $srch_ark.set _t "$enc_srch_tgt"`;
 like $x, qr/^egg-status: 0/m, "egg sets target for $srch_ark";
