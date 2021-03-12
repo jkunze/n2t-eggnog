@@ -10,14 +10,17 @@ use File::Value ':all';
 
 # Do "export EGG_DBIE=e" (=ie) to test exdb (both) paths,
 
-my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "egg";
+my ($td, $cmd, $homedir, $tdata, $hgbase, $indb, $exdb) = script_tester "egg";
 $td or			# if error
 	exit 1;
-$ENV{EGG} = $hgbase;		# initialize basic --home and --bgroup values
+$ENV{EGG} = $hgbase;		# initialize --home and --testdata values
 
 {
-remake_td($td, $bgroup);
+remake_td($td, $tdata);
 my $x;
+
+#say "xxxxxx premature end. tdata=$tdata, env.egg=$ENV{EGG}"; exit;
+#say "xxxxxx premature end. x=$x"; exit;
 
 $x = `$cmd --version`;
 my $v1bdb = ($x =~ /DB version 1/);
@@ -25,21 +28,26 @@ my $v1bdb = ($x =~ /DB version 1/);
 $x = `$cmd --verbose -p $td mkbinder foo`;
 shellst_is 0, $x, "make binder named foo";
 
+if ($indb) {
+
+my $isbname = `$cmd --dbie i bname $td/foo`;	# indb system binder name
+$isbname =~ s/\n*$//;
+
 my $y;
-$x = file_value("<$td/foo/egg_README", $y);
+$x = file_value("<$isbname/egg_README", $y);
 
 if ($v1bdb) {
   like $y, qr/ordering.*not.*preserved/,
   	"note left about duplicate ordering not preserved";
 }
 else {
+  like $y, qr/.../, "README file found";
   unlike $y, qr/ordering.*not.*preserved/,
   	"no note left about duplicate ordering preserved";
 }
 
-if ($indb) {
-  is 1, (-f "$td/foo/egg.bdb"), 'created binder upper directory and bdb file';
-}
+  is 1, (-f "$isbname/egg.bdb"), 'created binder upper directory and bdb file';
+}	# close if ($indb)
 
 $x = `$cmd -d $td/foo foo.set bar zaf   woof`;
 shellst_is 0, $x, "simple set with bind status ok and -d";
@@ -52,12 +60,12 @@ shellst_is 0, $x, "fetch status ok";
 like $x, qr/bar:\s*zaf\n/s,
 	"fetch promotes plain format to anvl and ignores extra tokens";
 
+#say "xxxxxx premature end. x=$x"; exit;
+
 $x = `$cmd -d $td/foo FOO.set bar cow`;
 $x = `$cmd -d $td/foo -m plain FOO.fetch`;
 like $x, qr/bar:\s*cow\n/s,
 	'id strings are case sensitive';
-
-#exit;
 
 $x = `$cmd -d $td/foo foo.let eel cow`;
 like $x, qr/^$/s, "simple let binding";
@@ -106,8 +114,6 @@ $x = `$cmd -d $td/foo -f -m anvl foo.rm bar`;
 $x = `$cmd -d $td/foo -f -m anvl --ack foo.let bar aaa`;
 like $x, qr/oxum: 3.1/,
 	"let proceeds and --ack talks when a value isn't already set";
-
-#say "xxxxxx premature end"; exit;
 
 $x = `$cmd -d $td/foo -m anvl foo.rm eel cow`;
 like $x, qr/^$/s, "'rm foo cow' operation with ANVL";
@@ -192,12 +198,17 @@ like $x, qr/^$/s, "'rm' op with nasty chars";
 
 $x = `$cmd -d $td/foo '\$t.^x.set' '\$u.|e' nasty`;
 $x = `$cmd -d $td/foo '\$t.^x.purge'`;
-
 like $x, qr/under \$t\.\^x: 3\n/s, "'purge' op with nasty chars";
 
-$x = `$cmd -d $td/foo '\$t.^x.exists'`;
-like $x, qr/^0\n/, "and 'exists' agrees that it's gone";
+$x = `$cmd -d $td/foo '\$t.^x.purge'`;
+like $x, qr/under \$t\.\^x: 0\n/s,
+	"second purge finds no elements to purge";
 
-remove_td($td, $bgroup);
+# xxx the test for 'exists' is pretty poor, eg, it didn't catch that the second
+# purge above actually found some elements before a bug was fixed
+$x = `$cmd -d $td/foo '\$t.^x.exists'`;
+like $x, qr/^0\n/, "and 'exists' believes that it's gone";
+
+remove_td($td, $tdata);
 }
 

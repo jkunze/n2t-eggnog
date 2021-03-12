@@ -1,0 +1,480 @@
+#! /usr/bin/env perl
+
+use 5.010;
+use strict;
+use warnings;
+
+use Text::ParseWords;
+use YAML;
+use Encode;
+use utf8;
+
+# Author:  John A. Kunze, jak@ucop.edu, California Digital Library
+# Copyright (c) 2016-2020 UC Regents
+
+my $response_admin_default = "jakkbl\@gmail.com";
+my $response_admin = '';
+my $response_name_default = "John Kunze";
+my $response_name = '';
+
+#my $response_admin = "naan-registrar\@googlegroups.com, $provider";
+my $request_file = 'request';
+my $new_naa_file = 'new_entry';
+my $request_log = 'request_log';
+
+my $cmd = $0;
+$cmd =~ s,.*/,,;		# drop path part
+my $usage_text = << "EOT";
+NAME
+    $cmd - convert a NAAN request form to a registry entry
+
+SYNOPSIS
+    $cmd [ --github ] FormFile [ NAAN ]
+
+DESCRIPTION
+    XXX heavily modified for the "-" stdin case, expecting
+       line 1: email (maybe empty)
+       line 2: your name (given name followed by family name)
+       line 3: NAAN
+       lines 4-: form output
+
+    The $cmd script converts a NAAN request form to a registry entry that
+    is stored in the current directory under the filename, "$new_naa_file".
+
+    The FormFile is a file of form data in YAML (or CSV format, but CSV is
+    not really tested). Data is usually entered via the
+    https://goo.gl/forms/bmckLSPpbzpZ5dix1 form and delivered either by
+    downloading a CSV file or pasting from an email generated from the
+    filled-out form. If FormFile is given as '-', its contents are
+    expected on stdin.
+
+    If the NAAN is not given as a command argument, it should be given as
+    head of a small block of form data in the FormFile. The block begins
+    with the NAAN on a line by itself, and the remaining block lines should
+    contain filled out form data up to a line starting "----". Unless the
+    --github option is given, that block must be line 1 of FormFile; this
+    option supports use of this script running in a github workflow (which
+    allows the maintainer not to have to run under a Unix-like platform).
+    
+    Before calling, the caller will have selected the NAAN by editing the
+    ./candidate_naans file and moving the top unassigned NAAN up over the
+    line into the assigned NAANs part of the file.  As an example, the
+    received form
+
+      Contact name:	Gautier Poupeau
+      Contact email address:	gpoupeau\@ina.fr
+      Organization name:	Institut national de l'audiovisuel
+      Position in organization:	Data architect
+      Organization address:	4 avenue de l'Europe, 94366 Bry-sur-Marne Cedex
+      Organization base URL:	http://www.ina.fr
+      Organization status:	For profit
+      Service provider contact information: Sam Smith, ss\@aaa.example.org, Acme Archiving
+
+    with NAAN 99999 specified produces
+
+      naa:
+      who:    Institut national de l'audiovisuel (=) INA
+      what:   99999
+      when:   2016.09.23
+      where:  https://www.ina.fr
+      how:    FP | (:unkn) unknown | 2016 |
+      !why:   ARK
+      !contact: Poupeau, Gautier ||| gpoupeau\@ina.fr |
+      !address: 4 avenue de l'Europe, 94366 Bry-sur-Marne Cedex
+      !provider: Sam Smith, ss\@aaa.example.org, Acme Archiving
+
+EOT
+
+my $no_gen = 1;			# yyy constant
+my $from_vim = 0;
+my $github = 0;
+my $naan;
+my $naan_restored = 0;
+
+sub perr {
+	if ($naan and ! $naan_restored) {
+		say STDERR ($from_vim ? $naan : "NAAN: $naan");
+		$naan_restored = 1;
+	}
+	print STDERR ($from_vim ? "# Error: " : "Error: ");
+	say STDERR @_;
+}
+
+# main
+{
+	use open qw/:std :utf8/;
+	$#ARGV < 0 || $ARGV[0] =~ /^--*h/ and	# eg, -help, --help
+		print($usage_text),
+		exit 0;
+	if ($ARGV[0] =~ /^--github/) {
+		$github = 1;
+		$from_vim = 1;
+		# yyy $from_vim behavior may become default in github actions
+		shift;
+	}
+
+	my $FormFile = $ARGV[0];
+	shift;
+	$naan = $ARGV[0] || '';
+	$FormFile ne '-' and
+		unshift @ARGV, $FormFile;
+
+	# Get parts of today's date.
+	my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime();
+	$year += 1900;
+	$mon = sprintf("%02d", $mon + 1);
+	$mday = sprintf("%02d", $mday);
+
+	# Read the input file.
+	local $/;		# set input mode to slurp whole file at once
+	$_ = <>;		# slurp entire file from stdin or named arg
+	s/\n+/\n/;		# make sure it ends in just one newline
+	my $form_content = $_;	# make copy of form content, including NAAN
+
+	if (! $naan) {
+		$FormFile eq '-' and
+			$from_vim = 1;	# act as if we're called from vim
+		# check for a block in the file and isolate it into $_ by
+		# deleting everything around it
+		s/\n----.*/\n/s;	# drop all lines from ---- to end
+		#s/^\s*\n//mg;		# drop blank lines
+		s/^\s*#.*\n//mg;	# drop comment lines
+
+		# This next is a critical check to see if there's actually
+		# NO form data inside the file, indicated by exit code 2.
+		# This is a common case since a github action/workflow uses
+		# this to branch to simple entry generation, or main_naans
+		# validation and generation of derivative files.
+
+		if (! m/(s*\d+).*Contact name:/s) {
+			perr("missing form data (block $_)");
+			exit 2;
+		}
+		$form_content = $_;  # update form content, including NAAN
+
+		# this next assumes we are at the start of a block
+
+		s/^(.*)\n// and		# remove and save input line 1
+			$response_admin = $1;
+		if ($response_admin and $response_admin !~ /@/) {
+			perr "email address ($response_admin) must contain "
+				. '"@"';
+			exit 1;
+		}
+		s/^(.*)\n// and		# remove and save input line 2
+			$response_name = $1;
+		if (! $response_name) {
+			perr 'name (eg, Sam Smith) must not be empty';
+			exit 1;
+		}
+		s/^(.*)\n// and		# remove and save input line 3
+			$naan = $1;
+		if (! $naan) {
+			perr "no NAAN specified";
+			exit 1;
+		}
+		if ($naan !~ /^[s\d][\d]+$/) {
+			perr("bad NAAN specified: $naan");
+			perr("NAAN must be all digits",
+				" (optionally preceded by 's')");
+			exit 1;
+		}
+	}
+	if (/^\s*$/) {
+		perr("no form data; did you forget to paste it in?");
+		exit 1;
+	}
+
+	# make last char before tab be a :, replacing a : or ?, if any
+	s/[:?]?\t+/: /g and	# YAML needs : and forbids tab-for-space, and
+		# as long as we're not doing CSV fields, elide \n in front of
+		s/\n([^:]*)$/ $1/m and	# lines with no colon (a contin. line),
+		s/$/\n/;		# but make sure whole thing ends in \n
+
+	# Flag annoying non-ascii punctuation (eg, ' and -)
+	my @uchars = split '', decode('utf8', $_);
+	/\P{ascii}/ && /\p{Punctuation}/ && perr(
+		"warning: non-ascii punctuation: ", encode('utf8', $_))
+			for (@uchars);
+
+	# CSV fields:
+	# "Timestamp","Contact name:","Contact email address:","Organization name:","Position in organization:","Organization address:","Organization base URL:","Organization status:","Service provider:","Organization acronym preferred:","Other information:"
+	my $timestamp;			# unused field if it's a CSV parse
+	my $h;				# hash if it's a YAML parse
+	my ($fullname, $email, $orgname, $role, $address,
+		$URL, $ostatus, $provider, $acronym, $other);
+	my ($firstname, $lastname);
+	# xxx very flawed test -- do real csv parse instead,
+	#     or check for occurrences of "," ?
+	#     often the org address has many commas -- don't check that field?
+	if (m/,.*,.*,.*,.*,.*,/) {	# if there are 6+ commas on a line
+		(			# assume input is in CSV-format
+			$timestamp,			# unused field
+			$fullname, $email, $orgname, $role, $address,
+				$URL, $ostatus, $provider, $acronym, $other
+		) = Text::ParseWords::parse_line(',', 0, $_);
+		# xxx should limit to number of fields, eg, in face of
+		# texty "Other info"
+	}
+	else {
+		$h = Load($_);		# YAML parse, returning hash reference
+		$fullname = $h->{'Contact name'} || '';
+		$orgname = $h->{'Organization name'} || '';
+		$acronym = $h->{'Organization acronym preferred'} || '';
+		$ostatus = $h->{'Organization status'} || '';
+		$URL = $h->{'Organization base URL'};
+		$email = $h->{'Contact email address'};
+		$address = $h->{'Organization address'};
+		#$provider = $h->{'Service provider'} || '';
+		$provider = $h->{'Service provider contact information'} || '';
+# XXX decide whether to change this or not! (probably not)
+# XXX alter form letter to say that a service provider has submitted this
+#     on your behalf of you and your organization
+# XXX change "Thank you for your request." to "A request for a NAAN has been submitted on behalf of you and your organization by <insert name here> of <insert company name here>."
+# XXX make automatic form response go to service provider
+# Service provider contact information:   Guillaume LORY, solution Ligeo Archives : guillaume.lory@empreintedigitale.fr
+		$role = $h->{'Position in organization'} || '';
+		$other = $h->{'Other information'} || '';
+	}
+	# yyy check if YAML strips surrounding whitespace
+
+	# Get part of personal name (just a guess, so bears checking)
+	($firstname, $lastname) = $fullname =~ /^\s*(.+)\s+(\S+)\s*$/ or
+		perr("could not parse personal name \"$fullname\""),
+		exit 1;
+	unless ($acronym) {
+		$acronym = $orgname;
+		# drop stop words in English, French, and Spanish
+		$acronym =~ s/\b(?:the|and|of|l[ae']|et|d[eu']|des)\b//g;
+		# stop possessive 's' from showing up in the acronym
+		# XXX bug: non-ascii being mistaken for word boundaries?
+		#     eg, who:    Euro France Médias (=) EFM?D
+		$acronym =~ s/\b's\b//g;
+		$acronym =~ s/\b(.).*?\b/\U$1/g;	# first letter
+	}
+	$acronym =~ s/\s+//g;			# remove spaces
+	$acronym = uc $acronym;
+	my $bmodel =
+		($ostatus eq 'For profit' ? 'FP' :
+		($ostatus eq 'Not-for-profit' ? 'NP' :
+			"ORGSTATUS: $ostatus"));
+	# yyy should lc hostname part
+	$URL =~ s,[./]+\s*$,,;		# remove terminal / or . if any
+	$URL =~ m,^https?://, or
+		$URL = 'https://' . $URL;	# clothe a naked hostname
+	my $provider_line = $provider;
+	$provider_line and
+		$provider_line = "\n!provider: $provider_line";
+	$other =~ /./ and		# if it has real content
+		say STDERR "Note other info: |$other|";		# not an error
+
+	# Build up request to save in a file.
+	my $request = '';
+	$request .= "Date:\t$year.$mon.$mday\n";	# date processed
+	$from_vim and			# if from vim, clothe naked NAAN with
+		$request .= "Candidate NAAN:\t";	# label prepended
+	$request .= $form_content;
+	open OUT, "> $request_file" or
+		perr("could not open $request_file for writing"),
+		exit 1;
+	say OUT "$request";
+	close OUT;
+
+	my $naa_entry = 
+"naa:
+who:    $orgname (=) $acronym
+what:   $naan
+when:   $year.$mon.$mday
+where:  $URL
+how:    $bmodel | (:unkn) unknown | $year |
+!why:   ARK
+!contact: $lastname, $firstname ($role) ||| $email |
+!address: $address$provider_line
+
+";
+	open OUT, "> $new_naa_file" or
+		perr("could not open $new_naa_file for writing"),
+		exit 1;
+	print OUT "$naa_entry";
+	close OUT;
+	my $form_dest = $response_admin
+		? "is being emailed to you"
+		: "appears below"
+	;
+	if ($from_vim) {
+		say "# $naan $orgname";
+		say "!# At github, use the comment line above to change the NAAN status";
+		say "!# to 'used', and append the entry below to the 'main_naans' file.";
+		say "!# Form letter for responding to requester $form_dest.";
+		#say "!# Move this line and entry below ",
+		#	"(leaving the ----- line) to main_naans.";
+		print $naa_entry;
+	}
+	else {
+		say "New NAA entry below saved in file \"$new_naa_file\".";
+		print $naa_entry;
+	}
+
+	#say OUT "Date:\t$year.$mon.$mday";       # processing date of request
+	#$from_vim and			# if from vim, clothe the naked NAAN
+	#	print OUT "Candidate NAAN:\t";	# prepended to the start of it
+	#print OUT "$form_content";
+	#print OUT "\n";                 # terminate request with a blank line
+	open OUT, ">> $request_log" or
+		perr("could not open $request_log for appending"),
+		exit 1;
+	say OUT "$request";		# log request saved earlier
+	close OUT;
+	! $from_vim and
+		say "Request file '$FormFile' saved in file \"$request_log\".";
+
+	my $institution = $orgname;	# if org has a secondary name,
+	$institution =~ s/ \(=\).*//;	# reduce it to a primary name
+	#Subject: NAAN request for $acronym
+
+	my $pseudonaan = $naan;			# xxx lots of garbage in there
+	$naan =~ s/Got id = (\d+).*/$1/s;	# xxx new change not tested!
+
+	#$no_exec and
+	#	exit 0;			# nothing left to do
+
+	# XXX when/if this text is converted to hypertext, use this link for
+	# the ezid.cdlib.org homepage http://bit.ly/1Q5dKH0
+	# ask maria
+
+	my $prov_text = $provider
+		? "If the \"provider\" information,</p>\n"
+		  . "<pre>     $provider</pre>\n"
+		  . "<p>makes sense (requesters are often confused by this\n"
+		  . "means), also CC the provider. "
+		: "";
+	my $response_letter = << "EOT";
+Subject: NAAN request for $orgname
+Content-Type: text/html; charset=utf-8
+
+<html>
+<head>
+<title></title>
+</head>
+<body>
+<p>
+Proposed new entry:
+</p>
+<pre>
+$naa_entry
+</pre>
+</p>
+<p>
+Below the cut line is a proposed response email, intended to be sent to: $email
+<br/><br/>
+Start to forward that email to the intended recipient, adding a CC to
+NAAN-Registrar\@googlegroups.com and removing evidence of forwarding (eg,
+your email agent may insert "Fwd: " into the Subject line).
+$prov_text
+Then remove any footer (eg, might be added by an email group).
+</p><p>
+Finally, proofread the rest. Among other things, check that (a) the salutation
+makes sense (uses the recipient's given (first) name, (b) the organization name
+is correct, and (c) your signature is correct. Also check that any service
+provider is CC'd and all questions or anomalies arriving with the request have
+been addressed by adding your own customized response text (usually in the
+first paragraph).
+</p>
+<p>
+--------- CUT HERE ---------
+</p>
+<p>
+Hi $firstname,
+</p><p>
+Thanks for your request. The NAAN,
+</p><p style="margin-left:4em">
+$naan
+</p><p>
+has been registered for "$institution" and you may begin using it immediately. It may take up to 24 hours before your NAAN will be recognized by the N2T.net resolver.
+</p><p>
+Please note that $naan is intended for assigning ARKs to content that your institution directly curates or creates.
+In case you work with other institutions that use your tools and services for content that they curate or create, those institutions should obtain their own NAANs.
+</p><p>
+In thinking about how to manage the namespace, you may find it helpful to consider the usual practice of partitioning it with reserved prefixes of, say 1-5 characters, eg, names of the form "ark:/$naan/xt3...." for each "sub-publisher" in an organization.
+Opaque prefixes that only have meaning to information professionals are often a good idea and have precedent in schemes such as ISBN and ISSN.
+</p><p>
+The best starting place for information on ARKs (Archival Resource Keys) is the
+<a href="https://wiki.lyrasis.org/display/ARKs/ARK+Identifiers+FAQ">ARKs FAQ</a>
+(<a href="https://wiki.lyrasis.org/pages/viewpage.action?pageId=178880619">version française</a>,
+<a href="https://wiki.lyrasis.org/pages/viewpage.action?pageId=185991610">version en español</a>)
+and <a href="http://n2t.net/e/ark_ids.html">this ARK identifier overview</a>.
+The <a href="https://n2t.net/ark:/13030/c7cv4br18">ARK specification</a> is currently the best guide for how to create URLs that comply with ARK rules, although it is fairly technical.
+There is a <a href="https://groups.google.com/group/arks-forum">public discussion group for ARKs</a>
+(<a href="https://framalistes.org/sympa/info/arks-forum-fr">forum francophone</a>)
+intended for people interested in sharing with and learning from others about how ARKs have been or could be used in identifier applications.
+The best open source software for setting up your own ARK service implementation is currently <a href="http://n2t.net/e/noid.html">Noid</a>.
+</p><p>
+There's nothing else you need to do right now.
+As you may know, there's an initiative to build an open, international community around ARKs, <a href="http://ARKsInTheOpen.org">ARKsInTheOpen.org<a/>.
+We're also drafting some <a href="https://n2t.net/ark:/13030/c7833mx7t">standardized persistence statements</a> that name assigning authorities can begin testing (feedback is welcome) and using if they wish.
+</p><p>
+-$response_name, on behalf of NAAN-Registrar\@googlegroups.com
+</p>
+</body>
+</html>
+EOT
+
+#</p><p>
+#While no payment is required to use the ARK scheme, there are optional fee-based services that can help with technical and management tasks.
+#For example, the California Digital Library (CDL) provides a fee-based service called EZID (https://ezid.cdlib.org) that you can use to manage your namespace, which includes minting and resolving ARKs, as well as maintaining metadata.
+#Please contact ezid\@ucop.edu if you are interested in EZID.
+#-John
+#</p>
+#<br/>
+#<pre>
+#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+#John A. Kunze            California Digital Library
+#415 20th St, #406         University of California
+#Oakland, CA  94612         Office of the President
+# jak\@ucop.edu      \@jakkbl      W:+1 510 987 9231     
+#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+	#open OUT,
+	#  "|mail -S ttycharset=UTF-8 -s 'NAAN request for $acronym' \
+	#            jakkbl\@gmail.com"
+	#  	or die("couldn't open pipe to email response");
+
+	# save letter to a file
+	open OUT, ">", "new_naa_response.html" or
+		perr("could not open new_naa_response.html file"),
+		exit 1;
+	print OUT $response_letter;
+	close OUT;
+
+	if ($response_admin) {
+		# send letter to admin address (may not work on some networks)
+		open OUT, "|sendmail $response_admin" or
+			perr("could not open pipe to email response"),
+			exit 1;
+		print OUT $response_letter;
+		close OUT;
+	}
+	else {
+		print "----------------------\n";
+		print $response_letter;
+	}
+
+	exit 0;
+}
+
+__END__
+
+
+########
+
+#  Your Name:	Gautier Poupeau
+#  Contact email address:	gpoupeau@ina.fr
+#  Organization name:	Institut national de l'audiovisuel
+#  Position in organization:	Data architect
+#  Organization address:	4 avenue de l'Europe, 94366 Bry-sur-Marne Cedex
+#  Organization base URL:	http://www.ina.fr
+#  Organization status:	For profit
+
+#+how:   NP | (:unkn) unknown | 2016 |
+#+!why:  EZID ARK-only
+#+!contact: Flynn, Allen ||| ajflynn@med.umich.edu | +1 734-615-0839
+#+!address: 300 North Ingalls Street, 11th Floor, Suite 1161

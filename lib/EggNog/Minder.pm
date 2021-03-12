@@ -34,7 +34,7 @@ use File::Value ":all";
 use File::Copy 'mv';
 use File::Path qw( make_path mkpath rmtree );
 use File::Find;
-use EggNog::Rlog;
+#use EggNog::Rlog;
 use EggNog::RUU;
 use Try::Tiny;			# to use try/catch as safer than eval
 use Safe::Isa;
@@ -304,7 +304,7 @@ sub mclose { my( $mh )=@_;
 		($mh->{om} and $mh->{om}->elem("note",
 			"closing minder handler: $mh->{fiso}"));
 	defined($mh->{log})		and close $mh->{log};	# XXX delete
-	undef $mh->{rlog};		# calls rlog's DESTROY method
+#	undef $mh->{rlog};		# calls rlog's DESTROY method
 	undef $mh->{db};
 	undef $mh->{ruu};
 	my $hash = $mh->{tied_hash_ref};
@@ -452,12 +452,8 @@ sub authz { my(  $ruu, $WeNeed,   $mh,   $id,  $opd ) =
 	my $permstring =		# stringify it for regex matching
 		join("\n", @bigperms) || '';
 	
-##	print("yyy ruu_agentid=$ruu->{agentid}\notherids=",
-##			join(", " => @{$ruu->{otherids}}), "\n");
-##	print("zzz $_\n")
-
-$mh->{rlog}->out("D: WeNeed=$WeNeed, id=$id, opd=$opd, ruu_agentid=" .
-	"$ruu->{agentid}, otherids=" . join(", " => @{$ruu->{otherids}}));
+#$mh->{rlog}->out("D: WeNeed=$WeNeed, id=$id, opd=$opd, ruu_agentid=" .
+#	"$ruu->{agentid}, otherids=" . join(", " => @{$ruu->{otherids}}));
 
 	$permstring =~
 		/^p:\Q$_\E\|.*?(\d+)$/m 	# isolate perms per agent and
@@ -878,7 +874,7 @@ our $v1bdb_dup_warning =
 # 'the binder, relinking Perl\'s DB_File module with libdb version 2 or ' .
 # 'higher, and re-creating the binder';
 
-# zzz independent conditions:
+# xxx independent conditions:
 #
 # noid mint 1 or bind i n d -> if no minder, use default;
 #    search for default, if no default, create default
@@ -909,7 +905,7 @@ our $v1bdb_dup_warning =
 #		qualify: GENERATE implied if default ! exists
 #   mopen($mh, $uname_or_dname, $flags) with other params given by
 # 	$mh->{minderpath}, $mh->{}
-# zzz always require named minder to _right_ of rmminter/rmbinder,
+# xxx always require named minder to _right_ of rmminter/rmbinder,
 #     BUT mkminter/mkbinder DONT need that when you want to create a
 #     new one but don't want to have to think of a new name! eg
 # $ noid mkminter
@@ -1170,40 +1166,36 @@ What if no server running when client starts:  startup server on demand?
 		'flags '. length($mh->{conf_flags}) . ", " .
 		'ruu '. length($mh->{conf_ruu}));
 
-	#
-	# Log file set up.
-	# 
-	# yyy do we need to open the rlog so early?? how about after tie()??
-
-#print "xxXX: b=$basename, c=$mh->{cmdname}, who=$ruu->{who}, where=$ruu->{where}, v=$mh->{version}\n";
-#$mh->{version} ||= 'foo';
-	$mh->{rlog} = EggNog::Rlog->new(
-		$basename, {
-			preamble => "$ruu->{who} $ruu->{where}",
-			header => "H: $mh->{cmdname} $mh->{version}",
-		}
-	);
+#	#
+#	# Log file set up.
+#	# 
+#	$mh->{rlog} = EggNog::Rlog->new(
+#		$basename, {
+#			preamble => "$ruu->{who} $ruu->{where}",
+#			header => "H: $mh->{cmdname} $mh->{version}",
+#		}
+#	);
 
 	# Optional unified, per-server (as opposed to per-minder)
 	# transaction log ("txnlog") to record both the start and end
 	# times of each operation, as well as request and response info.
 	# xxx this should replace the older rlog, probably with log4perl
 	#
-	if ($mh->{opt}->{txnlog}) {
-		$mh->{txnlog} = EggNog::Rlog->new(
-			$mh->{opt}->{txnlog}, {
-				preamble => "$ruu->{who} $ruu->{where}",
-				extra_func => \&EggNog::Temper::uetemper,
-				header => "H: $mh->{cmdname} $mh->{version} "
-					. localtime(),
-				# xxx localtime() call only really necessary
-				# on log creation -- this is not optimal
-			}
-		);
-		$mh->{txnlog} or addmsg($mh,
-			    "failed to open txnlog for $mh->{opt}->{txnlog}"),
-			return undef;
-	}
+	#if ($mh->{opt}->{txnlog}) {
+	#	$mh->{txnlog} = EggNog::Rlog->new(
+	#		$mh->{opt}->{txnlog}, {
+	#			preamble => "$ruu->{who} $ruu->{where}",
+	#			extra_func => \&EggNog::Temper::uetemper,
+	#			header => "H: $mh->{cmdname} $mh->{version} "
+	#				. localtime(),
+	#			# xxx localtime() call only really necessary
+	#			# on log creation -- this is not optimal
+	#		}
+	#	);
+	#	$mh->{txnlog} or addmsg($mh,
+	#		    "failed to open txnlog for $mh->{opt}->{txnlog}"),
+	#		return undef;
+	#}
 
 	use EggNog::Log qw(init_tlogger);
 	$msg = init_tlogger($mh) and
@@ -1274,7 +1266,7 @@ What if no server running when client starts:  startup server on demand?
 	#printf "XXX before cachesize=$btree->{cachesize}\n";
 	#$btree->{flags} &= ~DB_PRIVATE;
 	#printf "XXX after flags=%b\n", $btree->{flags};
-	#printf "ZZZ after cachesize=$btree->{maxkeypage}\n";
+	#printf "xxx after cachesize=$btree->{maxkeypage}\n";
 
 	$mh->{opt}->{verbose} and $om and $om->elem("note",
 		($creating ? "created" : "opened") . " $hname $mdrd"),
@@ -1310,7 +1302,7 @@ What if no server running when client starts:  startup server on demand?
 		# xxx should we just call DESTROY??
 		$msg = "abort: $msg";
 		#logmsg($mh, $msg);
-		$mh->{rlog}->out("N: $msg");
+#		$mh->{rlog}->out("N: $msg");
 		addmsg($mh, $msg);
 		undef $db;
 		mclose($mh);
@@ -1447,7 +1439,7 @@ sub mkminder { my( $mh, $dirname, $minderdir )=@_;
 	# 
 	#print "xxx before unless dirname=$dirname, minderdir=$minderdir\n";
 	$minderdir ||= "";
-#print "xxxzzz $mh/$dirname: before minderdir=$minderdir\n";
+#print "xxxxxx $mh/$dirname: before minderdir=$minderdir\n";
 	$minderdir ||= $mh->{minderhome};
 # xxx what does file_name_is_absolute do with empty $dirname?
 	unless (file_name_is_absolute($dirname) or $minderdir eq ".") {
@@ -1456,7 +1448,7 @@ sub mkminder { my( $mh, $dirname, $minderdir )=@_;
 			$dirname);
 	}
 	# If here $dirname should be a valid absolute or relative pathname.
-#print "xxxzzz $mh/$dirname: after minderdir=$minderdir\n";
+#print "xxxxxx $mh/$dirname: after minderdir=$minderdir\n";
 	#print "xxx after unless dirname=$dirname\n";
 
 #use EggNog::Minder ':all';
@@ -1511,7 +1503,7 @@ sub mkminder { my( $mh, $dirname, $minderdir )=@_;
 #	$ret == 0 and		# normal(?) error
 #		addmsg($mh, "make_path->0 for $dirname subdirectories"),
 #		return "";
-#print "xxxzzz $mh/$dirname: dirname=$dirname\n";
+#print "xxxxxx $mh/$dirname: dirname=$dirname\n";
 
 	# Call mopen() without minderpath because we don't want search.
 	#
@@ -1569,19 +1561,20 @@ sub rmminder { my( $mh, $mods, $lcmd, $mdr, $minderpath )=@_;
 
 	# If we get here, the minder to remove exists, and its containing
 	# directory is $mdrdir.
+	# yyy log this important event?
 	#
 	my $mdrdir = fiso_uname($mdrfile);
-	$mh->{rlog} = EggNog::Rlog->new(		# log this important event
-		catfile($mdrdir, $mh->{objname}), {
-			preamble => $mh->{opt}->{rlog_preamble},
-			header => $mh->{opt}->{rlog_header},
-		}
-	);
+#	$mh->{rlog} = EggNog::Rlog->new(		# log this important event
+#		catfile($mdrdir, $mh->{objname}), {
+#			preamble => $mh->{opt}->{rlog_preamble},
+#			header => $mh->{opt}->{rlog_header},
+#		}
+#	);
 
-	my $msg;
-	$msg = $mh->{rlog}->out("M: $lcmd $mdrdir") and
-		addmsg($mh, $msg),
-		return undef;
+#	my $msg;
+#	$msg = $mh->{rlog}->out("M: $lcmd $mdrdir") and
+#		addmsg($mh, $msg),
+#		return undef;
 	
 	# We remove (rather than rename) in two cases: (a) if the minder
 	# is already in the trash or (b) if caller defines (deliberately
@@ -1609,8 +1602,8 @@ sub rmminder { my( $mh, $mods, $lcmd, $mdr, $minderpath )=@_;
 		return 1;
 	}
 
-	$msg = $mh->{rlog}->out("N: will try to move $mdr to $trashd") and
-		addmsg($mh, $msg);		# not a fatal error
+#	$msg = $mh->{rlog}->out("N: will try to move $mdr to $trashd") and
+#		addmsg($mh, $msg);		# not a fatal error
 
 	# We now want a unique name to rename it to in the trash directory.
 	# But first create the trash directory if it doesn't yet exist.
@@ -1905,7 +1898,7 @@ sub prep_default_minder { my( $mh, $flags, $minderpath, $mindergen )=@_;
 
 		my $mtype = $mh->{type};
 		my $opt = $mtype eq ND_MINTER ?  $implicit_minter_opt : {};
-		$opt->{rlog_preamble} = $mh->{opt}->{rlog_preamble};
+#		$opt->{rlog_preamble} = $mh->{opt}->{rlog_preamble};
 		$opt->{om_formal} = $mh->{om_formal};
 		$opt->{version} = $mh->{version};
 			# XXX this probably corrupts $implicit_minter_opt
@@ -1923,8 +1916,7 @@ sub prep_default_minder { my( $mh, $flags, $minderpath, $mindergen )=@_;
 			EggNog::Nog::mkminter($submh, undef, $mdr,
 				$mh->{default_template}, $mh->{minderhome})
 			:
-			EggNog::Egg::mkbinder($submh, undef, $mdr,
-# xxx	$bgroup, $user,		# xxx if this code is ever run
+			EggNog::Egg::mkbinder($submh, undef, $mdr, undef,
 				"default binder", $mh->{minderhome});
 		$dbname or
 			addmsg($mh, getmsg($submh)),
@@ -1976,8 +1968,7 @@ sub gen_minder { my( $mh, $minderpath )=@_;
 		$mdr =~ s/\d+$/$n/;	# xxx assumes it ends in a number
 		# xxx shouldn't we be using name returned in $msg?
 		# XXX this _assumes_ only other type is ND_BINDER!!
-		my $dbname = EggNog::Egg::mkbinder($mh, undef, $mdr,
-# xxx	$bgroup, $user,		# xxx if this code is ever run
+		my $dbname = EggNog::Egg::mkbinder($mh, undef, $mdr, undef,
 			"Auto-generated binder", $mh->{minderhome});
 		$dbname or
 			addmsg($mh, "couldn't create snagged name ($mdr)"),
@@ -2000,7 +1991,7 @@ sub gen_minder { my( $mh, $minderpath )=@_;
 	# We use some of the old handler's values to initialize.
 	#
 	my $c_opt = $implicit_caster_opt;
-	$c_opt->{rlog_preamble} = $mh->{opt}->{rlog_preamble};
+#	$c_opt->{rlog_preamble} = $mh->{opt}->{rlog_preamble};
 #$c_opt->{version} = $mh->{opt}->{version};
 		# XXX this probably corrupts $implicit_caster_opt
 	my $cmh = EggNog::Minder->new(ND_MINTER, 
@@ -2058,7 +2049,7 @@ sub gen_minder { my( $mh, $minderpath )=@_;
 	# of this routine.
 	#
 	my $opt = $implicit_minter_opt;
-	$opt->{rlog_preamble} = $mh->{opt}->{rlog_preamble};
+#	$opt->{rlog_preamble} = $mh->{opt}->{rlog_preamble};
 		# XXX this probably corrupts $implicit_minter_opt
 	my $submh = EggNog::Minder->new(ND_MINTER, 
 		$mh->{WeAreOnWeb},

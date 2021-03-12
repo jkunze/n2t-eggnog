@@ -12,7 +12,7 @@ our @ISA = qw(Exporter);
 
 our @EXPORT = qw();
 our @EXPORT_OK = qw(
-	script_tester remake_td remove_td shellst_is
+	testdata_default script_tester remake_td remove_td shellst_is
 );
 our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
 
@@ -22,6 +22,8 @@ use Try::Tiny;			# to use try/catch as safer than eval
 use Safe::Isa;			# avoid exceptions with the unblessed
 use EggNog::Binder ();
 
+our $testdata_default = 'td';	# a constant
+
 our ($perl, $blib, $bin);
 our ($rawstatus, $status);	# "shell status" version of "is"
 
@@ -29,7 +31,7 @@ our ($rawstatus, $status);	# "shell status" version of "is"
 #   $td		temporary directory, or empty string on error
 #   $cmd	command string
 #   $homedir	--home value
-#   $bgroup	binder group (for exdb case)
+#   $tdata	value intended for --testdata
 #   $indb	boolean to test if internal binder is being used
 #   $exdb	boolean to test if external binder is being used
 
@@ -51,11 +53,25 @@ sub script_tester { my( $script )=@_;
 		(-e $bin ?		# exit status in $? >> 8
 			$bin : "../$bin") . " ";
 	my $homedir = $td;		# config, prefixes, binders, minters,...
-	my $bgroup;			# external binder group
 	my $indb = 1;			# default
 	my $exdb = 0;			# default
+	# xxx these settings should be derived using the session start up code!
+	# EGG_DBIE=e means e and NOT i
+	# EGG_DBIE=i means i and NOT e
+	# EGG_DBIE=ie means i and e
+	# EGG_DBIE=ei means i and e
+	# EGG_DBIE=xyz means i (default) and NOT e (default)
+
+	# The way we're called there's no --testdata option, so we pull
+	# from the environment. Later we actually generate a --testsdata
+	# option to support tests that will rely on it to create binder
+	# names that don't conflict with other names.
+
+	my $tdata = $ENV{EGG_TESTDATA} || $testdata_default;
+
 	if ($ENV{EGG_DBIE}) {
 		if (index($ENV{EGG_DBIE}, 'e') >= 0) {
+			$exdb = 1;
 			say("script_tester: detecting env var " .
 				"EGG_DBIE=$ENV{EGG_DBIE}");
 			my $mgstatus = `mg status`;	# yyy mongo-specific
@@ -65,22 +81,15 @@ sub script_tester { my( $script )=@_;
 					"\"mg start\"?";
 				return ('');		# error
 			}
+			index($ENV{EGG_DBIE}, 'i') >= 0 or
+				$indb = 0;
 		}
-		$bgroup = $td;		# td_egg is ok as dir or bgroup name
-		$exdb = 1;
-		$indb = index($ENV{EGG_DBIE}, 'i') >= 0;	# not default
+		#$indb = index($ENV{EGG_DBIE}, 'i') >= 0;	# not default
 	}
-	my $hgbase = "--home $homedir";		# home-binder-group base string
-	$bgroup and				# empty unless EGG_DBIE is set
-		$hgbase .= " --bgroup $bgroup";
+	my $hgbase = "--home $homedir "		# home-binder-group base string
+		. "--testdata $tdata";
 
-
-# XXXXXXXXXXXXXXXXX need to add --user, so that behind server we open correct DB
-# XXXXXXXXXXXXXXXXX need to add binder groups: prd, dev, stg,
-
-
-
-	return ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb);
+	return ($td, $cmd, $homedir, $tdata, $hgbase, $indb, $exdb);
 }
 
 sub shellst_is { my( $expected, $output, $label )=@_;
@@ -91,20 +100,16 @@ sub shellst_is { my( $expected, $output, $label )=@_;
 	return is($status, $expected, $label);
 }
 
-sub remake_td { my( $td, $bgroup )=@_;	# make $td with possible cleanup
+sub remake_td { my( $td, $tdata )=@_;	# make $td with possible cleanup
 
-	-e $td and
-		remove_td($td, $bgroup);
-	#if ($bgroup) {
-	#	my $msg = EggNog::Binder::brmgroup_standalone($bgroup);
-	#	$msg and
-	#		say STDERR $msg;
-	#}
+	remove_td($td, $tdata);
+	#-e $td and
+	#	remove_td($td, $tdata);
 	mkdir($td) or
 		say STDERR "$td: couldn't mkdir: $!";
 }
 
-sub remove_td { my( $td, $bgroup )=@_;
+sub remove_td { my( $td, $tdata )=@_;
 
 	# remove $td but make sure $td isn't set to "."
 	# yyy maybe one day $td is optional
@@ -118,11 +123,26 @@ sub remove_td { my( $td, $bgroup )=@_;
 		return undef;	# returns from "catch", NOT from routine
 	};
 	# not bothering to check status of $ok
-	my $msg;
-	if ($bgroup) {
-		my $msg = EggNog::Binder::brmgroup_standalone($bgroup);
-		$msg and
-			say STDERR $msg;
+
+	if ($tdata) {
+
+		# Tweak local environment so test binders get distinct names
+		# when session (created next) default vals get set (kludge?).
+
+		$ENV{EGG_TESTDATA} ||=		# don't override user setting
+			$tdata;
+		my ($sh, $msg) = EggNog::Session::make_session();
+		if (! $sh) {
+			say STDERR "couldn't create session: $msg";
+			return undef;
+		}
+		# session created; local $sh var session object
+		# will be destroyed when it goes out of scope
+		if (! EggNog::Binder::brmgroup($sh)) {
+			outmsg($sh);
+			return undef;
+		}
+		return 1;
 	}
 }
 

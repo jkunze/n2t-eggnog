@@ -11,12 +11,13 @@ use EggNog::ApacheTester ':all';
 #my ($td, $cmd) = script_tester "egg";		# yyy needed?
 #my ($td2, $cmd2) = script_tester "nog";		# yyy needed?
 
-my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "egg";
+my ($td, $cmd, $homedir, $tdata, $hgbase, $indb, $exdb) = script_tester "egg";
 $td or			# if error
 	exit 1;
 my ($td2, $cmd2);
-($td2, $cmd2, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "nog";
-$ENV{EGG} = $hgbase;		# initialize basic --home and --bgroup values
+($td2, $cmd2, $homedir, $tdata, $hgbase, $indb, $exdb) = script_tester "nog";
+# xxx why does egn_apachebase clobber returned $hgbase?
+#$ENV{EGG} = "$hgbase --service n2t ";		# initialize basic --home and --tdata values
 
 # Tests for resolver mode look a little convoluted because we have to get
 # the actual command onto STDIN in order to test resolver mode.  This
@@ -55,6 +56,7 @@ my $cfgdir = "n2t";		# this is an N2T web server test
 
 my $webclient = 'wget';
 my $which = `which $webclient`;
+# XXX use exit 1 to get build to fail properly instead of silently
 $which =~ /wget/ or plan skip_all =>
 	"why: web client \"$webclient\" not found";
 
@@ -62,9 +64,11 @@ $which =~ /wget/ or plan skip_all =>
 my ($msg, $src_top, $webcl,
 		$srvport, $srvbase_u, $ssvport, $ssvbase_u,
 	) = prep_server $cfgdir;
+# XXX use exit 1 to get build to fail properly instead of silently
 $msg and
 	plan skip_all => $msg;
 
+# XXX use exit 1 to get build to fail properly instead of silently
 ! $ENV{EGNAPA_TOP} and plan skip_all =>
 	"why: no Apache server (via EGNAPA_TOP) detected";
 
@@ -74,29 +78,38 @@ SKIP: {
 
 # Make sure server is stopped in case we failed to stop it last time.
 # We don't bother checking the return as it would usually complain.
-#
+
 apachectl('graceful-stop');
 
 # Note: $td and $td2 are barely used here.
 # Instead we use non-temporary dirs $ntd and $ntd2.
 # XXX change t/apachebase.t to use these type of dirs
-#
+
 my $buildout_root = $ENV{EGNAPA_BUILDOUT_ROOT};
 my $binders_root = $ENV{EGNAPA_BINDERS_ROOT};
 my $minters_root = $ENV{EGNAPA_MINTERS_ROOT};
 my ($ntd, $ntd2) = ($binders_root, $minters_root);
 
-remake_td($td, $bgroup);
-remake_td($td2, $bgroup);
+remake_td($td, $tdata);
+remake_td($td2, $tdata);
 
 # This script calls egg, and we want the latest -Mblib and cleanest, eg,
 #$ENV{EGG} = "--home $buildout_root";	# wrt default config and prefixes
-$ENV{EGG} = $hgbase;		# initialize basic --home and --bgroup values
+# zzz why does this next line appear twice
+#$ENV{EGG} = "$hgbase --service n2t ";		# initialize basic --home and --tdata values
+
+$hgbase = "--home $buildout_root";	# and we know better in this case
+my $tda = "--testdata $tdata";
+$hgbase .= " $tda";
+$ENV{EGG} = "$hgbase ";		# initialize basic --home and --tdata values
 
 my ($x, $y);
 $x = apachectl('start');
 skip "failed to start apache ($x)"
 	if $x;
+
+# HTTP Authorization challenge that should match either Apache 2.2 or 2.4.
+my $authz_chall = '401 \w*authoriz';
 
 #
 # This section tests server access to various documentation pages.
@@ -106,15 +119,15 @@ $x = `$webcl "$srvbase_u"`;
 like $x, qr{HTTP/\S+\s+200\s+OK.*Name-to-Thing.*Resolver}si,
 	'public http access to server home page authorized';
 
+#say "webcl=$webcl"; say "srvbase_u=$srvbase_u, ssvbase_u=$ssvbase_u";
+#$x = apachectl('graceful-stop')	and print("$x\n");
+#exit;	#########
+#print "######### temporary testing stop #########\n"; exit;
+
 # only want location info, not redirect
 $x = `$webcl --max-redirect 0 "$ssvbase_u/e/naan_request"`;
 like $x, qr{HTTP/\S+\s+302\s+.*goo.gl/forms}si,
 	'pre-binder-lookup redirect for externally hosted content';
-
-#say "webcl=$webcl";
-#say "srvbase_u=$srvbase_u";
-#$x = apachectl('graceful-stop'); #	and print("$x\n");
-#print "######### temporary testing stop #########\n"; exit;
 
 $x = `$webcl "$srvbase_u/e"`;
 like $x, qr{HTTP/\S+\s+200\s+OK.*extras directory}si,
@@ -161,11 +174,73 @@ like $x, qr{HTTP/\S+\s+200\s+OK.*api home page}si,
 
 my $pps;		# passwords/permissions string
 my $fqsr;		# fully qualified shoulder
+my $a0;
+
+$pps = setpps get_user_pwd "ncpt", "ncpt", $cfgdir;
+
+# XXX NB: for this kind of resolution to work we need to add apache rule!!!
+# YYY this one-off does not scale
+#ark:/99999/fk3                          # ncpt
+#ark:/99999/ffk3                         # ncpt_test
+# RewriteRule ^/(ark:/?99999/ff?k3.*)\$ \\
+#     "_rslv_\${map_ncpt:\${esc:\$1%{ENV:THUMPER}}.resolve \${$hdrblob}}" [NC]
+
+my $ncptshdr = 'ark:/99999/fk3';
+
+$a0 = "${ncptshdr}n2tegntest";
+$x = `$webcl $pps "$ssvbase_u/a/ncpt/b? --verbose $a0.set _t https://z.example.com"`;
+$x = `$webcl --max-redirect 0 "$ssvbase_u/$a0"`;
+like $x, qr{^Location: https://z.example.com}m,
+	"generic 'ncpt' test shoulder ($ncptshdr) target redirect";
+
+$ncptshdr = 'ark:/99999-dev-2a.b/fk3';
+$a0 = "${ncptshdr}n2tegntest";
+$x = `$webcl --max-redirect 0 "$ssvbase_u/$a0"`;
+like $x, qr{^Location: https://z-dev-2a.b.example.com}m,
+	"'ncpt' test shoulder with -dev-2a.b NAAN modifier";
+
+$ncptshdr = 'ark:/68061/fk3';
+$a0 = "${ncptshdr}n2tegntest";
+$x = `$webcl $pps "$ssvbase_u/a/ncpt/b? --verbose $a0.set _t https://z.example.com"`;
+$x = `$webcl --max-redirect 0 "$ssvbase_u/$a0"`;
+like $x, qr{^Location: https://z.example.com}m,
+	"'ncpt' real shoulder ($ncptshdr) target redirect";
+
+#$x = apachectl('graceful-stop')	and say($x);
+#exit;	######### premature stop
+
+$pps = setpps get_user_pwd "idra", "idra", $cfgdir;
+
+my $idrashdr = 'ark:/99999/fq3';
+
+$a0 = "${idrashdr}n2tegntest";
+$x = `$webcl $pps "$ssvbase_u/a/idra/b? --verbose $a0.set _t https://z.example.com"`;
+$x = `$webcl --max-redirect 0 "$ssvbase_u/$a0"`;
+like $x, qr{^Location: https://z.example.com}m,
+	"generic 'idra' test shoulder ($idrashdr) target redirect";
 
 $pps = setpps get_user_pwd "ezid", "ezid", $cfgdir;
 
+$a0 = "ark:/99999/fk2n2tegntest";
+$x = `$webcl $pps "$ssvbase_u/a/ezid/b? --verbose $a0.set _t https://w.example.com"`;
+$x = `$webcl --max-redirect 0 "$ssvbase_u/$a0"`;
+like $x, qr{^Location: https://w.example.com}m,
+	"generic 'ezid' test shoulder target redirect";
+
+# YYY first use of curl, not wget!
+$x = `curl --max-redirs 0 --silent -I "$srvbase_u/$a0" | grep -i 'Access-Control-' | sort`;
+like $x, qr{Allow-Methods:.*Allow-Origin:.*Expose-Headers:}si,
+	'CORS supported headers present on redirect';
+
+$a0 = "ark:/99999/968061_foo";
+#$a0 = "ark:/99999/9s1234567_foo";
+$x = `$webcl --max-redirect 0 "$srvbase_u/$a0"`;
+#like $x, qr{^Location: http://.*/ark:/s1234567/99999/9s1234567_foo}m,
+like $x, qr{^Location: http://.*/ark:/68061/99999/968061_foo}m,
+	"generic local resolver use of 99999 n2t-based resolution";
+
 my $a1 = 'ark:/12345/bcd';
-$x = `$webcl $pps "$ssvbase_u/a/ezid/b? $a1.set _t http://b.example.com"`;
+$x = `$webcl $pps "$ssvbase_u/a/ezid/b? --verbose $a1.set _t http://b.example.com"`;
 like $x, qr{HTTP/\S+\s+200\s+.*egg-status: 0}si,
 	'set resolution target';
 
@@ -173,11 +248,12 @@ use EggNog::Binder ':all';
 my $rrminfo = RRMINFOARK;
 
 # this test won't work in resolve.t, as it needs a running server
-my $hgid = `hg identify | sed 's/ .*//'`;
-chop $hgid;
+#my $hgid = `hg identify | sed 's/ .*//'`;
+my $gitid = `git show --oneline | sed 's/ .*//;q'`;
+chop $gitid;
 #print "comm: $webcl \"$srvbase_u/$rrminfo\"\n";
 $x = `$webcl "$srvbase_u/$rrminfo"`;
-like $x, qr{Location:.*dvcsid=\Q$hgid\E&rmap=}i,
+like $x, qr{Location:.*dvcsid=\Q$gitid\E&rmap=}i,
 	'resolver info with correct dvcsid returned';
 # fe80::c57:e454:73e5:9ed - - [22/Jan/2017:22:39:13 --0800] [jak-macbook.local/sid#7f83b4817728][rid#7f83b5012ca0/initial] (5) map lookup OK: map=map_ezid key=99999/__rrminfo__.resolve ac=*/*!!!ff=!!!ra=fe80::c57:e454:73e5:9ed!!!co=!!!re=!!!ua=Wget/1.15%20(darwin13.1.0) -> val=redir302 
 
@@ -264,7 +340,7 @@ $pps = setpps get_user_pwd "yamz", "yamz", $cfgdir;
 #	'exec failure error message';
 
 $x = `$webcl $pps "$ssvbase_u/a/yamz/b? --verbose --version"`;
-like $x, qr{HTTP/\S+\s+401\s+Authorization.*version:}si,
+like $x, qr{HTTP/\S+\s+$authz_chall.*version:}si,
 	'verbose version collected from web server environment';
 
 my $v = `$cmd --verbose --version`;
@@ -334,7 +410,7 @@ test_minters $cfgdir, 'yamz', 'xref', @more_fqshoulders;
 my ($popminder, $naanblade) = crack_minter 'yamz/ark/99999/ffk6';
 $pps = setpps get_user_pwd "yamz", "yamz", $cfgdir;
 $x = `$webcl $pps "$ssvbase_u/a/$popminder/m/ark/$naanblade? mint 1"`;
-like $x, qr{HTTP/\S+\s+401\s+Authorization.*s: $naanblade\w{4,7}\n}si,
+like $x, qr{HTTP/\S+\s+$authz_chall.*s: $naanblade\w{4,7}\n}si,
 	"populator/binder \"$popminder\" mints from $naanblade";
 
 # We'll piggyback another use for the noauth_test, which is that
@@ -441,10 +517,14 @@ $x = `$webcl "$srvbase_u/ark:/12345/WontBeFound"`;
 like $x, qr{HTTP/\S+\s+404\s+Not\s+Found}si,
 	"not found page gets 404, eg, and not home page";
 
-# xxx should pull this list of binders from FS via "find"
+# yyy should pull this list of binders from FS via "find"?
 my @binders = ( qw(ezid ezid_test oca oca_test yamz yamz_test) );
+my @owners =  ( qw(ezid ezid      oca oca      yamz yamz     ) );
 
-test_binders $cfgdir, $ntd, $indb, @binders;
+test_binders $buildout_root, $cfgdir, $ntd, $indb, \@binders, \@owners;
+
+#$x = apachectl('graceful-stop'); #	and print("$x\n");
+#print "######### temporary testing stop #########\n"; exit;
 
 # <body><h1>How to ask for a single-binder resolution.</h1></body> </html>
 $x = `$webcl "$srvbase_u/r"`;
@@ -497,6 +577,6 @@ purge_test_realms($cfgdir, $td, \@cleanup_ids, 'ezid', 'oca', 'yamz');
 
 $x = apachectl('graceful-stop')	and print("$x\n");
 
-remove_td($td, $bgroup);
-remove_td($td2, $bgroup);
+remove_td($td, $tdata);
+remove_td($td2, $tdata);
 }

@@ -9,10 +9,12 @@
 
 .. _EZID: https://ezid.cdlib.org
 .. _ARK: /e/ark_ids.html
+.. _ARK request form: https://goo.gl/forms/bmckLSPpbzpZ5dix1
+.. _ARKs FAQ: https://wiki.lyrasis.org/display/ARKs/ARK+Identifiers+FAQ
 .. _DOI: https://www.doi.org
 .. _EZID.cdlib.org: https://ezid.cdlib.org
 .. _DataCite: https://www.datacite.org
-.. _ARKs in the Open: https://wiki.duraspace.org/display/ARKs/ARKs+in+the+Open+Project
+.. _ARKs in the Open: https://wiki.lyrasis.org/display/ARKs/ARKs+in+the+Open+Project
 .. _California Digital Library: https://www.cdlib.org
 .. _N2T Partners: /e/partners.html
 .. _N2T API Documentation: /e/n2t_apidoc.html
@@ -29,17 +31,25 @@
 .. _ARK module for Drupal: https://www.drupal.org/project/ark
 .. _EZID service: https://ezid.cdlib.org
 .. _N2T.net resolver: /
-.. _NAAN request form: https://goo.gl/forms/bmckLSPpbzpZ5dix1
 .. _The registry: http://www.cdlib.org/services/uc3/naan_registry.txt
 .. _Identifier conventions: http://ezid.cdlib.org/learn/id_concepts
+.. _Python Noid: https://github.com/no-reply/pynoid
+.. _Golang Noid: https://github.com/ndlib/noids
+.. _Ruby Noid: https://github.com/ruby-microservices/noid
+.. _PHP Noid: https://github.com/Daniel-KM/Noid4Php/blob/master/noid
 
 //BEGIN//
 
 Archival Resource Key (ARK) Identifiers
 =======================================
 
-ARKs are URLs designed to support long-term access to information objects.
-In 2001 ARKs were introduced to identify objects of any type:
+ARK identifiers are URLs designed to support long-term access to
+information objects. To get started creating ARKs, first fill out the
+`ARK request form`_, and to come up to speed quickly, see the `ARKs
+FAQ`_.
+
+Introduced in 2001, ARK identifiers were designed to identify objects of
+any type:
 
 - digital objects – documents, databases, images, software, websites, etc.
 - physical objects – books, bones, statues, etc.
@@ -74,25 +84,43 @@ Some advantages of ARKs:
   compare for variant and containment relationships
 - openness – unlike other persistent identifiers, ARKs don't lock you into
   one specific, fee-based management and resolution infrastructure
-- impact – ARKs appear in Thomson Reuters’ Data Citation Index |sm| and
+- impact – ARKs appear in the Data Citation Index |sm| and in
   ORCID researcher profiles
 
-Since 2001 over 550 organizations spread across fifteen countries registered
+Since 2001 over 650 organizations across the world registered
 to assign ARKs. `The registry`_ includes libraries, archives, museums
 (Smithsonian), publishers, government agencies, academic institutions
 (Princeton), and technology companies (Google). To have your institution
-registered, use the `NAAN request form`_. Some of the major users are
+registered, use the `ARK request form`_. Some of the major users are
 
-- The California Digital Library
-- The Internet Archive
-- National Library of France (Bibliothèque nationale de France)
-- Portico Digital Preservation Service
-- University of California Berkeley
-- University of North Texas
-- FamilySearch.org
-- University of Chicago
-- University College Dublin
-- The British Library
+..
+   see https://stackoverflow.com/questions/4550021/working-example-of-floating-image-in-restructured-text
+
+.. container:: twocol
+
+   .. container:: leftside
+
+      - The California Digital Library
+      - The Internet Archive
+      - National Library of France
+      - Portico Digital Preservation Service
+      - Smithsonian Institution
+      - University of California Berkeley
+      - University of California San Francisco
+      - University of North Texas
+      - Institute of Scientific and Technical Information
+      - FamilySearch.org
+      - University of Utah
+      - University of Chicago
+      - University College Dublin
+      - The British Library
+      - Princeton University
+
+   .. container:: rightside
+
+      .. image:: /e/images/naan_growth.png
+         :width: 42 %
+         :alt: Numbers of ARK-assigning organizations since 2001.
 
 There is a discussion group for ARKs (Archival Resource Keys) at
 
@@ -107,7 +135,7 @@ with and learning from others about how ARKs have been or could be used in
 identifier applications.
 
 The groups are also intended as a mechanism for the `ARKs in the Open`_ project
-and the CDL, in its role as the ARK scheme maintenance agency, to seek
+and the California Digital Library (CDL), in its role as the ARK scheme maintenance agency, to seek
 community feedback on a number of longer term issues and activities, including
 
 - finalizing the ARK specification as an Internet RFC,
@@ -120,25 +148,33 @@ Here is a brief summary of other resources relevant to ARKs.
 - `Towards Electronic Persistence Using ARK Identifiers`_ (July 2003)
 - `ARK and CDL Identifier conventions`_
 - `Archival Resource Key - Wikipedia`_
-- `Noid (Nice Opaque Identifiers)`_, open source software for minting and resolving ARKs on your own
+- `Noid (Nice Opaque Identifiers)`_, open source Perl software for minting and resolving ARKs on your own
+- `EZID service`_: long term identifiers made easy, if you would rather not install and maintain a service yourself
+- `N2T.net resolver`_: Name-to-Thing, a global resolver for ARKs (and other identifiers)
+
+A brief scan (May 2019) of open source software implementing ARK services turned up this set of packages, which we list below without endorsement.
+
+- `Python Noid`_, Python implementation of Noid
+- `Golang Noid`_, Golang/Docker implementation of Noid
+- `Ruby Noid`_, Ruby implementation of Noid
+- `PHP Noid`_, PHP implementation of Noid
 - `ARK plugin for Omeka`_, which creates and manages ARKs for the Omeka open source web-publishing platform
 - `ARK module for Drupal`_, which allows your Drupal site to act as a Name Mapping Authority (NMA)
-- `EZID service`_: long term identifiers made easy, if you would rather not install and maintain those services yourself
-- `N2T.net resolver`_: Name-to-Thing, a single global resolver at n2t.net
 
 ARK Anatomy
 =============
 
 An ARK is represented by a sequence of characters that contains the label,
-"``ark:``". When embedded in a URL, it is preceded by the protocol  ("``http://``"
-or "``https://``") and name of a service that provides support for that ARK.
-That service name, or the "Name Mapping Authority" (NMA), is mutable and
-replaceable, as neither the web server itself nor the current web protocols are
-expected to last longer than the identified objects. The immutable, globally
-unique identifier follows the "``ark:``" label. This includes a "Name Assigning
-Authority Number" (NAAN) identifying the naming organization, followed by the
-name that it assigns to the object. Please visit the `NAAN request form`_ if you
-are interested in generating and using ARKs for your information objects.
+"``ark:``". When embedded in a URL, it is preceded by the protocol
+("``http://``" or "``https://``") and name of a service that provides support
+for that ARK. That service name, or the "Name Mapping Authority" (NMA), is
+mutable and replaceable, as neither the web server itself nor the current web
+protocols are expected to last longer than the identified objects. The
+immutable, globally unique identifier follows the "``ark:``" label. This
+includes a "Name Assigning Authority Number" (NAAN) identifying the naming
+organization, followed by the name that it assigns to the object. Please visit
+the `ARK request form`_ if you are interested in generating and using ARKs for
+your information objects.
 
 Here is a diagrammed example: ::
 
@@ -153,7 +189,7 @@ Here is a diagrammed example: ::
 
 The ARK syntax can be summarized, ::
 
-[http://NMA/]ark:/NAAN/Name[Qualifier]
+ [http://NMA/]ark:/NAAN/Name[Qualifier]
 
 The NMA part, which makes the ARK actionable (clickable in a web browser), is
 in brackets to indicate that it is optional and replaceable. ARKs are intended
@@ -171,20 +207,20 @@ might become ::
 NAAN: the Name Assigning Authority Number
 =========================================
 
-The NAAN part, following the "``ark:``" label, uniquely identifies the organization
-that assigned the Name part of the ARK. Often the initial access provider (the
-first NMA) coincides with the original namer (represented by the NAAN),
-however, access may be provided by one or more different entities instead of or
-in addition to the original naming authority.
+The NAAN part, following the "``ark:``" label, uniquely identifies the
+organization that assigned the Name part of the ARK. Often the initial access
+provider (the first NMA) coincides with the original namer (represented by the
+NAAN), however, access may be provided by one or more different entities
+instead of or in addition to the original naming authority.
 
-The NAAN used above, 13030, represents the California Digital Library. As of
-2018, over 550 organizations have registered for ARK NAANs, including numerous
-universities, Google, the Internet Archive, WIPO, the British Library, and
-other national libraries.
+The NAAN used above, 13030, represents the California Digital Library (CDL). As
+of 2020, over 600 organizations have registered for ARK NAANs, including
+numerous universities, Google, the Internet Archive, WIPO, the British Library,
+and other national libraries.
 
 Any stable memory organization may obtain a NAAN at no cost and begin assigning
-ARKs. Please contact the CDL if you are interested in generating and using ARKs
-for your information objects.
+ARKs. Please fill out the `ARK request form`_ if you are interested in
+generating and using ARKs for your information objects.
 
 CDL maintains a complete registry of all currently assigned NAANs, which is
 mirrored at the (U.S.) National Library of Medicine and the Bibliothèque
@@ -262,16 +298,16 @@ as ::
  when: 1963
  where: http://texashistory.unt.edu/ark:/67531/metapth346793/
 
-Adding '``??``' to the end should return a policy statement. It is a side-benefit of
-ARKs that an object's metadata doesn't need an identifier different from that
-for the object, which cuts in half the number of identifiers that need to be
-generated and managed.
+Adding '``??``' to the end should return a policy statement. It is
+a side-benefit of ARKs that an object's metadata doesn't need an identifier
+different from that for the object, which cuts in half the number of
+identifiers that need to be generated and managed.
 
-CDL Name Assignment and Support Policy Statements
-==================================================
+Name Assignment and Support Policy Statements
+=============================================
 
-The CDL assigns identifiers within the ARK domain under the NAAN 13030 and
-according to the following principles:
+As an example, the California Digital Library (CDL) assigns identifiers within
+the ARK domain under the NAAN 13030 and according to the following principles:
 
 - No ARK shall be re-assigned; that is, once an ARK-to-object association has
   been made public, that association shall be considered unique into the

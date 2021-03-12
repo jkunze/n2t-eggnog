@@ -7,13 +7,13 @@ use warnings;
 use EggNog::ValueTester ':all';
 use File::Value ':all';
 
-my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "nog";
+my ($td, $cmd, $homedir, $tdata, $hgbase, $indb, $exdb) = script_tester "nog";
 $td or			# if error
 	exit 1;
-$ENV{NOG} = $hgbase;		# initialize basic --home and --bgroup values
+$ENV{NOG} = $hgbase;		# initialize basic --home and --testdata values
 
 {
-remake_td($td, $bgroup);
+remake_td($td, $tdata);
 $ENV{MINDERPATH} = $td;
 my ($x, $y);
 
@@ -96,5 +96,5 @@ like $x, qr/bar97/, 'queue delete';
 $x = `$cmd bar.mint 3`;
 like $x, qr/bar96\s+bar98\s+bar0/s, 'mint next 3 skips deleted';
 
-remove_td($td, $bgroup);
+remove_td($td, $tdata);
 }

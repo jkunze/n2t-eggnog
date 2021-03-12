@@ -112,6 +112,7 @@ Some nog options:
  -d minter   relative or absolute path to minter, ignoring any path
  -p path     search path to minter, used to look up 'm' (default ~/.minders)
  -m format   output format, one of ANVL, XML, JSON, Plain (default)
+ --txnlog=L  nog can record all transactions in file L (default: no logging)
 
 EOF
 
@@ -236,6 +237,7 @@ my @getoptlist = (
 	'qs=s',			# query string for testing http
 	'recurse|r',		# perform action recursively (unused)
 	'sif=s',		# succeed if elem exists/doesn't (bind)
+	'testdata=s',		# dbname part distinguishing system test scripts
 	'testlock=i',		# flag xxx test
 	'txnlog=s',		# optional transaction log, eg, per-server
 	'type|t=s',		# mkminter type (noid only)

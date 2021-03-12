@@ -6,5 +6,7 @@ pwdfile="\
 	pwdfile_oca	oca	dumy2 \
 	pwdfile_yamz	yamz	dumy3 \
 	pwdfile_xref	xref	dumy4 \
-	pwdfile_n2t	n2t	dumy5 \
+	pwdfile_purl	purl	dumy5 \
+	pwdfile_ht	ht	dumy6 \
+	pwdfile_n2t	n2t	dumy99 \
 "

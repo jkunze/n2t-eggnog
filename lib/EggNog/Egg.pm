@@ -3,7 +3,15 @@ package EggNog::Egg;
 # Author:  John A. Kunze, jak@ucop.edu, California Digital Library
 #		Originally created, UCSF/CKM, November 2002
 # 
-# Copyright 2008-2012 UC Regents.  Open source BSD license.
+# Copyright 2008-2020 UC Regents.  Open source BSD license.
+#
+# XXX add low-level check for binder opened RDONLY since BDB silently fails
+#     with no messag
+
+# XXX can I turn a linux1 binder readonly during DNS transition
+#     when some clients will still have old ip addr?
+# XXX what about Linux1 OCA minter? can I make it readonly? should I
+#     artificially advance that minter (since can't pause it)?
 
 use 5.10.1;
 use strict;
@@ -18,7 +26,8 @@ our @ISA = qw(Exporter);
 our @EXPORT = qw();
 our @EXPORT_OK = qw(
 	exdb_get_dup indb_get_dup exdb_get_id egg_inflect
-	flex_enc_exdb flex_enc_indb
+	flex_enc_exdb flex_enc_indb egg_minters
+	iddump idload
 	PERMS_ELEM OP_READ
 	EXsc PKEY
 );
@@ -58,7 +67,7 @@ our $SL = length $separator;
 
 our $BSTATS;	# flex_encoded exdb record id/elem hash for binder stats
 
-# yyy test bulk commands at scale -- 2011.04.24 Greg sez it bombed
+# yyy test bulk commands at scale -- 2011.04.24 ezid dev sez it bombed
 #     out with a 1000 commands at a time; maybe lock timed out?
 
 # yyy The database must hold nearly arbitrary user-level identifiers
@@ -161,6 +170,178 @@ sub bcount { my( $bh, $amount )=@_;
 	return $result;
 }
 
+my $cfq_usage_text = << "EOF";
+
+SUBCOMMAND
+   cfq - eggnog configuration query
+
+SYNOPSIS
+   egg cfq [ Tword ]
+
+where Tword is a trigger word for various kinds of plain text output
+showing configuration information. Except for the reserved forms
+
+   _list
+   _list_all
+   _help
+   *_today
+   *_N
+   _host_where Key Value
+
+the Tword is normally taken as a verbatim key whose value is returned.
+If the key doesn't identify a host-specific setting, it will be looked up
+as general service setting. If the key identifies a value of "false", the
+return status to the shell will be non-zero, and otherwise zero (success).
+
+The cfq subcommand supports cron. Extra processing occurs when the Tword
+word contains the string "_today". Before lookup, this string is transformed
+into the current day of the week (monday, ..., sunday) or, failing a match,
+day of the month (1, 2, ..., 31). The resulting keys are looked up and the
+first match is returned. For example, these keys
+
+   patch_tuesday	# for OS patching on Tuesdays
+   rotate_1		# rotate logs at the start of the month
+
+will cause "egg cfq patch_today" to print the value for patch_tuesday only
+on Tuesdays, and "egg -q cfq rotate_today" to print nothing, but return a
+non-zero exit status only on the first of the month and if the value for
+rotate_1 is non-empty or non-zero. The _host_where trigger prints those
+configured hostnames for which Key equals Value, eg, "class" equals "prd".
+
+EOF
+
+my $minters_usage_text = << "EOF";
+
+SUBCOMMAND
+   minters - operate binder-specific nog minters
+
+SYNOPSIS
+   egg minters mint N [ NickName ]
+   egg minters nab N
+   egg minters set NickName.FilePath ...
+   egg minters set
+
+The first form generates N spings using the nog mint method on the named
+minter, or the first binder-specific minter found. The second form generates
+N spings using the nog nab method.
+
+The third form redefines the entire set of minters associated with the egg
+binder in question, taking any number of pairs of Nickname and FilePath.
+The fourth form lists the set of binder-specific minters, if any.
+
+EOF
+
+our @wdays =
+	qw( sunday monday tuesday wednesday thursday friday saturday );
+
+# output 1 if set 0 if not
+# first try hash given as first arg, and if no keys found,
+# try hash given as second arg; usually these args are given as
+# 1. a host-specific hash
+# 2. a service-specific hash
+
+sub outkey { my( $om, $h1cf, $h2cf, $key, $quiet )=@_;
+
+	! exists $h1cf->{$key} && ! exists $h2cf->{$key} and
+		$quiet || $om->elem($key, 'UNDEFINED'),
+		return 0;
+	my $value = $h1cf->{$key} // $h2cf->{$key};	# defined but 0 is ok
+	$quiet || $om->elem($key, $value);
+	return ($value ? 1 : 0);
+}
+
+# various configuration queries, used by cron
+# reserved queries: _help, _list, _list_all
+
+sub egg_cfq { my( $bh, $mods, $om, $subcmd, $hwkey, $hwval )=@_;
+
+	my $sh = $bh->{sh};
+	$sh->{remote} and		# yyy why have this and {WeAreOnWeb}?
+		unauthmsg($sh),
+		return undef;
+
+# return EggNog::Conf::cfq($tword);
+# generic cfq doesn't use $sh, $bh, $mods, $om
+	my $msg;
+	if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {
+		outmsg($sh, $msg);	# failed to configure
+		return undef;
+	}
+
+	$subcmd ||= '_help';
+	my $servicecf = $sh->{service_config};
+	my $hcf = $sh->{host_config};
+
+# dependencies: $sh->{service_config}; $sh->{host_config};
+# Data::Dumper, YAML
+# outkey()
+
+	use Data::Dumper 'Dumper';
+	if ($subcmd eq '_help') {
+		say "$cfq_usage_text";
+		return 1;
+	}
+	elsif ($subcmd eq '_list') {
+		say Dumper $hcf;
+		return 1;
+	}
+	elsif ($subcmd eq '_list_all') {
+		say Dumper $servicecf;
+		return 1;
+	}
+	elsif ($subcmd eq '_host_where') {
+		! $hwkey || ! $hwval and
+			return outkey($om, $hcf, $servicecf,
+			 '_host_where needs both key and value args non-empty');
+		my ($host, $attribs);
+		while (($host, $attribs) = each $servicecf->{hosts}) {
+			$attribs->{$hwkey} eq $hwval and
+				say "$host";	# yyy not using $om
+		}
+		return 1;
+	}
+	# All above cases will have returned, so the rest is an "else" case.
+
+	my $key = $subcmd;
+	$key !~ /_today(?:_|$)/ and		# ordinary case
+		return outkey($om, $hcf, $servicecf, $key);
+
+	# Special processing case. Greedy match extracts only the last
+	# instance of "_today".
+
+	my ($before, $after) = $key =~ /^(.*_)today(_.*|$)/;
+	defined($before) or			# yyy unknown error
+		return outkey($om, $hcf, $servicecf, "bad query");
+	$after //= '';
+	my @date = localtime();
+	my $mday = $date[3];
+	my $wday = $date[6];	# day of week, 0 = Sunday
+
+	my $keywday = $before .
+		$wdays[ $date[6] ] . $after;		# day of week, 0=sunday
+	my $keymday = $before . $date[3] . $after;	# day of month
+	my $quiet = 1;
+	outkey($om, $hcf, $servicecf, $keywday, $quiet) and
+		# quietly check if true and if so, output and return
+		return outkey($om, $hcf, $servicecf, $keywday);
+	# if it wasn't a day-of-week key, try day-of-month key
+	outkey($om, $hcf, $servicecf, $keymday, $quiet) and
+		# quietly check if true and if so, output and return
+		return outkey($om, $hcf, $servicecf, $keymday);
+	# NB: if weekday check succeeds, it occludes any monthday match
+	return 0;
+
+# Used in boolean testing, Class is one of these attributes:
+# 
+#     dev | stg | prd | loc	- overall class returned by "get" (loc=local)
+#      (default is 'loc' if cannot be devined from string embedded in hostname)
+#     pfxpull			- prefixes pulled in and tested
+#     backup			- backups performed (eg, live data)
+#     fulltest			- full testing performed (eg, live data)
+#     rslvrcheck			- regular resolver check performed
+#     patch_{mon,tue,wed,thu,fri} - day on which OS patching occurs
+}
+
 # yyy want mkid to be soft if exists, like open WRITE|CREAT
 #  yyy and rlog it
 
@@ -227,6 +408,7 @@ sub egg_exists { my( $bh, $mods, $id, $elem )=@_;
 	}
 
 	my $st = $om->elem("exists", $exists);
+	#my $st = $om->elem($id, $exists);
 	# XXX this om return status is being ignored
 
 	return 1;
@@ -253,9 +435,6 @@ sub egg_purge { my( $bh, $mods, $lcmd, $formal, $id )=@_;
 	my @elems = ();
 	my $om = $bh->{om};
 
-	my $txnid;		# undefined until first call to tlogger
-	$txnid = tlogger $sh, $txnid, "BEGIN $id.$lcmd";
-
 	# A possibility of redundancy since we also check authz in egg_del,
 	# but purge has special sweeping powers and it's only one extra check.
 	#
@@ -275,13 +454,18 @@ sub egg_purge { my( $bh, $mods, $lcmd, $formal, $id )=@_;
 	#		unauthmsg($bh),
 	#		return undef;
 
-	EggNog::Cmdline::instantiate($bh, $mods->{hx}, $id) or
+	if (! $mods->{did_rawidtree}) {
+		EggNog::Cmdline::instantiate($bh, $mods->{hx}, $id) or
 		addmsg($bh, "instantiate failed from purge"),
 		return undef;
+	}
 
 	# Set "all" flag so we act even on admin elements, eg, get_rawidtree().
 	#
 	$mods->{all} = 1;			# xxx downstream side-effects?
+
+	my $txnid;		# undefined until first call to tlogger
+	$txnid = tlogger $sh, $txnid, "BEGIN $id.$lcmd";
 
 	my $num_elems;
 	my $retval = 1;
@@ -344,24 +528,28 @@ sub egg_purge { my( $bh, $mods, $lcmd, $formal, $id )=@_;
 			return undef;
 		$num_elems = scalar(@elems);
 
-		my $msg;	# NB: no rlog for exdb case
-		$msg = $bh->{rlog}->out("C: $id.$lcmd") and
-			addmsg($bh, $msg),
-			return undef;
+#		my $msg;	# NB: no rlog for exdb case
+#		$msg = $bh->{rlog}->out("C: $id.$lcmd") and
+#			addmsg($bh, $msg),
+#			return undef;
 
 		# Give '' instead of $lcmd so that egg_del won't create multiple
 		# log events (for each element), as we just logged one 'purge'.
 
 		my $delst;			# delete status
 		my $prev_elem = "";	# init to something unlikely
+		my $out_elem;
 		for my $elem (@elems) {
 			# previous element dupes deleted by egg_del already
 			$elem eq $prev_elem and
 				next;	# so skip another call to avoid error
 			$retval &&= (
-				# calling with UNencoded $id and $elem
-				$delst = egg_del($bh, $mods, '', $formal,
-					$id, $elem), 
+				# $id is NOT rfs but $elem IS rfs, so we undo
+				# the rfs for $elem before calling egg_del()
+				($out_elem = flex_dec_for_display($elem)),
+				($delst = egg_del($bh, $mods, '', $formal,
+					$id, $out_elem)), 
+					#$id, $elem)), 
 				($delst or outmsg($bh)),
 			$delst ? 1 : 0);
 		}
@@ -538,6 +726,7 @@ sub exdb_get_id { my( $bh, $id )=@_;
 #     in scalar context return the number of dupes
 # Assumes $key is ready for storage
 
+# XXXXXXXXXXXXXXXX CHANGE this signature to match exdb_get_dup
 sub indb_get_dup { my( $db, $key )=@_;
 
 	my $wantlist = wantarray();
@@ -665,6 +854,8 @@ sub egg_del { my( $bh, $mods, $lcmd, $formal, $id, $elem )=@_;
 
 	! egg_authz_ok($bh, $id, OP_DELETE) and
 		return undef;
+
+	#my $out_id = flex_dec_for_display($id);
 
 	# an empty $lcmd means we were called by purge -- don't log
 	my $txnid;		# undefined until first call to tlogger
@@ -1089,12 +1280,12 @@ sub arith_with_dups { my( $dbh, $key, $amount )= (shift, shift, shift);
 
 sub shoulder { my( $bh, $WeNeed, $id, $opd ) = ( shift, shift, shift, shift );
 
-	# XXX yuck -- what a mess -- clean this up
-	#	my $agid = $bh->{ruu}->{agentid};
-	$bh->{rlog}->out(
-		"D: shoulder WeNeed=$WeNeed, id=$id, opd=$opd, remote=" .
-		  "$bh->{remote}, ruu_agentid=$bh->{ruu}->{agentid}, otherids="
-		  . join(", " => @{$bh->{sh}->{ruu}->{otherids}}));
+#	# XXX yuck -- what a mess -- clean this up
+#	#	my $agid = $bh->{ruu}->{agentid};
+#	$bh->{rlog}->out(
+#		"D: shoulder WeNeed=$WeNeed, id=$id, opd=$opd, remote=" .
+#		  "$bh->{remote}, ruu_agentid=$bh->{ruu}->{agentid}, otherids="
+#		  . join(", " => @{$bh->{sh}->{ruu}->{otherids}}));
 
 	$bh->{remote} or		# if from shell, you are approved
 		return 1;
@@ -1111,7 +1302,7 @@ sub shoulder { my( $bh, $WeNeed, $id, $opd ) = ( shift, shift, shift, shift );
 
 # set element to value in external db (Mongo)
 
-use MongoDB;
+#use MongoDB;
 
 # Called by egg_set.
 # First arg example:  $bh->{sh}->{exdb}->{binder}, eg, egg.ezid_s_ezid
@@ -1325,7 +1516,7 @@ sub egg_authz_ok { my( $bh, $id, $op )=@_;
 #ZXXX disable	! authz($bh->{ruu}, $WeNeed, $bh, $id, $key) and
 #ZXXX disable		# xxx $bh->{rlog}->out("D: WeNeed=$WeNeed, id=$id, opd=$opd, ruu_agentid=" .
 #ZXXX disable		# XXX soon, don't do unauthmsg, so as not to
-#ZXXX disable		#	interfere with Greg's code
+#ZXXX disable		#	interfere with ezid dev code
 #ZXXX disable		unauthmsg($bh, "xxxb"),
 #ZXXX disable		return undef;
 	}
@@ -1368,13 +1559,14 @@ sub egg_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 	# logging and not binding key/value pairs in BDB, then we can avoid
 	# unnecessary instantiation in memory and just copy stdin to the log.
 	# yyy add other tests
-	#
+
 	my $args_in_memory = 0;
 	$mods->{on_bind} ||= $bh->{on_bind};	# default actions if needed
 	$mods->{on_bind} & BIND_KEYVAL and	# yyy drop BIND_KEYVAL?
 		# yyy does not expand beyond single value token,
 		#     eg, id.set a b @ -> a: b @
 		# yyy instantiate NEEDs $elem not to be null
+			! $mods->{did_rawidtree} and	# eg, iddump/idload
 		(EggNog::Cmdline::instantiate($bh,
 				$mods->{hx}, $id, $elem, $value) or
 			return undef),
@@ -1384,6 +1576,16 @@ sub egg_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 		addmsg($bh, "configuration doesn't permit any binding"),
 		return undef
 	;
+
+	# Some elements are not meant ever to exists as dupes. For example,
+	# preventing these two elements from being dupes (since they're
+	# auto-created by egg_init_id) allows us to synchronize one binder
+	# from another; to prevent dupes we set the $delete flag for them
+	# in case it's "add", so when they're auto-created (with incorrect
+	# new values), they're replaced (not duplicated) with the old values.
+
+	! $delete and ($elem eq CTIME_EL_EX || $elem eq PERMS_EL_EX) and
+		$delete = 1;
 
 	$bh->{sh}->{exdb} and
 		exdb_set( $bh, $mods, $lcmd, $delete,
@@ -1411,6 +1613,9 @@ sub indb_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 	# yyy do bulk defs for $value
 	# yyy document default values for element and value
 
+	# save original form for tlogger
+	# XXX not doing $logblob for exdb case
+	my $logblob = $id . $Se . $elem;
 	# ready-for-storage versions of id, elem, ...
 	my $rfs = flex_enc_indb($id, $elem);
 	my $key;
@@ -1437,7 +1642,8 @@ sub indb_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 	# more of something that has a start and an end time.
 
 	my $txnid;		# undefined until first call to tlogger
-	$txnid = tlogger $sh, $txnid, "BEGIN $id$Se$elem.$lcmd $slvalue";
+	#$txnid = tlogger $sh, $txnid, "BEGIN $id$Se$elem.$lcmd $slvalue";
+	$txnid = tlogger $sh, $txnid, "BEGIN $logblob.$lcmd $slvalue";
 
 	my $oldvalcnt = indb_get_dup($db, $key);
 	! defined($oldvalcnt) and
@@ -1515,13 +1721,14 @@ sub indb_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 
 	my $msg;
 	if ($mods->{on_bind} & BIND_PLAYLOG) {
-		# NB: Must keep writing this rlog because EDINA replication
-		# depends on it!
-
-		# XXX NOT setting doing this for external db. DROP for indb?
-		$bh->{sh}->{indb} and
-			$msg = $bh->{rlog}->out("C: $id$Se$elem.$lcmd $slvalue");
-		tlogger $sh, $txnid, "END SUCCESS $id$Se$elem.$lcmd ...";
+#		# NB: Must keep writing this rlog because EDINA replication
+#		# depends on it!
+#
+#		# XXX NOT setting doing this for external db. DROP for indb?
+#		$bh->{sh}->{indb} and
+#			$msg = $bh->{rlog}->out("C: $id$Se$elem.$lcmd $slvalue");
+		tlogger $sh, $txnid, "END SUCCESS $logblob.$lcmd ...";
+		#tlogger $sh, $txnid, "END SUCCESS $id$Se$elem.$lcmd ...";
 		$msg and
 			addmsg($bh, $msg),
 			return undef;
@@ -1620,18 +1827,14 @@ sub exdb_set { my( $bh, $mods, $lcmd, $delete, $polite,  $how,
 
 	#my $msg;
 	if ($mods->{on_bind} & BIND_PLAYLOG) {		# yyy drop BIND_PLAYLOG?
-		# yyy dropping this for exdb
-		# NB: Must keep writing this rlog because EDINA replication
-		# depends on it!
-
-		# XXX NOT setting doing this for external db. DROP for indb?
-		#$bh->{sh}->{indb} and
-		#    $msg = $bh->{rlog}->out("C: $id$Se$elem.$lcmd $slvalue");
+#		# yyy dropping this for exdb
+#		# NB: Must keep writing this rlog because EDINA replication
+#		# depends on it!
+#
+#		# XXX NOT setting doing this for external db. DROP for indb?
+#		#$bh->{sh}->{indb} and
+#		#    $msg = $bh->{rlog}->out("C: $id$Se$elem.$lcmd $slvalue");
 		tlogger $sh, $txnid, "END SUCCESS $id$Se$elem.$lcmd ...";
-
-		#$msg and
-		#	addmsg($bh, $msg),
-		#	return undef;
 	}
 	$bh->{opt}->{ack} and			# do oxum
 		$om->elem("oxum", length($value) . ".1"); # yyy ignore status
@@ -1656,6 +1859,8 @@ sub egg_init_id { my( $bh, $id, $optime )=@_;
 			! defined $dbh->{$id_permkey}) {	# if no permkey
 		$dbh->{ $id_permkey } = $id_value;
 		$dbh->{ $id . CTIME_ELEM } = $optime;
+		# XXX probable bug: what if $id.CTIME_ELEM exists? then this
+		#     next bindings_count will be wrong!
 		arith_with_dups($dbh, "$A/bindings_count", +2);
 		# yyy no error check
 	}
@@ -1929,7 +2134,8 @@ sub mstat { my( $bh, $mods, $om, $cmdr, $level )=@_;
 		my ($mtime, $size, @dups);
 		if ($level eq "brief") {
 
-			$om->elem("External binder", $sh->{exdb}->{exdbname});
+			#$om->elem("External binder", $sh->{exdb}->{exdbname});
+			$om->elem("External binder", $bh->{exdbname});
 			my $count = exdb_count($bh);
 			$count //= "error in fetching document count";
 			$om->elem("record count", $count);
@@ -2037,6 +2243,234 @@ sub dbinfo { my( $bh, $mods, $level )=@_;
 	return 1;
 }
 
+# Read ids one per line from STDIN. For each id, fetch all elements and print
+# a block dump in hex format. If no elements, indicate with special block.
+
+#sub iddump { my( $bh, $mods )=@_;
+sub iddump { my( $bh )=@_;
+
+	my $om = $bh->{om_formal};
+	my ($id, $rfs, $elemsR, $valsR);
+	my $errcnt = 0;
+	my $mods = {};
+	while (<STDIN>) {
+		chop;
+		! $_ and
+			next;
+		if (! $bh->{sh}->{fetch_exdb}) { # yyy no exdb, only indb case
+			! dumphexid($bh, $mods, $_) and
+				outmsg($bh),	# XXX use stderr?
+				initmsg($bh),
+				$errcnt++,
+				return 1;
+		}
+	}
+	$errcnt > 0 and
+		return 0;
+	return 1;
+}
+
+# Format:
+# # id: <id>
+# # hexid: ...
+# <hex_element_name>
+#   <hex_element_value>
+# <hex_element_name>
+#   <hex_element_value>
+# ...		# NB: name unindented
+#   ..		# NB: value indented by two spaces
+# # elements bound under <id>: <N>
+
+# Put element name and value on separate lines in case of very long strings
+# that might run afoul of some transport mechanism's line length constraints.
+
+sub dumphexid { my( $bh, $mods, $id )=@_;
+
+	my ($elemsR, $valsR) = ([], []);
+	my $hexid;
+	# we record hexid in form that is NOT rfs, since receiver do that
+	($hexid = $id) =~ s{(.)}{sprintf("%02x", ord($1))}eg;
+
+	say("# id: $id");	# yyy ignoring print/say error status throughout
+	say("# hexid: $hexid");
+
+	my $rfs = flex_enc_indb($id);	# prep get_rawidtree fetch of --all,
+	my $old_mods_all = $mods->{all};
+	$mods->{all} = 1;		# elements, including admin elements
+	if (! get_rawidtree($bh, $mods,
+		undef,		# here OM arg undefined because
+		$elemsR,	# here want elem names returned
+		$valsR,		# and here want values returned
+		$id,		# UNencoded $id
+			#$rfs->{id}) and
+	)) {
+		$mods->{all} = $old_mods_all;		# restore value
+		return 0;
+	}
+
+	my ($elem, $val, $hexelem, $hexval);
+	my $ecnt = 0;		# element count
+	foreach (@$elemsR) {	# for each element name ($_)
+		$ecnt++;
+
+		# Element name returned by get_rawidtree IS rfs, we we reverse
+		# it so that it will be correct when receiver re-encodes it to
+		# be rfs.
+
+		$hexelem = flex_dec_for_display($_);	# initialize elem name
+		#$hexelem = $_;			# initialize element name
+		$hexval = shift @$valsR;	# init the corresponding value
+
+		# need 's' modifier with substitution since there may be \n's
+		$hexelem =~ s{(.)}{sprintf("%02x", ord($1))}seg;# hexify
+		$hexval =~ s{(.)}{sprintf("%02x", ord($1))}seg;	# hexify
+
+		say($hexelem);
+		say('  ', $hexval);
+	}
+	say("# elements bound under $id: $ecnt");
+	say('');		# block/paragraph separator
+	$mods->{all} = $old_mods_all;		# restore value
+	return 1;
+}
+
+# Read id dump blocks from STDIN. For each id, purge it, and if there are
+# accompanying elements, add them. If there are no such elements, the id is
+# considered to have been purged. This kind of input is deemed sufficient to
+# bring this binder, wrt to this input, into alignment with another binder.
+#
+# We use "add" not "set", so that all duplicated arrive. However, we have to
+# handle _,ec and _,ep differently since they are initialized by egg_set()
+# for a new id (which is how it looks after our earlier "purge"). In this
+# case we do overwrite with "set" and the incoming values. This makes sure
+# that the original id creation/mod times are reflected in the idload.
+
+#sub idload { my( $bh, $mods )=@_;
+sub idload { my( $bh )=@_;
+
+	# Read input one "paragraph" block at a time.
+	# Process blocks that look like this example (from i.set a b)
+	#
+	#   # id: i
+	#   # hexid: 69
+	#   5f2e6563: 31343931373533323037
+	#   5f2e6570: 703a7c7c3736
+	#   61: 62
+	#   # elements bound under i: 3
+	#
+	# A block starts with \n# id: <id>
+	# A block ends with \n# elements bound under <id>: <numelems>
+	# When <numelems> is zero, that means simple purge, else
+	# it means we purge and then set all elements given.
+	# The hexid line gives the hex version of the id to set.
+	# The remaining lines give the hex elements and values to set.
+
+	my $formal = 0;			# make things a little quieter
+	my ($lcnt, $ecnt, $icnt) = (1, 0, 0);	# line, element, and id counts
+	my ($plainid, $hexid);		# encoded in one way or another
+	my ($id, $elem, $val);		# unencoded
+	my $numelems;			# number of elements expected
+	my $errcnt = 0;
+	#my $old_did_rawidtree = $mods->{did_rawidtree};
+
+	my $mods = {};
+	$mods->{did_rawidtree} = 1;	# act like get_rawidtree got
+		# us our elements, since it did (via iddump) and we
+		# don't want egg_set or egg_purge calling instantiate()
+		# to replace stuff like '@' and '&' (instead we want
+		# just a literal transfer of hex-encoded content).
+
+
+	local $/ = '';			# read input in paragraph mode
+	while (<STDIN>) {		# read each line from input
+		if (! s/^# id: (.*)\n# hexid: (.*)\n//) {
+			say STDERR "ERROR: malformed preamble (",
+				substr($_, 0, 80),
+				"...) in record starting on line $lcnt";
+			$lcnt += tr/\n//;
+			next;
+		}
+		($plainid, $hexid) = ($1, $2);
+		$icnt++;
+
+		if (! s/# elements bound under.*: (\d+)\n\n$//) {
+			say STDERR "ERROR: malformed footer in " .
+				"$plainid record starting on line $lcnt";
+			$lcnt += tr/\n//;
+			next;
+		}
+		$numelems = $1;		# number of elements expected
+
+		if ($numelems == 0 and m/./) {	# if purge but elems given
+			say STDERR "ERROR: elem count 0 but elements exist " .
+				"in $plainid record starting on line $lcnt";
+			$lcnt += tr/\n//;
+			next;
+		}
+		$lcnt += 2;		# because we removed 2 header lines
+
+		($id = $hexid) =~ s/([[:xdigit:]]{2})/chr hex $1/eg;
+
+		if (! egg_purge($bh, $mods, "purge", $formal, $id)) {
+			outmsg($bh),
+			initmsg($bh),		#  clear error messages
+			$errcnt++;
+		}
+
+		# For dupes, use "add" not "set"; ok since we did purge first.
+		# If we were doing bulk commands, we might encode like this
+		#      @.add @ @
+		#      $id
+		#      $elem
+		#      $val
+
+		$ecnt = 0;
+		while ($ecnt < $numelems) {	# process one line at a time
+			if (! s/^([[:xdigit:]]*)\n//) {
+				say STDERR "ERROR: malformed element name " .
+					"for $plainid on line $lcnt";
+				$lcnt += tr/\n//;
+				last;
+			}
+			$lcnt++;
+			$elem = $1;
+			if (! s/^  ([[:xdigit:]]*)\n//) {
+				say STDERR "ERROR: malformed element value " .
+					"for $plainid on line $lcnt";
+				$lcnt += tr/\n//;
+				last;
+			}
+			$lcnt++;
+			$val = $1;
+			$elem =~ s/([[:xdigit:]]{2})/chr hex $1/eg;
+			$val  =~ s/([[:xdigit:]]{2})/chr hex $1/eg;
+			$ecnt++;
+
+			! egg_set($bh, $mods, 'add',
+					0, 0,		# no delete, no polite
+					HOW_ADD,	# "add" operation
+					$id, $elem, $val) and
+				outmsg($bh),
+				initmsg($bh),		#  clear error messages
+				$errcnt++;
+		}
+		$lcnt += 2;	# we removed 2-line footer before while loop
+
+		if ($ecnt != $numelems) {
+			say STDERR "ERROR: elem count expected ($numelems) " .
+				"different from number of elements found in " .
+				"$plainid record ending on line $lcnt";
+			next;
+		}
+	}
+	#outmsg($bh, "idload processed $lcnt lines", '# note');
+	say "# Done. Processed $icnt ids on $lcnt lines, $errcnt errors.";
+	$errcnt > 0 and
+		outmsg($bh, "Error count is $errcnt"),
+		return 0;
+	return 1;
+}
+
 # yyy dbsave and dbload built for the old DB_File.pm environment
 # yyy should probably be updated for BerkeleyDB.pm and MongoDB.pm
 
@@ -2087,20 +2521,21 @@ sub dbload { my( $bh, $mods, $srcfile )=@_;
 	return 1;
 }
 
-sub cullrlog { my( $bh, $mods )=@_;
-
-	$bh->{remote} and		# no can do if you're on web
-		unauthmsg($bh),
-		return undef;
-
-	my ($status, $msg) = $bh->{rlog}->cull;
-	$status or
-		addmsg($bh, "cullrlog failed: $status"),
-		return 0;
-	$msg and		# if non-empty, it's probably "nothing to cull"
-		addmsg($bh, $msg, 'note');
-	return 1;
-}
+## This is called by "replay" script (old EDINA replication).
+#sub cullrlog { my( $bh, $mods )=@_;
+#
+#	$bh->{remote} and		# no can do if you're on web
+#		unauthmsg($bh),
+#		return undef;
+#
+#	my ($status, $msg) = $bh->{rlog}->cull;
+#	$status or
+#		addmsg($bh, "cullrlog failed: $status"),
+#		return 0;
+#	$msg and		# if non-empty, it's probably "nothing to cull"
+#		addmsg($bh, $msg, 'note');
+#	return 1;
+#}
 
 # yyy eventually thought we would like to do fancy fine-grained locking with
 #     BerkeleyDB features.  For now, lock before tie(), unlock after untie().
@@ -2157,15 +2592,103 @@ sub logmark { my( $bh, $mods, $string )=@_;
 	return 1;
 }
 
+sub egg_minters { my( $bh, $mods, $subcmd )=( shift, shift, shift );
+
+	$subcmd ||= 'help';
+	if ($subcmd eq 'mint') {
+		addmsg($bh, "'$subcmd' not implemented yet; try 'help'");
+		return undef;
+	}
+	elsif ($subcmd eq 'nab') {
+		addmsg($bh, "'$subcmd' not implemented yet; try 'help'");
+		return undef;
+	}
+	elsif ($subcmd eq 'set') {
+		if (! scalar(@_)) {	# show minters stored in binder
+			my $minters = $bh->{minters};
+			if (! scalar(%$minters)) {
+				say "no minters set for current binder";
+				return 1;
+			}
+			foreach my $k (sort keys %$minters) {
+				$bh->{om_formal}->elem($k, $minters->{$k});
+			}
+			return 1;
+		}
+		# if we get here, set (don't show) minters in binder
+		foreach my $pair (@_) {
+			if ($pair !~ /^([^.]+)\.(.+)$/) {
+				say STDERR "skipping malformed " .
+					"NickName.Path pair ($pair)";
+				next;
+			}
+			# egg_set(:/minters/$1 -> $2)
+			$bh->{minters}->{$1} = $2;
+		}
+		return 1;
+	}
+	elsif ($subcmd eq 'help') {
+		say "$minters_usage_text";
+		return 1;
+	}
+	else {
+		addmsg($bh, "Unknown subcommand ($subcmd); try 'help'");
+		return undef;
+	}
+	#outmsg("$A/authorized_minters not implemented yet");
+	#bdx_get("$A/authorized_minters");
+	#outmsg("$A/authorized_minters not implemented yet");
+	#bdx_get("$A/erc");
+	return 1;
+}
+
+# usage: var name value args
+
+sub egg_var { my( $bh, $mods )=( shift, shift );
+	# remaining args are concatenated
+
+	EggNog::Cmdline::instantiate($bh, $mods->{hx}, @_) or
+		addmsg($bh, "instantiate failed from egg_pr"),
+		return undef;
+	my $svars = $bh->{sh}->{svars};
+	my $om = $bh->{om_formal};
+
+	my $var = shift;
+	if (! defined $var) {		# if no key args, show all vars
+		foreach my $svname (sort(keys %$svars)) {
+			$om->elem($svname, $svars->{$svname});
+		}
+		return 1;
+	}
+	if ($var !~ /^[a-z]\w*$/i) {
+		addmsg($bh, "malformed var name ($var)");
+		return undef;
+	}
+	if (! scalar @_) {		# if no values, show all vars
+		return
+			$om->elem($var, $svars->{$var})
+	}
+	$svars->{$var} = join(' ' => @_);
+	return 1;
+}
+
 # print args after possible substitution
 # don't log
 
 sub egg_pr { my( $bh, $mods )=( shift, shift );
 	# remaining args are concatenated
 
-	# yyy before processing $() and ${}, must warn Greg!
+	EggNog::Cmdline::instantiate($bh, $mods->{hx}, @_) or
+		addmsg($bh, "instantiate failed from egg_pr"),
+		return undef;
 	my $om = $bh->{om};
-	return $om->elem('', join( ' ' => @_ ));
+	my $svars = $bh->{sh}->{svars};
+	my $line = join(' ' => @_);
+	while ($line =~ /&([a-z])/g) {
+		say "xxx found $1";
+	}
+
+	return $om->elem('', $line);
 }
 
 # yyy deprecated
@@ -2197,7 +2720,7 @@ sub egg_pr { my( $bh, $mods )=( shift, shift );
 # which means, set the permissions string for the first time.
 # Return $dbh on success, undef on error.
 #
-# ZZZZ authy not currently called by anyone
+# XXX authy not currently called by anyone
 
 sub authy { my( $WeNeed, $bh, $id, $key ) = ( shift, shift, shift, shift );
 
@@ -2408,8 +2931,8 @@ sub egg_inflect { my ( $bh, $mods, $om, $id )=@_;
 			undef,		# here OM arg undefined because
 			$elemsR,	# here we want element names returned
 			$valsR,		# and here we want values returned
-				$rfs->{id}) or
-				#$id) or
+				#$rfs->{id}) or
+				$id) or
 			return '';
 	}
 
@@ -2658,6 +3181,9 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 
 	my $txnid;		# undefined until first call to tlogger
 
+	# we may have been called by user from egg, with or w.o. an element,
+	# or been called by get_rawidtree() with a specific element
+
 	if ($#elems < 0 and $om) {	# process and return (no fall through)
 	
 		# We're here because no elems were specified, so find them.
@@ -2669,11 +3195,6 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 		$txnid = tlogger $sh, $txnid, "BEGIN $lcmd $id";
 
 		if ($sh->{fetch_exdb}) {	# if EGG_DBIE is e or ei
-
-# ZZZZZZZZZXXXXXXXXXXXX remove debug
-			tlogger $sh, $txnid, "XXX bindername:"
-				. " $sh->{exdb}->{exdbname}"
-				. " cstring: $sh->{exdb}->{connect_string}";
 
 			my $rfs = flex_enc_exdb($id, @elems);	# yyy no @elems
 
@@ -2766,6 +3287,7 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 	}
 
 	# If we get here, elements or element sets to fetch were specified.
+	# yyy or $om was not defined -- what case is that good for?
 
 	# XXX need to issue END before every error return below
 	# xxx we're starting a bit late (so timing may look a little faster)
@@ -2936,7 +3458,8 @@ sub egg_fetch { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id ) =
 # !! assume $elemsR and $valsR, if defined, are ready to push onto
 # yyy maybe we should have a special (faster) call just to get names
 #
-# NB: input id and element names are already encoded ready-for-storage,
+# NB: input id is NOT encodeded (ready-for-storage)
+# The element names return ARE already encoded ready-for-storage.
 # (eg, | and ^), which means (a) beware not to encode them again and
 # (b) you will probably want to decode before output.
 #
@@ -3133,7 +3656,6 @@ sub get_rawidtree { my(   $bh, $mods,   $om, $elemsR, $valsR,   $id )=@_;
 
 __END__
 
-
 =head1 NAME
 
 Egg - routines to bind and resolve identifier data
@@ -3148,7 +3670,7 @@ Probably.  Please report to jak at ucop dot edu.
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2002-2013 UC Regents.  BSD-type open source license.
+Copyright 2002-2020 UC Regents.  BSD-type open source license.
 
 =head1 SEE ALSO
 

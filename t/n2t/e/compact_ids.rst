@@ -9,7 +9,7 @@
 .. _joint N2T/Identifiers.org prefix list: /e/cdl_ebi_prefixes.yaml
 .. _full set of N2T prefix records: /e/n2t_full_prefixes.yaml
 .. _On the road to robust data citation: https://doi.org/10.1038/sdata.2018.95
-.. _add a prefix: /e/prefix_request
+.. _request to add a prefix to the list: https://registry.identifiers.org/prefixregistrationrequest
 .. _EZID: https://ezid.cdlib.org
 .. _ARK: /e/ark_ids.html
 .. _DOI: https://www.doi.org
@@ -52,7 +52,7 @@ Compact Identifiers
 
  **Registry links**      -> `full set of N2T prefix records`_
                      -> `joint N2T/Identifiers.org prefix list`_
-                     -> request to `add a prefix`_ to the list
+                     -> `request to add a prefix to the list`_
  **Early adoption**      -> Nature Scientic Data: `On the road to robust data citation`_
  **Formal support**      -> `Memorandum of Understanding Between CDL and EMBL-EBI`_
 

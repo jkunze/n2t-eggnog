@@ -15,23 +15,27 @@
   <link rel="stylesheet" href="/e/css/styles.css">
   <link rel="stylesheet" href="/e/css/styles_rst.css">
   <link rel="shortcut icon" type="image/png" href="/e/images/favicon.ico?v=2"/>
-  <link rel="icon" sizes="16x16 32x32" href="/e/images/favicon.ico?v=2">
+  <link rel="icon" sizes="64x64" href="/e/images/favicon.ico?v=2">
 </head>
 
 <body class="background-home">
 <div class="content">
+<!--#include virtual="/e/header.html" -->
 
+<!--
+  <link rel="icon" sizes="16x16 32x32" href="/e/images/favicon.ico?v=2">
 <header class="header row center-xs">
   <div class="col-xs-10 col-sm-10">
     <div class="row middle-xs header">
-      <h1 class="col-xs header-logo-left center-horiz">
-      N2T
-      </h1>
+      <p class="col-xs header-logo-left center-horiz">
+        <img src="/e/images/n2t_net_logo.png" alt="Name-to-Thing Logo"
+	  width="auto" height="56"/>
+      </p>
       <picture class="col-xs header-logo-right center-horiz">
-        <source srcSet="/e/images/LogoRight_178x56.png" media="(min-width: 32em)"/>
-        <img src="/e/images/LogoRight_140x40.png" alt="Resolving Names Into Things"/>
+        <source srcSet="/e/images/LogoRight_178x56.png" media="(min-width: 31em)"/>
+        <img src="" alt="RESOLVING NAMES TO THINGS"/>
       </picture>
-      <p align="right">
+      <p align="right" class="single-space">
         <a href="/e/about.html">About</a><br/>
         <a href="/e/partners.html">N2T Partners</a><br/>
         <a href="/e/n2t_apidoc.html">API Documentation</a>
@@ -39,11 +43,12 @@
     </div>
   </div>
 </header>
+-->
 
 <div class="container-narrowest">
   <div class="row around-xs middle-xs">
     <div class="col-xs-10 col-sm-5 center-horiz">
-      <div class="box-fixed box-big-text">Keeps names (identifiers) persistent, forwarding (resolving) them to the best known web addresses</div>
+      <div class="box-fixed box-big-text">N2T keeps identifiers persistent, forwarding them to the best known web addresses</div>
     </div>
     <div class="col-xs-10 col-sm-5 center-horiz">
       <div class="box-fixed box-big-text">
@@ -71,12 +76,12 @@
       <div class="box-fixed box-big-text">Any kind of name – ARK, DOI, URN, Handle, PMID, PDB, Taxon, GRID, arxiv, ISSN, ...</div>
     </div>
     <div class="col-xs-10 col-sm-5 center-horiz">
-      <div class="box-fixed box-big-text">Any kind of thing – web pages, data, physical specimens, vocabulary terms, living beings, groups, ...</div>
+      <div class="box-fixed box-big-text">Any kind of thing – data, web page, physical specimen, group, vocabulary term, living being, ...</div>
     </div>
   </div>
 
-  <!-- Spacer 
-  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+<!-- Spacer 
+–––––––––––––––––––––––––––––––––––––––––––––––––– -->
 <div class="row center-xs">
   &nbsp;<br/>
 </div>
@@ -84,33 +89,35 @@
 <div class="container-narrowest">
   <div class="row center-xs">
     <div class="box-bigger col-xs-5">
-      <h2 class="header2">N2T works with
-      <a href="https://identifiers.org">Identifiers.org</a>
-      to shorten and resolve over 700 kinds of schemes with
-         <a href="/e/compact_ids.html">Compact Identifiers</a>
+      <h2 class="header2">N2T is a global
+      <a href="https://arks.org">ARK</a>
+      resolver
       </h2>
-      <div class="row center-xs">
-        <button type="button" class="box box-linked col-xs-9" aria-pressed="false"
-          onclick="btnHref('https://www.n2t.net/e/prefix_request')"
-  	aria-label="You can add your existing scheme (it's free)">
-          You can add your existing scheme (it's free)
-        </button>
-      </div>
+    </div>
+  </div>
+</div>
+<div class="container-narrowest">
+  <div class="row center-xs">
+    <div class="box-bigger col-xs-5">
+      <h2 class="header2">Also a meta-resolver for 900+ kinds of
+         <a href="/e/compact_ids.html">compact identifiers</a>
+      </h2>
     </div>
   </div>
 </div>
 
-  <!-- Spacer 
-  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+<!-- Spacer 
+–––––––––––––––––––––––––––––––––––––––––––––––––– -->
+<div class="row center-xs">
+  &nbsp;
+</div>
+
   <div class="row center-xs">
-    &nbsp;
-  </div>
-  <div class="row center-xs">
-    <div class="col-xs-8">
-      <div class="box"><h2 class="header2">N2T is also a global ARK resolver</h2></div>
-    </div>
   </div>
 </div>
+
+<!-- removing ARK buttons
+
 <div class="container-widest">
   <div class="row around-xs middle-xs">
     <div class="col-xs-6 col-sm-3 center-horiz">
@@ -119,7 +126,7 @@
       </button>
     </div>
     <div class="col-xs-6 col-sm-3 center-horiz">
-      <button type="button" class="box box-linked" aria-pressed="false" onclick="btnHref('https://wiki.duraspace.org/display/ARKs/ARKs+in+the+Open+Project')" aria-label="CDL and Duraspace building an open, international community around Archival Resource Keys (ARKs)">
+      <button type="button" class="box box-linked" aria-pressed="false" onclick="btnHref('https://wiki.lyrasis.org/display/ARKs/ARKs+in+the+Open+Project')" aria-label="CDL and LYRASIS/Duraspace building an open, international community around Archival Resource Keys (ARKs)">
         <span class="box-linked-text">ARKs in the Open</span>
       </button>
     </div>
@@ -135,6 +142,8 @@
     </div>
   </div>
 </div>
+
+-->
 
 </div>
 <!-- End of content block -->

@@ -383,6 +383,7 @@ sub user_cred { my( $self, $remote, $user, $pass, $https, $proxy2 ) =
 	#		$self->{sysuser}\n";
 	$self->{where} = $self->{remote_addr};	# initialize for remote case
 	$remote or				# if not remote case, no need
+# zzz xxx don't call hostname again -- we did it on session creation
 		($host = hostname()) =~ s/\..*//,	# for FQDN since local
 		$self->{where} = $host;
 

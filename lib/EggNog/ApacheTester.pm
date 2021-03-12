@@ -12,6 +12,7 @@ our @ISA = qw(Exporter);
 
 our @EXPORT = qw();
 our @EXPORT_OK = qw(
+	bash2yaml
 	prep_server update_server apachectl
 	run_cmds_in_body run_cmdz_in_body run_ucmdz_in_body
 	purge_test_realms
@@ -22,15 +23,18 @@ our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
 
 use Test::More;
 use File::Value ':all';
-use EggNog::ValueTester 'shellst_is';
+use EggNog::ValueTester qw( shellst_is );
 
 #### start web server control code
 
 my ($srvport, $srvbase_u, $ssvport, $ssvbase_u);
 my ($api_script, $api_cwd, $perl5lib, $ldlibpath);
 my ($apache_top, $src_top, $webcl);
-my ($srvexec, $srvpre, $cf_file);
+my ($srvexec, $srvpre, $cf_file, $buildout_root);
 my @servers = ();	# list of servers started (later to be stopped)
+
+# HTTP Authorization challenge that should match either Apache 2.2 or 2.4.
+my $authz_chall = '401 \w*authoriz';
 
 sub update_server { my( $cfgdir )=@_;
 
@@ -73,6 +77,7 @@ sub update_server { my( $cfgdir )=@_;
 	#
 	#$cf_file = "$ENV{EGNAPA_BUILDOUT_ROOT}/conf/httpd-other.conf";
 
+	$buildout_root = $ENV{EGNAPA_BUILDOUT_ROOT};
 	$cf_file = "$ENV{EGNAPA_BUILDOUT_ROOT}/conf/httpd.conf";
 
 	my $config_extender = "./build_server_tree make $cfgdir ";
@@ -117,8 +122,8 @@ sub prep_server { my( $cfgdir )=@_;
 			EGNAPA_SRVREF_ROOT
 			EGNAPA_SSL_CERTFILE
 			EGNAPA_SSL_KEYFILE
-			EGNAPA_SSL_CHAINFILE
 			) ) {
+	#		EGNAPA_SSL_CHAINFILE
 		$ENV{$v} or
 			push @server_errs, "$v not defined";
 	}
@@ -131,9 +136,12 @@ sub prep_server { my( $cfgdir )=@_;
 
 	# Now check if we have an apache httpd server to test.
 	#
-	$srvexec = "$apache_top/bin/httpd";
+	# new (2.4)
+	#$srvexec = "$apache_top/bin/httpd";
+	$srvexec = "/usr/sbin/httpd";
 	-x $srvexec or				# ... or bail if not
-		return "because there's no Apache server in $apache_top";
+		return "because $srvexec is not an Apache server executable";
+		#return "because there's no Apache server in $apache_top";
 
 	# Key:
 	# $apache_top = apache tree containing bin, conf, logs, etc
@@ -222,9 +230,8 @@ sub prep_server { my( $cfgdir )=@_;
 
 # This routine calls httpd directly instead of the usual system-supplied
 # apachctl script; the latter screws up possibility of argument passing.
-#
 # Returns '' on success or an error message on failure.
-#
+
 sub apachectl { my( $action, $sroot, $force )=@_;
 
 	# Jump in and do $action right away.  If starting, do more stuff.
@@ -244,7 +251,9 @@ sub apachectl { my( $action, $sroot, $force )=@_;
 		return '';
 	}
 	$srvpre ||= '';
-	my $cmd = "$srvpre $srvexec -d $sroot -k $action -f $cf_file";
+	#my $cmd = "$srvpre $srvexec -d $sroot -k $action -f $cf_file";
+	# new (2.4)
+	my $cmd = "$srvpre $srvexec -d $buildout_root -k $action -f $cf_file";
 		# Don't use -E and startup errors helpfully reach the console.
 	my $out = ` $cmd 2>&1 `;
 	#	` $srvpre $srvexec -d $sroot -k $action -f $cf_file 2>&1 `;
@@ -296,7 +305,7 @@ sub catch_zap {
 # sent as 'Acting-For: joey' and arriving as 'HTTP_ACTING_FOR=joey'.
 # 
 # The user should be given as, eg, http://n2t.net/ark:/99166/... -> &P/...
-#
+
 sub setpps { my( $user, $pw, $actingfor ) = (shift||'', shift||'', shift||'');
 	my $pps = '';
 	$user and		$pps .= qq@--user=$user @;
@@ -308,8 +317,7 @@ sub setpps { my( $user, $pw, $actingfor ) = (shift||'', shift||'', shift||'');
 # Return $login and $pwd for a given $user in a given $realm, as defined
 # by $cfgdir configuration (build_server_tree.cfg) settings.
 # yyy pwd=password confusing, given pwd=print working directory
-#
-#sub get_user_pwd { my( $realm, $user ) = ( shift, shift );
+
 sub get_user_pwd { my( $realm, $user, $cfgdir ) = ( shift, shift, shift );
 
 	$user ||= $realm;
@@ -380,17 +388,17 @@ sub noauth_test { my( $pps, $popminder, $naanblade, $u1, $u2, @fqshoulders )=@_;
 	# and unauthorized to use another's binder.
 
 	$x = `$webcl $pps "$ssvbase_u/a/$pbinder/m/ark/$nblade? mint 1"`;
-	like $x, qr{HTTP/\S+\s+401\s+authorization.*ation failed}si,
+	like $x, qr{HTTP/\S+\s+$authz_chall.*ation failed}si,
 		"authNd populator \"$popminder\" cannot mint from " .
 			"a \"$pbinder\" minter";
 
 	$x = `$webcl $pps "$ssvbase_u/a/$pbinder/b? i.set bow wow"`;
-	like $x, qr{HTTP/\S+\s+401\s+authorization.*ation failed}si,
+	like $x, qr{HTTP/\S+\s+$authz_chall.*ation failed}si,
 		"authNd populator \"$popminder\" cannot write on " .
 			"a \"$pbinder\" binder";
 
 	$x = `$webcl $pps "$ssvbase_u/a/$pbinder/b? version"`;
-	like $x, qr{HTTP/\S+\s+401\s+authorization.*ation failed}si,
+	like $x, qr{HTTP/\S+\s+$authz_chall.*ation failed}si,
 		"authNd populator \"$popminder\" cannot even reference " .
 			"a \"$pbinder\" binder";
 
@@ -399,6 +407,7 @@ sub noauth_test { my( $pps, $popminder, $naanblade, $u1, $u2, @fqshoulders )=@_;
 
 sub test_minters { my( $cfgdir, $u1, $u2, @fqshoulders )=@_;
 
+	# xxx ? my ($sh, $msg) = EggNog::Session::make_session();
 	# Real processing loop.
 	my $noauth_tests = 0;
 	my ($x, $pps);
@@ -420,7 +429,7 @@ sub test_minters { my( $cfgdir, $u1, $u2, @fqshoulders )=@_;
 	    $x =
 	      `$webcl $pps "$ssvbase_u/a/$popminder/m/ark/$naanblade? mint 1"`;
 	    like $x,
-		qr{HTTP/\S+\s+401\s+Authorization.*s: $naanblade\w{4,7}\n}si,
+		qr{HTTP/\S+\s+$authz_chall.*s: $naanblade\w{4,7}\n}si,
 		  "populator/binder \"$popminder\" mints from $naanblade";
 
 	    # We'll piggyback another use for the noauth_test, which is that
@@ -445,16 +454,37 @@ sub test_minters { my( $cfgdir, $u1, $u2, @fqshoulders )=@_;
 # First arg is $binders_root directory.
 # xxx add $cfgdir arg here and in t/*.t  (see /get_user and see /test_.in.ers
 
-sub test_binders { my( $cfgdir, $binders_root, $indb, @binders )=@_;
+sub test_binders { my( $egnhome, $cfgdir, $binders_root, $indb, $bindersR, $ownersR )=@_;
+
+    my ($sh, $msg) = EggNog::Session::make_session($egnhome);
+    if (! $sh) {
+    	return "couldn't create session: $msg";
+    }
+    #say STDERR "XXX egnhome=$egnhome, home=$sh->{home}";
+    # session created; local $sh var session object
+    # will be destroyed when it goes out of scope
+
+#    # need to create session so we can call bname_parse
+#    use EggNog::Session;
+#    my $sh = EggNog::Session->new(0) or
+#	    return "couldn't create session handler";
+#    my $msg;
+#    $msg = EggNog::Session::config($sh) and
+#	    return $msg;
+#
+#    # session created; local $sh var session object destroyed when
+#    # going out of scope, eg, on return
 
     # A random specific user
     my $for_user = "http://n2t.net/ark:/99166/b4cd3";		# long form
     my $u = "&P/b4cd3";				# short, &P-compressed form
+    my $owner;
+    my $n = 0;				# index into @$ownersR array
 
-    # XXX kludge: relies on the binder name containing owner name up to '_'!
-    #     kludge still in effect?
-    #     eg, for exdb: egg_bgdflt.P/b4cd3_s_pesty?
-    for my $b (@binders) {
+# XXX kludge: relies on the binder name containing owner name up to '_'!
+#     kludge still in effect?
+#     eg, for exdb: egg_bgdflt.P/b4cd3_s_pesty?
+    for my $b (@$bindersR) {
 
 	my ($x, $pps);
 	#my $user = $b;
@@ -481,43 +511,50 @@ sub test_binders { my( $cfgdir, $binders_root, $indb, @binders )=@_;
 	# 
 	# REAL database change
 	$x = `$webcl $pps "$ssvbase_u/a/$b/b? --verbose i.set bow wow"`;
-	like $x, qr{Authorization Required.*HTTP/.+200.*\Q$remuser}si,
+	like $x, qr{$authz_chall.*HTTP/.+200.*\Q$remuser}si,
 		"protected test binder \"$b\" sets an element";
 
 	$x = `$webcl $pps "$ssvbase_u/a/$b/b? i.fetch bow"`;
-	like $x, qr{Authorization Required.*bow:\s*wow}si,
+	like $x, qr{$authz_chall.*bow:\s*wow}si,
 		"protected binder \"$b\" returns that element";
 
 	# REAL database change
 	$x = `$webcl $pps "$ssvbase_u/a/$b/b? i.delete bow"`;
-	like $x, qr{Authorization Req.*removed.*bow.*egg-status: 0}si,
+	like $x, qr{$authz_chall.*removed.*bow.*egg-status: 0}si,
 		"protected binder \"$b\" allows deleting that element";
 
-	if ($indb) {
-	    # yyy "tail" not portable to Windows; prefer File::ReadBackwards
-	    #$y = flvl("< $binders_root/$b/egg.rlog", $x);
-	    $x = `tail -1 $binders_root/$b/egg.rlog`;
-	    like $x, qr{^\*\Q$u }m,
-	    	"previous operation's HTTP_ACTING_FOR user logged";
-	}
+	$owner = $ownersR->[$n];		# binder owner name
+	my $exists_flag = 0;			# yyy don't check for existence
+	my ($isbname, $esbname) =
+		EggNog::Binder::bname_parse($sh, $b, $exists_flag,
+			$sh->{smode}, $owner);
+#	if ($indb) {
+#	    # yyy "tail" not portable to Windows; prefer File::ReadBackwards
+#	    #$y = flvl("< $binders_root/$b/egg.rlog", $x);
+#
+#	    #$x = `tail -1 $binders_root/$b/egg.rlog`;
+#	    $x = `tail -1 $binders_root/$isbname/egg.rlog`;
+#	    like $x, qr{^\*\Q$u }m,
+#	    	"previous operation's HTTP_ACTING_FOR user logged";
+#	}
 
 	# XXX should perhaps add HTTP_ACTING_FOR to txnlog?
 
 	$x = `$webcl $pps "$ssvbase_u/a/$b/b? <xyzzy>i.set bow wow"`;
-	like $x, qr{rization Req.*HTTP/.+200.*not allowed.*egg-status: 1}si,
+	like $x, qr{$authz_chall.*HTTP/.+200.*not allowed.*egg-status: 1}si,
 	    "\"$realm\" not allowed to switch binders via <> prefix";
+	
+	$n++;
     }
 }
 
-# Usage:     purge_test_realms($ids_array_ref, 'ezid', 'oca', ...)
-#
 # xxx not so true?
 # Unlike binders created by other test scripts (oca_test, ezid_test,
 # etc.), these binders persist between script calls, so if we should
 # cleanup any values (before and after, for certainty) that we'll rely on.
 # We need to be all the more careful in this cleanup when testing real
 # binders.  Put all such ids into a var such as @cleanup_ids.
-#
+
 sub purge_test_realms { my( $cfgdir, $td, $cleanup_idsR, @realms )=@_;
 
 	my ($binder, $cmdblk, $pps, $x);
@@ -528,8 +565,10 @@ sub purge_test_realms { my( $cfgdir, $td, $cleanup_idsR, @realms )=@_;
 	foreach my $realm (@realms) {
 		$cmdblk = join "\n", map "$_.purge", @$cleanup_idsR;
 		#$pps = setpps xget_user_pwd $realm;
-		$pps = setpps get_user_pwd $realm, $user, $cfgdir;
 		#$pps = setpps get_user_pwd $realm, $realm;
+
+		$pps = setpps get_user_pwd $realm, $user, $cfgdir;
+
 		# XXX kludge: realm binder name assumed to be $realm.'_test'
 		$binder = $realm . '_test';
 		$x = run_cmds_in_body($td, $pps, $binder, $cmdblk);
@@ -541,14 +580,14 @@ sub purge_test_realms { my( $cfgdir, $td, $cleanup_idsR, @realms )=@_;
 # Use this subroutine to get commands into http request body (stdin)
 # where they will run remotely as bulk (batch) commands.  Call with:
 #    $x = run_cmds_in_body($td, $flags, $binder, $cmdblock);
-#
+
 sub run_cmds_in_body { my( $td, $flags, $binder, $cmdblock )=
 			 (shift, shift,   shift,     shift );
 
 	my $msg = flvl("> $td/getcmds", $cmdblock);
 	$msg		and return $msg;
 	$flags .= " --post-file=$td/getcmds " . join(" ", @_);
-	my $ret = `$webcl $flags "$ssvbase_u/a/$binder/b?-" < $td/getcmds`;
+	my $ret = `$webcl $flags "$ssvbase_u/a/$binder/b? -" < $td/getcmds`;
 	return $ret;
 }
 

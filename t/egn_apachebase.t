@@ -15,15 +15,18 @@ my $cfgdir = "web";		# this is a generic web server test
 
 my $webclient = 'wget';
 my $which = `which $webclient`;
+# XXX use exit 1 to get build to fail properly instead of silently
 $which =~ /wget/ or plan skip_all =>
 	"why: web client \"$webclient\" not found";
 
 my ($msg, $src_top, $webcl,
 		$srvport, $srvbase_u, $ssvport, $ssvbase_u,
 	) = prep_server $cfgdir;
+# XXX use exit 1 to get build to fail properly instead of silently
 $msg and
 	plan skip_all => $msg;
 
+# XXX use exit 1 to get build to fail properly instead of silently
 ! $ENV{EGNAPA_TOP} and plan skip_all =>
 	"why: no Apache server (via EGNAPA_TOP) detected";
 
@@ -35,7 +38,6 @@ SKIP: {
 # We don't bother checking the return as it would usually complain.
 #
 apachectl('graceful-stop');
-
 # Note: $td and $td2 are barely used here.
 # Instead we use non-temporary dirs $ntd and $ntd2.
 # XXX change t/apachebase.t to use these type of dirs
@@ -45,21 +47,24 @@ my $binders_root = $ENV{EGNAPA_BINDERS_ROOT};
 my $minters_root = $ENV{EGNAPA_MINTERS_ROOT};
 my ($ntd, $ntd2) = ($binders_root, $minters_root);
 
-my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "egg";
+my ($td, $cmd, $homedir, $tdata, $hgbase, $indb, $exdb) = script_tester "egg";
 $td or			# if error
 	exit 1;
 my ($td2, $cmd2);
-($td2, $cmd2, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "nog";
+($td2, $cmd2, $homedir, $tdata, $hgbase, $indb, $exdb) = script_tester "nog";
 
+# xxx Clobbers? returned $hgbase.? egn_service_n2t... does not clobber - why?
 # This script calls egg, and we want the latest -Mblib and cleanest, eg,
 $hgbase = "--home $buildout_root";	# and we know better in this case
-$bgroup and
-	$hgbase .= " --bgroup $bgroup";
-$ENV{EGG} = $hgbase;		# initialize basic --home and --bgroup values
+
+my $tda = "--testdata $tdata";
+$hgbase .= " $tda";
+
+$ENV{EGG} = $hgbase;		# initialize basic --home and --testdata values
 #$ENV{EGG} = "--home $buildout_root";	# wrt default config and prefixes
 
-remake_td($td, $bgroup);
-remake_td($td2, $bgroup);
+remake_td($td, $tdata);
+remake_td($td2, $tdata);
 
 
 #sub catch_int {
@@ -75,6 +80,9 @@ my ($x, $y);
 $x = apachectl('start');
 skip "failed to start apache ($x)"
 	if $x;
+
+# HTTP Authorization challenge that should match either Apache 2.2 or 2.4.
+my $authz_chall = '401 \w*authoriz';
 
 $x = `$webcl "$srvbase_u"`;
 like $x, qr{HTTP/\S+\s+200\s+OK.*server home page}si,
@@ -120,7 +128,8 @@ $pps = setpps get_user_pwd "pestx", "testuser1", $cfgdir;
 #exit;	#########
 
 $x = `$webcl $pps "$ssvbase_u/a/pestx/b? --verbose --version"`;
-like $x, qr{HTTP/\S+\s+401\s+Authorization.*version:}si,
+#like $x, qr{HTTP/\S+\s+401\s+Authorization.*version:}si,
+like $x, qr{HTTP/\S+\s+$authz_chall.*version:}si,
 	'verbose version collected from web server environment';
 
 my $v = `$cmd --verbose --version`;
@@ -133,16 +142,22 @@ $x =~ s/^ ?[^ ].*\n*//gm;
 is $x, $v,
 	'environment behind web matches command line environment';
 
+my $isbname;
+$isbname = `$cmd --dbie i --user pest bname $td/pest`;	# indb sys binder name
+$isbname =~ s/\n*$//;
+
 # This test sets up the DB_PRIVATE test.
 # yyy shouldn't this mkbinder be done in minder_builder_more?
-$x = `$cmd -p $td mkbinder --verbose pest`;
-$x = `$cmd -d $td/pest --verbose i.set a b`;
+$x = `$cmd -p $td mkbinder --verbose --user pest pest`;
+like $x, qr{\Q$isbname}, 'mkbinder binder name matches bname';
+
+$x = `$cmd -d $td/pest --verbose --user pest i.set a b`;
 shellst_is 0, $x, "non-web-mode mkbinder and binding succeeds";
 
 # yyy remove $td and $td2 from this script?
 # Make sure $testdir exists and is empty
 # xxx change to $ntd?
-my $testdir = "$td/pest";
+my $testdir = "$isbname";
 my $backdir = "$td/pestbak";
 my $msg = `rm -fr $backdir 2>&1`;
 my $errs = 0;
@@ -158,7 +173,7 @@ mkdir($backdir) or
 my $dbmsg = `db_hotbackup -h $testdir -b $backdir 2>&1`;
 $dbmsg and
 	$errs++,
-	print($dbmsg);
+	print STDERR ($dbmsg);
 ok $errs == 0,
 	"DB_PRIVATE flag off (resolver sensitive to target changes)";
 
@@ -178,6 +193,8 @@ my @fqshoulders = (
 	'pesty/ark/99999/fk3',
 );
 
+# xxx this is one of those tests that relies on binder set up
+#     independent of these tests
 $x = `$webcl "$ssvbase_u/a/pest/b? i.set moo cow"`;
 like $x, qr{HTTP/\S+\s+200\s+OK.*egg-status: 0}si,
 	'open populator "pest" sets an element without a login/password';
@@ -187,32 +204,48 @@ $y and print "error: $y\n";
 like $x, qr{BEGIN.*END SUCCESS}s,
 	'transaction log working';
 
-##########
-#remove_td($td, $bgroup); remove_td($td2, $bgroup);
-#$x = apachectl('graceful-stop')	and print("$x\n");
-#exit;	#########
+$x = `$webcl "$srvbase_u/e/admin/q2e.pl"`;
+like $x, qr{HTTP/\S+\s+302.*Location: https://}si,
+	'http rewritten to https for secure admin area';
 
-$x = `$webcl "$srvbase_u/e/x/feedback.pl"`;
-like $x, qr{Stub feedback.}i,
-	'publicly executable feedback form';
+# XXX bug: the redirect went from test server to prd server: no-no
+# XXX but make sure this is protected from public execution
+like $x, qr{xxx Stub q2e.}i,
+	'executable naan curation form';
+
+$x = `$webcl "$srvbase_u/favicon.ico"`;
+like $x, qr{Content-Type: image.*icon}i, "favicon fetched via http";
+
+$x = `$webcl "$ssvbase_u/favicon.ico"`;
+like $x, qr{Content-Type: image.*icon}i, "favicon fetched via https";
+
+#say "XXX x=$x";
+#$x = apachectl('graceful-stop')	and say "$x"; exit;	#########
 
 $x = `$webcl "$ssvbase_u/a/pest/b? --verbose i.fetch moo"`;
 like $x, qr{HTTP/\S+\s+200\s+OK.*remote user: \?.*moo:\s*cow}si,
 	'open populator "pest" returns that element for still unknown user';
 
-if ($indb) {		# rlog being phased out, esp for exdb case
-$y = flvl("< $ntd/pest/egg.rlog", $x);
-like $x, qr{^\? }m,
-	'anonymous user logged as "?"';
-}
+#if ($indb) {		# rlog being phased out, esp for exdb case
+#
+#$isbname = `$cmd --dbie i --user pest bname $ntd/pest`;	# indb sys binder name
+#$isbname =~ s/\n*$//;
+#
+##$y = flvl("< $ntd/pest/egg.rlog", $x);
+#$y = flvl("< $isbname/egg.rlog", $x);
+#like $x, qr{^\? }m,
+#	'anonymous user logged as "?"';
+#}
 
 # xxxxxx add indb arg as for test_binders?
 test_minters $cfgdir, 'pestx', 'pesty', @fqshoulders;
 
-# xxx should pull this list of binders from FS via "find"
+# yyy should pull this list of binders from FS via "find"?
 my @binders = ( qw(pestx pesty) );
+my @owners =  ( qw(pestx pesty) );
 
-test_binders $cfgdir, $ntd, $indb, @binders;
+test_binders $buildout_root, $cfgdir, $ntd, $indb, \@binders, \@owners;
+
 
 # xxx document that doi minters are put under ark for convenience of the
 #     check digit algorithm
@@ -220,35 +253,34 @@ test_binders $cfgdir, $ntd, $indb, @binders;
 # xxxx should do feature that on failure runs check digit algorithm and
 #      reports and possibly suggests alternates
 
-#$x = apachectl('graceful-stop')	and print("$x\n");
-#say "xxxxxxxxxx premature exit";
-#exit;	#########
-
 $pps = setpps get_user_pwd("pesty", "testuser1", $cfgdir), "joey";
 
 $x = `$webcl $pps "$ssvbase_u/a/pesty/b? --verbose i.set hello there"`;
-like $x, qr{Authorization Required.*remote user:.*joey}si,
+like $x, qr{$authz_chall.*remote user:.*joey}si,
 	'user string found in Acting-For header';
 
 my $user = "http://n2t.net/ark:/99166/b4cd3";
 $pps = setpps get_user_pwd("pesty", "testuser1", $cfgdir), $user;
 
 $x = `$webcl $pps "$ssvbase_u/a/pesty/b? --verbose i.set hello th+ere"`;
-like $x, qr{Authorization Required.*remote user:.*&P/b4cd3}si,
+like $x, qr{$authz_chall.*remote user:.*&P/b4cd3}si,
 	"Acting-For user ($user) gets &P-compressed";
 
 $x = " <html> <body><h1>Read-protected extras file.</h1></body> </html> ";
 $y = flvl("> $buildout_root/htdocs/e/pop/pesty/index.html", $x);
 $x = `$webcl $pps "$ssvbase_u/e/pop/pesty/"`;
-like $x, qr{Authorization Required.*Read-protected}si,
+like $x, qr{$authz_chall.*Read-protected}si,
 	"read-protected non-executable document area";
 
 $x = `$webcl $pps "$ssvbase_u/a/pesty/b? i.fetch hello"`;
-like $x, qr{Authorization Required.*hello:\s*th\+ere}si,
+like $x, qr{$authz_chall.*hello:\s*th\+ere}si,
 	"noid's old '+'-to-space decoding is no longer in effect";
 
-remove_td($td, $bgroup);
-remove_td($td2, $bgroup);
+#say "XXX x=$x";
+#$x = apachectl('graceful-stop')	and say "$x"; exit;	#########
+
+remove_td($td, $tdata);
+remove_td($td2, $tdata);
 
 $x = apachectl('graceful-stop')	and print("$x\n");
 exit;	#########
@@ -371,84 +403,6 @@ like $x, qr{HTTP/\S+\s+404\s.*Not Found}si,
 # xxx test with and without password, and with open populator
 
 $x = apachectl('graceful-stop')	and print("$x\n");
-#remove_td($td, $bgroup);
-#remove_td($td2, $bgroup);
+#remove_td($td, $tdata);
+#remove_td($td2, $tdata);
 }
-#
-#my $shdr = "99999/fk6";
-#my $shdrx = "b5072/fk9";
-#my $shdry = "99999/fk3";
-#
-#$x = `$cmd2 -d $td2/ark/$shdr mint 1`;
-#like $x, qr|$shdr.+|, "mint from compound minter";
-#
-#print "zxxx pps=$pps\n";
-#print "webcl=", qq@$webcl $pps "$ssvbase_u/a/pestx/m/ark/$shdr? mint 1"\n@;
-#
-#$x = `$webcl $pps "$ssvbase_u/a/pestx/m/ark/$shdr? --verbose mint 1"`;
-#like $x, qr{HTTP/\S+\s+401\s+Authorization.*s: 99999/fk6\w{4}\n}si,
-#	'populator "pestx" mints from one compound minter';
-#
-#$x = `$webcl $pps "$ssvbase_u/a/pestx/m/ark/$shdrx? mint 1"`;
-#like $x, qr{HTTP/\S+\s+401\s+Authorization.*s: b5072/fk9\w{4}\n}si,
-#	'populator "pestx" mints from second compound minter';
-#
-#$x = `$webcl $pps "$ssvbase_u/a/pesty/m/ark/$shdry? mint 1"`;
-#like $x, qr{HTTP/\S+\s+401\s+authorization.*ation failed}si,
-#	'authentic populator "pestx" cannot mint from "pesty" minter';
-#
-# this is for pestx
-#$pps = setpps "testuser1", "testpwd1a";
-#
-#$x = `$webcl $pps "$ssvbase_u/a/pestx/b? version"`;
-#like $x, qr{Authorization Required.*HTTP/\S+\s+200\s+OK.*version:.*version}si,
-#	'protected populator script starts up after requiring valid user';
-#
-#$x = `$webcl $pps "$ssvbase_u/a/pesty/b? version"`;
-#like $x, qr{Authorization Required.*HTTP/\S+\s+401.*ation failed}si,
-#	'a second populator script fails authN for user of first populator';
-#
-#$pps = setpps "testuser1", "testpwd1b";
-#$pps = setpps get_user_pwd "pesty", "testuser1", $cfgdir;
-#
-#$x = `$webcl $pps "$ssvbase_u/a/pesty/b? version"`;
-#like $x, qr{Authorization Required.*HTTP/\S+\s+200\s+OK.*version:.*version}si,
-#	'2nd populator script starts with valid user from 2nd password file';
-#
-#$x = `$webcl $pps "$ssvbase_u/a/pesty/m/ark/$shdry? mint 1"`;
-#like $x, qr{HTTP/\S+\s+401\s+Authorization.*s: 99999/fk3\w{4}\n}si,
-#	'populator "pesty" mints from its compound minter';
-#
-#$x = apachectl('graceful-stop')	and print("$x\n");
-#exit;	#########
-#
-#$x = `$webcl $pps "$ssvbase_u/a/pestx/m/ark/$shdrx? mint 1"`;
-#like $x, qr{HTTP/\S+\s+401\s+authorization.*ation failed}si,
-#	'authentic populator "pesty" cannot mint from a "pestx" minter';
-#
-##$x = apachectl('graceful-stop')	and print("$x\n");
-##exit; ####
-#
-#$x = `$webcl $pps "$ssvbase_u/a/pesty/b? --verbose i.set bow wow"`;
-#like $x, qr{Authorization Required.*HTTP/.+200.*remote user: testuser1}si,
-#	'protected populator "pesty" sets an element';
-#
-#$x = `$webcl $pps "$ssvbase_u/a/pesty/b? i.fetch bow"`;
-#like $x, qr{Authorization Required.*bow:\s*wow}si,
-#	'protected populator "pesty" returns that element';
-#
-#$x = `$webcl $pps "$ssvbase_u/a/pesty/b? i.delete bow"`;
-#like $x, qr{Authorization Req.*removed.*bow.*egg-status: 0}si,
-#	'protected populator "pesty" allows deleting that element';
-#
-#$x = `$webcl $pps "$ssvbase_u/a/pesty/b? i.purge"`;
-#like $x, qr{Authorization Req.*unique elements.*under i:}si,
-#	'protected populator "pesty" allows purging an id';
-#
-#$y = flvl("< $ntd/pesty/egg.rlog", $x);
-#like $x, qr{^testuser1 }m,
-#	'HTTP_REMOTE_USER logged';
-#
-#$x = `$webcl $pps "$ssvbase_u/a/pesty/b? <pestx>i.set bow wow"`;
-#like $x, qr{Authorization Req.*HTTP/.+200.*not allowed.*egg-status: 1}si,
-#	'authN with "pesty" fails try to switch to pestx via <> prefix';

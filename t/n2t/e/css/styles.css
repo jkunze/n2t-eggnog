@@ -3,7 +3,8 @@
 // border: 1px solid red;
 // }
 @font-face {
-  font-family: 'SourceSansPro';
+  font-family: "SourceSansPro", "Helvetica", "Arial", sans-serif;
+//  font-family: 'SourceSansPro';
   src:
     url('/e/fonts/SourceSansPro-Regular.ttf.woff2') format('woff2'),
     url('/e/fonts/SourceSansPro-Regular.ttf.woff') format('woff');
@@ -16,12 +17,14 @@
 //      url('/e/fonts/KievitWeb.woff') format('woff'); /* Modern Browsers */
 // }
 html, body {
+  font-family: "SourceSansPro", "Helvetica", "Arial", sans-serif;
   height: 100%;
+  line-height: 1.6;
 }
 body {
   display: flex;
   flex-direction: column;
-  font-family: SourceSansPro;
+//  font-family: SourceSansPro;
   font-size: 15px;
 }
 a,a:visited, a:active {
@@ -72,9 +75,9 @@ h2 {
   background: rgba(255, 255, 255, 0.35);
   /* opacity: 0.5; */ /* more standard, but makes text hard to read */
   /* background-color: #ffffff8c; */ /* good text, but no background on IE11 */
-  padding: 0px 10px;
+  padding: 10px 10px;
   margin: 10px 0px 0px;
-  height: 4.5em;
+  min-height: 4.5em;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -99,7 +102,7 @@ h2 {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 6.3em;
+  min-height: 6.3em;
   width: 100%;
   font-size: 18px;
   font-family: inherit;
@@ -110,7 +113,7 @@ h2 {
 }
 @media (min-width: 32em) {
   .box-linked {
-    height: 3.5em;
+    min-height: 3.5em;
   }
 }
 .box-linked:hover, .box-linked:focus {
@@ -178,7 +181,7 @@ h2 {
 .footer {
   flex-shrink: 0;
   background-color: #C0D6DF; 
-  min-height: 4em;
+  min-height: 2em;
 }
 .header {
   margin-top: -8px;
@@ -187,29 +190,31 @@ h2 {
 }
 .header-logo-left {
   margin: 0;
-  color: #00778a;
-  font-size: 2.5em;
-  font-weight: 700;
-  text-transform: uppercase;
+//  color: #00778a;
+//  font-size: 2.5em;
+//  font-weight: 700;
+//  text-transform: uppercase;
   text-align: right;
 }
-@media (min-width: 32em) {
+@media (min-width: 1em) {
   .header-logo-left {
-    font-size: 3.6em;
+    font-size: 1.1em;
   }
 }
 .header-logo-right {
   margin: 0;
   text-align: left;
+  line-height: 1.0;
 }
-@media (min-width: 32em) {
+@media (min-width: 31em) {
   .header-logo-right {
-    font-size: 1.1em;
+    font-size: 1.0em;
   }
 }
+// rethink header2; does not really make sense
 .header2 {
   font-size: 1.3em;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .list {
@@ -222,4 +227,17 @@ h2 {
 }
 .text-sm {
   font-size: 0.8em;
+}
+div.leftside {
+    width: 414px;
+    padding: 0px 3px 0px 0px;
+    float: left;
+}
+div.rightside {
+    margin-left: 425px;
+}
+p.single-space {
+  line-height: 1.1;
+  padding-left: 1px;
+  padding-right: 4px;
 }

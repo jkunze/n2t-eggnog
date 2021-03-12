@@ -1,5 +1,10 @@
 #!/usr/bin/env perl
 
+# Unlike most other test sets in this directory, these test run against
+# the installed server. During focussed debugging on these tests, therefore,
+# the developer will likely want to run "n2t --force rollout" before each
+# run of "perl -Mblib t/egn_post_install_n2t.t".
+
 # NB: this part of the eggnog source DEPENDS on wegn,
 #     defined in another source code repo (n2t_create)
 
@@ -18,14 +23,37 @@ use EggNog::ValueTester ':all';
 use File::Value ':all';
 use EggNog::Temper 'etemper';
 
-my $which = `which wegn`;
-$which =~ /wegn/ or plan skip_all => "why: web client \"wegn\" not found";
+my $home = $ENV{HOME};
+my $eghome = "$home/sv/cur/apache2";
 
+my $which = `which wegn`;
+
+# This exits without error since it's routinely skipped during 'make test'
 grep(/\/blib\/lib/, @INC) and plan skip_all =>
     "why: should be run with installed code (eg, \"n2t test\" not with -Mblib)";
 
-! -e "$ENV{HOME}/warts/.pswdfile.n2t" and plan skip_all =>
-    "why: no $ENV{HOME}/.pswdfile.n2t file";
+# XXX use exit 1 to get build to fail properly instead of silently
+$which =~ /wegn/ or plan skip_all => "why: web client \"wegn\" not found";
+
+# XXX use exit 1 to get build to fail properly instead of silently
+# XXX should this bail with error status instead of skipping?
+! -e "$home/warts/.pswdfile.n2t" and plan skip_all =>
+    "why: no $home/.pswdfile.n2t file";
+
+# XXX use exit 1 to get build to fail properly instead of silently
+# XXX should this bail with error status instead of skipping?
+! -e "$eghome/eggnog_conf" and plan skip_all =>
+    "why: no $eghome/eggnog_conf file; have you run \"n2t rollout\"?";
+
+my $c = `egg --home $eghome cfq class | grep .`;
+chop $c;
+foreach my $b ('ezid', 'oca', 'yamz') {
+	my $f = "$eghome/binders/egg_n2t_${c}_public.real_${b}_s_${b}/egg.bdb";
+# XXX use exit 1 to get build to fail properly instead of silently
+	! -e $f and plan skip_all =>
+		"why: critical '$b' binder missing ($f)"
+# XXX should this bail with error status instead of skipping?
+}
 
 plan 'no_plan';		# how we usually roll -- freedom to test whatever
 
@@ -34,21 +62,19 @@ SKIP: {
 my ($x, $y, $n);
 
 my $ark1 = 'ark:/99999/fk8n2test1';
-my $tgt1 = 'http://www.cdlib.org/';
-my $tgt2 = 'http://www.cdlib.org/' . EggNog::Temper::etemper();
+my $tgt1 = 'https://cdlib.org/';
+my $tgt2 = 'https://cdlib.org/' . EggNog::Temper::etemper();
 my $eoi = 'doi:10.5072/EOITEST';	# MUST register in normalized uppercase
-my $eoi_tgt = 'http://crossref.org/';
+my $eoi_tgt = 'https://crossref.org/';
 my $eoi_ref = 'eoi:10.5072/EOITEST';	# normalized reference
 my $eoi_ref_lc = 'eoi:10.5072/eoitest';	# unnormalized reference
 
-my $snachost = 'socialarchive.iath.virginia.edu';
+my $snacchost = 'socialarchive.iath.virginia.edu';
 
 # xxx add to t/apachebase.t
 #         random timeofday value test for target to avoid effects
 #         of having old values make tests pass that should fail
 
-#my $srvbase_u = 'https://jak-macbook.local:18443';
-#my $srvbase_u = 'http://jak-macbook.local:18880';
 my $srvbase_u = 'http://localhost:18880';
 
 # First test a simple mint.  Make sure to error out if server isn't even up.
@@ -58,10 +84,21 @@ $x =~ /failed.*refused/ and
 	exit 1;
 like $x, qr@99999/fk4\w\w\w@, "minted id matches format";
 
-ok -f "$ENV{HOME}/warts/.pswdfile.n2t",
-	"no real passwords set up in ~/warts/ to occlude dummy passwords";
+$x = `wegn i.purge`;
+$x =~ /error/i and
+	print("\n    ERROR: main binder won't take simple purge -- panic!\n\n"),
+	exit 1;
+like $x, qr/egg-status:\s*0/, "main binder accepts simple purge";
 
-if ($ENV{EGNAPA_HOST} =~ /n2t-prd-2a\./) {
+#say "xxx x=$x, premature exit";
+#exit;
+
+ok -f "$home/warts/.pswdfile.n2t",
+	"real passwords set up in ~/warts/ to occlude dummy passwords";
+
+my $production_data = `egg -q --home $eghome cfq production_data && echo yes`;
+
+if ($production_data eq "yes\n") {
 
 	# Some kludgy tests based on what is hopefully permanent data.
 	# NB: these test read the redirect Location but don't follow it.
@@ -98,11 +135,17 @@ if ($ENV{EGNAPA_HOST} =~ /n2t-prd-2a\./) {
 	# xxx currently this perio.do works by SPT on a short id (.../p0)
 	#     should it not work with a shoulder redirect rule?
 
-	# Ryan Shaw, Eric Kansa ("periodo" ezid customers), with one
-	# identifier (p0) in the 99152 namespace.
-	$x = `wegn locate "ark:/99152/p0vn2frcz8h"`;
-	like $x, qr{^Location: https://test.perio.do.*}m,
+	my $a0 = "ark:/99152/p0vn2frcz8h";
+	# one identifier (p0) in the 99152 namespace.
+	$x = `wegn locate "$a0"`;
+	#$x = `wegn locate "ark:/99152/p0vn2frcz8h"`;
+	like $x, qr{^Location: https://data.perio.do.*}m,
 		"Perio.do target redirect";
+
+	# YYY early use of curl, not wget! (wget/wegn won't return all headers?)
+	$x = `curl --max-redirs 0 --silent -I "$srvbase_u/$a0" | grep -i 'Access-Control-' | sort`;
+	like $x, qr{Allow-Methods:.*Allow-Origin:.*Expose-Headers:}si,
+		'CORS supported headers present on redirect';
 
 	print "--- END production-data tests (potentially volatile)\n";
 }
@@ -116,7 +159,6 @@ else {
 #like $x, qr/restart/, 'crontab restarts server periodically';
 
 # yyy retire soon
-my $home = $ENV{HOME};
 $x = `$home/sv/cur/build/eggnog/replay`;
 like $x, qr/usage/i, 'replay (replicate) script is executable';
 
@@ -140,8 +182,6 @@ like $x, qr/usage/i, 'admegn script is executable';
 $x = `wegn -v $ark1.set _t $tgt1`;
 like $x, qr/^egg-status: 0/m,
 	"egg sets target URL for id $ark1";
-
-#exit;  ########
 
 $x = `wegn locate "$ark1"`;
 like $x, qr/^Location: \Q$tgt1/m, "bound target value resolved";
@@ -191,9 +231,11 @@ like $x, qr/^Location: \Q$tgt2/m, "third new bound target value resolved";
 #
 # NB: XXX these tests may not work on a new system until a server
 #     reboot, due to resolver bug (remove this note when fixed)
+# 2019.10.02: changed www.cdlib.org to just cdlib.org (www. deprecated)
+# xxx still need to remove www. from SPT documentation!
 
 my $cdl_ark = 'ark:/12345/fk1234';		# ACTUAL real ARK!
-my $cdl_tgt = 'http://www.cdlib.org/services';
+my $cdl_tgt = 'https://cdlib.org/services';
 my $cdl_ext = '/uc3/ezid/';
 
 $x = `wegn $cdl_ark.set _t $cdl_tgt`;
@@ -203,9 +245,23 @@ $x = `wegn $cdl_ark.set erc.who CDL`;
 $x = `wegn $cdl_ark.set erc.when 2014`;
 like $x, qr/^egg-status: 0/m, "egg sets date for $cdl_ark";
 
+$x = `wegn locate "ark:/12345-dev/fk1234"`;
+like $x, qr|^Location: \Qhttps://cdlib-dev.org/services|m,
+	"prefix extension for stored ARK";
+
 $x = `wegn locate "$cdl_ark$cdl_ext"`;
 like $x, qr/^Location: \Q$cdl_tgt$cdl_ext/m,
-	"documented suffix passthrough works for cdl_ark $cdl_ark";
+	"documented suffix passthrough 'locate' for cdl_ark $cdl_ark";
+
+# this is a real test
+$x = `wegn resolve "$cdl_ark"`;
+like $x, qr/title.*Services.*California/m,
+	"documented 'resolve' target for cdl_ark $cdl_ark";
+
+# this is a real test
+$x = `wegn resolve "$cdl_ark$cdl_ext"`;
+like $x, qr/title.*EZID.*California/m,
+	"documented suffix passthrough 'resolve' for cdl_ark $cdl_ark";
 
 $x = `wegn resolve "$cdl_ark??"`;
 like $x, qr|erc:.*who: CDL.*when: 2014.*persistence:|s,
@@ -234,14 +290,14 @@ like $x, qr|erc:.*who: id.*what: assoc.*when: 2018|s,
 #  who: CDL
 #  what: CDL Services Landing Page
 #  when: 2014
-#  where: ark:/12345/fk1234 (currently http://www.cdlib.org/services)
+#  where: ark:/12345/fk1234 (currently http://cdlib.org/services)
 #  how: (:unav)
 #  id created: 2017.05.21_21:25:03
 #  id updated: 2014.05.29_17:48:06
 #  persistence: (:unav)
 
 my $wkp_ark = 'ark:/12345/fk1235';
-my $wkp_tgt = 'http://en.wikipedia.org/wiki';
+my $wkp_tgt = 'https://en.wikipedia.org/wiki';
 my $wkp_ext = '/Persistent_identifier';
 
 $x = `wegn $wkp_ark.set _t $wkp_tgt`;
@@ -251,11 +307,10 @@ like $x, qr/^Location: \Q$wkp_tgt$wkp_ext/m,
 	"documented suffix passthrough works for wkp_ark $wkp_ark";
 
 my $srch_ark = 'ark:/12345/fk3';
-my $srch_tgt = 'http://www.google.com/#q=';
-my $enc_srch_tgt = 'http://www.google.com/%23q=';	# encoded form
+#my $srch_tgt = 'https://www.google.com/#q=';
+my $srch_tgt = 'https://www.google.com/search?q=';
+my $enc_srch_tgt = 'https://www.google.com/search?q=';	# encoded form
 my $srch_ext = 'pqrst';
-#xxx fix wiki doc (An e)xtended ARK: http://n2t.net/ark:/12345/fk3pqrst
-#    high level intro could be simpler too
 
 $x = `wegn $srch_ark.set _t "$enc_srch_tgt"`;
 like $x, qr/^egg-status: 0/m, "egg sets target for $srch_ark";
@@ -286,11 +341,12 @@ my $prd = 'n2t.net';
 use EggNog::Binder ':all';
 my $rrminfo = RRMINFOARK;
 
-my $hgid = `hg identify | sed 's/ .*//'`;
-chop $hgid;
+#my $hgid = `hg identify | sed 's/ .*//'`;
+my $gitid = `git show --oneline | sed 's/ .*//;q'`;
+chop $gitid;
 #$x = `$wgcl "$srvbase_u/$rrminfo"`;
 $x = `wegn locate "$rrminfo"`;
-$x =~ qr{Location:.*dvcsid=\Q$hgid\E&rmap=}i or say STDERR
+$x =~ qr{Location:.*dvcsid=\Q$gitid\E&rmap=}i or say STDERR
 	"**** WARNING: SOURCE DVCSID DOESN'T MATCH INSTALLED DVCSID ****";
 
 #like $x, qr{Location:.*dvcsid=\Q$hgid\E&rmap=}i,
@@ -325,9 +381,6 @@ like $x, qr{^Location: http://escholarship.org/uc/item/123456789}m,
 $x = `wegn -v locate "ark:/13030/tf3000038j"`;
 like $x, qr{^Location: http://ark.cdlib.org/ark:/13030/tf3000038j}m,
 	"Legacy OAC redirect via post-egg Apache kludge";
-
-#print "xxx premature exit\n";
-#exit;
 
 ($i, $q) = ('ab_262044', '-z-?');
 $target = 'https://scicrunch.org/resolver/RRID:$id';
@@ -430,12 +483,17 @@ like $x, qr/response.*302 .*\nLocation: \Q$target/,
 #print "xxx disabled test: EC -- rule-based target redirect\n";
 
 $x = `wegn -v locate "ark:/99166/w6foo"`;
-like $x, qr/response.*303 .*\nLocation: http:..\Q$snachost/,
-	"SNAC target redirect with 303 status";
+like $x, qr/response.*303 .*\nLocation: http:..\Q$snacchost/,
+	"SNACC target redirect with 303 status";
 
 $x = `wegn locate "e/naan_request"`;
 like $x, qr|Location: .*goo.gl/forms|,
 	"NAAN request form is available";
+
+#$x = `wegn resolve "robots.txt"`;
+$x = `curl --silent "$srvbase_u/robots.txt"`;
+like $x, qr|disallow:|i,
+	"robots.txt is available and non-empty";
 
 $x = `wegn resolve "e/cdl_ebi_prefixes.yaml"`;
 like $x, qr|- namespace: pubmed|, "prefix registry file is available";
@@ -506,9 +564,18 @@ $x = `wegn locate ark:/76951/foo`;
 like $x, qr|^Location: http://ark\.spmcpapers\.com/.*foo|m, "SPMC redirect";
 
 # xxx document this naked prefix resolution
-$x = `wegn resolve 'ark:/12148:'`;
+$x = `wegn -v resolve 'ark:/12148:'`;
 like $x, qr/Bibliothèque nationale de France/i,
 	'prefix fetch on well-known NAAN preserves UTF-8';
+
+my $hostname = `hostname -f`;
+chop $hostname;
+say "NB: For an end-user check, open this in your browser (eg, Cmd-Click):\n",
+	"    https://$hostname/$cdl_ark";
+
+$x = `n2t cron works`;
+$x =~ /disabled/ and
+	say STDERR "\nALERT! -- $x";
 
 exit;
 

@@ -1,10 +1,17 @@
 #!/usr/bin/env perl
 
-####### exdb tests passed
+####### exdb tests passed prepending EGG_DBIE=e to tests
 # egg_bind.t egg_help.t egg_log.t egg_mkbinder.t egg_modifiers.t egg_normalize.t egg_resolve.t egg_webperms.t egn_apachebase.t 
-# errcount > 0 -   egg_dbcmds.t egg_list.t egg_incr.t
+# errcount > 0 -   egg_dbcmds.t egg_list.t       egg_incr.t
 # errcount > 0 - egn_service_n2t.t
+##### Linux2 EGG_DBIE=e tests
+# failed: 
+# passed: 
 
+# see t/n2t/service.cfg and t/n2t/host_classes for eg, prd-data, backup
+
+# xxx To DO change indb_get_dup signature to match exdb_get_dup signature!!
+#           too much time spent debugging this, more than once!
 # xxx To DO remove --storage wiredtiger option from admegn (now its default)
 # xxx look into rlimit advice
 # xxx TO DO in separate commit: hg rename lib/EggNog/{RUU,Uinfo}.pm and
@@ -106,32 +113,59 @@ order in the subcommands listed below.
   i.shadow          like norm but return i as shadow ARK if applicable
   -                 do bulk (batch) commands from stdin or http request body
   logmark string    write string to mark a place in the txnlog file
-  pr string ...     print strings to output
+  var [k [v ...]]   set session variable k; no args shows all; no v shows k
+                    use token &k or &{k} to expand value of k
+  pr string ...     print strings
 [not working for exdb case]
   list m [k...]     list up to m (0=unlimited) ids (or ids under keys k)
   next m x [k...]   like list, but begin at next id not matching x (under k)
+
+System Commands - a binder name is short or a FSBN (full system binder name)
 [work in progress]
+  bname b           for binder b, print full system name (--all shows more)
+  bxname b          like bname, but b must exist else silent with error status
+  bpname b          like bname, but pure parse with no caller env (use --all)
+  cfq [Tword]       return config variable plus exit status (to support cron)
   bshow [g [u]]     list binders of group g, user u; fullname egg_<g>.<u>_s_<b>
   bmake [b [g [u]]] make binder named b (mint name if no b) (aka mkbinder)
   brm b [g [u]]     remove binder named b (aka rmbinder)
+  bmv b1 b2         rename binder b1 to b2, which must be a FSBN
   brmgroup g [u]    remove external binder group g (just external binders now)
   mstat             show various binder counts
+
+Commands to synchronize binders with hex bindings (like db_dump and db_load)
+  iddump b          in binder b, from stdin ids, print --all elems from fetch
+  idload b          in binder b, from stdin bindings, purge/load or just purge
  
 Examples:
   egg ark:/12345/x9876r.set who 'Smith, Laurie'
   egg doi:10.5072/ACME.9876/STUDY1.XLSX.set title 'Stream data 15-94'
   egg urn:uuid:B73ADC4B-03D1-42C0-B650-DA31D952A7A1.fetch
 
+xxx update help README
 Some options:
-  -d binder    relative or absolute path to a binder (default binder1)
-  -p path      search path to look up a binder (default ~/.eggnog)
+  -d Binder    use the given Binder (defaults to binder1); in the indb case,
+      Binder is a filesystem path, the final part of which (the "ubname" or
+      user binder name) will be converted to an "sbname" (system binder name);
+      in the exdb case, the whole given Binder will be converted to an sbname
+  -p path      search path to look up a binder (default ~/.eggnog); this has
+      no effect in the exdb case
   -m format    an output format, one of ANVL, XML, JSON, Plain (default)
+  -q|--quiet   no output, if possible, just error status, useful in crontab
   --ack        acknowledge changes with an oxum value (#octets.#elements)
-  --txnlog Log transaction log (default ~/.eggnog/logs/transaction_log.rlog)
+  --txnlog Log egg records all transactions in ~/.eggnog/logs/transaction_log
+               by default, and this changes or disables(?) that
   --dbie=[ie]  database class: internal (i, default), external (e), both (ie)
-  --bgroup=G   external binder group, as in egg_<G>.<user>_s_<b>
   --home=Dir   eggnog home directory (~/.eggnog), containing configuration,
-               logs, binders, minters, prefixes, etc.
+               logs, binders (indb only), minters (exdb only), prefixes, etc.
+  --testdata=S binder name modifier to distinguish developer-side test binders
+  --allb       with bshow, show all binders, not just this user's (exdb)
+  --allc       with bshow, show all collections, not just this user's (exdb)
+
+Environment variables:
+   EGG          string of default command line options
+   EGG_TESTDATA value (default 'td') overridable by any --testdata setting
+   EGG_DBIE     value for --dbie setting that does NOT override it
 
 EXDB Notes (external database):
   unsupported commands:
@@ -139,7 +173,7 @@ EXDB Notes (external database):
   unsupported features:
    - implicit binder names for bmake/mkbinder
    - empty element name (empty id name ok)
-   - rlog (phasing out in favor of native replication)
+   - playback rlog (phasing out in favor of native replication)
 
 EOF
 
@@ -153,13 +187,15 @@ my @valid_commands = qw(
 	el elem ex expr bl blob fi file
 	bind dbinfo fetch get hello help inflect
 	man note usage version
-	pr logmark cullrlog resolve exists purge
+	var pr mint nab minters
+	logmark cullrlog resolve exists purge
 	mkbinder rmbinder delbinder
-	dbsave dbload
+	dbsave dbload iddump idload
 	norm shadow
 	pause unpause
-	bshow brmgroup bmake brm
+	bname bxname bpname bshow brmgroup bmake brm bmv
 	mstat
+	cfq
 	add another insert vinsert delete incr decr
 	set let uproot list next
 	testlock
@@ -179,7 +215,7 @@ my %opt;			# global options hash
 my $mdr;			# global minder name
 my $cmdr;			# global candidate minder name
 my $dontsearch;			# global flag to not search minder path
-my $pname_mdr;			# global with minder in program name
+my $pname_mdr;			# global with binder in program name (eg, CGI)
 my $om;				# global output multiplexer choices
 my $cgih;			# global HTTP headers, if any
 
@@ -232,6 +268,7 @@ my @getoptlist = (
 	'as=s',			# content type for output
 	'checksum=s',		# s=md5, sha1 (def) ack changes with
 					# checksum (not yet)
+	'class=s',		# usually obtained elsewhere, eg, from env var
 	'dbie=s',		# internal (i), external (e), both (ie, ei)
 	'debug',		# flag
 	'directory|d=s',	# filesystem directory name
@@ -244,7 +281,13 @@ my @getoptlist = (
 			# best for web instance if you use a full pathname
 			# NB: basename used in constructed exdb name, ignoring
 			# path of binder name, eg, -d /a/b/c
+			# Also for indb case, -d /a/b/c pulls off 'c' and
+			# transforms it xxx
 
+	'ikwid',		# I Know What I'm Doing: required for removing
+				# 'public' binders XXX doc
+	'isolator=s',		# usually derived, rare: set to 'public' XXX doc
+				# NB: ONLY WAY TO ACCESS PUBLIC PROD BINDERS zzz
 	'lock',			# lock db even on DB_RDONLY open
 	'long|l',		# flag (unused)
 	'man',			# flag
@@ -256,17 +299,18 @@ my @getoptlist = (
 	'persistomax=n',	# max number of opens in persistent connection
 	'pfx_file=s',		# name of prefixes file/database (yyy obsolete?)
 	'qs=s',			# query string for testing http
+	'quiet|q',		# no output, just exit status, if possible
 	'recurse|r',		# perform action recursively (unused)
 	'resolverlist=s',	# list of binders to try, in that order
-	'rrm',			# act like a rewritemap resolver
-					# (egg only)
+	'rrm',			# act like a rewritemap resolver (egg only)
+	'service=s',		# usually "n2t", maybe "web", default is "s"
 	'sif=s',		# succeed if elem exists/doesn't (egg)
+	'smode=s',		# service mode -- use "real" or "test" db
+	'testdata=s',		# dbname part distinguishing system test scripts
 	'testlock=i',		# flag xxx test
-	'bgroup=s',		# token to distinguish external binders
 	'txnlog=s',		# per-server transaction log; use '' to disable
 	'ua',			# marker for start of user args in query string
-	'user=s',		# optional user name -- don't use except for
-				# testing dbname construction rules
+	'user=s',		# optional user name for dbname construction
 	'verbose',
 	'version|v|V',
 );
@@ -295,11 +339,12 @@ my @getoptlist = (
 		# xxx "all" option completely untested
 		for (qw(
 			ack all allb allc txnlog api as
-			dbie home pfx_file
+			dbie directory home pfx_file
 			minderpath
+			class ikwid isolator testdata
 			checksum debug echo force format lock
 			persistomax recurse rrm resolverlist
-			sif testlock bgroup user verbose
+			service sif smode testlock user verbose
 		));
 		# yyy? a parsed resolverlist gets split into a resolverpath
 
@@ -330,6 +375,7 @@ my @getoptlist = (
 	# xxx document RewriteMapResolver mode!
 	# xxxx confusing overload of {rrm} key from both
 	#      $bh->{rrm} and $bh->{opt}->{rrm}
+	$sh->{rrm} = $WeAreResolver;	# whether we're in resolver mode
 	$bh->{rrm} = $WeAreResolver;	# whether we're in resolver mode
 	$bh->{resolverlist} = $opt{resolverlist};	# recursion test
 
@@ -343,7 +389,17 @@ my @getoptlist = (
 	);
 }
 
-# the return value from cmd_line becomes process' exit code!
+# This routine is called for every command submitted to egg, whether bulk
+# or otherwise.
+#
+# It also calls def_cmdr, without which the command won't know what binder
+# it's meant to operate on.
+#
+# The way that a CGI-invoked process know which binder (or minter) to
+# operate on is from calling def_cmdr, which examines arg0 and derives
+# the binder name from the path used to exec the process.
+# 
+# The return value from cmd_line becomes process' exit code!
 # so 0 for success, non-0 for errors
 
 sub cmd_line {
@@ -592,7 +648,7 @@ sub cmd_line {
 # xxx bug: ... then try it again
 
 sub bdx_mkbinder { bdx_bmake(@_) }
-sub bdx_bmake { my( $name, $bgroup, $user )=@_;
+sub bdx_bmake { my( $name, $user )=@_;
 
 	$bindid and
 		outmsg($sh, "why did you specify an identifier ($bindid)?"),
@@ -603,34 +659,24 @@ sub bdx_bmake { my( $name, $bgroup, $user )=@_;
 	# yyy deprecate this feature?: being able to do mkbinder without
 	#     a named binder is a feature that adds lots of complicated code
 
-	my $msg;
-	# yyy need to configure so we can test $sh->{exdb} below
-	if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {
-		outmsg($sh, $msg);      # failed to configure
-		return 1;
-	}
-
 	# yyy this next clause should be pushed into lower library routine?
 	my $err = 0;
-	if ($sh->{exdb}) {	# need to be configured before testing {exdb}
-		$cmdr = catfile($name, 'dummy');
-		$cmdr_from_d_flag = 0;
-	}
-	# yyy if both exdb and indb are in effect, binder name must be given
-	elsif ($name and $sh->{indb}) {		# not exdb case
+	if ($name) {
 		($mdr, $cmdr, $cmdr_from_d_flag, $err) =
-			# NB: this call uses $bh instead of $sh
-			EggNog::Cmdline::def_mdr($bh, $name, 0);
-		$err and
-			# NB: this call uses $bh instead of $sh
-			outmsg($bh),
+			EggNog::Binder::gbip($sh, $name, 0);
+		$err and		# $err is a number not a message
+			outmsg($sh),
 			return 1;
 	}
+
+	# Set $minderhome depending on whether -d was given. If the binder
+	# name was unqualified, we always create it in $sh->{minderhome}.
+	# This is a slightly different setting from the rmbinder case.
 
 	my $minderhome = $cmdr_from_d_flag ?	# if user specified -d
 		"." :			# use current context, not minderhome
 		"" ;			# else use $sh->{minderhome}
-	EggNog::Binder::mkbinder($sh, $mods, fiso_uname($cmdr), $bgroup, $user,
+	EggNog::Binder::mkbinder($sh, $mods, $cmdr, $user,
 			"user-initiated (with mkbinder)", $minderhome) or
 		outmsg($sh), return 1;
 
@@ -638,45 +684,88 @@ sub bdx_bmake { my( $name, $bgroup, $user )=@_;
 }
 
 sub bdx_rmbinder { bdx_brm( @_ ) }
-sub bdx_brm { my( $name, $bgroup, $user )=@_;
+sub bdx_brm { my( $name, $user )=@_;
 
 	$bindid and
 		outmsg($sh, "why did you specify an identifier ($bindid)?"),
 		return 1;
 
 	$name ||= "";
-	my $msg;
-	# yyy need to configure so we can test $sh->{exdb} below
-	if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {
-		outmsg($sh, $msg);      # failed to configure
-		return 1;
-	}
 
 	# yyy this next clause should be pushed into lower library routine
 	# yyy still using mdr-type (minder) var names instead of bdr (binder)
 	my $err = 0;
-	if ($sh->{exdb}) {	# need to be configured before testing {exdb}
-		$cmdr = catfile($name, 'dummy');	# yyy
-		$cmdr_from_d_flag = 0;
-	}
-	# xxx !! if both exdb and indb are in effect, binder name must be given
-	elsif ($name and $sh->{indb}) {		# not exdb case
+	if ($name) {
 		($mdr, $cmdr, $cmdr_from_d_flag, $err) =
-			EggNog::Cmdline::def_mdr($bh, $name, 1);
-		$err and
-			outmsg($bh),	# yyy $sh?
+			EggNog::Binder::gbip($sh, $name, 1);
+		$err and		# $err is a number not a message
+			outmsg($sh),
 			return 1;
 	}
 
+	# Set $minderpath depending on whether -d was given. If the binder
+	# name was unqualified, we always create it in $sh->{minderhome}.
+	# This is a slightly different setting from the mkbinder case.
+
 	my $minderpath = $cmdr_from_d_flag ?	# if user specified -d
-		"" :			# ignore minderpath setting
+		"" :			# ignore minderpath
 		$sh->{minderpath};	# else use $sh->{minderpath}
 	# yyy these EggNog::Egg::* routines should take a name that is either a
 	#     fiso_dname or fiso_uname (which is easier on the caller/user)
 	# xxxx this minderpath is really a Perl array not a string!
 
-	EggNog::Binder::rmbinder($sh, $mods, fiso_uname($cmdr), $bgroup, $user,
-			$minderpath) or
+	EggNog::Binder::rmbinder($sh, $mods, $cmdr, $user, $minderpath) or
+		outmsg($sh),
+		return 1;
+	return 0;
+}
+
+sub bdx_bmv { bdx_brename( @_ ) }
+sub bdx_brename { my( $b1, $b2, $user )=@_;
+
+	$bindid and
+		outmsg($sh, "why did you specify an identifier ($bindid)?"),
+		return 1;
+
+	my $minderpath = $cmdr_from_d_flag ?	# if user specified -d
+		"" :			# ignore minderpath
+		$sh->{minderpath};	# else use $sh->{minderpath}
+
+	# yyy this next clause should be pushed into lower library routine
+	# yyy still using mdr-type (minder) var names instead of bdr (binder)
+	my $err = 0;
+	#my ($cmdr1, $cmdr2);
+#	my $cmdr1;
+#	if ($b1) {	# source binder $b1 to be removed, similar to rmbinder
+#		($mdr, $cmdr, $cmdr_from_d_flag, $err) =
+#			EggNog::Binder::gbip($sh, $b1, 1); # expect 1 there
+#		$cmdr1 = $cmdr;
+#		$err and		# $err is a number not a message
+#			outmsg($sh),
+#			return 1;
+#	}
+
+	# binder $b2 is destination: format must be path to full system name
+	#if ($b2) {		# $b2 to be created, similar to mkbinder case
+	#	($mdr, $cmdr, $cmdr_from_d_flag, $err) =
+	#		EggNog::Binder::gbip($sh, $b2, 0); # expect none there
+	#	$cmdr2 = $cmdr;
+	#	$err and		# $err is a number not a message
+	#		outmsg($sh),
+	#		return 1;
+	#}
+	# yyy can we assume -d only specifies the source binder?
+	my $minderhome = $cmdr_from_d_flag ?	# if user specified -d
+		"." :			# use current context, not minderhome
+		"" ;			# else use $sh->{minderhome}
+
+	# yyy these EggNog::Egg::* routines should take a name that is either a
+	#     fiso_dname or fiso_uname (which is easier on the caller/user)
+	# xxxx this minderpath is really a Perl array not a string!
+
+	#EggNog::Binder::renamebinder($sh, $mods, $cmdr1, $minderpath,
+	EggNog::Binder::renamebinder($sh, $mods,
+			$b1, $minderpath, $b2, $user) or
 		outmsg($sh),
 		return 1;
 	return 0;
@@ -697,16 +786,51 @@ sub bdx_brm { my( $name, $bgroup, $user )=@_;
 #sub bdx_mshow { dx_mshow( @_ ) }
 # show known binders (was mshow)
 
-sub bdx_bshow { my( $bgroup, $user, $ubname )=@_;
+sub bdx_bxname { bdx_bindername( 2, @_ ) }	# do hard existence check
+sub bdx_bpname { bdx_bindername( -1, @_ ) }	# pure parse, no opts or env
+sub bdx_bname { bdx_bindername( 0, @_ ) }
+#sub bdx_bname { my( $ubname, $smode, $exists_flag )=@_;
+sub bdx_bindername { my( $exists_flag, $ubname, $smode )=@_;
 
-	EggNog::Binder::bshow($sh, $mods, $sh->{om}, $bgroup, $user, $ubname) or
+	$exists_flag //= 0;
+	my $minderpath = $cmdr_from_d_flag ?	# if user specified -d
+		"" :			# ignore minderpath
+		$sh->{minderpath};	# else use $sh->{minderpath}
+	my ($isbname, $esbname, $bn) =
+		EggNog::Binder::bname_parse($sh, $ubname, $exists_flag, $smode,
+			undef, $minderpath);
+		# yyy undocumented what $smode does
+	defined($isbname) or
+		outmsg($sh),
+		return 1;
+	if ($opt{all}) {
+		my $om = $sh->{om_formal};
+		foreach my $key (sort keys %$bn) {
+			$om->elem($key, $bn->{$key});
+		}
+	}
+	my $retstat = 0;		# default return status
+	if ($sh->{indb}) {
+		$exists_flag > 0 and ! $bn->{isbpathname} and
+			$retstat = 1;
+		! $retstat and
+			$om->elem('indb_system_binder_name', $bn->{isbname});
+	}
+	$sh->{exdb} and
+		$om->elem('exdb_system_binder_name', $bn->{esbname});
+	return $retstat;
+}
+
+sub bdx_bshow { my( $user, $ubname )=@_;
+
+	EggNog::Binder::bshow($sh, $mods, $sh->{om}, $user, $ubname) or
 		outmsg($sh), return 1;
 	return 0;
 }
 
-sub bdx_brmgroup { my( $bgroup, $user )=@_;
+sub bdx_brmgroup { my( $user )=@_;
 
-	EggNog::Binder::brmgroup($sh, $mods, $bgroup, $user) or
+	EggNog::Binder::brmgroup($sh, $mods, $user) or
 		outmsg($sh), return 1;
 	return 0;
 }
@@ -739,6 +863,16 @@ sub bdx_mstat { my( $level )=@_;
 		outmsg($bh), return 1;
 
 	EggNog::Egg::mstat($bh, $mods, $bh->{om_formal}, $cmdr, $level) or
+		outmsg($bh), return 1;
+	return 0;
+}
+
+sub bdx_cfq {
+
+	my $minderpath = $cmdr_from_d_flag ?
+		"" : $bh->{minderpath};		# search unless -d used
+
+	EggNog::Egg::egg_cfq($bh, $mods, $om, @_) or
 		outmsg($bh), return 1;
 	return 0;
 }
@@ -783,9 +917,10 @@ sub bdx_next_list { my( $max, $nextkey, @inkeys )=@_;
 	defined($num_ids) or
 		outmsg($bh), return 1;
 
-	my $summary = " produced $num_ids ids with an average of "
-			. ($num_ids ? ($num_bindings / $num_ids) : 0)
-			. " bindings per id";
+	my $summary =
+		" produced $num_ids ids, $num_bindings bindings (average "
+		. sprintf("%.2f", ($num_ids ? ($num_bindings / $num_ids) : 0))
+		. " bindings per id)";
 	$bh->{om}->elem('summary', $summary, '1#');
 	return 0;
 }
@@ -971,8 +1106,80 @@ sub bdx_testlock { my( $secs, $locktype )=@_;
 	outmsg("held $locktype lock for $secs seconds");
 }
 
+# purge/load hex bindings or just purge
+
+sub bdx_iddump { my( $ubname, $smode )=@_;	# $smode not used, defaults yyy
+
+	# yyy need to configure so we can test $sh->{exdb} below
+	my $msg;
+	if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {
+		outmsg($sh, $msg);      # failed to configure
+		return 1;
+	}
+	$sh->{exdb} and ! $cmdr_from_d_flag and
+		$cmdr = '';	# binder name _is_ -d arg, not inside it
+	my $minderpath = $cmdr_from_d_flag ?
+		"" : $bh->{minderpath};		# search unless -d used
+
+	my $exists_flag = 2;			# hard existence check
+	my ($isbname, $esbname, $bn) =
+		EggNog::Binder::bname_parse($sh, $ubname, $exists_flag, $smode,
+			undef, $minderpath);
+		# yyy undocumented what $smode does
+	defined($isbname) or
+		outmsg($sh),
+		return 1;
+
+	bopen($bh, $isbname, DB_RDONLY, $minderpath) or
+		outmsg($bh),
+		return 1;
+
+	EggNog::Egg::iddump($bh, @_) or
+		outmsg($bh),
+		return 1;
+	return 0;
+}
+
+# purge/load hex bindings or just purge
+
+sub bdx_idload { my( $ubname, $smode )=@_;	# $smode not used, defaults yyy
+
+	my $om = $bh->{om_formal};
+
+	# yyy need to configure so we can test $sh->{exdb} below
+	my $msg;
+	if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {
+		outmsg($sh, $msg);      # failed to configure
+		return 1;
+	}
+	$sh->{exdb} and ! $cmdr_from_d_flag and
+		$cmdr = '';	# binder name _is_ -d arg, not inside it
+	my $minderpath = $cmdr_from_d_flag ?
+		"" : $bh->{minderpath};		# search unless -d used
+
+	my $exists_flag = 2;			# hard existence check
+	my ($isbname, $esbname, $bn) =
+		EggNog::Binder::bname_parse($sh, $ubname, $exists_flag, $smode,
+			undef, $minderpath);
+		# yyy undocumented what $smode does
+	defined($isbname) or
+		outmsg($sh),
+		return 1;
+
+	#bopen($bh, $cmdr, DB_RDWR, $minderpath) or
+	bopen($bh, $isbname, DB_RDWR, $minderpath) or
+		outmsg($bh), return 1;
+
+	EggNog::Egg::idload($bh, @_) or
+		outmsg($bh),
+		return 1;
+	return 0;
+}
+
 # xxx dbsave and dbload built for the old DB_File.pm environment
 # xxx should probably be updated for BerkeleyDB.pm and MongoDB.pm
+#
+# XXX dbsave and dbload should be deprecated
 
 sub bdx_dbsave { my( $destfile )=@_;	# arg may name a directory
 
@@ -1069,9 +1276,6 @@ sub bdx_decr	{ bdx_assign( "decr", 1, 0, EggNog::Egg::HOW_DECR, @_ ) }
 # xxx replace shifts by more usual way of copying args
 sub bdx_assign { my( $lcmd, $delete, $polite, $how )=( shift, shift, shift, shift );
 
-	my $minderpath = $cmdr_from_d_flag ?
-		"" : $bh->{minderpath};		# search unless -d used
-
 	# yyy need to configure so we can test $sh->{exdb} below
 	my $msg;
 	if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {
@@ -1080,6 +1284,8 @@ sub bdx_assign { my( $lcmd, $delete, $polite, $how )=( shift, shift, shift, shif
 	}
 	$sh->{exdb} and ! $cmdr_from_d_flag and
 		$cmdr = '';	# binder name _is_ -d arg, not inside it
+	my $minderpath = $cmdr_from_d_flag ?
+		"" : $bh->{minderpath};		# search unless -d used
 
 	bopen($bh, $cmdr, DB_RDWR, $minderpath) or
 		outmsg($bh), return 1;
@@ -1143,6 +1349,8 @@ sub bdx_show { my( @elemsets )=@_;	# acts on ELEMENTS, eg, "show :brief"
 
 	# yyy need to configure so we can test $sh->{exdb} below
 	my $msg;
+# zzz move this config check into each lower-level library call
+# #   "thin client principle"
 	if (! $sh->{cfgd} and $msg = EggNog::Session::config($sh)) {
 		outmsg($sh, $msg);      # failed to configure
 		return 1;
@@ -1206,7 +1414,9 @@ sub bdx_del { my( $lcmd, $formal )=( shift, shift );
 	return 0;
 }
 
-# XXX currently no way to use this $formal
+# XXX currently the only way to use this $formal is with an arg like 1 in
+#        egg i.purge 1
+
 sub bdx_purge { my( $formal )=shift;
 
 	$bindelem and
@@ -1302,18 +1512,28 @@ sub bdx_logmark { my( $string )=@_;
 	return 0;
 }
 
+sub bdx_var {		# pass @_ on through
+
+	EggNog::Egg::egg_var($bh, $mods, @_) or
+		outmsg($bh), return 1;
+	return 0;
+}
+
+sub bdx_mint	{ bdx_minters("mint", 0, @_) }
+sub bdx_nab	{ bdx_minters("nab", 0, @_) }
+sub bdx_minters { my( $cmd )=( shift );	# pass remaining args in @_
+
+	EggNog::Egg::egg_minters($bh, $mods, $cmd, @_) or
+		outmsg($bh), return 1;
+	return 0;
+}
+
 sub bdx_pr {		# pass @_ on through
 
 	EggNog::Egg::egg_pr($bh, $mods, @_) or
 		outmsg($bh), return 1;
 	return 0;
 }
-
-# yyy what about a "winnow" routine that is either started
-#     from cron or is started when an exiting noid call notices
-#     that there's some harvesting/garbage collecting to do and
-#     schedules it for, say, 10 minutes hence (by not exiting,
-#     but sleeping for 10 minutes and then harvesting)?
 
 sub bdx_note { my( $key, $value )=@_;
 
@@ -1334,6 +1554,12 @@ sub bdx_note { my( $key, $value )=@_;
 	return 0;
 }
 
+# yyy what about a "winnow" routine that is either started
+#     from cron or is started when an exiting noid call notices
+#     that there's some harvesting/garbage collecting to do and
+#     schedules it for, say, 10 minutes hence (by not exiting,
+#     but sleeping for 10 minutes and then harvesting)?
+
 # Called as the default command when no args were given
 #
 sub bdx_usage { my( $errmsg )=@_;
@@ -1349,7 +1575,8 @@ sub bdx_version {
 
 	# We take our version number from the module version.
 	#
-	my ($v1bdb, $dbfile, $built, $running, $mongo) = get_dbversion();
+	#my ($v1bdb, $dbfile, $built, $running, $mongo) = get_dbversion();
+	my ($v1bdb, $dbfile, $built, $running) = get_dbversion();
 
 ##my $x = $bh->{ruu}->{client_software};
 #my $x = $ENV{HTTP_USER_AGENT};
@@ -1360,8 +1587,8 @@ sub bdx_version {
 	$om->elem("version",
 		qq@This is "$m_cmd" version $EggNog::Egg::VERSION, @ .
 #"USER_AGENT=$ENV{HTTP_USER_AGENT}, modif=$x, onbof=$onbof, " .
-			"with Berkeley DB version $running" .
-			" and MongoDB.pm $mongo");
+			"with Berkeley DB version $running");
+			#" and MongoDB.pm $mongo");
 
 	return 0			# normal return
 		unless $opt{verbose};
@@ -1464,14 +1691,16 @@ must not start with a literal ':', '&', or '@' unless it is encoded.
 Other literals that must be encoded are any of the characters in
 "|;()[]=:" anywhere in the strings i and n, and any '<' at the start of i.
 
-Encoding can be done with the :hx modifier (below) or avoided entirely
-with indirect tokens.  If any of i, n, or d begins with a literal '@',
-it specifies an indirect token to be taken from elsewhere, as follows:
+Input encoding can be done with the :hx modifier (below), or mostly avoided
+with indirect tokens.  If on a command line any of i, n, or d begins with a
+literal '@', it specifies an indirect token to be taken from elsewhere.
+Usually starting from the first character of the next line, elsewhere is
+defined as follows:
 
-  @       from stdin up to end of line
+  @       from stdin up to the end of the line
   @-      from stdin up to a blank line (two newlines in a row)
   @--     from stdin up to end-of-file
-  @-N     from stdin up to N+6 octets, the last 6 being "\n#eot\n"
+  @-N     from stdin consuming up to N+6 octets (last 6 being "\n#eot\n")
   @-XYZ   from stdin up to "\nXYZ\n" (string XYZ bounded by newlines)
   @XYZ    from the entire contents of a file named XYZ
 
@@ -1496,6 +1725,9 @@ are silently ignored.
   i.shadow        like norm but return i as shadow ARK if applicable
   list m [k...]   list up to m (0=unlimited) ids (or ids under keys k)
   next m x [k...] like list, but begin at next id not matching x (under k)
+  bname b         for binder b, print system binder name (--all gets more)
+  bxname b        like bname, but silent and non-zero status unless b exists
+  bpname b        like bname, but pure parse with no caller env (use --all)
   bmake [b [g [u]]] make binder named b (mint name if no b) (aka mkbinder)
   bshow [g [u]]     list binders for group g, user u
   brm b [g [u]]     remove binder named b (aka rmbinder)
@@ -1504,7 +1736,9 @@ are silently ignored.
   dbinfo [all]    show binder database information
   -               do bulk (batch) commands on stdin or http request body
   logmark string  write string to mark a place in the txnlog file
-  pr string ...   print strings to output
+  var [k [v ...]]   set session variable k; no args shows all; no v shows k
+                    use token &k or &{k} to expand value of k
+  pr string ...   print strings
 
 Modifiers may appear in front of commands.  To enter arbitrary data for any
 token, use the :hx modifier to decode hex digit pairs before operating.
@@ -1595,12 +1829,13 @@ not map '+' to SPACE in query strings.)
   -d binder   relative or absolute path to a binder (default binder1)
   -p path     search path to look up a binder (default ~/.eggnog)
   -m format   an output format, one of ANVL, XML, JSON, Plain (default)
+  -q|--quiet  no output, if possible, just error status, useful in crontab
   --ack       acknowledge changes with an oxum value (#octets.#elements)
   --all       get/fetch all elements by default (use :allnot to override)
   --api       enable API mode
-  --txnlog=L  transaction log file (default ~/.eggnog/logs/transaction_log.rlog)
+  --txnlog Log egg records all transactions in ~/.eggnog/logs/transaction_log
+               by default, and this changes or disables(?) that
   --dbie=[ie] database class: internal (i, default), external (e), both (ie)
-  --bgroup=G  external binder group, as in egg_<G>.<user>_s_<b>
   --home=Dir  eggnog home directory (~/.eggnog), containing configuration,
               logs, binders, minters, prefixes, etc.
 

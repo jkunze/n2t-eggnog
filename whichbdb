@@ -127,10 +127,16 @@ $bmode || $fmode or
 if ($bmode) {
 	($msg, $modversion, $built, $running) = get_dbversion();
 	print "BerkeleyDB version $modversion, built with C libdb ",
-		"$built, running with C libdb $running\n\t$msg\n";
+		"$built, running with C libdb $running\n";
+		#"$built, running with C libdb $running\n\t$msg\n";
+	$msg and $msg =~ s/^/\t/gm;
+	say "$msg";
 }
 if ($fmode) {
 	($msg, $modversion, $built, $running) = get_dbfversion();
 	print "DB_File version $modversion; built with C libdb ",
-		"$built, running with C libdb $running\n\t$msg\n";
+		"$built, running with C libdb $running\n";
+		#"$built, running with C libdb $running\n\t$msg\n";
+	$msg and $msg =~ s/^/\t/gm;
+	say "$msg";
 }

@@ -7,13 +7,13 @@ use warnings;
 use EggNog::ValueTester ':all';
 use File::Value ':all';
 
-my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "nog";
+my ($td, $cmd, $homedir, $tdata, $hgbase, $indb, $exdb) = script_tester "nog";
 $td or			# if error
 	exit 1;
-$ENV{NOG} = $hgbase;		# initialize basic --home and --bgroup values
+$ENV{NOG} = $hgbase;		# initialize basic --home and --testdata values
 
 {	# Validate tests -- short
-remake_td($td, $bgroup);
+remake_td($td, $tdata);
 $ENV{MINDERPATH} = $td;
 $ENV{NOG} = "$hgbase --format ANVL";
 my ($x, $y);
@@ -48,5 +48,5 @@ like $x, qr/12345.*spingerr:\s*b3th54.*b3th5/s,
 $x = `$cmd validate "x{edeed}y" 12345`;
 like $x, qr/error:.*template/s, 'bad template';
 
-remove_td($td, $bgroup);
+remove_td($td, $tdata);
 }

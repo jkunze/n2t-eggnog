@@ -10,13 +10,13 @@ use warnings;
 use EggNog::ValueTester ':all';
 use File::Value ':all';
 
-my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "egg";
+my ($td, $cmd, $homedir, $tdata, $hgbase, $indb, $exdb) = script_tester "egg";
 $td or			# if error
 	exit 1;
-$ENV{EGG} = $hgbase;		# initialize basic --home and --bgroup values
+$ENV{EGG} = $hgbase;		# initialize basic --home and --testdata values
 
 # Use this subroutine to get actual commands onto STDIN (eg, bulkcmd).
-#
+
 sub run_cmds_on_stdin { my( $cmdblock )=@_;
 
 	my $msg = file_value("> $td/getcmds", $cmdblock, "raw");
@@ -26,7 +26,7 @@ sub run_cmds_on_stdin { my( $cmdblock )=@_;
 
 =for later
 {
-remake_td($td, $bgroup);
+remake_td($td, $tdata);
 $ENV{MINDERPATH} = $td;
 my ($x, $cmdblock);
 
@@ -46,7 +46,7 @@ like $x, qr|xxx creating.*binder1|, "multiple mkbinders in one stream";
 =cut
 
 {
-remake_td($td, $bgroup);
+remake_td($td, $tdata);
 my $x;
 $ENV{EGG} = "$hgbase -d $td/foo";
 
@@ -130,13 +130,16 @@ myid.fetch
 # should force a re-open in rdwr mode.  Ultimately two closes should
 # be required: once after i.fetch and again at handler teardown.
 
+my $isbname = `$cmd --dbie i bname $td/foo`;	# indb system binder name
+$isbname =~ s/\n*$//;			# do it before --verbose in effect!
+
 $ENV{EGG} = "$hgbase --verbose -d $td/foo";
 $x = run_cmds_on_stdin($cmdblock);
 like $x, qr/aaa: ccc\n.*bar: zaf\ncat: dog\n/s,
 	"four bulk commands exercising both readonly and rdwr modes";
 # XXX an optimized mode could lock in rdwr mode for whole batch
 
-like $x, qr,(?:\nclosing.*$td/foo/egg.bdb\n.*){2},s,
+like $x, qr|(?:\nclosing.*\Q$isbname\E/egg.bdb\n.*){2}|s,
 	"different open modes means closing persistent mopen at least twice";
 
 use EggNog::Binder;
@@ -233,5 +236,5 @@ like $x, qr/(?:bigelement){$n}:(?:\s*$bigvalue){$p}/,
          5: <you>
 =cut
 
-remove_td($td, $bgroup);
+remove_td($td, $tdata);
 }

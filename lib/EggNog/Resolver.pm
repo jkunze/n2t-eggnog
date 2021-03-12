@@ -1,5 +1,10 @@
 package EggNog::Resolver;
 
+# xxx new feature:
+#     for n2t, add rule for 12345 naan that describes example nature of
+#       the NAAN along with the 404 error
+#     similarly for 99999 ids that don't work (instead of simple 404)
+
 use 5.10.1;
 use strict;
 use warnings;
@@ -396,7 +401,7 @@ my $n2thash = {
 # pdbe (for pdb)
 # pdbj (for pdb)
 
-use MongoDB;
+#use MongoDB;
 
 #=for removal
 #
@@ -486,13 +491,26 @@ sub get_headers { my( $hdrinfo )=@_;
 	$proto =~ /^https?$/ or		# must be either 'http' or 'https'
 		$proto = '';
 
-	# Extract the "Accept:" header, as it may effect resolution.
+	# Extract the "Accept:" header, as it may affect resolution.
 	# yyy based on private format shared with build_server_tree
 
 	my $accept;
 	$hdrinfo =~ /!!!ac=(.*?)!!!/;		# non-greedy
 	$accept = $1 || '';
 
+	# NB: In the past, browsers would put nothing or just '*/*' in
+	# the Accept: header, which we would take to mean "no special
+	# format requested", ie, no content negotiation or "request".
+	# Modern browsers, however, seem to put lots into that header,
+	# which we don't really want to parse. To make life simple for
+	# ourselves, we will take the presence of '*/*' inside it to
+	# mean "no content negotiation".
+
+	#$accept eq '*/*' and	# if anything accepted then
+	$accept =~ m|\*/\*| and		# if anything is accepted, it's the
+		$accept = '';		# same as no content negotiation
+
+	# xxx why was the whitelist below ever in effect?
 	#$accept eq '*/*' and	# if anything accepted then
 	#	$accept = '';		# no content negotiation
 	#1 or			# else if we don't know it, then ignore
@@ -502,11 +520,6 @@ sub get_headers { my( $hdrinfo )=@_;
 	#	$accept = '',		# as if no content negotiation
 	#;
 
-	$accept ne 'application/rdf+xml' &&
-			$accept ne 'text/turtle' &&
-			$accept ne 'application/atom+xml' and
-		$accept = '',		# as if no content negotiation
-	;
 	return ($hdrinfo, $accept, $proto);
 }
 # xxx adjust resolver protocol to get command and args in return
@@ -603,6 +616,7 @@ sub idx_init { my( $idx )=@_;
 
 	$idx->{origid} =	# original identifier string
 		$idx->{ur_origid} =
+		$idx->{log_ok_ur_origid} =
 		$idx->{full_id} =
 		$idx->{slid} =
 		$idx->{naan} =
@@ -686,10 +700,16 @@ sub id_decompose { my( $pfxs, $id )=@_;
 	#        (when x ne "grid")
 	# yyy add url: as scheme?
 
-	if ($id =~ /^urn:([^:]+):(.*)/i) {	# yyy kludgy special case
+	if ($id =~ /^urn:([^:]+):((([^:]+):)?(.*))/i) {	# kludgy special case
 		my $nid_raw = $1;
 		my $nid = lc $1;
-		if ($nid eq 'nbn' || $nid eq 'issn' || $nid eq 'isbn' ||
+		my $subnid = $4 ? lc($4) : '';	# look one level deeper
+		if ($nid eq 'nbn' && $subnid eq 'nl') {
+			$scheme = 'nbn_nl';
+			$scheme_raw = "$nid_raw:$4";
+			$id = $5 || '';
+		}
+		elsif ($nid eq 'nbn' || $nid eq 'issn' || $nid eq 'isbn' ||
 				$nid eq 'lsid') {
 			$scheme = $nid;
 			$scheme_raw = $nid_raw;
@@ -700,12 +720,13 @@ sub id_decompose { my( $pfxs, $id )=@_;
 			$id = $1 . ':' . ($2 || '');
 		}
 	}
+	# NB: the FIRST colon is taken to be the separator, which is a reason
+	# that urn:...:...:... has to be handled specially above
 	elsif ($id =~ m|^([^:]+):/*\s*(.*)|) {	# grab scheme name and id,
 		$scheme_raw = $1;		# ignoring spaces after scheme
 		$scheme = lc $1;	# $scheme is now defined and lowercase
 		$id = $2 || '';		# $id now w.o. scheme or initial spaces
 	}
-	#elsif ($id !~ /:/) {		# if no colon-y bit, infer scheme
 	elsif (! $has_colon) {		# if no colon-y bit, infer scheme
 		if ($id =~ /^10\.\d+/o) {			# DOI Prefix
 			$scheme = 'doi';
@@ -793,7 +814,13 @@ sub id_decompose { my( $pfxs, $id )=@_;
 		return $idx;
 	}
 
-	$idx->{scheme} = $scheme;	# shouldn't change before we return
+	# XXX document
+	# To facilitate testing by scheme owners, if scheme ends in "-dev"
+	$scheme =~ s|(-dev)$|| and	# eg, foo-dev, prep to use extension
+		$idx->{pfxextension} = $1;	# with target hostname
+
+	$idx->{scheme} = $scheme;
+	# Neither $idx->{scheme} nor $scheme should change before we return.
 
 	# Now that we have a decent idea of what the scheme is, and having
 	# dispensed with any received http or https "id", detach any query
@@ -870,6 +897,11 @@ sub id_decompose { my( $pfxs, $id )=@_;
 		$idx->{naan} = '';		# no $naan
 	}
 	$rid = $id;			# update default root id
+
+	# To facilitate testing by NAAN holders, if the NAAN contains a hyphen
+	$idx->{naan} =~ s|(-.+)|| and		# eg, 12345-dev, prep to use
+		$idx->{pfxextension} = $1;	# extension with target hostname
+
 	# By the time we get here, we'll be done defining $idx->{naan} and
 	# $idx->{naan_sep}.
 
@@ -883,9 +915,9 @@ sub id_decompose { my( $pfxs, $id )=@_;
 #     they were ids ... maybe need to set flag here that, if set,
 #     causes resolve() to check for exact match to shoulder record
 
-	# NB: $kludge holds the inital '/' that begins (for now) ARK NAANs
+	# NB: $kludge holds '' or the '/' that begins (for now) ARK NAANs
 	# but is empty otherwise; $idx->{naan} does NOT have an initial '/'.
-	#
+
 	my $fqnaan = $scheme . ':' . $kludge . $idx->{naan};
 	$idx->{fqnaan} = $fqnaan;
 
@@ -1077,7 +1109,7 @@ sub load_prefix_hash { my( $sh, $pfx_file, $msgR )=@_;
 	my $ok = try {
 		$pfxs = YAML::Tiny::LoadFile($pfx_file);
 	}
-	catch {
+	catch {		# NB: catch this exception or resolver aborts
 		$$msgR .= "YAML::Tiny::LoadFile failed on $pfx_file";
 		return undef;	# returns from "catch", NOT from routine
 	};
@@ -1300,6 +1332,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 	my $txnid;		# undefined until first call to tlogger
 
 	# Load the prefixes hash (once) if it's not yet defined.
+	# Once done, the $sh->{pfxs} points to a hash of all known prefixes.
 	#
 	my $msg;
 	if (! $sh->{pfxs}) {
@@ -1312,6 +1345,8 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 			tlogger $sh, $txnid, "resolve FATAL ERROR: $msg";
 			return undef;
 		}
+		# XXX somehow ARKs are coming in terminated by ^M -- should
+		#     they perhaps be removed before resolve or store?
 		if ($msg) {	# we have some prefixes and a non-fatal error
 			addmsg($bh, $msg);		# for return
 			$txnid = tlogger $sh, $txnid,
@@ -1333,14 +1368,20 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 		#     look a little faster) but we'll get less noise from each
 		#     recursive call when resolverlist support gets added.
 	my $exget = $sh->{fetch_exdb} // 0;
+
+
+	my $log_ok_ur_origid = $ur_origid;
+	$log_ok_ur_origid =~ s/\n/%0a/g;	# replace any literal newlines
+
 	#$txnid = tlogger $sh, $txnid, "BEGIN $lcmd $ur_origid $hdrinfo";
 	$txnid = tlogger $sh, $txnid, "BEGIN"
 		# yyy what's the indb equivalent?
 # ZZZZZZZZZXXXXXXXXXXXX remove debug
 # xxx document use of tlogger and $exget for debugging
-		. ($exget ? " bindername: $sh->{exdb}->{exdbname}" .
-			" connect_string: $sh->{exdb}->{connect_string}" : "")
-		. " $lcmd $ur_origid $hdrinfo";
+#		. ($exget ? " bindername: $bh->{exdbname}" .
+#			" connect_string: $sh->{exdb}->{connect_string}" : "")
+		#. " $lcmd $ur_origid $hdrinfo";
+		. " $lcmd $log_ok_ur_origid $hdrinfo";
 
 	my $db = $bh->{db};
 	my $rpinfo = undef;	# redirect prefix info
@@ -1382,6 +1423,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 		return undef;
 	}
 	$idx->{ur_origid} = $ur_origid;
+	$idx->{log_ok_ur_origid} = $log_ok_ur_origid;
 
 	#### Step 0 Redirect directives to look for _before_ binder lookup
 	#  yyy as Last Step look up $SCHEMELESS ids post-binder-lookup
@@ -1490,7 +1532,6 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 	# NB: EZID once supported this as a kind of alias for non-ARK ids,
 	#     so we try to honor these
 
-#say STDERR "xxx before shadow2id id=$id";
 	if ($idx->{scheme} eq 'ark' and $idx->{naan} =~ /^[b-z]\d\d\d\d$/) {
 		my $real_id = shadow2id($id);
 		my $real_rfs = $exget
@@ -1511,7 +1552,7 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 #
 #	# The shoulder we parsed out of the id might itself be stored
 #	#
-#	#   1. as an id in a binder (eg, John Deck's ark:/21547/R2), or
+#	#   1. as an id in a binder (eg, ark:/21547/R2), or
 #	#   2. as a "shoulder" type prefix in our prefix database.
 #	#
 #	# We choose the first one where we find target redirection info,
@@ -1675,24 +1716,29 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 
 # xxx problem: this is capturing web server file paths as if they were partial
 # ids to send to pfx for lookup
-	# If still nothing, see if we have a probable partial match.
-	# This is risky as we might occlude rule-based redirection
-	# if we flag as partial something that ought to simply redirect.
+	# If still nothing, see if we have a probable "partial" match.
+	# A partial match means with thinkg the user is not asking about an
+	# identifier, but about a prefix that they want the info record for.
+	# This is risky as we might occlude rule-based redirection if
+	# we'd flagged as partial something that ought to simply redirect.
 
  	if ($idx->{partial}) {		# scheme, or scheme+naan
 		my $partial = 
 			$idx->{shdr_i}->{key}
 			|| $idx->{naan_i}->{key}
 			|| $idx->{scheme_i}->{key};
+
+# xxx to do: make "n2t.net/pmid:" work -- does it fail because it's an alias?
+
 		return cnflect( $bh, $txnid, $db, $rpinfo, $accept,
 			$id, [ ], $idx, "partial=$partial" );
 	}
 
-	# If still nothing, try new rule-based mapping.
+	# If still nothing, prepare for rule-based mapping.
 	# Select which redirection prefix we'll use (info obtained
 	# earlier by id_decompose), choosing the first, most-specific
 	# redirect rule that we find.
-	# yyy when/where do we use the info blocks except for a thest
+	# yyy when/where do we use the info blocks except for a test
 	#     that we found a redirect? the info itself will be provided
 	#     by calling out to pfx (at least for now).
 
@@ -1712,9 +1758,10 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 #print Dumper $idx;
 
 	if ($rpinfo) {
-		# If we get here, we will redirect to the result of a
-		# prefix-based redirect rule found in $rpinfo, into which
-		# we insert the id to create the target URL.
+		# If we get here, we will redirect to a string resulting from
+		# a prefix-based redirect rule found in $rpinfo, into which we
+		# insert the id to make the string that becomes the target URL.
+		# This is how IGSN, Addgene, PMID, etc. ids get redirected.
 
 		# xxx we're not currently sensitive to whether the request
 		#     came in via HTTP or HTTPS, and using that in case
@@ -1726,15 +1773,16 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 
 		$proto ||= 'http';		# usually set in $hdrinfo
 		my $redirect = $rpinfo->{redirect};
+
 		#   ${a} replaced with string "after" the colon
 		#   ${blade} replaced with blade part of id
 		# $redirect =~ s/\${a}/$idx->{ slid }/g;	# maybe later
-#print "xxx before re=$redirect, ";
 		$redirect =~ s/\${blade}/$idx->{blade}/g;
 		$redirect =~ s/\$id\b/$idx->{slid}/g;
-# XXX proto preservation should work for ALL targets, not just rule-based
+# xxx proto preservation should work for ALL targets, not just rule-based
 		$redirect =~ m|https?://| or	# if proto not specified by rule
 			$redirect =~ s|^|$proto://|;	# go with user's choice
+
 		return cnflect( $bh, $txnid, $db, $rpinfo, $accept,
 			$id, [ $redirect ], $idx, "rulebased" );
 	}
@@ -1875,7 +1923,12 @@ my $Ti = EggNog::Binder::TRGT_INFLECTION; # target for inflection
 # $rpinfo normally undefined; if defined, it is a hash for a prefix info
 # block containing a redirect rule that supplied the target URL.
 
-# Content Negotiation/Inflection
+# This routine implements the final leaves of an extensive decision tree for
+# resolution. The name "cnflect" correctly connotes the Content Negotiation
+# and Inflection steps that it implements, which are options that must first
+# be eliminated from consideration. The name does NOT reveal, however, that
+# the final step and main point of the routine is the mainstream resolution
+# step that shows up only at the end of the routine.
 
 sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id, 
 				$dupsR, $idx, $op, $tag )=@_;
@@ -1892,11 +1945,14 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 	# SPT has been attempted by now, xxx explain better in comments how
 	# inflections work!!  I don't understand this code any more.
 
-	# If we failed, $fail will already be defined near last call
-	# to this routine, so something in @$dupsR means success.
-	#
+	# If we failed to find anything -- stored id, stored rule, partial
+	# match, etc. -- $idx->{fail} will have been set to 1 near the end
+	# of the resolve() routine. So if $idx->{fail} is undefined, then
+	# something in @$dupsR means success.
+
 	! defined($fail) && scalar(@$dupsR) and
 		$fail = 0;			# success - found something
+
 	# From here on, scalar(@$dupsR) > 0 and $fail says if we failed.
 	# Now we start defining script arguments that we might be using.
 
@@ -1910,15 +1966,15 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 	# Now check for inflections, which may redirect or call a script.
 	# Don't test on $fail, an empty $suffix, or $suffix containing a
 	# word char (xxx meaning we don't honor generalized THUMP requests!?)
+	#           (    but note except below for '?info')
 	# Note that we don't check for multiple targets when doing inflection
 	# or content negotation.
-	#
+
 	my $returnline = '';
 	my $target = '';
 	my $eset = 'brief';
 	my $format = 'anvl';
 
-#say STDERR "xxx before inflect_cmd: idx_rid=$idx->{rid}";
 	if ($op =~ /^partial=(.*)/) {	# just scheme given, maybe naan too
 		my $partial = $1;
 		$returnline = quote_args(
@@ -1926,17 +1982,26 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 				"op=partial", "partial=$partial" ))
 	}
 
-	# yyy shouldn't this be checking $idx->{query}, not $suffix?
-	#     because what if you want to do SPT _and_ inflections?
-	# if no returnline yet and we didn't fail the lookup and if SPT was
-	# called and returned a non-empty suffix that contains no word char...
-
+	# Define the correct function to fetch the target.
 	my $get_one = $bh->{sh}->{fetch_exdb}	# {ex,in}db-agnostic get 1 elem
 		? \&exdb_get_one
 		: \&indb_get_one
 	;
 
-#say "xxx before returnline=$returnline, fail=$fail, suffix=$suffix";
+	# yyy shouldn't this be checking $idx->{query}, not $suffix?
+	#     because what if you want to do SPT _and_ inflections?
+	#
+	# If no returnline yet and we didn't fail the lookup and if there's
+	# an inflection-like suffix (ie, if SPT was called and
+	# returned a non-empty suffix that contains no word char...)
+
+	#say "xxx before returnline=$returnline, fail=$fail, suffix=$suffix";
+
+	# xxx temporary kludge to make ?info return something (same as '??')
+	#     for those who try it before it's properly implemented
+	$suffix and $suffix eq '?info' and
+		$idx->{suffix} = $suffix = '??';
+
 	if (! $returnline and ! $fail and $suffix and $suffix !~ /\w/) {
 		# recall: $Rp is reserved sub-element prefix
 		#     and $Rs is reserved sub-element separator prefix
@@ -1952,7 +2017,7 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 #			$db->db_get("$rid$Rs$Ti", $target) and	# unless found
 #				$target = '';			# not found
 
-#say "xxx after before returnline target=$target";
+		#say "xxx after before returnline target=$target";
 		$target and		# if $target found, redirect to it
 		# xxx conneg uses redir303, but inflections are different
 		#     is that a good idea?
@@ -1969,10 +2034,17 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 		;
 	}
 
-	# Check for content negotiation if $returnline is still empty
-	# (ie, if id was found but no valid inflection was detected).
-	# 
-	if (! $returnline and $accept) {	# here we check $id, not $rid
+	# // How inflections differ from conneg
+	# 1. Resolution of A? by default returns metadata from resolver.
+	# 2. Resolution of A with conneg when a suffix is detected will
+	#    redirect so that the target returns metadata.
+	# These outcomes can be altered by setting $Tm and $Ti targets
+ 
+ 	# Check for content negotiation if $returnline is still empty
+ 	# (ie, if id was found but no valid inflection was detected).
+	# Here we check $id, not $rid.
+
+	if (! $returnline and ! $fail and ! $suffix and ! $rpinfo and $accept) {
 
 		# yyy old xref binder element names use _mT* not ._eT*
 
@@ -1987,7 +2059,6 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 					"op=cn.$accept"))
 		;
 	}
-#say "xxx before ! returnline";
 	if (! $returnline) {
 		my $newstr = $suffix || '';	# make sure it's defined string
 
@@ -2005,7 +2076,7 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 
 	# Check for multiple redirection if $returnline is still empty
 	# (ie, id was found but no inflection or content negotation).
-	#
+
 	! $returnline and scalar(@$dupsR) > 1 and
 		# double quote each target and end list of targets with --
 		$returnline = quote_args(
@@ -2016,6 +2087,7 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 	# Mainstream case.
 	# At this point $returnline will still be empty if we're doing
 	# ordinary redirection or if no id was found (and $dups[0] is "").
+	# Note that rule-based (rpinfo) redirection uses this path too.
 	# xxx should be sensing shoulder for default redirect code?
 
 	# This list of "known" http redirect status codes comes from purl.org.
@@ -2026,8 +2098,7 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 	# 307	Temporary redirect to a target URL	Temporary Redirect
 	# 404	Temporarily gone			Not Found
 	# 410	Permanently gone			Gone
-	#
-#say "xxx before unless returnline=$returnline, dups0=<", $dupsR->[0], ">";
+
 	unless ($returnline) {		# if $returnline not already set
 
 		my $redircode = '302';			# default; $tgt might
@@ -2036,7 +2107,14 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 		$tgt =~ /^([34][01][012347]) +(.*)/ and		# if it does
 			($redircode, $tgt) = ($1, $2);	# isolate real target
 		$returnline =				# redirNNN+space+target
-			"redir$redircode $tgt"		# $tgt might be empty
+			"redir$redircode $tgt";		# $tgt might be empty
+
+		# If non-null, pfxextension extends top-level of target host,
+		my $pxt =
+			$idx->{pfxextension};   # eg, a.b.org -> a-dev.b.org
+		# use \b in case there's a redir status, eg, 302
+		$pxt and	# use \.? just in case there's no "."
+			$returnline =~ s{\b([^. ]+)(\.|$)}{$1$pxt.};
 	}
 #		my @tparts = split " ", $dupsR->[0];	# tokenize
 #		my $tcnt = scalar @tparts;		# token count
@@ -2047,7 +2125,7 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 #		$returnline = "redir$redircode "	# redirNNN + space +
 #			. (! $dupsR->[0] ? '' :		# last token, which
 #				$tparts[ $tcnt - 1 ]);	# might be empty
-#	}
+
 	#$returnline or			# if $returnline not already set
 	#	$returnline = "redir302 $dupsR->[0]";
 
@@ -2070,7 +2148,8 @@ sub cnflect { my( $bh, $txnid, $db, $rpinfo, $accept, $id,
 	if ($txnid) {
 		my $msg = 'END '
 			. ($fail || ! $st ? 'FAIL' : 'SUCCESS');
-		$msg .= " $ur_origid ($id)";
+		#$msg .= " $ur_origid ($id)";
+		$msg .= " $idx->{log_ok_ur_origid} ($id)";
 		$rpinfo and
 			$msg .= " PFX $rpinfo->{key}";
 		$msg .= " -> $returnline";
@@ -2411,7 +2490,7 @@ sub id2shadow { my( $id )=@_;
 		$id =~ s/-//g,	# ok for shadow ARKs, but not for PURLs
 		$id =~ s{^urn:uuid:([^/.]*)}{ark:/97720/\L$1\E},
 
-		# Greg's URN:UUID encoding
+		# ezid dev URN:UUID encoding
 		#$id = "urn:uuid:430c5f08-017e-11e1-858f-0025bce7cc84";
 		# urn:uuid:f81d4fae-7dec-11d0-a765-00a0c91e6bf6
 		# RFC 4122 implies that hyphens aren't significant in
@@ -2931,7 +3010,7 @@ sub check_naan { my( $bh, $naan, $id, $element )=@_;
 # XXXX suffix_pass routine should probably be called ancestor_match_spt
 #      or something similar
 
-# XXX Work with John Deck and Hank Bromley on these
+# XXX Work with biocode and IA on these
 # _t_am_equals X	# NO: go to T only on "proper" AM match"; go to X
 #			# on identical match (requires checking on every
 #			# sucessful lookup to see if _t_am_equals exists,

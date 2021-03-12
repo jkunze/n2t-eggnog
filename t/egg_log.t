@@ -10,10 +10,10 @@ use warnings;
 use EggNog::ValueTester ':all';
 use File::Value ':all';
 
-my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "egg";
+my ($td, $cmd, $homedir, $tdata, $hgbase, $indb, $exdb) = script_tester "egg";
 $td or			# if error
 	exit 1;
-$ENV{EGG} = $hgbase;		# initialize basic --home and --bgroup values
+$ENV{EGG} = $hgbase;		# initialize basic --home and --testdata values
 
 my $txnlog = "$td/txnlog";
 
@@ -37,8 +37,8 @@ sub resolve_stdin { my( $opt_string, @ids )=@_;
 
 
 {	# check mstat command
-remake_td($td, $bgroup);
-$ENV{EGG} = "$hgbase -p $td -d $td/bar --txnlog $txnlog";
+remake_td($td, $tdata);
+$ENV{EGG} = "$hgbase -p $td/binders -d $td/binders/bar --txnlog $txnlog";
 my ($cmdblock, $x, $y);
 
 $x = `$cmd --verbose mkbinder bar`;
@@ -81,13 +81,13 @@ $x = run_cmds_on_stdin($cmdblock);
 like $x, qr/bindings: 10.*bindings: 4/s,
 	'bindings count tracks adds and purges';
 
-remove_td($td, $bgroup);
+remove_td($td, $tdata);
 }
 
 # stub log checker
 {
-remake_td($td, $bgroup);
-$ENV{EGG} = "$hgbase -d $td/foo --txnlog $txnlog";
+remake_td($td, $tdata);
+$ENV{EGG} = "$hgbase -d $td/binders/foo --txnlog $txnlog";
 my ($x, $y);
 
 $x = `$cmd --version`;
@@ -95,18 +95,6 @@ my $v1bdb = ($x =~ /DB version 1/);
 
 $x = `$cmd --verbose mkbinder foo`;
 like $x, qr/created.*foo/, 'make binder named foo';
-
-# yyy mkbinder doesn't create per-binder rlog file
-#$y = file_value("< $td/foo/egg.rlog", $x);
-#like $y, qr/^$/, 'read binder log file';
-#
-#like $x, qr/H: .*rlog.*M: mkbinder/si,
-#	'creation reflected in binder log file';
-
-#use EggNog::Temper ':all';
-#while (my ($key, $value) = each %c64i) {
-#	print "key=$key, value=$value\n";
-#}
 
 my $cmdblock;
 
@@ -119,11 +107,16 @@ i.purge
 ";
 $x = run_cmds_on_stdin($cmdblock);
 
-if ($indb) {	# phasing out rlog means not doing it for exdb
-$y = file_value("< $td/foo/egg.rlog", $x);
-like $x, qr/ H: .* C: i\|a.set 3.*(?: C: .*){4}i.purge/s,
-	'bind value reflected in binder log file';
-}
+my $isbname;
+#$isbname = `$cmd --dbie i bname $td/foo`;	# indb system binder name
+$isbname = `$cmd --dbie i bname $td/binders/foo`;	# indb system binder name
+$isbname =~ s/\n*$//;
+
+#if ($indb) {	# phasing out rlog means not doing it for exdb
+#$y = file_value("< $isbname/egg.rlog", $x);
+#like $x, qr/ H: .* C: i\|a.set 3.*(?: C: .*){4}i.purge/s,
+#	'bind value reflected in binder log file';
+#}
 
 # NOTE: must precede @ in "" if it looks like possible array ref
 $cmdblock = "
@@ -145,13 +138,15 @@ $x = resolve_stdin('', $doi);	# do a prefix-based resolution; ignore return
 
 # now check effects of those commands on the log
 
-if ($indb) {
-$y = file_value("< $td/foo/egg.rlog", $x);
-like $x, qr/mline.*%0athis.*%0athis/s,
-	'multi-line bind correctly encoded in logfile (for EDINA replication)';
-}
+#if ($indb) {
+#$y = file_value("< $isbname/egg.rlog", $x);
+#like $x, qr/mline.*%0athis.*%0athis/s,
+#	'multi-line bind correctly encoded in logfile (for EDINA replication)';
+#}
 
-#$y = file_value("< $txnlog.rlog", $x);
+#say "premature exit XXX x=$x";	#####################
+#exit;
+
 $y = file_value("< $txnlog", $x);
 like $y, qr/^$/, 'read txnlog file';
 
@@ -292,10 +287,6 @@ a^b|c%25d: x
 # admin + user elements found to purge under i^j|k%l: 3\n\n\n",
 	"tokens displaying with mix of % and ^ encodings";
 
-#say "x: $x";
-#say STDERR "xxx premature exit";
-#exit;
-
 $cmdblock = "
 purge
 set f g
@@ -352,13 +343,13 @@ $x = run_cmds_on_stdin($cmdblock);
 like $x, qr/^a: jklkkkkkkkkk kkkkkkkkkkk eeeeeeeeeeee rrrrrrrrrrrrrrrr tttttttttttt uuuuuuu ddddddddd wwwwwwwwwww ddddddddddddd$/m,
 	"on fetch, long value doesn't text wrap";
 
-remove_td($td, $bgroup);
+remove_td($td, $tdata);
 }
 
 # null txnlog checker
 {
-remake_td($td, $bgroup);
-$ENV{EGG} = "$hgbase -d $td/foo --txnlog ''";
+remake_td($td, $tdata);
+$ENV{EGG} = "$hgbase -d $td/binders/foo --txnlog ''";
 my ($x, $y);
 
 $x = `$cmd --verbose mkbinder foo`;
@@ -372,5 +363,5 @@ $x = (! -e $txnlog ? 'nope' : 'exists');
 
 is $x, 'nope', 'txnlog file not created when logging is turned off';
 
-remove_td($td, $bgroup);
+remove_td($td, $tdata);
 }

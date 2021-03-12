@@ -7,13 +7,13 @@ use warnings;
 use EggNog::ValueTester ':all';
 use File::Value ':all';
 
-my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "nog";
+my ($td, $cmd, $homedir, $tdata, $hgbase, $indb, $exdb) = script_tester "nog";
 $td or			# if error
 	exit 1;
-$ENV{NOG} = $hgbase;		# initialize basic --home and --bgroup values
+$ENV{NOG} = $hgbase;		# initialize basic --home and --testdata values
 
 {	# check mstat command
-remake_td($td, $bgroup);
+remake_td($td, $tdata);
 $ENV{MINDERPATH} = $td;
 my ($x, $y);
 
@@ -45,11 +45,11 @@ $x = `$cmd c2.mstat`;
 like $x, qr,$td/c2.*status: disabled.*left: unlimited.*expansion.*8407,s,
 	'mstat reflects disablement';
 
-remove_td($td, $bgroup);
+remove_td($td, $tdata);
 }
 
 {	# stub log checker
-remake_td($td, $bgroup);
+remake_td($td, $tdata);
 #$ENV{MINDERPATH} = $td;
 $ENV{NOG} = "$hgbase -p $td --txnlog $td/txnlog";
 my ($x, $y);
@@ -58,24 +58,24 @@ $x = `$cmd mkminter -t seq --atlast stop fk ddeek`;
 $y = flvl("< $td/fk/nog_README", $x);
 like $x, qr/ sequential /, 'created minter';
 
-# yyy this has already been covered above
-$y = flvl("< $td/fk/nog.rlog", $x);
-like $x, qr/H: .*rlog.*M: mkminter.*ddeek/si,
-	'creation reflected in minter log file';
+## yyy this has already been covered above
+#$y = flvl("< $td/fk/nog.rlog", $x);
+#like $x, qr/H: .*rlog.*M: mkminter.*ddeek/si,
+#	'creation reflected in minter log file';
 
-$x = `$cmd fk.mint 3`;
-$y = file_value("< $td/fk/nog.rlog", $x);
-like $x, qr/(C: mint.*){3}/s, 'mint reflected in minter log file';
+#$y = file_value("< $td/fk/nog.rlog", $x);
+#like $x, qr/(C: mint.*){3}/s, 'mint reflected in minter log file';
 
 ## xxxxxxxx make better log message
 
 #$y = file_value("< $td/txnlog.rlog", $x);
+$x = `$cmd fk.mint 3`;
 $y = file_value("< $td/txnlog", $x);
 like $y, qr/^$/, 'read txnlog file';
 
 like $x, qr/(?:BEGIN[^\n]*mint.*END SUCCESS[^\n]*mint: .*){3}/s,
 	'txnlog file records 3 mint BEGIN/END pairs';
 
-remove_td($td, $bgroup);
+remove_td($td, $tdata);
 }
 

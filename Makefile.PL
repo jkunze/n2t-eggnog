@@ -32,12 +32,13 @@ WriteMakefile(
    ($ExtUtils::MakeMaker::VERSION ge 6.3002
      ? ('LICENSE'  => 'BSD')
      : ()),
+    MIN_PERL_VERSION => '5.10.1',
     PM			=> $pm,
     PREREQ_PM		=> {
-	'perl'			=> '5.10.1',
+	#'perl'			=> '5.10.1',
 	'Fcntl'			=> '0',
 	'BerkeleyDB'		=> '0',
-	'MongoDB'		=> '0',
+	#'MongoDB'		=> '0',
 	'DB_File'		=> '0',		# xxx drop
 	'Data::UUID'		=> '0',
 	'File::OM'		=> '1.00',

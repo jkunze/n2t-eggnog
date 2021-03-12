@@ -15,10 +15,10 @@ use warnings;
 use EggNog::ValueTester ':all';
 use File::Value ':all';
 
-my ($td, $cmd, $homedir, $bgroup, $hgbase, $indb, $exdb) = script_tester "egg";
+my ($td, $cmd, $homedir, $tdata, $hgbase, $indb, $exdb) = script_tester "egg";
 $td or			# if error
 	exit 1;
-$ENV{EGG} = $hgbase;		# initialize basic --home and --bgroup values
+$ENV{EGG} = $hgbase;		# initialize basic --home and --testdata values
 
 # Tests for resolver mode look a little convoluted because we have
 # to get the actual command onto STDIN in order to test resolver mode.
@@ -34,6 +34,8 @@ sub resolve_stdin { my( $opt_string, @ids )=@_;
 }
 
 # Args ( $opt_string, $id1, $hdr1, $id2, $hdr2, ... )
+# xxx major limitation: no prefix rules are consulted here;
+#     see t/z_egg_prefixes_n2t for enhanced resolve_stdin_hdr
 sub resolve_stdin_hdr {
 	my $opt_string = shift;
 	my $script = '';
@@ -60,7 +62,7 @@ my $Tm = EggNog::Binder::TRGT_METADATA;   # actually content negotiation
 my $Ti = EggNog::Binder::TRGT_INFLECTION; # target for inflection
 
 {		# some simple ? and ?? tests
-remake_td($td, $bgroup);
+remake_td($td, $tdata);
 
 $ENV{EGG} = "$hgbase -p $td -m anvl";
 my $x;
@@ -87,7 +89,7 @@ $ENV{EGG} = $hgbase;
 }
 
 {
-remake_td($td, $bgroup);
+remake_td($td, $tdata);
 my $x;
 
 ##=for earlytesting
@@ -140,7 +142,7 @@ $x = `$cmd -d $td/foo x.set y z`;
 #say "xxx very premature exit. x=$x"; exit;
 
 my $wrl;
-$wrl = 'ark:/12345/b.c^d\ e';	# yyy not a well-named variable?
+#$wrl = 'ark:/12345/b.c^d\ e';	# yyy not a well-named variable?
 $wrl = 'doi:10.12345/B.C^D\ E';	# yyy not a well-named variable?
 #$wrl = 'doi:10.12345/b.c^d\ e';	# yyy not a well-named variable?
 
@@ -152,9 +154,22 @@ like $x, qr/^waf\n/, "fetched _t set for id with difficult chars";
 
 #say "xxx set _t got: $x";
 
+$x = resolve_stdin("-d $td/food", $wrl);
+like $x, qr/error: resolver.*food.*exist/i,
+	"--rrm forces resolver existence check before first command";
+
 $x = resolve_stdin("-d $td/foo", $wrl);
 like $x, qr/^redir302 waf\n/,
 	"resolution for id with difficult chars";
+
+$x = `$cmd -d $td/foo $wrl.set _t '303 http://a.b.org'`;  # target like URL
+my $devwrl = $wrl;
+$devwrl =~ s|doi:10.12345|doi:10.12345-dev-2a|;
+$x = resolve_stdin("-d $td/foo", $devwrl);
+like $x, qr|^redir303 http://a-dev-2a.b.org\n|,
+	"dev prefix extension for stored id (a DOI)";
+
+#say "xxx premature exit"; exit;
 
 use EggNog::Resolver;
 $x = `$cmd -d $td/foo $wrl.set ${Rp}${Ti} newt`;	# inflection target
@@ -166,8 +181,6 @@ $x = `$cmd -d $td/foo $wrl.set ${Rp}${Ti}./\? fort`;	# inflection with a '.'
 $x = resolve_stdin("-d $td/foo", "$wrl./\?");
 like $x, qr|^redir302 fort\n|,
 	"target redirect for difficult chars in inflection itself (./?)";
-
-#say "xxx premature exit"; exit;
 
 # XXXXXX unlike ezid, Egg does NOT normalize DOI's to uppercase -- bug?
 # XXXXXX inflection could be just '.', which needs encoding test
@@ -259,10 +272,21 @@ like $x, qr{redir302 zaf.*redir302 zaf}s,
 like $x, qr{redir302 zafD245/67},
 	"SPT on shoulder-as-id target";
 
+$x = resolve_stdin_hdr("-d $td/foo", $url, "!!!ac=text/turtle!!!");
+like $x, qr|^inflect.*op=cn.text/turtle|,
+	"script called (conneg) with simple, unambiguous Accept: header";
+
+$x = resolve_stdin_hdr("-d $td/foo", $url, "!!!ac=text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9!!!");
+like $x, qr{redir302 zaf},
+	"script NOT called (ie, no conneg) with modern browser Accept: header";
+
+#say "XXX premature exit, x=$x"; exit;
+
 $url = 'ark:/98765/f3';
 $x = `$cmd -d $td/foo $url.set _t 'bar\${suffix}zaf\${suffix}foo'`;
 $x = `$cmd -d $td/foo $url.get _t`;
-like $x, qr|{suffix}zaf\${suffix}|, "target set with embedded suffix";
+like $x, qr|{suffix}zaf\${suffix}|,
+	"target set with embedded suffix, to be expanded by inflect script";
 
 my ($shadow_doi1, $shadow_doi2) = ('ark:/b0089/xt4%77%77q', 'ark:/c5072/Xt9');
 my ($doi1, $doi2) = ('doi:10.89/XT4WWQ', 'doi:10.15072/XT9');
@@ -326,6 +350,12 @@ $x = `$cmd -d $td/fon $url.set _t nersc`;
 $x = resolve_stdin("-d $td/fon", $url);
 like $x, qr|^redir302 nersc\n$|, "now have different _t value from fon binder";
 
+$x = resolve_stdin_hdr("-d $td/fon",
+       "$url/mysuffix", "!!!ac=text/turtle!!!",
+);
+like $x, qr|^redir302.*nersc/mysuffix|,
+       "redirect called for single target conneg and SPT";
+
 $x = `$cmd -d $td/fon $url.add _t skink`;
 $x = resolve_stdin("-d $td/fon", $url);
 like $x, qr|"op=multi".*"target=nersc".*"target=skink"|,
@@ -335,9 +365,13 @@ $x = resolve_stdin_hdr("-d $td/fon",
 	$url, "!!!ac=text/turtle!!!",
 	"$url\?", '',
 	"$url\?\?", '',
+	"$url\?info", '',
 	"$url/", '',
 	"$url./", '',
 );
+#say "xxx x=$x";
+#say "xxx premature exit"; exit; ###########################
+
 like $x, qr|^inflect.*op=cn.text/turtle|,
 	"script called for content negotiation";
 
@@ -347,6 +381,10 @@ like $x, qr|^inflect.*suffix=%3f|, "script called for ? inflection";
 
 $x =~ s/^.*\n//;				# remove top line
 like $x, qr|^inflect.*suffix=%3f%3f|, "script called for ?? inflection";
+
+$x =~ s/^.*\n//;				# remove top line
+like $x, qr|^inflect.*suffix=%3f%3f|,
+	"script called for ?info (as if ?? used) inflection";
 
 $x =~ s/^.*\n//;				# remove top line
 like $x, qr|^inflect.*suffix=/|, "script called for / inflection";
@@ -440,10 +478,6 @@ $x = resolve_stdin('', $arkurl, $arkid, $arkurl);
 #$x =~ s/\n\n$//;				# trim two extra newlines
 like $x, qr,^redir302 zaf.*\nerror: .*\nredir302 zaf.*\n$,,
 	"an error in --rrm mode doesn't disturb subsequent resolutions";
-
-#print("resolve: $arkurl, $arkid, $arkurl\n");
-#print "x=$x";
-#print "####### temporary stop ########\n"; exit;
 
 # Now some real world tests.
 
@@ -579,5 +613,5 @@ else {
 }
 
 $ENV{EGG} = $hgbase;
-remove_td($td, $bgroup);
+remove_td($td, $tdata);
 }
