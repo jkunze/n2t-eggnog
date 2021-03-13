@@ -2,29 +2,76 @@
 <html lang="en">
 <head>
   <!--#include virtual="/e/prelim.html" -->
-  <title>Create a new NAAN entry from a NAAN request</title>
+  <title>Generate a stub NAAN entry from a NAAN request</title>
 </head>
 <body>
 <div class="content">
 <!--#include virtual="/e/header.html" -->
 <div class="container-narrowest">
 <div class="section" id="naanq2e">
-<h1>Create a new NAAN entry from a NAAN request</h1>
+<h1>Generate a new NAAN entry from a NAAN request</h1>
 <p>
-For more detailed instructions and guidelines, click XXXhere.
-<br/>
+This form makes no NAAN registry changes, but only pre-validates a NAAN
+request. You may modify the original and re-submit for validation as often
+as you wish, without doing harm, until you have corrected all errors. It is
+pre-populated with an erroneous request to illustrate the kinds of errors
+that are checked.
+</p>
 <form id="naanform" action="/e/admin/q2e.pl">
-</p><p>1. Paste an unused NAAN (5 digits) from the list XXX to the right
-       into the NAAN box. Example: 12345
-  <br/><br/>&nbsp;&nbsp;&nbsp;
-  <label for="unusednaan">Unused NAAN:</label>
-  <input type="text" id="unusednaan" name="unusednaan"><br/>
-</p><p>2. Paste the NAAN request form output into the next box.
-  <br/>&nbsp;&nbsp;&nbsp;
-<!--  <label for="formout">Form Output:</label> -->
-  <textarea name="formout" cols="80" rows="10" id="formout" form="naanform"></textarea>
-</p><p>3. Click &nbsp;&nbsp;
-  <input type="submit" value="Submit">
+<p>Replace the text below with the request text you're refining,
+or leave it alone to see what happens when you "Test".
+</p>
+<!--  <label for="request">Request Form Output:</label> -->
+<textarea name="request" cols="84" rows="13" id="request" form="naanform"
+ placeholder="Paste request text here. Example below.
+---------------------------------------
+I would like	To request a new NAAN
+Organization name:	Institut national des voisins
+Are you a service provider?	No, or I'm not sure
+Contact name:	Rip van Winkle
+Contact email address:	rvw@catskills.us
+Position in organization:	Data architect
+Organization address:	4 avenue de la Guerre, 54321 Bry-sur-Marne
+Organization base URL:	http://example.org
+Organization status:	Not-for-profit
+Organization acronym preferred: IV
+Service provider contact information: Sam Smith, ss@aaa.example.org, Acme Archiving"
+>
+</textarea>
+</p>
+<!--
+"remail: ",	$cgi->param('remail'), "\n",
+"rname: ",	$cgi->param('rname'), "\n",
+"unaan: ",	$cgi->param('unaan'), "\n",
+"request: ",	$cgi->param('request'), "\n",
+-->
+<p>
+<input type="submit" value="Test">
+</p>
+<h3>Continue below only if you've tested and/or refined
+the request and are ready to finish.</h3>
+<p>
+<label for="unaan">Unused NAAN:</label>
+<input type="text" id="unaan" name="unaan">
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<label for="remail">Your email:</label>
+<input type="text" id="remail" name="remail" size="43">
+</p>
+<p>
+<label for="rname">Your name (first/given then last/family, eg, Sam Smith):</label>
+<input type="text" id="rname" name="rname" size="43">
+</p>
+<p>
+Only if you made changes to the original request,
+paste the original in the box below; else leave it empty.
+</p>
+<textarea name="orequest" cols="84" rows="2" id="orequest" form="naanform"
+ placeholder="If you made changes, paste the original request here for record-keeping.">
+</textarea>
+<p>
+<input type="submit"
+ value="Generate final NAAN entry, derivative files, and starter letter">
+</p>
 </form>
 
 </div>
@@ -34,4 +81,4 @@ For more detailed instructions and guidelines, click XXXhere.
 <!--#include virtual="/e/footer.html" -->
 </body>
 </html>
-<!--  <input type="text" id="formout" size="60" name="formout"><br/> -->
+<!--  <input type="text" id="request" size="60" name="request"><br/> -->

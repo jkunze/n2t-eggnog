@@ -12,10 +12,21 @@ use utf8;
 # Author:  John A. Kunze, jak@ucop.edu, California Digital Library
 # Copyright (c) 2016-2020 UC Regents
 
-my $response_admin_default = "jakkbl\@gmail.com";
-my $response_admin = '';
-my $response_name_default = "John Kunze";
-my $response_name = '';
+my ($remail, $rname, $naan, $request);	# $naan is unused naan
+
+my $request_default = << 'EOT';
+I would like	To request a new NAAN
+Organization name:	Institut national des voisins
+Are you a service provider?	No, or I'm not sure
+Contact name:	Rip van Winkle
+Contact email address:	rvw@catskills.us
+Position in organization:	Data architect
+Organization address:	4 avenue de la Guerre, 54321 Bry-sur-Marne
+Organization base URL:	http://example.org
+Organization status:	Not-for-profit
+Organization acronym preferred: IV
+Service provider contact information: Sam Smith, ss@aaa.example.org, Acme Archiving
+EOT
 
 #my $response_admin = "naan-registrar\@googlegroups.com, $provider";
 my $request_file = 'request';
@@ -33,8 +44,10 @@ SYNOPSIS
 
 DESCRIPTION
     XXX heavily modified for the "-" stdin case, expecting
-       line 1: email (maybe empty)
-       line 2: your name (given name followed by family name)
+    XXX when invoked via web, there will never be a NAAN arg
+    If any of the first 3 lines are empty, we're not doing this for real.
+       line 1: email
+       line 2: your name (given name then family name, eg, Sam Smith)
        line 3: NAAN
        lines 4-: form output
 
@@ -88,14 +101,14 @@ EOT
 my $no_gen = 1;			# yyy constant
 my $from_vim = 0;
 my $github = 0;
-my $naan;
 my $naan_restored = 0;
+my $real_thing;
 
 sub perr {
-	if ($naan and ! $naan_restored) {
-		say STDERR ($from_vim ? $naan : "NAAN: $naan");
-		$naan_restored = 1;
-	}
+	#if ($naan and ! $naan_restored) {
+	#	say STDERR ($from_vim ? $naan : "NAAN: $naan");
+	#	$naan_restored = 1;
+	#}
 	print STDERR ($from_vim ? "# Error: " : "Error: ");
 	say STDERR @_;
 }
@@ -115,7 +128,6 @@ sub perr {
 
 	my $FormFile = $ARGV[0];
 	shift;
-	$naan = $ARGV[0] || '';
 	$FormFile ne '-' and
 		unshift @ARGV, $FormFile;
 
@@ -131,46 +143,47 @@ sub perr {
 	s/\n+/\n/;		# make sure it ends in just one newline
 	my $form_content = $_;	# make copy of form content, including NAAN
 
-	if (! $naan) {
-		$FormFile eq '-' and
-			$from_vim = 1;	# act as if we're called from vim
-		# check for a block in the file and isolate it into $_ by
-		# deleting everything around it
-		s/\n----.*/\n/s;	# drop all lines from ---- to end
-		#s/^\s*\n//mg;		# drop blank lines
-		s/^\s*#.*\n//mg;	# drop comment lines
+# xxx
+	$FormFile eq '-' and
+		$from_vim = 1;	# act as if we're called from vim
+	# check for a block in the file and isolate it into $_ by
+	# deleting everything around it
+	s/^\s*\n//mg;		# drop blank lines
+	s/^\s*#.*\n//mg;	# drop comment lines
 
-		# This next is a critical check to see if there's actually
-		# NO form data inside the file, indicated by exit code 2.
-		# This is a common case since a github action/workflow uses
-		# this to branch to simple entry generation, or main_naans
-		# validation and generation of derivative files.
+	# Split the input block into params added by CGI script
+	# and params copied in from request form data.
 
-		if (! m/(s*\d+).*Contact name:/s) {
-			perr("missing form data (block $_)");
-			exit 2;
+	if (! s/^remail: (.*)\nrname: (.*)\nunaan: (.*)\nrequest: //) {
+		perr("missing form data (block $_");
+		exit 2;
+	}
+	($remail, $rname, $naan) = ($1, $2, $3);
+
+	# update form content, including NAAN
+	$real_thing = $remail && $rname && $naan;
+	if ($real_thing && $_ =~ /^\s*$/) {
+		perr("no form data; did you forget to paste it in?");
+		exit 1;
+	}
+	if (! $real_thing) {
+		if ($remail || $rname || $naan) {
+			perr("you must specify each of NAAN, email, and name, "
+				. "or none of them");
+			exit 1;
 		}
-		$form_content = $_;  # update form content, including NAAN
+		$naan = "s98769876";	# xxx special value to substitute later
+	}
+	$request = $real_thing
+		? $_			# from user all fields supplied
+		: $request_default;	# else consider this a test
+	$_ = $request;
+perr($real_thing ? "real thing" : "just a test");
 
-		# this next assumes we are at the start of a block
-
-		s/^(.*)\n// and		# remove and save input line 1
-			$response_admin = $1;
-		if ($response_admin and $response_admin !~ /@/) {
-			perr "email address ($response_admin) must contain "
+	if ($real_thing) {
+		if ($remail !~ /@/) {
+			perr "email address ($remail) must contain "
 				. '"@"';
-			exit 1;
-		}
-		s/^(.*)\n// and		# remove and save input line 2
-			$response_name = $1;
-		if (! $response_name) {
-			perr 'name (eg, Sam Smith) must not be empty';
-			exit 1;
-		}
-		s/^(.*)\n// and		# remove and save input line 3
-			$naan = $1;
-		if (! $naan) {
-			perr "no NAAN specified";
 			exit 1;
 		}
 		if ($naan !~ /^[s\d][\d]+$/) {
@@ -180,10 +193,27 @@ sub perr {
 			exit 1;
 		}
 	}
-	if (/^\s*$/) {
-		perr("no form data; did you forget to paste it in?");
-		exit 1;
-	}
+
+perr("remail: $remail, rname: $rname, unaan: $naan");
+perr("request: $request");
+
+# XXX Maybe this directory stuff can come during "real", ie, later
+# - $rname becomes the basis for a curator-specific directory with
+# a temporary working copy of the naan_request and validation exercises
+#    (this reduces chances that two curators' work will clobber each other)
+# - need to append new entry to end of temporary registry copy and attempt to
+#   validate it
+
+my $home = "/apps/n2t";
+my $main_naans = "$home/naans/main_naans";
+my $workdirbase = "$home/naans_workdir";
+my $workdir = "$workdirbase/$naan";
+`mkdir -p $workdir`;
+chdir($workdir) or
+	perr("could not chdir to $workdir: $!"),
+	exit 1;
+my $pwd = `pwd`;
+say "xxx pwd: $pwd";
 
 	# make last char before tab be a :, replacing a : or ?, if any
 	s/[:?]?\t+/: /g and	# YAML needs : and forbids tab-for-space, and
@@ -292,12 +322,26 @@ how:    $bmodel | (:unkn) unknown | $year |
 !address: $address$provider_line
 
 ";
+
+
+print "$naa_entry";
+exit 1;
+
+
+
+
+
 	open OUT, "> $new_naa_file" or
 		perr("could not open $new_naa_file for writing"),
 		exit 1;
 	print OUT "$naa_entry";
 	close OUT;
-	my $form_dest = $response_admin
+
+# XXX  
+# =========== if doesn't validate, stop here ===========
+`cat $main_naans $naa_entry > trial_naans; ./validate.pl trial_naans`;
+
+	my $form_dest = $remail
 		? "is being emailed to you"
 		: "appears below"
 	;
@@ -393,7 +437,7 @@ $naan
 has been registered for "$institution" and you may begin using it immediately. It may take up to 24 hours before your NAAN will be recognized by the N2T.net resolver.
 </p><p>
 Please note that $naan is intended for assigning ARKs to content that your institution directly curates or creates.
-In case you work with other institutions that use your tools and services for content that they curate or create, those institutions should obtain their own NAANs.
+In case you work with other institutions that use your tools and services for content that they curate or create, those institutions should have their own NAANs.
 </p><p>
 In thinking about how to manage the namespace, you may find it helpful to consider the usual practice of partitioning it with reserved prefixes of, say 1-5 characters, eg, names of the form "ark:/$naan/xt3...." for each "sub-publisher" in an organization.
 Opaque prefixes that only have meaning to information professionals are often a good idea and have precedent in schemes such as ISBN and ISSN.
@@ -413,7 +457,7 @@ There's nothing else you need to do right now.
 As you may know, there's an initiative to build an open, international community around ARKs, <a href="http://ARKsInTheOpen.org">ARKsInTheOpen.org<a/>.
 We're also drafting some <a href="https://n2t.net/ark:/13030/c7833mx7t">standardized persistence statements</a> that name assigning authorities can begin testing (feedback is welcome) and using if they wish.
 </p><p>
--$response_name, on behalf of NAAN-Registrar\@googlegroups.com
+-$rname, on behalf of NAAN-Registrar\@googlegroups.com
 </p>
 </body>
 </html>
@@ -445,9 +489,9 @@ EOT
 	print OUT $response_letter;
 	close OUT;
 
-	if ($response_admin) {
+	if ($remail) {
 		# send letter to admin address (may not work on some networks)
-		open OUT, "|sendmail $response_admin" or
+		open OUT, "|sendmail $remail" or
 			perr("could not open pipe to email response"),
 			exit 1;
 		print OUT $response_letter;
