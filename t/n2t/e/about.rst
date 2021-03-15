@@ -53,29 +53,30 @@ Origins of N2T
 --------------
 
 The name "n2t" was chosen for several reasons. First, it is unique enough to be
-easy to search for. Second, "n2t" is fairly opaque, which helps URLs based at
-n2t.net to age and travel well; brand- and language-neutrality help shield URLs
-from future embarrassment and retirement due to long term evolving political,
-legal, and usability pressures. The name is also short, which saves time and
-space – both in storage and "visual real estate" – across often-repeated acts
-of transcription and citation. Finally, N2T's name was patterned after a set of
-IETF_ (the premier Internet standards body) mapping operations for the URN
-(Uniform Resource Name) dating from 1997 (`RFC 2168`_): N2R (Name to Resource),
-N2L (Name to URL), and N2C (Name to URC, 'C' = Characteristics/Citation).
+easy to search for. Second, "n2t" is relatively opaque, which helps URLs based
+at n2t.net to age and travel well, the presumption being that brand- and
+language-neutrality can shield URLs from future embarrassment and forced
+retirement due to long term evolving political, legal, and usability pressures.
+The name is also short, which saves time and space – both in storage and in
+"visual real estate" – across often-repeated acts of transcription and
+citation. Finally, N2T's name was patterned after a set of IETF_ (the premier
+Internet standards body) mapping operations for the URN (Uniform Resource Name)
+dating back to 1997 (`RFC 2168`_): N2R (Name to Resource), N2L (Name to URL),
+and N2C (Name to URC, 'C' = Characteristics/Citation).
 
-N2T's technical infrastructure arose from demand for a global ARK (Archival
+N2T's technical infrastructure arose from the demand for a global ARK (Archival
 Resource Key) resolver. All that a basic resolver needs is software to look up
 a given incoming string in a table and to issue a "server redirect", as found
-in every web server since 1992. One approach, taken by the Handle and DOI
-systems, is to create a "silo" that only works for one type of identifier.
-Since forcing lookups to fail except for certain parts of the alphabet is
-artificial, exclusionary, and requires extra code, the ARK resolver design
-instead followed basic principles of openness and generality. The result was
-N2T, a scheme-agnostic resolver that currently works for over 900 types of
-identifier, including ARKs, DOIs, Handles, PURLs, URNs, ORCIDs, ISSNs, etc.
+in every web server since 1992. The approach taken by many systems (Handle,
+DOI, etc.), is to create a "silo" that only works for one type of identifier.
+Because making lookups fail except for certain parts of the alphabet is
+exclusionary and artificial, the ARK resolver design took a more open and
+general approach. The result was N2T, a scheme-agnostic resolver that currently
+works for over 900 types of identifier, including ARKs, DOIs, Handles, PURLs,
+URNs, ORCIDs, ISSNs, etc.
 
 The main use of N2T is for "persistent identifiers." An archive or publisher
-who gives out content links (URLs) starting with n2t.net doesn't need to worry
+that gives out content links (URLs) starting with n2t.net doesn't need to worry
 about their breaking when content eventually moves to different servers.
 Provided forwarding rules at N2T are updated, links starting with n2t.net
 remain stable. (All persistent identifier systems rely on this same basic
@@ -84,14 +85,14 @@ principle.)
 Features Unique to the N2T Resolver
 -----------------------------------
 
-Unlike URL shorteners, N2T can store more than one "target" (forwarding
-link) for an identifier, as well as any kind or amount of metadata
-(descriptive information). When forwarding doesn't work for some reason,
-such as temporary outage or insufficient permission at the target server,
-N2T can nonetheless return persistent information about the identified
-object. N2T also supports CORS (Cross-Origin Resource Sharing) to securely
-enable JavaScript access to public content with identifiers based at N2T.
-Some other unique features:
+Unlike URL shorteners, N2T can store more than one "target" (forwarding link)
+for an identifier, as well as any kind or amount of metadata (descriptive
+information) and links to metadata in different formats. When forwarding
+doesn't work for some reason, such as a temporary outage or insufficient
+permission at the target server, N2T can nonetheless return any persistent
+information it has about the identified object. N2T also supports CORS
+(Cross-Origin Resource Sharing) to securely enable JavaScript access to public
+content with identifiers based at N2T. Some other unique features:
 
 - **Suffix passthrough.** N2T supports "`suffix passthrough`_", which
   drastically reduces the number of individual identifiers that providers need
@@ -105,21 +106,23 @@ Some other unique features:
 - **Cross-scheme features.** As a result N2T easily supports feature
   combinations that some find surprising, such as ARK-style inflections
   for DOIs, and ARKs that return DataCite_ DOI metadata via content negotiation.
-- **Resolver and meta-resolver.** Unusually, N2T.net is a "meta-resolver" that
-  also stores about 50 million identifiers. As a meta-resolver, it recognizes
-  over 900 well-known identifier types, including all those known to
-  identifiers.org, and knows where their respective servers are. Failing to
-  find forwarding information for an identifier it stores, it uses the
-  identifier's type to look for an overall target rule.
+- **Resolver and meta-resolver.** Unusually, N2T is a "meta-resolver" (like
+  identifiers.org), but at the same time it stores about 50 million
+  identifiers. As a meta-resolver, it recognizes over 900 well-known identifier
+  types, including all those known to identifiers.org, and knows where their
+  respective servers are. Failing to find forwarding information for an
+  identifier that it looks up (in its regular resolver role), it assumes its
+  meta-resolver role and uses the identifier's type to look for an overall
+  target rule.
 - **Prefix extension.** N2T supports a "prefix extension" feature that permits
   developers to extend a scheme or an ARK NAAN (both of which "prefix" an
   identifier) with ``-dev`` in order to forward to an alternate destination.
   For example, if the NAAN ``12345`` forwards to domain ``a.b.org``, then
   ``ark:/12345-dev/678`` forwards to ``a-dev.b.org/678``. It works similarly
   for schemes, for example, if scheme ``xyzzy`` forwards to ``a.b.org/$id``,
-  then ``xyzzy-dev:foo`` forwards to ``a-dev.b.org/foo``. Just for NAANs,
-  the ``-dev`` part can actually be a hyphen (``-``) followed by any string
-  that works in a hostname.
+  then ``xyzzy-dev:foo`` forwards to ``a-dev.b.org/foo``. Just for ARK NAANs,
+  instead of the "dev" after the hyphen (``-``) you can actually use any string
+  to form the target domain name.
 
 Audience
 --------
