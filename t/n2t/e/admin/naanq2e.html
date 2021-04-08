@@ -11,20 +11,21 @@
 <div class="section" id="naanq2e">
 <h1>Generate a new NAAN entry from a NAAN request</h1>
 <p>
-This form makes no NAAN registry changes, but only pre-validates a NAAN
-request. You may modify the original and re-submit for validation as often
-as you wish, without doing harm, until you have corrected all errors. It is
-pre-populated with an erroneous request to illustrate the kinds of errors
-that are checked.
+Use this form to generate a candidate NAAN entry from data that was emailed to
+you when a person (the requester) filled out and submitted a google form.
+Occasionally you may be asked to correct data on this page, but unless
+instructed otherwise, make most of your changes to the generated entry that
+will appear on subsequent pages.
 </p>
 <form id="naanform" action="/e/admin/q2e.pl">
 <p>Replace the text below with the request text you're refining,
-or leave it alone to see what happens when you "Test".
+or leave it alone to see what happens when you Submit.
 </p>
 <!--  <label for="request">Request Form Output:</label> -->
-<textarea name="request" cols="84" rows="13" id="request" form="naanform"
- placeholder="Paste request text here. Example below.
----------------------------------------
+<!-- text below line should match $request_default in main processing script -->
+<textarea name="request" cols="84" rows="14" id="request" form="naanform"
+ placeholder="Paste request in this box. Default testing text below.
+------------------------------------------------------
 I would like	To request a new NAAN
 Organization name:	Institut national des voisins
 Are you a service provider?	No, or I'm not sure
@@ -35,7 +36,8 @@ Organization address:	4 avenue de la Guerre, 54321 Bry-sur-Marne
 Organization base URL:	http://example.org
 Organization status:	Not-for-profit
 Organization acronym preferred: IV
-Service provider contact information: Sam Smith, ss@aaa.example.org, Acme Archiving"
+Service provider contact information: Sam &quot;Sam&quot; Smith, ss@aaa.example.org, Acme Archiving
+Committed to data persistence?	Agree"
 >
 </textarea>
 </p>
@@ -46,31 +48,10 @@ Service provider contact information: Sam Smith, ss@aaa.example.org, Acme Archiv
 "request: ",	$cgi->param('request'), "\n",
 -->
 <p>
-<input type="submit" value="Test">
-</p>
-<h3>Continue below only if you've tested and/or refined
-the request and are ready to finish.</h3>
-<p>
-<label for="unaan">Unused NAAN:</label>
-<input type="text" id="unaan" name="unaan">
+<label for="unaan">Candidate NAAN:</label>
+<input type="text" id="unaan" name="unaan" placeholder="98765">
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-<label for="remail">Your email:</label>
-<input type="text" id="remail" name="remail" size="43">
-</p>
-<p>
-<label for="rname">Your name (first/given then last/family, eg, Sam Smith):</label>
-<input type="text" id="rname" name="rname" size="43">
-</p>
-<p>
-Only if you made changes to the original request,
-paste the original in the box below; else leave it empty.
-</p>
-<textarea name="orequest" cols="84" rows="2" id="orequest" form="naanform"
- placeholder="If you made changes, paste the original request here for record-keeping.">
-</textarea>
-<p>
-<input type="submit"
- value="Generate final NAAN entry, derivative files, and starter letter">
+<input type="submit" value="Submit">
 </p>
 </form>
 

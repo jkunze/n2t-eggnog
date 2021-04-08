@@ -1,5 +1,20 @@
 #! /usr/bin/env perl
 
+my $xxx_to_gen_errors = << 'EOT';
+I would like	To request a new NAAN
+Organization name:	Acta Académica
+Are you a service provider?	Yes
+Service provider contact information:	Acta Académica, Pablo De Grande, pablodg@aacademica.org
+Contact name:	Queipo, Rodrigo
+Contact email address:	contacto@aacademica.org
+Position in organization:	archivist
+Organization address:	Pedro Morán 2946, Buenos Aires, Argentina
+Organization status:	Not-for-profit
+Organization acronym preferred:	AA
+Organization base URL:	https://aacademica.org
+Committed to data persistence?	Agree
+EOT
+
 use 5.010;
 use strict;
 use warnings;
@@ -8,11 +23,16 @@ use Text::ParseWords;
 use YAML;
 use Encode;
 use utf8;
+use Try::Tiny;          # for exceptions
+use Safe::Isa;          # provides $_isa (yyy remind for what purpose?)
+use HTML::Entities;
 
 # Author:  John A. Kunze, jak@ucop.edu, California Digital Library
 # Copyright (c) 2016-2020 UC Regents
 
-my ($remail, $rname, $naan, $request);	# $naan is unused naan
+my ($remail, $rname, $naan, $request, $orig_request);	# $naan is unused naan
+my $default_remail = 'curtis.curator@example.org';
+my $default_rname = 'Curtis Curator';
 
 my $request_default = << 'EOT';
 I would like	To request a new NAAN
@@ -25,13 +45,21 @@ Organization address:	4 avenue de la Guerre, 54321 Bry-sur-Marne
 Organization base URL:	http://example.org
 Organization status:	Not-for-profit
 Organization acronym preferred: IV
-Service provider contact information: Sam Smith, ss@aaa.example.org, Acme Archiving
+Service provider contact information: Sam &quot;Sam&quot; Smith, ss@aaa.example.org, Acme Archiving
+Committed to data persistence?	Agree
 EOT
 
 #my $response_admin = "naan-registrar\@googlegroups.com, $provider";
 my $request_file = 'request';
 my $new_naa_file = 'new_entry';
 my $request_log = 'request_log';
+my $default_naan = '98765';
+
+my $home = "/apps/n2t";
+my $workdir = "$home/naans";
+my $main_naans = "$workdir/naan_reg_priv/main_naans";
+my $cand_naans = "$workdir/naan_reg_priv/candidate_naans";
+my $validator = "$home/local/bin/validate_naans";
 
 my $cmd = $0;
 $cmd =~ s,.*/,,;		# drop path part
@@ -98,6 +126,56 @@ DESCRIPTION
 
 EOT
 
+my $html_head = << 'EOT';
+
+<html lang="en">
+<head>
+    <!-- Basic Page Needs -->
+  <meta charset="utf-8">
+  <meta name="description" content="">
+  <meta name="author" content="">
+
+  <!-- Mobile Specific Metas -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="/e/css/flexboxgrid-6.3.1-min.css">
+  <link rel="stylesheet" href="/e/css/styles.css">
+  <link rel="stylesheet" href="/e/css/styles_rst.css">
+  <link rel="shortcut icon" type="image/png" href="/e/images/favicon.ico?v=2"/>
+  <link rel="icon" sizes="16x16 32x32" href="/e/images/favicon.ico?v=2">
+
+  <title>Review candidate NAAN entry</title>
+</head>
+<body>
+<div class="content">
+<header class="header row center-xs">
+  <div class="col-xs-12 col-sm-10">
+    <div class="row middle-xs header">
+      <p class="col-xs header-logo-left center-horiz">
+        <img src="/e/images/n2t_net_logo.png" alt="N2T.net logo"
+	  width="auto" height="56"/>
+      </p>
+      <p class="col-xs header-logo-right center-horiz" style="font-size:1.4em;">
+        RESOLVING
+	<br/>
+	Names to Things
+      </p>
+      <p align="right" class="single-space">
+        <a href="/e/about.html">About</a><br/>
+        <a href="/e/partners.html">N2T Partners</a><br/>
+        <a href="/e/n2t_apidoc.html">API Documentation</a>
+      </p>
+    </div>
+  </div>
+</header>
+
+<div class="container-narrowest">
+<div class="section" id="naanq2e">
+<h1>Review candidate NAAN entry</h1>
+
+EOT
+
 my $no_gen = 1;			# yyy constant
 my $from_vim = 0;
 my $github = 0;
@@ -105,12 +183,10 @@ my $naan_restored = 0;
 my $real_thing;
 
 sub perr {
-	#if ($naan and ! $naan_restored) {
-	#	say STDERR ($from_vim ? $naan : "NAAN: $naan");
-	#	$naan_restored = 1;
-	#}
+	say STDERR '<pre>';
 	print STDERR ($from_vim ? "# Error: " : "Error: ");
 	say STDERR @_;
+	say STDERR '</pre>';
 }
 
 # main
@@ -137,6 +213,31 @@ sub perr {
 	$mon = sprintf("%02d", $mon + 1);
 	$mday = sprintf("%02d", $mday);
 
+	print $html_head;
+
+	my $errs = 1;
+	my $warnings = 1;
+
+# sub init_workdir, returning dirname of directory created (which may be
+# random if 12345 was specified?)
+	#### Make sure working dir is initialized
+	#my $workdir = "$workdirbase/$naan";
+	if (! -d $workdir) {
+		`mkdir -p $workdir`;
+	}
+	if (! chdir($workdir)) {
+		perr("could not chdir to $workdir: $!");
+		exit 1;
+	}
+	my $out = `pwd; ls`;
+	$out = `
+		rm -fr naan_reg_priv;
+		git clone git\@github.com:jkunze/naan_reg_priv.git 2>&1;
+	`;
+	#say "xxx out=$out";
+# end sub init_workdir
+#
+
 	# Read the input file.
 	local $/;		# set input mode to slurp whole file at once
 	$_ = <>;		# slurp entire file from stdin or named arg
@@ -158,44 +259,55 @@ sub perr {
 		perr("missing form data (block $_");
 		exit 2;
 	}
+	# XXX only getting $naan
 	($remail, $rname, $naan) = ($1, $2, $3);
 
-	# update form content, including NAAN
-	$real_thing = $remail && $rname && $naan;
-	if ($real_thing && $_ =~ /^\s*$/) {
-		perr("no form data; did you forget to paste it in?");
+	$naan ||= $default_naan;
+	$orig_request = /^\s*$/		# if empty request
+		? $request_default	# use default
+		: $_			# else use supplied data
+	;
+	my $safe_orig_request = decode_entities( $orig_request );
+	$_ = $safe_orig_request;
+	#$_ = $orig_request;
+
+	if ($naan !~ /^[s\d][\d]+$/) {
+		perr("Bad NAAN specified: $naan");
+		perr("NAAN must be all digits (optionally preceded by 's') "
+			. " or empty.");
+		perr("Please go back and resubmit.");
 		exit 1;
 	}
-	if (! $real_thing) {
-		if ($remail || $rname || $naan) {
-			perr("you must specify each of NAAN, email, and name, "
-				. "or none of them");
-			exit 1;
-		}
-		$naan = "s98769876";	# xxx special value to substitute later
+	if ($naan eq $default_naan) {	# then we're just in test/play mode
+		$remail = $default_remail;
+		$rname = $default_rname;
 	}
-	$request = $real_thing
-		? $_			# from user all fields supplied
-		: $request_default;	# else consider this a test
-	$_ = $request;
-perr($real_thing ? "real thing" : "just a test");
+	else {
+		my $grep = `grep "$naan" $cand_naans`;
+		#perr("xxx grep=$grep");
+		if ($grep !~ /^$naan\s+(\S+)\s+(.*)\n$/) {
+			perr( << "EOT" );
+I did not find a properly formatted NAAN line in the candidate_naans file.
+For the NAAN you want to select, add space-separated fields according
+to this format.
 
-	if ($real_thing) {
-		if ($remail !~ /@/) {
-			perr "email address ($remail) must contain "
-				. '"@"';
+<em>NAAN YourEmail FirstName LastName</em>
+
+Please verify your format, go back, and resubmit this form. Make sure
+TO COMMIT your changes to github before submitting.
+EOT
 			exit 1;
 		}
-		if ($naan !~ /^[s\d][\d]+$/) {
-			perr("bad NAAN specified: $naan");
-			perr("NAAN must be all digits",
-				" (optionally preceded by 's')");
-			exit 1;
-		}
+		($remail, $rname) = ($1, $2);
+		# 58828 jak@ucop.edu Jon Kunze
+
 	}
+	# xxx other tests? eg
+	#      other lines that are neither comment nor pure NAAN?
+	# xxx procedure for adding sDDDDDDDDD naans?
 
-perr("remail: $remail, rname: $rname, unaan: $naan");
-perr("request: $request");
+	# If we get here, we have a $unaan, $remail, and $rname.
+
 
 # XXX Maybe this directory stuff can come during "real", ie, later
 # - $rname becomes the basis for a curator-specific directory with
@@ -203,17 +315,7 @@ perr("request: $request");
 #    (this reduces chances that two curators' work will clobber each other)
 # - need to append new entry to end of temporary registry copy and attempt to
 #   validate it
-
-my $home = "/apps/n2t";
-my $main_naans = "$home/naans/main_naans";
-my $workdirbase = "$home/naans_workdir";
-my $workdir = "$workdirbase/$naan";
-`mkdir -p $workdir`;
-chdir($workdir) or
-	perr("could not chdir to $workdir: $!"),
-	exit 1;
-my $pwd = `pwd`;
-say "xxx pwd: $pwd";
+# - need daemon to expire and remove directories over N weeks old
 
 	# make last char before tab be a :, replacing a : or ?, if any
 	s/[:?]?\t+/: /g and	# YAML needs : and forbids tab-for-space, and
@@ -221,11 +323,31 @@ say "xxx pwd: $pwd";
 		s/\n([^:]*)$/ $1/m and	# lines with no colon (a contin. line),
 		s/$/\n/;		# but make sure whole thing ends in \n
 
-	# Flag annoying non-ascii punctuation (eg, ' and -)
-	my @uchars = split '', decode('utf8', $_);
-	/\P{ascii}/ && /\p{Punctuation}/ && perr(
-		"warning: non-ascii punctuation: ", encode('utf8', $_))
-			for (@uchars);
+	# Flag annoying non-ascii punctuation (eg, ' and -). Unicode errors
+	# happen that raise fatal exceptions happen too often to leave them
+	# uncaught.
+
+#perr("xxx _: $_");
+	my @uchars;
+        try {
+		@uchars = split '', decode('utf8', $_);
+        }
+        catch {
+		# xxx why can't I block the exception with args to decode()?
+		my $msg = << 'EOT';
+Oops, it looks like there are some unicode decoding errors that need to
+be fixed. Usually this requires replacing characters that can look like
+apostrophes ("'") and long hyphens ("-") with plain ASCII apostrophes and
+hyphens. Please go back, try that, and resubmit.
+EOT
+		perr($msg);
+		# xxx for some reason this doesn't work -- does it make sense?
+		/\P{ascii}/ && /\p{Punctuation}/ && perr(
+			"warning: non-ascii punctuation: ", encode('utf8', $_))
+				for (@uchars);
+                exit 1;
+        };
+	#my @uchars = split '', decode('utf8', $_);
 
 	# CSV fields:
 	# "Timestamp","Contact name:","Contact email address:","Organization name:","Position in organization:","Organization address:","Organization base URL:","Organization status:","Service provider:","Organization acronym preferred:","Other information:"
@@ -234,6 +356,7 @@ say "xxx pwd: $pwd";
 	my ($fullname, $email, $orgname, $role, $address,
 		$URL, $ostatus, $provider, $acronym, $other);
 	my ($firstname, $lastname);
+	my $copy_err;
 	# xxx very flawed test -- do real csv parse instead,
 	#     or check for occurrences of "," ?
 	#     often the org address has many commas -- don't check that field?
@@ -243,30 +366,50 @@ say "xxx pwd: $pwd";
 			$fullname, $email, $orgname, $role, $address,
 				$URL, $ostatus, $provider, $acronym, $other
 		) = Text::ParseWords::parse_line(',', 0, $_);
+		$copy_err = '';		# not actually checking for an error
 		# xxx should limit to number of fields, eg, in face of
 		# texty "Other info"
 	}
 	else {
-		$h = Load($_);		# YAML parse, returning hash reference
-		$fullname = $h->{'Contact name'} || '';
-		$orgname = $h->{'Organization name'} || '';
-		$acronym = $h->{'Organization acronym preferred'} || '';
-		$ostatus = $h->{'Organization status'} || '';
-		$URL = $h->{'Organization base URL'};
-		$email = $h->{'Contact email address'};
-		$address = $h->{'Organization address'};
-		#$provider = $h->{'Service provider'} || '';
-		$provider = $h->{'Service provider contact information'} || '';
+		try {
+			$h = Load($_);	# YAML parse, returning hash reference
+
+			# If the first and last fields aren't present,
+			# there's likely an incomplete copy/paste job.
+
+			$copy_err = ! $h->{'Organization name'} ||
+				    ! $h->{'Committed to data persistence'}
+				    ? "Missing organization name or commitment."
+				    : '';
+
+			$fullname = $h->{'Contact name'} || '';
+			$orgname = $h->{'Organization name'} || '';
+			$acronym = $h->{'Organization acronym preferred'} || '';
+			$ostatus = $h->{'Organization status'} || '';
+			$URL = $h->{'Organization base URL'};
+			$email = $h->{'Contact email address'};
+			$address = $h->{'Organization address'};
+			#$provider = $h->{'Service provider'} || '';
+			$provider = $h->{'Service provider contact information'} || '';
 # XXX decide whether to change this or not! (probably not)
 # XXX alter form letter to say that a service provider has submitted this
 #     on your behalf of you and your organization
 # XXX change "Thank you for your request." to "A request for a NAAN has been submitted on behalf of you and your organization by <insert name here> of <insert company name here>."
 # XXX make automatic form response go to service provider
 # Service provider contact information:   Guillaume LORY, solution Ligeo Archives : guillaume.lory@empreintedigitale.fr
-		$role = $h->{'Position in organization'} || '';
-		$other = $h->{'Other information'} || '';
+			$role = $h->{'Position in organization'} || '';
+			$other = $h->{'Other information'} || '';
+		}
+		catch {
+			$copy_err = "YAML error, likely a copy paste problem.";
+		}
 	}
 	# yyy check if YAML strips surrounding whitespace
+	if ($copy_err) {
+		perr("Looks like an incomplete request. Please go back "
+			. "and check for a copy/paste error.\n$copy_err");
+		exit 1;
+	}
 
 	# Get part of personal name (just a guess, so bears checking)
 	($firstname, $lastname) = $fullname =~ /^\s*(.+)\s+(\S+)\s*$/ or
@@ -282,12 +425,26 @@ say "xxx pwd: $pwd";
 		$acronym =~ s/\b's\b//g;
 		$acronym =~ s/\b(.).*?\b/\U$1/g;	# first letter
 	}
-	$acronym =~ s/\s+//g;			# remove spaces
+my @err_list = ();
+	$acronym =~ s/[-\s]+//g;		# remove spaces and hyphens
 	$acronym = uc $acronym;
+	if (length($acronym) < 3) {
+		push @err_list,
+			"Acronym ($acronym) must have at least 3 letters";
+	}
+	if ($acronym !~ /^[A-Z0-9]+$/) {
+		push @err_list,
+			"Acronym ($acronym) must only contain alphanumerics";
+	}
+# xxx add check to Validate
 	my $bmodel =
 		($ostatus eq 'For profit' ? 'FP' :
 		($ostatus eq 'Not-for-profit' ? 'NP' :
 			"ORGSTATUS: $ostatus"));
+	if ($bmodel !~ /^[FN]P$/) {
+		push @err_list, "Change ORGSTATUS ($ostatus) to FP or NP";
+	}
+# xxx add check to Validate
 	# yyy should lc hostname part
 	$URL =~ s,[./]+\s*$,,;		# remove terminal / or . if any
 	$URL =~ m,^https?://, or
@@ -323,19 +480,77 @@ how:    $bmodel | (:unkn) unknown | $year |
 
 ";
 
-
-print "$naa_entry";
-exit 1;
-
-
-
-
-
 	open OUT, "> $new_naa_file" or
 		perr("could not open $new_naa_file for writing"),
 		exit 1;
 	print OUT "$naa_entry";
 	close OUT;
+	#say "xxx: new_naa_file: $new_naa_file";
+
+	#say "<h3>Candidate NAAN entry</h3><p>";
+	my $safe_naa_entry = encode_entities( $naa_entry );
+	say << "EOT";
+<pre>
+<form id="entryform" action="/e/admin/q2e.pl">
+<textarea name="request" cols="84" rows="13" id="request" form="entryform">
+$safe_naa_entry
+</textarea>
+</pre>
+EOT
+
+	my $validate = `cat $new_naa_file >> $main_naans && \
+				$validator $main_naans`;
+	my $safe_validate = encode_entities( $validate );
+	$safe_validate =~ s|\n|<br/>|g;
+	$safe_validate =~ s|E|XXX|g;
+
+my @warn_list = ();
+push @warn_list, "Does the address end in a country name?";
+push @warn_list, "Is the contact listed as FamilyName, Other Names?";
+push @warn_list, "Does the organization name look ok?";
+
+	my $test_or_confirm;
+	if (scalar(@err_list)) {
+		$test_or_confirm = "Retest";
+		say "<p>xxxErrors:<ol>";
+		for my $e (@err_list) {
+			say "<li>$e</li>";
+		}
+		say "</ol></p>";
+	}
+	else {
+		$test_or_confirm = "Confirm";
+	}
+	if (scalar(@warn_list)) {
+		say "<p>Please consider the following:<ol>";
+		for my $w (@warn_list) {
+			say "<li>$w</li>";
+		}
+		say "</ol></p>";
+	}
+	say "<p>Please make changes and Retest or Confirm";
+	say << "EOT";
+&nbsp; &nbsp; &nbsp; &nbsp;
+<input type="submit" value="$test_or_confirm">
+<input type="hidden" id="request" name="origrequest" value="$orig_request">
+<br/>
+remail=$remail, name=$rname
+<br/>
+XXX $safe_validate
+</p>
+</form>
+EOT
+
+	##say "$naa_entry";
+	#say "<h3>Original request</h3><p>";
+	#$orig_request =~ s|\n|<br/>\n|sg;
+	#say "<p>$orig_request</p>";
+
+exit 0;
+
+
+
+
 
 # XXX  
 # =========== if doesn't validate, stop here ===========
@@ -405,7 +620,7 @@ Content-Type: text/html; charset=utf-8
 Proposed new entry:
 </p>
 <pre>
-$naa_entry
+$safe_naa_entry
 </pre>
 </p>
 <p>

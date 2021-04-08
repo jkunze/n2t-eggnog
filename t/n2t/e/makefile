@@ -36,8 +36,8 @@ test: all
 	# *.html means homepage.html changes also get copied in
 	cp -pr *.html *.txt *.pdf *.gz css fonts images \
 		$(HOME)/sv/cur/apache2/htdocs/e/
-	cp -pr admin/*.{pl,html} admin/form2naa \
-		$(HOME)/sv/cur/apache2/htdocs/e/admin/
+	#cp -pr admin/*.{pl,html} admin/form2naa \
+	#	$(HOME)/sv/cur/apache2/htdocs/e/admin/
 	cp -pr ../ruu.app/*.html \
 		$(HOME)/sv/cur/apache2/htdocs/ruu.app/
 	# xxx temporary

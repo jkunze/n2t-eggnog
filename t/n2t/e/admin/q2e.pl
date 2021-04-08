@@ -12,10 +12,11 @@ export PERL5LIB PATH
 use CGI;
 my $cgi = CGI->new;
 my %param = map { $_ => scalar $cgi->param($_) } $cgi->param() ;
-print $cgi->header( -type => 'text/plain; charset=UTF-8' );
+print $cgi->header( -type => 'text/html; charset=UTF-8' );
 
 open(PIPE, "| ./form2naa --github -") or
 	die("couldn't open pipe to form2naa: $!");
+# XXX only unaan is relevant
 print PIPE
 	"remail: ",	$cgi->param('remail'),	"\n", # responder email
 	"rname: ",	$cgi->param('rname'),	"\n", # responder email
