@@ -208,6 +208,7 @@ $x = `$webcl "$srvbase_u/e/admin/q2e.pl"`;
 like $x, qr{HTTP/\S+\s+302.*Location: https://}si,
 	'http rewritten to https for secure admin area';
 
+# XXX bug: this won't work until first server rollout/installation
 # XXX bug: the redirect went from test server to prd server: no-no
 # XXX but make sure this is protected from public execution
 like $x, qr{xxx Stub q2e.}i,
@@ -225,6 +226,13 @@ like $x, qr{Content-Type: image.*icon}i, "favicon fetched via https";
 $x = `$webcl "$ssvbase_u/a/pest/b? --verbose i.fetch moo"`;
 like $x, qr{HTTP/\S+\s+200\s+OK.*remote user: \?.*moo:\s*cow}si,
 	'open populator "pest" returns that element for still unknown user';
+
+$x = `$webcl "$ssvbase_u/a/pest/m/ark/99999/fk8? mint 1"`;
+like $x, qr{HTTP/\S+\s+200\s+OK.*s: 99999/fk8.*}si,
+	'open populator "pest" mints for still unknown user';
+
+#say "XXX x=$x";
+#$x = apachectl('graceful-stop')	and say "$x"; exit;	#########
 
 #if ($indb) {		# rlog being phased out, esp for exdb case
 #
@@ -275,9 +283,6 @@ like $x, qr{$authz_chall.*Read-protected}si,
 $x = `$webcl $pps "$ssvbase_u/a/pesty/b? i.fetch hello"`;
 like $x, qr{$authz_chall.*hello:\s*th\+ere}si,
 	"noid's old '+'-to-space decoding is no longer in effect";
-
-#say "XXX x=$x";
-#$x = apachectl('graceful-stop')	and say "$x"; exit;	#########
 
 remove_td($td, $tdata);
 remove_td($td2, $tdata);

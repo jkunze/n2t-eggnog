@@ -2289,6 +2289,9 @@ RewriteRule ^(/a/([^/]+)/b)\$ \\
 #  "$document_root\$1? --api $homedb --all -d $bdrsref_root/\$2 $tda_arg --ua %{QUERY_STRING}" [L]
 #  "$document_root\$1? --api $home $tlog --all -d $bdrsref_root/\$2 --ua %{QUERY_STRING}" [L]
 
+
+# XXXXXXXXXXX this is where an open minter might be invoked
+#      path /a/sortofunique/m? try 10 12345/x8 {short|medium|long}
 # Minters are invoked with this rule.
 RewriteRule ^(/a/([^/]+)/m)/(.+)\$ \\
   "$document_root\$1? --api $homedb -d $mtrsref_root/\$2/\$3 --ua %{QUERY_STRING}" [L]

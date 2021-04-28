@@ -7,6 +7,7 @@
 .. |X| unicode:: U+02713 .. check mark
 .. |sm| unicode:: U+2120 .. service mark superscript
 
+.. _ARK Alliance: https://arks.org
 .. _EZID: https://ezid.cdlib.org
 .. _ARK: /e/ark_ids.html
 .. _ARK request form: https://goo.gl/forms/bmckLSPpbzpZ5dix1
@@ -42,6 +43,9 @@
 
 Archival Resource Key (ARK) Identifiers
 =======================================
+
+**NOTE: as of February 2021, the best information about ARKs resides with the**
+`ARK Alliance`_ (https://arks.org). **This page may not be kept up-to-date.**
 
 ARK identifiers are URLs designed to support long-term access to
 information objects. To get started creating ARKs, first fill out the

@@ -1,20 +1,5 @@
 #! /usr/bin/env perl
 
-my $xxx_to_gen_errors = << 'EOT';
-I would like	To request a new NAAN
-Organization name:	Acta Académica
-Are you a service provider?	Yes
-Service provider contact information:	Acta Académica, Pablo De Grande, pablodg@aacademica.org
-Contact name:	Queipo, Rodrigo
-Contact email address:	contacto@aacademica.org
-Position in organization:	archivist
-Organization address:	Pedro Morán 2946, Buenos Aires, Argentina
-Organization status:	Not-for-profit
-Organization acronym preferred:	AA
-Organization base URL:	https://aacademica.org
-Committed to data persistence?	Agree
-EOT
-
 use 5.010;
 use strict;
 use warnings;
@@ -28,11 +13,12 @@ use Safe::Isa;          # provides $_isa (yyy remind for what purpose?)
 use HTML::Entities;
 
 # Author:  John A. Kunze, jak@ucop.edu, California Digital Library
-# Copyright (c) 2016-2020 UC Regents
+# Copyright (c) 2016-2021 UC Regents
 
 my ($remail, $rname, $naan, $request, $orig_request);	# $naan is unused naan
 my $default_remail = 'curtis.curator@example.org';
 my $default_rname = 'Curtis Curator';
+my $msg;
 
 my $request_default = << 'EOT';
 I would like	To request a new NAAN
@@ -49,6 +35,21 @@ Service provider contact information: Sam &quot;Sam&quot; Smith, ss@aaa.example.
 Committed to data persistence?	Agree
 EOT
 
+$request_default = << 'EOT';
+I would like	To request a new NAAN
+Organization name:	Acta Académica
+Are you a service provider?	Yes
+Service provider contact information:	Acta Académica, Pablo De Grande, pablodg@aacademica.org
+Contact name:	Queipo, Rodrigo
+Contact email address:	contacto@aacademica.org
+Position in organization:	archivist
+Organization address:	Pedro Morán 2946, Buenos Aires, Argentina
+Organization status:	Not-for-profit
+Organization acronym preferred:	AA
+Organization base URL:	https://aacademica.org
+Committed to data persistence?	Agree
+EOT
+
 #my $response_admin = "naan-registrar\@googlegroups.com, $provider";
 my $request_file = 'request';
 my $new_naa_file = 'new_entry';
@@ -56,9 +57,7 @@ my $request_log = 'request_log';
 my $default_naan = '98765';
 
 my $home = "/apps/n2t";
-my $workdir = "$home/naans";
-my $main_naans = "$workdir/naan_reg_priv/main_naans";
-my $cand_naans = "$workdir/naan_reg_priv/candidate_naans";
+my $workdirbase = "$home/naans";
 my $validator = "$home/local/bin/validate_naans";
 
 my $cmd = $0;
@@ -218,26 +217,6 @@ sub perr {
 	my $errs = 1;
 	my $warnings = 1;
 
-# sub init_workdir, returning dirname of directory created (which may be
-# random if 12345 was specified?)
-	#### Make sure working dir is initialized
-	#my $workdir = "$workdirbase/$naan";
-	if (! -d $workdir) {
-		`mkdir -p $workdir`;
-	}
-	if (! chdir($workdir)) {
-		perr("could not chdir to $workdir: $!");
-		exit 1;
-	}
-	my $out = `pwd; ls`;
-	$out = `
-		rm -fr naan_reg_priv;
-		git clone git\@github.com:jkunze/naan_reg_priv.git 2>&1;
-	`;
-	#say "xxx out=$out";
-# end sub init_workdir
-#
-
 	# Read the input file.
 	local $/;		# set input mode to slurp whole file at once
 	$_ = <>;		# slurp entire file from stdin or named arg
@@ -278,6 +257,29 @@ sub perr {
 		perr("Please go back and resubmit.");
 		exit 1;
 	}
+
+
+	### Begin: initialize working directory, $workdir.
+
+	my $workdir = "$workdirbase/$naan";
+	my $main_naans = "$workdir/naan_reg_priv/main_naans";
+	my $cand_naans = "$workdir/naan_reg_priv/candidate_naans";
+	if (! -d $workdir) {
+		`mkdir -p $workdir`;
+	}
+	if (! chdir($workdir)) {
+		perr("could not chdir to $workdir: $!");
+		exit 1;
+	}
+	my $out = `pwd; ls`;
+	say "xxx out=$out";
+	$out = `
+		rm -fr naan_reg_priv;
+		git clone git\@github.com:jkunze/naan_reg_priv.git 2>&1;
+	`;
+
+	### End: initialize working directory, $workdir.
+
 	if ($naan eq $default_naan) {	# then we're just in test/play mode
 		$remail = $default_remail;
 		$rname = $default_rname;
@@ -334,7 +336,7 @@ EOT
         }
         catch {
 		# xxx why can't I block the exception with args to decode()?
-		my $msg = << 'EOT';
+		$msg = << 'EOT';
 Oops, it looks like there are some unicode decoding errors that need to
 be fixed. Usually this requires replacing characters that can look like
 apostrophes ("'") and long hyphens ("-") with plain ASCII apostrophes and
@@ -349,6 +351,8 @@ EOT
         };
 	#my @uchars = split '', decode('utf8', $_);
 
+	# Only look for CSV input when a flag is set (in a way yet TBD).
+	my $csv_input = 0;
 	# CSV fields:
 	# "Timestamp","Contact name:","Contact email address:","Organization name:","Position in organization:","Organization address:","Organization base URL:","Organization status:","Service provider:","Organization acronym preferred:","Other information:"
 	my $timestamp;			# unused field if it's a CSV parse
@@ -360,7 +364,7 @@ EOT
 	# xxx very flawed test -- do real csv parse instead,
 	#     or check for occurrences of "," ?
 	#     often the org address has many commas -- don't check that field?
-	if (m/,.*,.*,.*,.*,.*,/) {	# if there are 6+ commas on a line
+	if ($csv_input) {
 		(			# assume input is in CSV-format
 			$timestamp,			# unused field
 			$fullname, $email, $orgname, $role, $address,
@@ -425,7 +429,9 @@ EOT
 		$acronym =~ s/\b's\b//g;
 		$acronym =~ s/\b(.).*?\b/\U$1/g;	# first letter
 	}
+
 my @err_list = ();
+# xxx add this check to Validate also
 	$acronym =~ s/[-\s]+//g;		# remove spaces and hyphens
 	$acronym = uc $acronym;
 	if (length($acronym) < 3) {
@@ -436,7 +442,7 @@ my @err_list = ();
 		push @err_list,
 			"Acronym ($acronym) must only contain alphanumerics";
 	}
-# xxx add check to Validate
+# xxx add this check to Validate also
 	my $bmodel =
 		($ostatus eq 'For profit' ? 'FP' :
 		($ostatus eq 'Not-for-profit' ? 'NP' :
@@ -444,7 +450,7 @@ my @err_list = ();
 	if ($bmodel !~ /^[FN]P$/) {
 		push @err_list, "Change ORGSTATUS ($ostatus) to FP or NP";
 	}
-# xxx add check to Validate
+# xxx add check to Validate also
 	# yyy should lc hostname part
 	$URL =~ s,[./]+\s*$,,;		# remove terminal / or . if any
 	$URL =~ m,^https?://, or
@@ -498,37 +504,46 @@ $safe_naa_entry
 </pre>
 EOT
 
-	my $validate = `cat $new_naa_file >> $main_naans && \
-				$validator $main_naans`;
-	my $safe_validate = encode_entities( $validate );
-	$safe_validate =~ s|\n|<br/>|g;
-	$safe_validate =~ s|E|XXX|g;
+	my $validate = `cat $new_naa_file >> $main_naans`;
 
-my @warn_list = ();
-push @warn_list, "Does the address end in a country name?";
-push @warn_list, "Is the contact listed as FamilyName, Other Names?";
-push @warn_list, "Does the organization name look ok?";
+	#my $validate = `cat $new_naa_file >> $main_naans && \
+	#			$validator $main_naans`;
+
+	use lib "/apps/n2t/local/lib";
+	use NAAN;
+	my $contact_info = 1;	# 1 means contact info is present
+	my ($ok, $msg, $Rerrs) =
+		NAAN::validate_naans($main_naans, $contact_info);
+
+	my $safe_validate = encode_entities( $msg );
+	$safe_validate =~ s|\n|<br/>|g;
+
+#my @warn_list = ();
+#push @warn_list, "Does the address end in a country name?";
+#push @warn_list, "Is the contact listed as FamilyName, Other Names?";
+#push @warn_list, "Does the organization name look ok?";
 
 	my $test_or_confirm;
-	if (scalar(@err_list)) {
+	if (! $ok and scalar(@$Rerrs)) {
 		$test_or_confirm = "Retest";
-		say "<p>xxxErrors:<ol>";
-		for my $e (@err_list) {
-			say "<li>$e</li>";
+		say "<p>Errors:<ol>";
+		for my $e (@$Rerrs) {
+			say "<li>", encode_entities( $e ), "</li>";
 		}
 		say "</ol></p>";
+		say "<p>Changes required.";
 	}
 	else {
 		$test_or_confirm = "Confirm";
+		say "<p>";
 	}
-	if (scalar(@warn_list)) {
-		say "<p>Please consider the following:<ol>";
-		for my $w (@warn_list) {
-			say "<li>$w</li>";
-		}
-		say "</ol></p>";
-	}
-	say "<p>Please make changes and Retest or Confirm";
+	#if (scalar(@warn_list)) {
+	#	say "<p>Please consider the following:<ol>";
+	#	for my $w (@warn_list) {
+	#		say "<li>$w</li>";
+	#	}
+	#	say "</ol></p>";
+	#}
 	say << "EOT";
 &nbsp; &nbsp; &nbsp; &nbsp;
 <input type="submit" value="$test_or_confirm">
@@ -536,7 +551,7 @@ push @warn_list, "Does the organization name look ok?";
 <br/>
 remail=$remail, name=$rname
 <br/>
-XXX $safe_validate
+Status: &nbsp; &nbsp; &nbsp; $safe_validate
 </p>
 </form>
 EOT

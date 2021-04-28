@@ -3,6 +3,9 @@
 PERL5LIB=/apps/n2t/sv/cv2/lib/perl5
 PATH=/apps/n2t/sv/cv2/bin:/bin:/usr/bin:/sbin:/usr/sbin
 export PERL5LIB PATH
+#LC_ALL=C
+#LANG=en_US.UTF-8
+#export PERL5LIB PATH LC_ALL LANG
 
 # Output necessary HTTP headers. Real output comes after that.
 #echo "Content-type: text/plain; charset=UTF-8"
