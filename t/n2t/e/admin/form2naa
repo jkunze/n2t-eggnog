@@ -188,136 +188,8 @@ sub perr {
 	say STDERR '</pre>';
 }
 
-# main
-{
-	use open qw/:std :utf8/;
-	$#ARGV < 0 || $ARGV[0] =~ /^--*h/ and	# eg, -help, --help
-		print($usage_text),
-		exit 0;
-	if ($ARGV[0] =~ /^--github/) {
-		$github = 1;
-		$from_vim = 1;
-		# yyy $from_vim behavior may become default in github actions
-		shift;
-	}
-
-	my $FormFile = $ARGV[0];
-	shift;
-	$FormFile ne '-' and
-		unshift @ARGV, $FormFile;
-
-	# Get parts of today's date.
-	my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime();
-	$year += 1900;
-	$mon = sprintf("%02d", $mon + 1);
-	$mday = sprintf("%02d", $mday);
-
-	print $html_head;
-
-	my $errs = 1;
-	my $warnings = 1;
-
-	# Read the input file.
-	local $/;		# set input mode to slurp whole file at once
-	$_ = <>;		# slurp entire file from stdin or named arg
-	s/\n+/\n/;		# make sure it ends in just one newline
-	my $form_content = $_;	# make copy of form content, including NAAN
-
-# xxx
-	$FormFile eq '-' and
-		$from_vim = 1;	# act as if we're called from vim
-	# check for a block in the file and isolate it into $_ by
-	# deleting everything around it
-	s/^\s*\n//mg;		# drop blank lines
-	s/^\s*#.*\n//mg;	# drop comment lines
-
-	# Split the input block into params added by CGI script
-	# and params copied in from request form data.
-
-	if (! s/^remail: (.*)\nrname: (.*)\nunaan: (.*)\nrequest: //) {
-		perr("missing form data (block $_");
-		exit 2;
-	}
-	# XXX only getting $naan
-	($remail, $rname, $naan) = ($1, $2, $3);
-
-	$naan ||= $default_naan;
-	$orig_request = /^\s*$/		# if empty request
-		? $request_default	# use default
-		: $_			# else use supplied data
-	;
-	my $safe_orig_request = decode_entities( $orig_request );
-	$_ = $safe_orig_request;
-	#$_ = $orig_request;
-
-	if ($naan !~ /^[s\d][\d]+$/) {
-		perr("Bad NAAN specified: $naan");
-		perr("NAAN must be all digits (optionally preceded by 's') "
-			. " or empty.");
-		perr("Please go back and resubmit.");
-		exit 1;
-	}
-
-
-	### Begin: initialize working directory, $workdir.
-
-	my $workdir = "$workdirbase/$naan";
-	my $main_naans = "$workdir/naan_reg_priv/main_naans";
-	my $cand_naans = "$workdir/naan_reg_priv/candidate_naans";
-	if (! -d $workdir) {
-		`mkdir -p $workdir`;
-	}
-	if (! chdir($workdir)) {
-		perr("could not chdir to $workdir: $!");
-		exit 1;
-	}
-	my $out = `pwd; ls`;
-	say "xxx out=$out";
-	$out = `
-		rm -fr naan_reg_priv;
-		git clone git\@github.com:jkunze/naan_reg_priv.git 2>&1;
-	`;
-
-	### End: initialize working directory, $workdir.
-
-	if ($naan eq $default_naan) {	# then we're just in test/play mode
-		$remail = $default_remail;
-		$rname = $default_rname;
-	}
-	else {
-		my $grep = `grep "$naan" $cand_naans`;
-		#perr("xxx grep=$grep");
-		if ($grep !~ /^$naan\s+(\S+)\s+(.*)\n$/) {
-			perr( << "EOT" );
-I did not find a properly formatted NAAN line in the candidate_naans file.
-For the NAAN you want to select, add space-separated fields according
-to this format.
-
-<em>NAAN YourEmail FirstName LastName</em>
-
-Please verify your format, go back, and resubmit this form. Make sure
-TO COMMIT your changes to github before submitting.
-EOT
-			exit 1;
-		}
-		($remail, $rname) = ($1, $2);
-		# 58828 jak@ucop.edu Jon Kunze
-
-	}
-	# xxx other tests? eg
-	#      other lines that are neither comment nor pure NAAN?
-	# xxx procedure for adding sDDDDDDDDD naans?
-
-	# If we get here, we have a $unaan, $remail, and $rname.
-
-
-# XXX Maybe this directory stuff can come during "real", ie, later
-# - $rname becomes the basis for a curator-specific directory with
-# a temporary working copy of the naan_request and validation exercises
-#    (this reduces chances that two curators' work will clobber each other)
-# - need to append new entry to end of temporary registry copy and attempt to
-#   validate it
-# - need daemon to expire and remove directories over N weeks old
+sub from_submit { my( $naan, $input, $form_content )=@_;
+		# yyy $form_content is original, unaltered $input
 
 	# make last char before tab be a :, replacing a : or ?, if any
 	s/[:?]?\t+/: /g and	# YAML needs : and forbids tab-for-space, and
@@ -330,6 +202,7 @@ EOT
 	# uncaught.
 
 #perr("xxx _: $_");
+# Move this test earlier?
 	my @uchars;
         try {
 		@uchars = split '', decode('utf8', $_);
@@ -347,9 +220,17 @@ EOT
 		/\P{ascii}/ && /\p{Punctuation}/ && perr(
 			"warning: non-ascii punctuation: ", encode('utf8', $_))
 				for (@uchars);
-                exit 1;
+                return '';
         };
 	#my @uchars = split '', decode('utf8', $_);
+
+
+
+	# Get parts of today's date.
+	my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime();
+	$year += 1900;
+	$mon = sprintf("%02d", $mon + 1);
+	$mday = sprintf("%02d", $mday);
 
 	# Only look for CSV input when a flag is set (in a way yet TBD).
 	my $csv_input = 0;
@@ -361,6 +242,10 @@ EOT
 		$URL, $ostatus, $provider, $acronym, $other);
 	my ($firstname, $lastname);
 	my $copy_err;
+
+	# Input is in request form (via Submit) or in ANVL form (via Retest or
+	# Confirm). If the latter, we need to massage it into YAML first.
+
 	# xxx very flawed test -- do real csv parse instead,
 	#     or check for occurrences of "," ?
 	#     often the org address has many commas -- don't check that field?
@@ -375,6 +260,7 @@ EOT
 		# texty "Other info"
 	}
 	else {
+perr("xxx before submit Load: $_");
 		try {
 			$h = Load($_);	# YAML parse, returning hash reference
 
@@ -412,13 +298,13 @@ EOT
 	if ($copy_err) {
 		perr("Looks like an incomplete request. Please go back "
 			. "and check for a copy/paste error.\n$copy_err");
-		exit 1;
+		return '';
 	}
 
 	# Get part of personal name (just a guess, so bears checking)
 	($firstname, $lastname) = $fullname =~ /^\s*(.+)\s+(\S+)\s*$/ or
 		perr("could not parse personal name \"$fullname\""),
-		exit 1;
+		return '';
 	unless ($acronym) {
 		$acronym = $orgname;
 		# drop stop words in English, French, and Spanish
@@ -430,27 +316,15 @@ EOT
 		$acronym =~ s/\b(.).*?\b/\U$1/g;	# first letter
 	}
 
-my @err_list = ();
-# xxx add this check to Validate also
-	$acronym =~ s/[-\s]+//g;		# remove spaces and hyphens
-	$acronym = uc $acronym;
-	if (length($acronym) < 3) {
-		push @err_list,
-			"Acronym ($acronym) must have at least 3 letters";
-	}
-	if ($acronym !~ /^[A-Z0-9]+$/) {
-		push @err_list,
-			"Acronym ($acronym) must only contain alphanumerics";
-	}
-# xxx add this check to Validate also
 	my $bmodel =
 		($ostatus eq 'For profit' ? 'FP' :
 		($ostatus eq 'Not-for-profit' ? 'NP' :
 			"ORGSTATUS: $ostatus"));
-	if ($bmodel !~ /^[FN]P$/) {
-		push @err_list, "Change ORGSTATUS ($ostatus) to FP or NP";
-	}
-# xxx add check to Validate also
+	#if ($bmodel !~ /^[FN]P$/) {
+	#	push @err_list, "Change ORGSTATUS ($ostatus) to FP or NP";
+	#}
+
+
 	# yyy should lc hostname part
 	$URL =~ s,[./]+\s*$,,;		# remove terminal / or . if any
 	$URL =~ m,^https?://, or
@@ -469,7 +343,7 @@ my @err_list = ();
 	$request .= $form_content;
 	open OUT, "> $request_file" or
 		perr("could not open $request_file for writing"),
-		exit 1;
+		return '';
 	say OUT "$request";
 	close OUT;
 
@@ -485,6 +359,142 @@ how:    $bmodel | (:unkn) unknown | $year |
 !address: $address$provider_line
 
 ";
+	return ($naa_entry, $orgname, $firstname, $email, $provider);
+}
+
+# main
+{
+	use open qw/:std :utf8/;
+	$#ARGV < 0 || $ARGV[0] =~ /^--*h/ and	# eg, -help, --help
+		print($usage_text),
+		exit 0;
+	if ($ARGV[0] =~ /^--github/) {
+		$github = 1;
+		$from_vim = 1;
+		# yyy $from_vim behavior may become default in github actions
+		shift;
+	}
+
+	my $FormFile = $ARGV[0];
+	shift;
+	$FormFile ne '-' and
+		unshift @ARGV, $FormFile;
+
+	print $html_head;
+
+	my $errs = 1;
+	my $warnings = 1;
+
+	# Read the input file.
+	local $/;		# set input mode to slurp whole file at once
+	$_ = <>;		# slurp entire file from stdin or named arg
+	s/\n+/\n/;		# make sure it ends in just one newline
+	my $form_content = $_;	# make copy of form content, including NAAN
+
+	# check for a block in the file and isolate it into $_ by
+	# deleting everything around it
+	s/^\s*\n//mg;		# drop blank lines
+	s/^\s*#.*\n//mg;	# drop comment lines
+
+	# Split the input block into params added by CGI script
+	# and params copied in from request form data.
+
+	if (! s/^remail: (.*)\nrname: (.*)\nunaan: (.*)\nrequest: //) {
+		perr("missing form data (block $_");
+		exit 2;
+	}
+	# XXX only getting $naan
+	($remail, $rname, $naan) = ($1, $2, $3);
+
+	my ($naa_entry, $orgname, $firstname, $email, $provider);
+
+	my $retest = 0;		# by default, assume first submission
+	if (! $naan and /^naa:/) {	# Retest or Confirm case
+		$retest = 1;		# default overridden
+# XXX see validate for regex
+		if (! m{ who:\s+(.*?)\s*\n
+			 what:\s+(.*?)\s*\n
+			 .*?\n
+			 !contact:\s+[^,]*,\s+(\S+?)
+				}xs) {
+			perr("Malformed candidate NAAN entry: $_");
+			exit 1;
+		}
+		($naa_entry, $orgname, $naan, $firstname, $email, $provider) =
+			($_, $1, $2, $3, "XXX", "XXX");
+		#$orig_request = File::slurp();
+	}
+	else {				# Submit case
+		$naan ||= $default_naan;
+		$orig_request = /^\s*$/		# if empty request
+			? $request_default	# use default
+			: $_			# else use supplied data
+		;
+		my $safe_orig_request = decode_entities( $orig_request );
+		$_ = $safe_orig_request;
+
+		($naa_entry, $orgname, $firstname, $email, $provider) =
+			from_submit($naan, $_, $form_content);
+	}
+	if (! $naa_entry) {	# $naa_entry must be defined
+		exit 1;
+	}
+
+	if ($naan !~ /^[s\d][\d]+$/) {
+		perr("Bad NAAN specified: $naan");
+		perr("NAAN must be all digits (optionally preceded by 's') "
+			. " or empty.");
+		#perr("Please go back and resubmit.");
+		exit 1;
+	}
+
+
+	### Begin: initialize working directory, $workdir.
+
+	my $workdir = "$workdirbase/$naan";
+	my $main_naans = "$workdir/naan_reg_priv/main_naans";
+	my $cand_naans = "$workdir/naan_reg_priv/candidate_naans";
+	if (! -d $workdir) {
+		`mkdir -p $workdir`;
+	}
+	if (! chdir($workdir)) {
+		perr("could not chdir to $workdir: $!");
+		exit 1;
+	}
+	my $out = `pwd; ls`;
+	say "xxx out=$out";
+	$out = `
+		rm -fr naan_reg_priv;
+		git clone git\@github.com:jkunze/naan_reg_priv.git 2>&1;
+	`;
+
+	### End: initialize working directory, $workdir.
+
+	if ($naan eq $default_naan) {	# then we're just in test/play mode
+		$remail = $default_remail;
+		$rname = $default_rname;
+	}
+	else {
+		my $grep = `grep "$naan" $cand_naans`;
+		#perr("xxx grep=$grep");
+		if ($grep !~ /^$naan\s+(\S+)\s+(.*)\n$/) {
+			perr( << "EOT" );
+the <em>candidate_naans</em> file on github contained no line of the form
+
+   <em>$naan YourEmail FirstName LastName</em>
+
+Cannot proceed without such a line. (Did you remember to COMMIT?)
+EOT
+			exit 1;
+		}
+		($remail, $rname) = ($1, $2);
+		# 58828 jak@ucop.edu Jon Kunze
+
+	}
+	# xxx other tests? eg
+	#      other lines that are neither comment nor pure NAAN?
+	# xxx procedure for adding sDDDDDDDDD naans?
+	# xxx need daemon to expire and remove directories over N weeks old
 
 	open OUT, "> $new_naa_file" or
 		perr("could not open $new_naa_file for writing"),
@@ -518,11 +528,6 @@ EOT
 	my $safe_validate = encode_entities( $msg );
 	$safe_validate =~ s|\n|<br/>|g;
 
-#my @warn_list = ();
-#push @warn_list, "Does the address end in a country name?";
-#push @warn_list, "Is the contact listed as FamilyName, Other Names?";
-#push @warn_list, "Does the organization name look ok?";
-
 	my $test_or_confirm;
 	if (! $ok and scalar(@$Rerrs)) {
 		$test_or_confirm = "Retest";
@@ -537,13 +542,7 @@ EOT
 		$test_or_confirm = "Confirm";
 		say "<p>";
 	}
-	#if (scalar(@warn_list)) {
-	#	say "<p>Please consider the following:<ol>";
-	#	for my $w (@warn_list) {
-	#		say "<li>$w</li>";
-	#	}
-	#	say "</ol></p>";
-	#}
+
 	say << "EOT";
 &nbsp; &nbsp; &nbsp; &nbsp;
 <input type="submit" value="$test_or_confirm">
@@ -589,11 +588,6 @@ exit 0;
 		print $naa_entry;
 	}
 
-	#say OUT "Date:\t$year.$mon.$mday";       # processing date of request
-	#$from_vim and			# if from vim, clothe the naked NAAN
-	#	print OUT "Candidate NAAN:\t";	# prepended to the start of it
-	#print OUT "$form_content";
-	#print OUT "\n";                 # terminate request with a blank line
 	open OUT, ">> $request_log" or
 		perr("could not open $request_log for appending"),
 		exit 1;
