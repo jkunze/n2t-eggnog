@@ -19,10 +19,15 @@ use Encode;		# to deal with unicode chars
 # XXX bad practice -- non-re-entrant code, will be clobbered by other caller
 my $lcnt = 0;		# current line number (line count)
 my ($badseq1, $badseq2, %naans, %elems, %org_name, %org_acro);
+# XXX horrible practice -- global changed by last caller
+my $linenumbers = 1;	# whether errors come with line number of entry
 
 sub lerr {	# line error
 	my $lcnt = shift @_;
-	return "Entry starting line $lcnt: " . join('', @_);
+	return $linenumbers
+		? "Entry starting line $lcnt: " . join('', @_)
+		: join('', @_)
+	;
 }
 
 sub element_check { my( $Rerrs, $k, $v )=@_;	# one key/value pair
@@ -103,7 +108,7 @@ sub element_check { my( $Rerrs, $k, $v )=@_;	# one key/value pair
 	}
 }
 
-sub validate_naans { my( $naanfile, $contact_info )=@_;
+sub validate_naans { my( $naanfile, $contact_info, $linenums )=@_;
 
 	my ($c, $s, @uchars);
 	open FH, "<:encoding(UTF-8)", $naanfile or
@@ -111,6 +116,8 @@ sub validate_naans { my( $naanfile, $contact_info )=@_;
 	my $Rerrs = [];		# this gets returned
 	my $ecnt = 0;		# current entry (count)
 	my $msg;
+	defined($linenums) and
+		$linenumbers = $linenums;
 
 	$/ = "";		# paragraph mode
 	while (<FH>) {		# read file an entry (block) at a time
@@ -210,7 +217,7 @@ sub validate_naans { my( $naanfile, $contact_info )=@_;
 	# XXX need to add count of orgs in the new shared_naan shoulders
 	# xxx de-dupe orgs for final count?
 	#
-	$msg = "AAOK - $naanfile: $numorgs orgs ($ecnt entries), $lcnt lines";
+	$msg = "OK - $naanfile: $numorgs orgs ($ecnt entries), $lcnt lines";
 	return (1, $msg, $Rerrs);
 }
 

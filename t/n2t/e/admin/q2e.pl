@@ -21,12 +21,17 @@ open(PIPE, "| ./form2naa --github -") or
 	die("couldn't open pipe to form2naa: $!");
 # XXX only unaan is relevant
 print PIPE
+	"button: ",	$cgi->param('button'),	"\n", # Submit, Retest, Confirm
 	"remail: ",	$cgi->param('remail'),	"\n", # responder email
 	"rname: ",	$cgi->param('rname'),	"\n", # responder email
 	"unaan: ",	$cgi->param('unaan'),	"\n", # unused NAAN
 	"request: ",	$cgi->param('request'),	"\n", # request form data
 ;
 EOS
+
+# XXX run validate_naans twice:
+#    once on received file, 
+#    again on file modified with new NAA appended
 
 #for my $k ( sort keys %param ) {
 #    print join ": ", $k, $param{$k};

@@ -15,7 +15,8 @@ use HTML::Entities;
 # Author:  John A. Kunze, jak@ucop.edu, California Digital Library
 # Copyright (c) 2016-2021 UC Regents
 
-my ($remail, $rname, $naan, $request, $orig_request);	# $naan is unused naan
+my ($button, $remail, $rname, $naan, $request);	# $naan is unused naan
+my $orig_request;
 my $default_remail = 'curtis.curator@example.org';
 my $default_rname = 'Curtis Curator';
 my $msg;
@@ -180,6 +181,7 @@ my $from_vim = 0;
 my $github = 0;
 my $naan_restored = 0;
 my $real_thing;
+my ($workdir, $main_naans, $cand_naans);
 
 sub perr {
 	say STDERR '<pre>';
@@ -188,8 +190,41 @@ sub perr {
 	say STDERR '</pre>';
 }
 
-sub from_submit { my( $naan, $input, $form_content )=@_;
-		# yyy $form_content is original, unaltered $input
+# Initialize working directory and set some globals:
+#     $workdir, $main_naans, $cand_naans.
+
+sub init_dir { my( $naan )=@_;
+
+	if ($naan !~ /^[s\d][\d]+$/) {
+		perr("Bad NAAN specified: $naan");
+		perr("NAAN must be all digits (optionally preceded by 's') "
+			. " or empty.");
+		#perr("Please go back and resubmit.");
+		return '';
+	}
+
+	$workdir = "$workdirbase/$naan";
+	$main_naans = "$workdir/naan_reg_priv/main_naans";
+	$cand_naans = "$workdir/naan_reg_priv/candidate_naans";
+	if (! -d $workdir) {
+		`mkdir -p $workdir`;
+	}
+	if (! chdir($workdir)) {
+		perr("could not chdir to $workdir: $!");
+		return '';
+	}
+	my $out = `pwd; ls`;
+#	say "xxx out=$out";
+	$out = `
+		rm -fr naan_reg_priv;
+		git clone git\@github.com:jkunze/naan_reg_priv.git 2>&1;
+	`;
+	return $out;	# XXX doesn't actually detect errors!
+}
+
+sub from_submit { my( $naan, $input )=@_;
+
+	$_ = $input;		# decoded form data
 
 	# make last char before tab be a :, replacing a : or ?, if any
 	s/[:?]?\t+/: /g and	# YAML needs : and forbids tab-for-space, and
@@ -260,7 +295,7 @@ EOT
 		# texty "Other info"
 	}
 	else {
-perr("xxx before submit Load: $_");
+#perr("xxx before submit Load: $_");
 		try {
 			$h = Load($_);	# YAML parse, returning hash reference
 
@@ -335,13 +370,18 @@ perr("xxx before submit Load: $_");
 	$other =~ /./ and		# if it has real content
 		say STDERR "Note other info: |$other|";		# not an error
 
-	# Build up request to save in a file.
+	if (! init_dir($naan)) {
+		say STDERR "Could not initialize directory for $naan";
+		return '';
+	}
+
+	# This is Submit case, so build up request to save in a file.
 	my $request = '';
 	$request .= "Date:\t$year.$mon.$mday\n";	# date processed
 	$from_vim and			# if from vim, clothe naked NAAN with
 		$request .= "Candidate NAAN:\t";	# label prepended
-	$request .= $form_content;
-	open OUT, "> $request_file" or
+	$request .= $input;		# original request
+	open OUT, ">:encoding(UTF-8)", "$request_file" or
 		perr("could not open $request_file for writing"),
 		return '';
 	say OUT "$request";
@@ -389,7 +429,7 @@ how:    $bmodel | (:unkn) unknown | $year |
 	local $/;		# set input mode to slurp whole file at once
 	$_ = <>;		# slurp entire file from stdin or named arg
 	s/\n+/\n/;		# make sure it ends in just one newline
-	my $form_content = $_;	# make copy of form content, including NAAN
+#	my $form_content = $_;	# make copy of form content, including NAAN
 
 	# check for a block in the file and isolate it into $_ by
 	# deleting everything around it
@@ -399,19 +439,18 @@ how:    $bmodel | (:unkn) unknown | $year |
 	# Split the input block into params added by CGI script
 	# and params copied in from request form data.
 
-	if (! s/^remail: (.*)\nrname: (.*)\nunaan: (.*)\nrequest: //) {
+	if (! s/^button: (.*)\nremail: (.*)\nrname: (.*)\nunaan: (.*)\nrequest: //) {
 		perr("missing form data (block $_");
 		exit 2;
 	}
-	# XXX only getting $naan
-	($remail, $rname, $naan) = ($1, $2, $3);
+	($button, $remail, $rname, $naan) = ($1, $2, $3, $4);
 
 	my ($naa_entry, $orgname, $firstname, $email, $provider);
 
 	my $retest = 0;		# by default, assume first submission
+# elsif ($button eq 'Retest' or $button eq 'Confirm')
 	if (! $naan and /^naa:/) {	# Retest or Confirm case
 		$retest = 1;		# default overridden
-# XXX see validate for regex
 		if (! m{ who:\s+(.*?)\s*\n
 			 what:\s+(.*?)\s*\n
 			 .*?\n
@@ -420,55 +459,32 @@ how:    $bmodel | (:unkn) unknown | $year |
 			perr("Malformed candidate NAAN entry: $_");
 			exit 1;
 		}
+
 		($naa_entry, $orgname, $naan, $firstname, $email, $provider) =
 			($_, $1, $2, $3, "XXX", "XXX");
-		#$orig_request = File::slurp();
+
+		if (! init_dir($naan)) {
+			say STDERR "Could not initialize directory for $naan";
+			exit 1;
+		}
 	}
+# XXX if ($button eq 'Submit')
 	else {				# Submit case
 		$naan ||= $default_naan;
 		$orig_request = /^\s*$/		# if empty request
 			? $request_default	# use default
 			: $_			# else use supplied data
 		;
-		my $safe_orig_request = decode_entities( $orig_request );
-		$_ = $safe_orig_request;
+		my $raw_orig_request = decode_entities( $orig_request );
 
 		($naa_entry, $orgname, $firstname, $email, $provider) =
-			from_submit($naan, $_, $form_content);
+			from_submit($naan, $raw_orig_request);
+
+		$_ = $raw_orig_request;
 	}
 	if (! $naa_entry) {	# $naa_entry must be defined
 		exit 1;
 	}
-
-	if ($naan !~ /^[s\d][\d]+$/) {
-		perr("Bad NAAN specified: $naan");
-		perr("NAAN must be all digits (optionally preceded by 's') "
-			. " or empty.");
-		#perr("Please go back and resubmit.");
-		exit 1;
-	}
-
-
-	### Begin: initialize working directory, $workdir.
-
-	my $workdir = "$workdirbase/$naan";
-	my $main_naans = "$workdir/naan_reg_priv/main_naans";
-	my $cand_naans = "$workdir/naan_reg_priv/candidate_naans";
-	if (! -d $workdir) {
-		`mkdir -p $workdir`;
-	}
-	if (! chdir($workdir)) {
-		perr("could not chdir to $workdir: $!");
-		exit 1;
-	}
-	my $out = `pwd; ls`;
-	say "xxx out=$out";
-	$out = `
-		rm -fr naan_reg_priv;
-		git clone git\@github.com:jkunze/naan_reg_priv.git 2>&1;
-	`;
-
-	### End: initialize working directory, $workdir.
 
 	if ($naan eq $default_naan) {	# then we're just in test/play mode
 		$remail = $default_remail;
@@ -496,12 +512,19 @@ EOT
 	# xxx procedure for adding sDDDDDDDDD naans?
 	# xxx need daemon to expire and remove directories over N weeks old
 
-	open OUT, "> $new_naa_file" or
+	### save $naa_entry
+	open OUT, ">:encoding(UTF-8)", "$new_naa_file" or
 		perr("could not open $new_naa_file for writing"),
 		exit 1;
 	print OUT "$naa_entry";
 	close OUT;
-	#say "xxx: new_naa_file: $new_naa_file";
+
+# XXX if ($button eq 'Confirm') {
+#        ... and send email and derive files
+#        ... and comment out line in candidate_naans
+#        ... and check in main_naans and push to github
+#        exit;
+# }
 
 	#say "<h3>Candidate NAAN entry</h3><p>";
 	my $safe_naa_entry = encode_entities( $naa_entry );
@@ -522,13 +545,15 @@ EOT
 	use lib "/apps/n2t/local/lib";
 	use NAAN;
 	my $contact_info = 1;	# 1 means contact info is present
+	my $linenums = 0;
 	my ($ok, $msg, $Rerrs) =
-		NAAN::validate_naans($main_naans, $contact_info);
+		NAAN::validate_naans($main_naans, $contact_info, $linenums);
 
 	my $safe_validate = encode_entities( $msg );
 	$safe_validate =~ s|\n|<br/>|g;
 
 	my $test_or_confirm;
+	my $mesg = '';
 	if (! $ok and scalar(@$Rerrs)) {
 		$test_or_confirm = "Retest";
 		say "<p>Errors:<ol>";
@@ -540,15 +565,19 @@ EOT
 	}
 	else {
 		$test_or_confirm = "Confirm";
+		$mesg = " &nbsp; &nbsp; (and send email " .
+			"to $remail for forwarding to requester)";
 		say "<p>";
 	}
 
+#<input type="hidden" id="request" name="origrequest" value="$orig_request">
 	say << "EOT";
 &nbsp; &nbsp; &nbsp; &nbsp;
-<input type="submit" value="$test_or_confirm">
-<input type="hidden" id="request" name="origrequest" value="$orig_request">
+<input type="submit" name="button" value="$test_or_confirm">
+$mesg
 <br/>
-remail=$remail, name=$rname
+button=$button, remail=$remail, name=$rname
+<br/>
 <br/>
 Status: &nbsp; &nbsp; &nbsp; $safe_validate
 </p>
@@ -562,39 +591,23 @@ EOT
 
 exit 0;
 
+}
 
+# returns ??
 
-
-
-# XXX  
-# =========== if doesn't validate, stop here ===========
-`cat $main_naans $naa_entry > trial_naans; ./validate.pl trial_naans`;
+sub confirmed { my( $orgname, $naan, $provider, $email, $firstname, $safe_naa_entry )=@_;
 
 	my $form_dest = $remail
 		? "is being emailed to you"
 		: "appears below"
 	;
-	if ($from_vim) {
-		say "# $naan $orgname";
-		say "!# At github, use the comment line above to change the NAAN status";
-		say "!# to 'used', and append the entry below to the 'main_naans' file.";
-		say "!# Form letter for responding to requester $form_dest.";
-		#say "!# Move this line and entry below ",
-		#	"(leaving the ----- line) to main_naans.";
-		print $naa_entry;
-	}
-	else {
-		say "New NAA entry below saved in file \"$new_naa_file\".";
-		print $naa_entry;
-	}
 
-	open OUT, ">> $request_log" or
+# XXX better `cat $request_file >> $request_log`
+	open OUT, ">>:encoding(UTF-8)", "$request_log" or
 		perr("could not open $request_log for appending"),
-		exit 1;
+		return 0;
 	say OUT "$request";		# log request saved earlier
 	close OUT;
-	! $from_vim and
-		say "Request file '$FormFile' saved in file \"$request_log\".";
 
 	my $institution = $orgname;	# if org has a secondary name,
 	$institution =~ s/ \(=\).*//;	# reduce it to a primary name
@@ -667,6 +680,8 @@ In thinking about how to manage the namespace, you may find it helpful to consid
 Opaque prefixes that only have meaning to information professionals are often a good idea and have precedent in schemes such as ISBN and ISSN.
 </p><p>
 The best starting place for information on ARKs (Archival Resource Keys) is the
+<a href="https://arks.org">ARK Alliance</a> website. You may also find useful
+information in the
 <a href="https://wiki.lyrasis.org/display/ARKs/ARK+Identifiers+FAQ">ARKs FAQ</a>
 (<a href="https://wiki.lyrasis.org/pages/viewpage.action?pageId=178880619">version française</a>,
 <a href="https://wiki.lyrasis.org/pages/viewpage.action?pageId=185991610">version en español</a>)
@@ -677,9 +692,10 @@ There is a <a href="https://groups.google.com/group/arks-forum">public discussio
 intended for people interested in sharing with and learning from others about how ARKs have been or could be used in identifier applications.
 The best open source software for setting up your own ARK service implementation is currently <a href="http://n2t.net/e/noid.html">Noid</a>.
 </p><p>
-There's nothing else you need to do right now.
-As you may know, there's an initiative to build an open, international community around ARKs, <a href="http://ARKsInTheOpen.org">ARKsInTheOpen.org<a/>.
-We're also drafting some <a href="https://n2t.net/ark:/13030/c7833mx7t">standardized persistence statements</a> that name assigning authorities can begin testing (feedback is welcome) and using if they wish.
+There's nothing else you need to do right now. As you may know, we're drafting
+some <a href="https://n2t.net/ark:/13030/c7833mx7t">standardized persistence
+statements</a> that name assigning authorities can begin testing (feedback is
+welcome) and using if they wish.
 </p><p>
 -$rname, on behalf of NAAN-Registrar\@googlegroups.com
 </p>
@@ -687,29 +703,15 @@ We're also drafting some <a href="https://n2t.net/ark:/13030/c7833mx7t">standard
 </html>
 EOT
 
-#</p><p>
-#While no payment is required to use the ARK scheme, there are optional fee-based services that can help with technical and management tasks.
-#For example, the California Digital Library (CDL) provides a fee-based service called EZID (https://ezid.cdlib.org) that you can use to manage your namespace, which includes minting and resolving ARKs, as well as maintaining metadata.
-#Please contact ezid\@ucop.edu if you are interested in EZID.
-#-John
-#</p>
-#<br/>
-#<pre>
-#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-#John A. Kunze            California Digital Library
-#415 20th St, #406         University of California
-#Oakland, CA  94612         Office of the President
-# jak\@ucop.edu      \@jakkbl      W:+1 510 987 9231     
-#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 	#open OUT,
 	#  "|mail -S ttycharset=UTF-8 -s 'NAAN request for $acronym' \
 	#            jakkbl\@gmail.com"
 	#  	or die("couldn't open pipe to email response");
 
 	# save letter to a file
-	open OUT, ">", "new_naa_response.html" or
+	open OUT, ">:encoding(UTF-8)", "new_naa_response.html" or
 		perr("could not open new_naa_response.html file"),
-		exit 1;
+		return 0;
 	print OUT $response_letter;
 	close OUT;
 
@@ -717,7 +719,7 @@ EOT
 		# send letter to admin address (may not work on some networks)
 		open OUT, "|sendmail $remail" or
 			perr("could not open pipe to email response"),
-			exit 1;
+			return 0;
 		print OUT $response_letter;
 		close OUT;
 	}
@@ -725,8 +727,7 @@ EOT
 		print "----------------------\n";
 		print $response_letter;
 	}
-
-	exit 0;
+	return 1;
 }
 
 __END__
