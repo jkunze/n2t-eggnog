@@ -30,8 +30,7 @@
 .. _IMLS: https://www.imls.gov/
 
 .. _n2t: https://n2t.net
-.. _Identifier Basics: https://ezid.cdlib.org/learn/id_basics
-.. _Identifier Conventions: https://ezid.cdlib.org/learn/id_concepts
+.. _Identifier Conventions: https://arks.org/about/identifier-concepts-and-conventions/
 .. _ARKetype: https://twitter.com/ARKetype_ch
 .. _Islandora: https://islandora.ca
 
@@ -65,7 +64,7 @@ this mature community was rebranded as
 - `ARK Alliance`_ - community supporting the open global ARK infrastructure
 
 While not currently storing individual identifiers for them, N2T stores
-forwarding records for "shoulders" (described in `Identifier Basics`_), as well
+forwarding records for "shoulders" (described in `Identifier Conventions`_), as well
 as for "NAANs" on behalf of over 600 different ARK providers, including
 
 - Portico Digital Preservation Service

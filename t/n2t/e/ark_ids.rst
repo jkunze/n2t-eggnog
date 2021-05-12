@@ -24,7 +24,6 @@
 .. _PDF version: https://n2t.net/ark:/13030/c7cv4br18
 .. _TXT version: /e/arkspec.txt 
 .. _Towards Electronic Persistence Using ARK Identifiers: /e/Towards_Electronic_Persistence_Using_ARK_Identifiers.pdf
-.. _ARK and CDL Identifier conventions: http://ezid.cdlib.org/learn/id_concepts
 .. _Archival Resource Key - Wikipedia: http://en.wikipedia.org/wiki/Archival_Resource_Key
 .. _Noid (Nice Opaque Identifiers): /e/noid.html
 .. _Noid: /e/noid.html
@@ -33,7 +32,7 @@
 .. _EZID service: https://ezid.cdlib.org
 .. _N2T.net resolver: /
 .. _The registry: http://www.cdlib.org/services/uc3/naan_registry.txt
-.. _Identifier conventions: http://ezid.cdlib.org/learn/id_concepts
+.. _Identifier Conventions: https://arks.org/about/identifier-concepts-and-conventions/
 .. _Python Noid: https://github.com/no-reply/pynoid
 .. _Golang Noid: https://github.com/ndlib/noids
 .. _Ruby Noid: https://github.com/ruby-microservices/noid
@@ -150,7 +149,7 @@ Here is a brief summary of other resources relevant to ARKs.
 
 - The ARK Identifier Scheme Specification `PDF version`_     `TXT version`_
 - `Towards Electronic Persistence Using ARK Identifiers`_ (July 2003)
-- `ARK and CDL Identifier conventions`_
+- `Identifier Conventions`_
 - `Archival Resource Key - Wikipedia`_
 - `Noid (Nice Opaque Identifiers)`_, open source Perl software for minting and resolving ARKs on your own
 - `EZID service`_: long term identifiers made easy, if you would rather not install and maintain a service yourself
@@ -259,7 +258,7 @@ As with any identifier scheme, persistence requires a redirectable reference to
 content in stable storage. EZID operates on a cost-recovery basis and can be
 used to manage your namespace, which includes minting and resolving ARKs (and
 other identifiers), as well as maintaining metadata. There's is also guidance
-on CDL Identifier Conventions available.
+on `Identifier Conventions`_ available.
 
 Because long-term identifiers often look like random strings of letters and
 digits, organizations typically use software to generate (or mint, in ARK
@@ -339,6 +338,6 @@ institution implements procedures and guidelines] for maintaining the objects
 that it manages. The US National Library of Medicine has developed some
 permanence ratings that may be of interest here.
 
-There is also information available about CDL `Identifier Conventions`_.
+As before, there is also information available about `Identifier Conventions`_.
 
 //END//

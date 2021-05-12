@@ -8,12 +8,10 @@
 .. |X| unicode:: U+02713 .. check mark
 .. |sm| unicode:: U+2120 .. service mark superscript
 
-.. _EZID: https://ezid.cdlib.org
 .. _ARK: /e/ark_ids.html
 .. _ARK request form: https://goo.gl/forms/bmckLSPpbzpZ5dix1
 .. _ARKs FAQ: https://wiki.lyrasis.org/display/ARKs/ARK+Identifiers+FAQ
 .. _DOI: https://www.doi.org
-.. _EZID.cdlib.org: https://ezid.cdlib.org
 .. _DataCite: https://www.datacite.org
 .. _ARKs in the Open: https://wiki.lyrasis.org/display/ARKs/ARKs+in+the+Open+Project
 .. _California Digital Library: https://www.cdlib.org
@@ -24,7 +22,6 @@
 .. _PDF version: https://n2t.net/ark:/13030/c7cv4br18
 .. _TXT version: /e/arkspec.txt 
 .. _Towards Electronic Persistence Using ARK Identifiers: /e/Towards_Electronic_Persistence_Using_ARK_Identifiers.pdf
-.. _ARK and CDL Identifier conventions: http://ezid.cdlib.org/learn/id_concepts
 .. _Archival Resource Key - Wikipedia: http://en.wikipedia.org/wiki/Archival_Resource_Key
 .. _Noid (Nice Opaque Identifiers): /e/noid.html
 .. _Noid: /e/noid.html
@@ -33,7 +30,7 @@
 .. _EZID service: https://ezid.cdlib.org
 .. _N2T.net resolver: /
 .. _The registry: http://www.cdlib.org/services/uc3/naan_registry.txt
-.. _Identifier conventions: http://ezid.cdlib.org/learn/id_concepts
+.. _Identifier Conventions: https://arks.org/about/identifier-concepts-and-conventions/
 
 //BEGIN//
 

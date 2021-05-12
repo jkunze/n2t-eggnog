@@ -10,10 +10,8 @@
 .. _full set of N2T prefix records: /e/n2t_full_prefixes.yaml
 .. _On the road to robust data citation: https://doi.org/10.1038/sdata.2018.95
 .. _request to add a prefix to the list: https://registry.identifiers.org/prefixregistrationrequest
-.. _EZID: https://ezid.cdlib.org
 .. _ARK: /e/ark_ids.html
 .. _DOI: https://www.doi.org
-.. _EZID.cdlib.org: https://ezid.cdlib.org
 .. _Archive.org: https://archive.org
 .. _YAMZ.net metadictionary: https://yamz.net
 .. _DataCite: https://www.datacite.org
@@ -28,8 +26,6 @@
 .. _Force11: https://www.force11.org/
 
 .. _n2t: https://n2t.net
-.. _Identifier Basics: https://ezid.cdlib.org/learn/id_basics
-.. _Identifier Conventions: https://ezid.cdlib.org/learn/id_concepts
 
 //BEGIN//
 

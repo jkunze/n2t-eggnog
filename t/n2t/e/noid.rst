@@ -7,11 +7,9 @@
 .. |X| unicode:: U+02713 .. check mark
 .. |sm| unicode:: U+2120 .. service mark superscript
 
-.. _EZID: https://ezid.cdlib.org
 .. _N2T.net: /
 .. _ARK: /e/ark_ids.html 
 .. _DOI: https://www.doi.org
-.. _EZID.cdlib.org: https://ezid.cdlib.org
 .. _DataCite: https://www.datacite.org
 .. _California Digital Library: https://www.cdlib.org
 .. _N2T Partners: /e/partners.html

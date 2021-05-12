@@ -4,10 +4,12 @@ use 5.010;
 use strict;
 use warnings;
 
+use utf8;
+use open ':encoding(utf8)';
+
 use Text::ParseWords;
 use YAML;
 use Encode;
-use utf8;
 use Try::Tiny;          # for exceptions
 use Safe::Isa;          # provides $_isa (yyy remind for what purpose?)
 use HTML::Entities;
@@ -222,7 +224,32 @@ sub init_dir { my( $naan )=@_;
 	return $out;	# XXX doesn't actually detect errors!
 }
 
-sub from_submit { my( $naan, $input )=@_;
+# Returns ($naa_entry, $orgname, $naan, $firstname, $email, $provider)
+
+sub from_naa { my( $naa )=@_;
+
+	if ($naa !~ m{ who:\s+(.*?)\s*\n
+		 what:\s+(.*?)\s*\n
+		 .*?\n
+		 !contact:\s+[^,]*,\s+(\S+).*?\s*(\S+?@\S+)\s*\|.*?\n
+		 .*?\n
+		 (!provider:\s+(.+?)\n)?
+			}xs) {
+		perr("Malformed candidate NAAN entry: $_");
+		return ('');
+	}
+		 #(!provider:\s+.*?(\S+?@\S+?)\n)?
+		 #(!provider:\s+(.+?)\n)?
+
+	my ($orgname, $naan, $firstname, $email, $provider) = 
+		($1, $2, $3, $4, $5);
+	$orgname =~ s/\s*\(=\).*//;
+#perr "XXX returning $naa, $orgname, $naan, $firstname, $email, $provider";
+	return ($naa, $orgname, $naan, $firstname, $email, $provider);
+}
+
+
+sub from_request { my( $naan, $input )=@_;
 
 	$_ = $input;		# decoded form data
 
@@ -381,7 +408,7 @@ EOT
 	$from_vim and			# if from vim, clothe naked NAAN with
 		$request .= "Candidate NAAN:\t";	# label prepended
 	$request .= $input;		# original request
-	open OUT, ">:encoding(UTF-8)", "$request_file" or
+	open OUT, ">", "$request_file" or
 		perr("could not open $request_file for writing"),
 		return '';
 	say OUT "$request";
@@ -402,198 +429,7 @@ how:    $bmodel | (:unkn) unknown | $year |
 	return ($naa_entry, $orgname, $firstname, $email, $provider);
 }
 
-# main
-{
-	use open qw/:std :utf8/;
-	$#ARGV < 0 || $ARGV[0] =~ /^--*h/ and	# eg, -help, --help
-		print($usage_text),
-		exit 0;
-	if ($ARGV[0] =~ /^--github/) {
-		$github = 1;
-		$from_vim = 1;
-		# yyy $from_vim behavior may become default in github actions
-		shift;
-	}
-
-	my $FormFile = $ARGV[0];
-	shift;
-	$FormFile ne '-' and
-		unshift @ARGV, $FormFile;
-
-	print $html_head;
-
-	my $errs = 1;
-	my $warnings = 1;
-
-	# Read the input file.
-	local $/;		# set input mode to slurp whole file at once
-	$_ = <>;		# slurp entire file from stdin or named arg
-	s/\n+/\n/;		# make sure it ends in just one newline
-#	my $form_content = $_;	# make copy of form content, including NAAN
-
-	# check for a block in the file and isolate it into $_ by
-	# deleting everything around it
-	s/^\s*\n//mg;		# drop blank lines
-	s/^\s*#.*\n//mg;	# drop comment lines
-
-	# Split the input block into params added by CGI script
-	# and params copied in from request form data.
-
-	if (! s/^button: (.*)\nremail: (.*)\nrname: (.*)\nunaan: (.*)\nrequest: //) {
-		perr("missing form data (block $_");
-		exit 2;
-	}
-	($button, $remail, $rname, $naan) = ($1, $2, $3, $4);
-
-	my ($naa_entry, $orgname, $firstname, $email, $provider);
-
-	my $retest = 0;		# by default, assume first submission
-# elsif ($button eq 'Retest' or $button eq 'Confirm')
-	if (! $naan and /^naa:/) {	# Retest or Confirm case
-		$retest = 1;		# default overridden
-		if (! m{ who:\s+(.*?)\s*\n
-			 what:\s+(.*?)\s*\n
-			 .*?\n
-			 !contact:\s+[^,]*,\s+(\S+?)
-				}xs) {
-			perr("Malformed candidate NAAN entry: $_");
-			exit 1;
-		}
-
-		($naa_entry, $orgname, $naan, $firstname, $email, $provider) =
-			($_, $1, $2, $3, "XXX", "XXX");
-
-		if (! init_dir($naan)) {
-			say STDERR "Could not initialize directory for $naan";
-			exit 1;
-		}
-	}
-# XXX if ($button eq 'Submit')
-	else {				# Submit case
-		$naan ||= $default_naan;
-		$orig_request = /^\s*$/		# if empty request
-			? $request_default	# use default
-			: $_			# else use supplied data
-		;
-		my $raw_orig_request = decode_entities( $orig_request );
-
-		($naa_entry, $orgname, $firstname, $email, $provider) =
-			from_submit($naan, $raw_orig_request);
-
-		$_ = $raw_orig_request;
-	}
-	if (! $naa_entry) {	# $naa_entry must be defined
-		exit 1;
-	}
-
-	if ($naan eq $default_naan) {	# then we're just in test/play mode
-		$remail = $default_remail;
-		$rname = $default_rname;
-	}
-	else {
-		my $grep = `grep "$naan" $cand_naans`;
-		#perr("xxx grep=$grep");
-		if ($grep !~ /^$naan\s+(\S+)\s+(.*)\n$/) {
-			perr( << "EOT" );
-the <em>candidate_naans</em> file on github contained no line of the form
-
-   <em>$naan YourEmail FirstName LastName</em>
-
-Cannot proceed without such a line. (Did you remember to COMMIT?)
-EOT
-			exit 1;
-		}
-		($remail, $rname) = ($1, $2);
-		# 58828 jak@ucop.edu Jon Kunze
-
-	}
-	# xxx other tests? eg
-	#      other lines that are neither comment nor pure NAAN?
-	# xxx procedure for adding sDDDDDDDDD naans?
-	# xxx need daemon to expire and remove directories over N weeks old
-
-	### save $naa_entry
-	open OUT, ">:encoding(UTF-8)", "$new_naa_file" or
-		perr("could not open $new_naa_file for writing"),
-		exit 1;
-	print OUT "$naa_entry";
-	close OUT;
-
-# XXX if ($button eq 'Confirm') {
-#        ... and send email and derive files
-#        ... and comment out line in candidate_naans
-#        ... and check in main_naans and push to github
-#        exit;
-# }
-
-	#say "<h3>Candidate NAAN entry</h3><p>";
-	my $safe_naa_entry = encode_entities( $naa_entry );
-	say << "EOT";
-<pre>
-<form id="entryform" action="/e/admin/q2e.pl">
-<textarea name="request" cols="84" rows="13" id="request" form="entryform">
-$safe_naa_entry
-</textarea>
-</pre>
-EOT
-
-	my $validate = `cat $new_naa_file >> $main_naans`;
-
-	#my $validate = `cat $new_naa_file >> $main_naans && \
-	#			$validator $main_naans`;
-
-	use lib "/apps/n2t/local/lib";
-	use NAAN;
-	my $contact_info = 1;	# 1 means contact info is present
-	my $linenums = 0;
-	my ($ok, $msg, $Rerrs) =
-		NAAN::validate_naans($main_naans, $contact_info, $linenums);
-
-	my $safe_validate = encode_entities( $msg );
-	$safe_validate =~ s|\n|<br/>|g;
-
-	my $test_or_confirm;
-	my $mesg = '';
-	if (! $ok and scalar(@$Rerrs)) {
-		$test_or_confirm = "Retest";
-		say "<p>Errors:<ol>";
-		for my $e (@$Rerrs) {
-			say "<li>", encode_entities( $e ), "</li>";
-		}
-		say "</ol></p>";
-		say "<p>Changes required.";
-	}
-	else {
-		$test_or_confirm = "Confirm";
-		$mesg = " &nbsp; &nbsp; (and send email " .
-			"to $remail for forwarding to requester)";
-		say "<p>";
-	}
-
-#<input type="hidden" id="request" name="origrequest" value="$orig_request">
-	say << "EOT";
-&nbsp; &nbsp; &nbsp; &nbsp;
-<input type="submit" name="button" value="$test_or_confirm">
-$mesg
-<br/>
-button=$button, remail=$remail, name=$rname
-<br/>
-<br/>
-Status: &nbsp; &nbsp; &nbsp; $safe_validate
-</p>
-</form>
-EOT
-
-	##say "$naa_entry";
-	#say "<h3>Original request</h3><p>";
-	#$orig_request =~ s|\n|<br/>\n|sg;
-	#say "<p>$orig_request</p>";
-
-exit 0;
-
-}
-
-# returns ??
+# returns 1 on success, 0 on error
 
 sub confirmed { my( $orgname, $naan, $provider, $email, $firstname, $safe_naa_entry )=@_;
 
@@ -602,26 +438,13 @@ sub confirmed { my( $orgname, $naan, $provider, $email, $firstname, $safe_naa_en
 		: "appears below"
 	;
 
-# XXX better `cat $request_file >> $request_log`
-	open OUT, ">>:encoding(UTF-8)", "$request_log" or
-		perr("could not open $request_log for appending"),
-		return 0;
-	say OUT "$request";		# log request saved earlier
-	close OUT;
+	# $request_file was saved earlier
+	# XXX test status?
+	`cat $request_file >> $request_log`;
 
 	my $institution = $orgname;	# if org has a secondary name,
 	$institution =~ s/ \(=\).*//;	# reduce it to a primary name
 	#Subject: NAAN request for $acronym
-
-	my $pseudonaan = $naan;			# xxx lots of garbage in there
-	$naan =~ s/Got id = (\d+).*/$1/s;	# xxx new change not tested!
-
-	#$no_exec and
-	#	exit 0;			# nothing left to do
-
-	# XXX when/if this text is converted to hypertext, use this link for
-	# the ezid.cdlib.org homepage http://bit.ly/1Q5dKH0
-	# ask maria
 
 	my $prov_text = $provider
 		? "If the \"provider\" information,</p>\n"
@@ -709,7 +532,7 @@ EOT
 	#  	or die("couldn't open pipe to email response");
 
 	# save letter to a file
-	open OUT, ">:encoding(UTF-8)", "new_naa_response.html" or
+	open OUT, ">", "new_naa_response.html" or
 		perr("could not open new_naa_response.html file"),
 		return 0;
 	print OUT $response_letter;
@@ -728,6 +551,218 @@ EOT
 		print $response_letter;
 	}
 	return 1;
+}
+
+# MAIN
+{
+	use open qw/:std :utf8/;
+	$#ARGV < 0 || $ARGV[0] =~ /^--*h/ and	# eg, -help, --help
+		print($usage_text),
+		exit 0;
+	if ($ARGV[0] =~ /^--github/) {
+		$github = 1;
+		$from_vim = 1;
+		# yyy $from_vim behavior may become default in github actions
+		shift;
+	}
+
+	my $FormFile = $ARGV[0];
+	shift;
+	$FormFile ne '-' and
+		unshift @ARGV, $FormFile;
+
+	print $html_head;
+
+	my $errs = 1;
+	my $warnings = 1;
+
+	# Read the input file.
+	local $/;		# set input mode to slurp whole file at once
+	$_ = <>;		# slurp entire file from stdin or named arg
+	s/\n+/\n/;		# make sure it ends in just one newline
+#	my $form_content = $_;	# make copy of form content, including NAAN
+
+	# check for a block in the file and isolate it into $_ by
+	# deleting everything around it
+	s/^\s*\n//mg;		# drop blank lines
+	s/^\s*#.*\n//mg;	# drop comment lines
+
+	# Split the input block into params added by CGI script
+	# and params copied in from request form data.
+
+	if (! s/^button: (.*)\nremail: (.*)\nrname: (.*)\nunaan: (.*)\nrequest: //) {
+		perr("missing form data (block $_");
+		exit 2;
+	}
+	($button, $remail, $rname, $naan) = ($1, $2, $3, $4);
+
+	my ($naa_entry, $orgname, $firstname, $email, $provider);
+
+	#my $retest = 0;		# by default, assume first submission
+
+	#if (! $naan and /^naa:/) {	# Retest or Confirm case
+	#if (! $naan and ($button eq 'Retest' or $button eq 'Confirm')) {
+
+	if ($button eq 'Submit') {
+		$naan ||= $default_naan;
+		$orig_request = /^\s*$/		# if empty request
+			? $request_default	# use default
+			: $_			# else use supplied data
+		;
+		my $raw_orig_request = decode_entities( $orig_request );
+
+		($naa_entry, $orgname, $firstname, $email, $provider) =
+			from_request($naan, $raw_orig_request);
+
+		$_ = $raw_orig_request;
+	}
+	elsif ($button eq 'Retest' or $button eq 'Confirm') {
+
+		($naa_entry, $orgname, $naan, $firstname, $email, $provider) =
+			from_naa( $_ );
+perr "XXX from_naa returned 1=$1, orgname=$orgname, naan=$naan";
+		if (! $naa_entry) {
+			perr("Malformed/bad candidate NAAN entry: $_");
+			exit 1;
+		}
+		if (! init_dir($naan)) {
+			say STDERR "Could not initialize directory for $naan";
+			exit 1;
+		}
+	}
+	if (! $naa_entry) {	# $naa_entry must be defined
+		exit 1;
+	}
+
+# xxx set $play_mode = 1;
+	if ($naan eq $default_naan) {	# then we're just in test/play mode
+		$remail = $default_remail;
+		$rname = $default_rname;
+	}
+	else {
+		my $grep = `grep "$naan" $cand_naans`;
+		#perr("xxx grep=$grep");
+		if ($grep !~ /^$naan\s+(\S+)\s+(.*)\n$/) {
+			perr( << "EOT" );
+the <em>candidate_naans</em> file on github contained no line of the form
+
+   <em>$naan YourEmail FirstName LastName</em>
+
+Cannot proceed without such a line. (Did you remember to COMMIT?)
+EOT
+			exit 1;
+		}
+		($remail, $rname) = ($1, $2);
+		# 58828 jak@ucop.edu Jon Kunze
+
+	}
+	# xxx other tests? eg
+	#      other lines that are neither comment nor pure NAAN?
+	# xxx procedure for adding sDDDDDDDDD naans?
+	# xxx need daemon to expire and remove directories over N weeks old
+
+	### save $naa_entry
+	open OUT, ">", "$new_naa_file" or
+		perr("could not open $new_naa_file for writing"),
+		exit 1;
+	print OUT "$naa_entry";
+	close OUT;
+
+	#say "<h3>Candidate NAAN entry</h3><p>";
+	my $safe_naa_entry = encode_entities( $naa_entry );
+	say << "EOT";
+<pre>
+<form id="entryform" action="/e/admin/q2e.pl">
+<textarea name="request" cols="84" rows="13" id="request" form="entryform">
+$safe_naa_entry
+</textarea>
+</pre>
+EOT
+
+# XXX do this in Perl?
+	my $validate = `cat $new_naa_file >> $main_naans`;
+
+	#my $validate = `cat $new_naa_file >> $main_naans && \
+	#			$validator $main_naans`;
+
+	use lib "/apps/n2t/local/lib";
+	use NAAN;
+	my $contact_info = 1;	# 1 means contact info is present
+	my $linenums = 0;
+	my ($ok, $msg, $Rerrs) =
+		NAAN::validate_naans($main_naans, $contact_info, $linenums);
+
+	my $safe_validate = encode_entities( $msg );
+	$safe_validate =~ s|\n|<br/>|g;
+
+# where does $play_mode end up?
+#        ... and send email and derive files
+#        ... and comment out line in candidate_naans
+#        ... and check in main_naans and push to github
+#        ... and report actions and latest naa and counts to curator.
+	if ($button eq 'Confirm') {
+		if (! $ok) {
+			perr "validation error, go back and correct";
+			# XXX fall through to Retest button case?
+			# XXX show HTML better
+			exit 1;
+		}
+		if (! confirmed ($orgname, $naan, $provider, $email,
+					$firstname, $safe_naa_entry)) {
+			perr "error in confirmation step";
+			# XXX show HTML better
+			exit 1;
+		}
+	say << "EOT";
+&nbsp; &nbsp; &nbsp; &nbsp;
+<br/>
+button=$button, remail=$remail, name=$rname
+<br/>
+XXX should display email sent confirmation and other actions
+<br/>
+Status: &nbsp; &nbsp; &nbsp; $safe_validate
+</p>
+</form>
+EOT
+
+		exit 0;
+	}
+	# if we get here, we should display a Retest or Confirm button
+
+	my $test_or_confirm;
+	my $mesg = '';
+	if (! $ok and scalar(@$Rerrs)) {
+		$test_or_confirm = "Retest";
+		say "<p>Errors:<ol>";
+		for my $e (@$Rerrs) {
+			say "<li>", encode_entities( $e ), "</li>";
+		}
+		say "</ol></p>";
+		say "<p>Changes required.";
+	}
+	else {
+		$test_or_confirm = "Confirm";
+		$mesg = " &nbsp; &nbsp; (and send email " .
+			"to $remail for forwarding to requester)";
+		say "<p>";
+	}
+
+#<input type="hidden" id="request" name="origrequest" value="$orig_request">
+	say << "EOT";
+&nbsp; &nbsp; &nbsp; &nbsp;
+<input type="submit" name="button" value="$test_or_confirm">
+$mesg
+<br/>
+button=$button, remail=$remail, name=$rname
+<br/>
+<br/>
+Status: &nbsp; &nbsp; &nbsp; $safe_validate
+</p>
+</form>
+EOT
+
+exit 0;
+
 }
 
 __END__

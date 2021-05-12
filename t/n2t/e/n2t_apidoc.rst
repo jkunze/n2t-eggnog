@@ -9,9 +9,8 @@
 
 .. _n2t: https://n2t.net
 .. _please let us know: https://docs.google.com/forms/d/1ylEeI3hUVHcLl-wNtDI7-F7JReBtVbgx65y9Uiy78q8
-.. _Identifier Basics: https://ezid.cdlib.org/learn/id_basics
 .. _ARK Alliance: https://arks.org
-.. _Identifier Conventions: https://ezid.cdlib.org/learn/id_concepts
+.. _Identifier Conventions: https://arks.org/about/identifier-concepts-and-conventions/
 .. _suffix passthrough: /e/suffix_passthrough.html
 .. _test server: https://n2t-stg.n2t.net/
 .. _EggNog software: https://github.com/jkunze/n2t-eggnog
@@ -89,8 +88,7 @@ truncated identifier forms. For example (and these are subject to change), ::
   */pdb:2gc4               # all provider redirection targets for pdb:2gc4
 
 That briefly describes the minimal UI (user interface) that N2T.net has.
-More about how N2T uses identifiers can be found in `Identifier Basics`_
-and `Identifier Conventions`_.
+More about how N2T uses identifiers can be found in `Identifier Conventions`_.
 
 Branded vs opaque identifier strings
 ------------------------------------
@@ -188,8 +186,8 @@ withdraw.
 
 Minters are useful to generate names at different levels in a hierarchical
 namespace. To help with this, each minter has a *shoulder*, usually a short
-string, such as ``fk4``, that extends an identifier base, such as ``99999`` (see
-`Identifier Basics`_ and `Identifier Conventions`_ for details). The examples
+string, such as ``fk4``, that extends an identifier base, such as ``99999``
+(see `Identifier Conventions`_ for details). The examples
 that follow all use test spings beginning with 99999/fk4, as that designates a
 test shoulder shared across all N2T credentials.
 

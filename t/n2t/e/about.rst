@@ -35,8 +35,7 @@
 .. _IETF: https://www.ietf.org/
 
 .. _n2t: https://n2t.net
-.. _Identifier Basics: https://ezid.cdlib.org/learn/id_basics
-.. _Identifier Conventions: https://ezid.cdlib.org/learn/id_concepts
+.. _Identifier Conventions: https://arks.org/about/identifier-concepts-and-conventions/
 
 //BEGIN//
 
