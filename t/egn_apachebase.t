@@ -210,8 +210,7 @@ like $x, qr{HTTP/\S+\s+302.*Location: https://}si,
 
 # XXX bug: this won't work until first server rollout/installation
 # XXX bug: the redirect went from test server to prd server: no-no
-# XXX but make sure this is protected from public execution
-like $x, qr{xxx Stub q2e.}i,
+like $x, qr{Review candidate}i,
 	'executable naan curation form';
 
 $x = `$webcl "$srvbase_u/favicon.ico"`;

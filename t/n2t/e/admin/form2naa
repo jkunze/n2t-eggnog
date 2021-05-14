@@ -22,6 +22,7 @@ my $orig_request;
 my $default_remail = 'curtis.curator@example.org';
 my $default_rname = 'Curtis Curator';
 my $msg;
+my $play_mode = 0;
 
 my $request_default = << 'EOT';
 I would like	To request a new NAAN
@@ -210,18 +211,25 @@ sub init_dir { my( $naan )=@_;
 	$cand_naans = "$workdir/naan_reg_priv/candidate_naans";
 	if (! -d $workdir) {
 		`mkdir -p $workdir`;
+		if ($? >> 8) {
+			perr("could not do: mkdir - $workdir");
+			exit 1;
+		}
 	}
 	if (! chdir($workdir)) {
 		perr("could not chdir to $workdir: $!");
 		return '';
 	}
 	my $out = `pwd; ls`;
-#	say "xxx out=$out";
 	$out = `
 		rm -fr naan_reg_priv;
 		git clone git\@github.com:jkunze/naan_reg_priv.git 2>&1;
 	`;
-	return $out;	# XXX doesn't actually detect errors!
+	if ($? >> 8) {
+		perr("could not clone git repo");
+		exit 1;
+	}
+	return $out;
 }
 
 # Returns ($naa_entry, $orgname, $naan, $firstname, $email, $provider)
@@ -244,7 +252,6 @@ sub from_naa { my( $naa )=@_;
 	my ($orgname, $naan, $firstname, $email, $provider) = 
 		($1, $2, $3, $4, $5);
 	$orgname =~ s/\s*\(=\).*//;
-#perr "XXX returning $naa, $orgname, $naan, $firstname, $email, $provider";
 	return ($naa, $orgname, $naan, $firstname, $email, $provider);
 }
 
@@ -263,8 +270,7 @@ sub from_request { my( $naan, $input )=@_;
 	# happen that raise fatal exceptions happen too often to leave them
 	# uncaught.
 
-#perr("xxx _: $_");
-# Move this test earlier?
+	# yyy Move this test earlier?
 	my @uchars;
         try {
 		@uchars = split '', decode('utf8', $_);
@@ -439,8 +445,11 @@ sub confirmed { my( $orgname, $naan, $provider, $email, $firstname, $safe_naa_en
 	;
 
 	# $request_file was saved earlier
-	# XXX test status?
 	`cat $request_file >> $request_log`;
+	if ($? >> 8) {
+		perr("could not append $request_file to $request_log");
+		exit 1;
+	}
 
 	my $institution = $orgname;	# if org has a secondary name,
 	$institution =~ s/ \(=\).*//;	# reduce it to a primary name
@@ -634,13 +643,17 @@ perr "XXX from_naa returned 1=$1, orgname=$orgname, naan=$naan";
 		exit 1;
 	}
 
-# xxx set $play_mode = 1;
 	if ($naan eq $default_naan) {	# then we're just in test/play mode
+		$play_mode = 1;
 		$remail = $default_remail;
 		$rname = $default_rname;
 	}
 	else {
 		my $grep = `grep "$naan" $cand_naans`;
+		if ($? >> 8) {
+			perr("could not do: grep $naan $cand_naans");
+			exit 1;
+		}
 		#perr("xxx grep=$grep");
 		if ($grep !~ /^$naan\s+(\S+)\s+(.*)\n$/) {
 			perr( << "EOT" );
@@ -679,11 +692,11 @@ $safe_naa_entry
 </pre>
 EOT
 
-# XXX do this in Perl?
 	my $validate = `cat $new_naa_file >> $main_naans`;
-
-	#my $validate = `cat $new_naa_file >> $main_naans && \
-	#			$validator $main_naans`;
+	if ($? >> 8) {
+		perr("could not append $new_naa_file to $main_naans");
+		exit 1;
+	}
 
 	use lib "/apps/n2t/local/lib";
 	use NAAN;
@@ -695,11 +708,6 @@ EOT
 	my $safe_validate = encode_entities( $msg );
 	$safe_validate =~ s|\n|<br/>|g;
 
-# where does $play_mode end up?
-#        ... and send email and derive files
-#        ... and comment out line in candidate_naans
-#        ... and check in main_naans and push to github
-#        ... and report actions and latest naa and counts to curator.
 	if ($button eq 'Confirm') {
 		if (! $ok) {
 			perr "validation error, go back and correct";
@@ -713,6 +721,13 @@ EOT
 			# XXX show HTML better
 			exit 1;
 		}
+# XXX where does $play_mode end up?
+#        ... and send email and derive files
+#        make (validate) diffs.txt all announce
+#        ... and comment out line in candidate_naans
+#        ... and check in main_naans and push to github
+#        ... and report actions and latest naa and counts to curator.
+
 	say << "EOT";
 &nbsp; &nbsp; &nbsp; &nbsp;
 <br/>

@@ -27,9 +27,10 @@
 .. _SNAC: http://snaccooperative.org
 .. _NIH: http://www.nih.gov
 .. _Force11: https://www.force11.org/
+.. _N2T partners: /e/partners.html
 .. _partners: /e/partners.html
 .. _N2T API Documentation: /e/n2t_apidoc.html
-.. _N2T Architecture: /e/images/N2T_Anatomy.jpg
+.. _N2T Architecture diagram: /e/images/N2T_Anatomy.jpg
 .. _Compact, prefixed identifiers at N2T.net: /e/compact_ids.html
 .. _Original N2T vision: /e/n2t_vision.html
 .. _IETF: https://www.ietf.org/
@@ -58,7 +59,7 @@ language-neutrality can shield URLs from future embarrassment and forced
 retirement due to long term evolving political, legal, and usability pressures.
 The name is also short, which saves time and space – both in storage and in
 "visual real estate" – across often-repeated acts of transcription and
-citation. Finally, N2T's name was patterned after a set of IETF_ (the premier
+citation. Finally, N2T's name was patterned after a set of IETF_ (the main
 Internet standards body) mapping operations for the URN (Uniform Resource Name)
 dating back to 1997 (`RFC 2168`_): N2R (Name to Resource), N2L (Name to URL),
 and N2C (Name to URC, 'C' = Characteristics/Citation).
@@ -74,7 +75,7 @@ general approach. The result was N2T, a scheme-agnostic resolver that currently
 works for over 900 types of identifier, including ARKs, DOIs, Handles, PURLs,
 URNs, ORCIDs, ISSNs, etc.
 
-The main use of N2T is for "persistent identifiers." An archive or publisher
+The main use of N2T is for "persistent identifiers". An archive or publisher
 that gives out content links (URLs) starting with n2t.net doesn't need to worry
 about their breaking when content eventually moves to different servers.
 Provided forwarding rules at N2T are updated, links starting with n2t.net
@@ -128,7 +129,7 @@ Audience
 
 The primary audience for N2T services is the global community of people
 engaged in research, academic, and cultural heritage endeavors. Together
-with our primary partners_, EZID_ and `Internet Archive`_, we work with
+with our primary `partners`_, EZID_ and `Internet Archive`_, we work with
 national, university, and public libraries, academic and society
 publishers, natural history and art museums, as well as companies and
 funders that support education and research.
@@ -147,20 +148,20 @@ electronic library services for ten UC campuses and affiliated law
 schools, medical centers, and national laboratories, as well as hundreds
 of museums, herbaria, botanical gardens, etc.
 
-N2T runs in the AWS (Amazon Web Services) cloud. Security and privacy rests on
-CDL and UCOP privacy safeguards, patching policies, access restrictions, and
-firewall controls, layered over the foundational physical, network, and
-procedural security maintained in AWS datacenters based in the United
-States of America.
+N2T runs in the AWS (Amazon Web Services) cloud. On top of the foundational
+physical, network, and procedural security maintained by AWS datacenters
+located in the United States of America, N2T security and privacy is enhanced
+by additional CDL and UCOP privacy safeguards, patching policies, access
+restrictions, and firewall controls,
 
 N2T is a critical piece of global infrastructure under the purview of
 the `ARK Alliance`_. Founded by the CDL and LYRASIS_, the ARK Alliance now
 enjoys the support of some 40 institutions.
 
-- N2T partners_
+- `N2T partners`_
 - `N2T API Documentation`_
 - `Original N2T vision`_
-- `N2T Architecture`_ diagram
+- `N2T Architecture diagram`_
 
 Maintenance Window
 ------------------
