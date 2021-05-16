@@ -161,6 +161,16 @@ $x = `$webcl "$ssvbase_u/a//"`;
 like $x, qr{HTTP/\S+\s+200\s+OK.*api home page}si,
 	'public https access to api home page (/a//) is authorized';
 
+# xxx bug: rewrite points to public server instead of returning a Location
+#     header pointing to companion https test server (using its port number)
+$x = `$webcl "$srvbase_u/e/admin/q2e.pl"`;
+like $x, qr{HTTP/\S+\s+302.*Location: https://}si,
+	'http rewritten to https for secure admin area';
+
+$x = `$webcl "$ssvbase_u/e/admin/q2e.pl"`;
+like $x, qr{Review candidate}i,
+	'executable naan curation form';
+
 #$x = `$webcl "$ssvbase_u/a/foo"`;
 #like $x, qr{HTTP/\S+\s+200\s+OK.*use the API}si,
 #	'incomplete API path returns help text';	# yyy 200 ok status?

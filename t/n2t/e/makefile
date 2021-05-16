@@ -1,4 +1,4 @@
-all: about.html ark_ids.html compact_ids.html noid.html n2t_apidoc.html partners.html suffix_passthrough.html index.html admin/naanq2e.html
+all: about.html ark_ids.html compact_ids.html noid.html n2t_apidoc.html partners.html suffix_passthrough.html index.html
 
 # The makehtml.py script calls standard rst2html transformation; second arg
 # is the title to stick in the <title> tag; for info on markdown used, see

@@ -904,41 +904,41 @@ robots=$buildout_root/htdocs/robots.txt
 [[ -e $robots ]] ||			# create empty robots.txt file
 	cp /dev/null $robots		# to prevent routine log errors
 
-# yyy drop this form now that google form is available
-# Establish a simple, executable form to assist NAAN curation.
-
-naancure=$buildout_root/htdocs/e/admin/q2e.pl
-# https://n2t-dev.n2t.net/e/admin/q2e.pl?unusednaan=12345&formout=name%3A+value%0D%0Akey%3A+value
-[[ -e $naancure ]] || {
-	cat > $naancure <<- EOT
-	#!/bin/sh
-
-	PERL5LIB=$PERL5LIB
-	PATH=$egpath
-	export PERL5LIB PATH
-
-	exec perl <<- 'EOS'
-
-	#!/usr/bin/env perl
-	##
-	##  printenv -- demo CGI program which just prints its environment
-	##
-
-	print "Content-type: text/plain; charset=UTF-8\n\n";
-	print "xxx Stub q2e.\n";
-	my (\$var, \$val);
-	foreach \$var (sort(keys(%ENV))) {
-	    \$val = \$ENV{\$var};
-	    \$val =~ s|\n|\\n|g;
-	    \$val =~ s|"|\\"|g;
-	    print "\${var}=\"\${val}\"\n";
-	}
-	EOS
-
-	EOT
-
-	chmod 755 $naancure
-}
+## yyy drop this form now that google form is available
+## Establish a simple, executable form to assist NAAN curation.
+#
+#naancure=$buildout_root/htdocs/e/admin/q2e.pl
+## https://n2t-dev.n2t.net/e/admin/q2e.pl?unusednaan=12345&formout=name%3A+value%0D%0Akey%3A+value
+#[[ -e $naancure ]] || {
+#	cat > $naancure <<- EOT
+#	#!/bin/sh
+#
+#	PERL5LIB=$PERL5LIB
+#	PATH=$egpath
+#	export PERL5LIB PATH
+#
+#	exec perl <<- 'EOS'
+#
+#	#!/usr/bin/env perl
+#	##
+#	##  printenv -- demo CGI program which just prints its environment
+#	##
+#
+#	print "Content-type: text/plain; charset=UTF-8\n\n";
+#	print "xxx Stub q2e.\n";
+#	my (\$var, \$val);
+#	foreach \$var (sort(keys(%ENV))) {
+#	    \$val = \$ENV{\$var};
+#	    \$val =~ s|\n|\\n|g;
+#	    \$val =~ s|"|\\"|g;
+#	    print "\${var}=\"\${val}\"\n";
+#	}
+#	EOS
+#
+#	EOT
+#
+#	chmod 755 $naancure
+#}
 
 # Establish a script to handle inflections and content negotiation.
 # CrossRef handles these:
@@ -2757,14 +2757,14 @@ RewriteRule ^/r/$b/+(.*)\$ \"_rslv_\${map_$b:\$1.resolve \${$hdrblob}}\"" >> $rw
 		( cd $( dirname $file ) ; make )
 	done
 
-	for dir in a e r ruu.app
+	for dir in a e r e/admin ruu.app
 	do
 		# yyy skip if $dir is missing; this is a kludge that props up
 		#     support in t/n2t for virtualhost ruu.app
 		[[ ! -d $template_root/$dir ]] &&
 			continue
 		(shopt -s nullglob;
-			cp -p $template_root/$dir/*.{html,txt} htdocs/$dir)
+			cp -p $template_root/$dir/*.{html,txt,pl} htdocs/$dir)
 	done
 #	(shopt -s nullglob; cp -p $template_root/?/*.{html,txt} htdocs/e)
 #	local a=arks.org

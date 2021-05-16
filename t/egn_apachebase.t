@@ -204,15 +204,6 @@ $y and print "error: $y\n";
 like $x, qr{BEGIN.*END SUCCESS}s,
 	'transaction log working';
 
-$x = `$webcl "$srvbase_u/e/admin/q2e.pl"`;
-like $x, qr{HTTP/\S+\s+302.*Location: https://}si,
-	'http rewritten to https for secure admin area';
-
-# XXX bug: this won't work until first server rollout/installation
-# XXX bug: the redirect went from test server to prd server: no-no
-like $x, qr{Review candidate}i,
-	'executable naan curation form';
-
 $x = `$webcl "$srvbase_u/favicon.ico"`;
 like $x, qr{Content-Type: image.*icon}i, "favicon fetched via http";
 

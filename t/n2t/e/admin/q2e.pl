@@ -17,8 +17,8 @@ my $cgi = CGI->new;
 my %param = map { $_ => scalar $cgi->param($_) } $cgi->param() ;
 print $cgi->header( -type => 'text/html; charset=UTF-8' );
 
-open(PIPE, "| ./form2naa --github -") or
-	die("couldn't open pipe to form2naa: $!");
+open(PIPE, "| ./form2naa.pl --github -") or
+	die("couldn't open pipe to form2naa.pl: $!");
 # XXX only unaan is relevant
 print PIPE
 	"button: ",	$cgi->param('button'),	"\n", # Submit, Retest, Confirm
@@ -45,7 +45,7 @@ exit;
 # This script runs in its own current directory.
 # https://n2t-dev.n2t.net/e/admin/q2e.pl?unusednaan=12345&request=name%3A+value%0D%0Akey%3A+value
 
-./form2naa - << 'EOI' 2>&1
+./form2naa.pl - << 'EOI' 2>&1
 90909
 Contact name:     Gautier Poupeau
 Contact email address:    gpoupeau@ina.fr
