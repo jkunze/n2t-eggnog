@@ -57,7 +57,9 @@ EOT
 #my $response_admin = "naan-registrar\@googlegroups.com, $provider";
 my $request_file = 'request';
 my $new_naa_file = 'new_entry';
+my $working_naan = 'working_naan';
 my $request_log = 'request_log';
+my $reponame = 'naan_reg_priv';
 my $default_naan = '98765';
 
 my $home = "/apps/n2t";
@@ -184,11 +186,18 @@ my $from_vim = 0;
 my $github = 0;
 my $naan_restored = 0;
 my $real_thing;
-my ($workdir, $main_naans, $cand_naans);
+my ($workdir, $repodir, $main_naans, $cand_naans);
 
 sub perr {
 	say STDERR '<pre>';
 	print STDERR ($from_vim ? "# Error: " : "Error: ");
+	say STDERR @_;
+	say STDERR '</pre>';
+}
+
+sub debug {
+	say STDERR '<pre>';
+	print STDERR ($from_vim ? "# debug: " : "debug: ");
 	say STDERR @_;
 	say STDERR '</pre>';
 }
@@ -207,10 +216,11 @@ sub init_dir { my( $naan )=@_;
 	}
 
 	$workdir = "$workdirbase/$naan";
-	$main_naans = "$workdir/naan_reg_priv/main_naans";
-	$cand_naans = "$workdir/naan_reg_priv/candidate_naans";
+	$repodir = "$workdir/$reponame";
+	$main_naans = "$repodir/main_naans";
+	$cand_naans = "$repodir/candidate_naans";
 	if (! -d $workdir) {
-		`mkdir -p $workdir`;
+		`mkdir -p $workdir 2>&1`;
 		if ($? >> 8) {
 			perr("could not do: mkdir - $workdir");
 			exit 1;
@@ -222,11 +232,11 @@ sub init_dir { my( $naan )=@_;
 	}
 	my $out = `pwd; ls`;
 	$out = `
-		rm -fr naan_reg_priv;
-		git clone git\@github.com:jkunze/naan_reg_priv.git 2>&1;
+		rm -fr $reponame;
+		git clone git\@github.com:jkunze/$reponame.git 2>&1;
 	`;
 	if ($? >> 8) {
-		perr("could not clone git repo");
+		perr("could not clone git repo: $out");
 		exit 1;
 	}
 	return $out;
@@ -328,7 +338,6 @@ EOT
 		# texty "Other info"
 	}
 	else {
-#perr("xxx before submit Load: $_");
 		try {
 			$h = Load($_);	# YAML parse, returning hash reference
 
@@ -444,10 +453,17 @@ sub confirmed { my( $orgname, $naan, $provider, $email, $firstname, $safe_naa_en
 		: "appears below"
 	;
 
-	# $request_file was saved earlier
-	`cat $request_file >> $request_log`;
+	# save $naan in a file
+	`echo $naan > $working_naan 2>&1`;
 	if ($? >> 8) {
-		perr("could not append $request_file to $request_log");
+		perr("could not save $naan in $working_naan");
+		exit 1;
+	}
+
+	# $request_file was saved earlier
+	`tr -d '\r' < $request_file >> $repodir/$request_log 2>&1`;
+	if ($? >> 8) {
+		perr("could not append $request_file to $repodir/$request_log");
 		exit 1;
 	}
 
@@ -629,7 +645,7 @@ EOT
 
 		($naa_entry, $orgname, $naan, $firstname, $email, $provider) =
 			from_naa( $_ );
-perr "XXX from_naa returned 1=$1, orgname=$orgname, naan=$naan";
+debug "XXX from_naa returned 1=$1, orgname=$orgname, naan=$naan";
 		if (! $naa_entry) {
 			perr("Malformed/bad candidate NAAN entry: $_");
 			exit 1;
@@ -642,6 +658,7 @@ perr "XXX from_naa returned 1=$1, orgname=$orgname, naan=$naan";
 	if (! $naa_entry) {	# $naa_entry must be defined
 		exit 1;
 	}
+	$naa_entry =~ s/\r//g;		# delete carriage returns (from web)
 
 	if ($naan eq $default_naan) {	# then we're just in test/play mode
 		$play_mode = 1;
@@ -649,12 +666,11 @@ perr "XXX from_naa returned 1=$1, orgname=$orgname, naan=$naan";
 		$rname = $default_rname;
 	}
 	else {
-		my $grep = `grep "$naan" $cand_naans`;
+		my $grep = `grep "$naan" $cand_naans 2>&1`;
 		if ($? >> 8) {
-			perr("could not do: grep $naan $cand_naans");
+			perr("could not do: grep $naan $cand_naans: $grep");
 			exit 1;
 		}
-		#perr("xxx grep=$grep");
 		if ($grep !~ /^$naan\s+(\S+)\s+(.*)\n$/) {
 			perr( << "EOT" );
 the <em>candidate_naans</em> file on github contained no line of the form
@@ -666,8 +682,11 @@ EOT
 			exit 1;
 		}
 		($remail, $rname) = ($1, $2);
-		# 58828 jak@ucop.edu Jon Kunze
-
+# XXX pattern to comment out: /^$naan\s+$remail/ and s/^/# / 
+# perl -ni'.orig' -E "/^$naan\s+$remail/ and s/^/# /" $naan/naan_reg_priv
+# diff $naan/naan_reg_priv/candidate_naans{,.orig}
+# git checkin -m "new entry $naan"
+# git push
 	}
 	# xxx other tests? eg
 	#      other lines that are neither comment nor pure NAAN?
@@ -679,6 +698,7 @@ EOT
 		perr("could not open $new_naa_file for writing"),
 		exit 1;
 	print OUT "$naa_entry";
+	print OUT "\n";		# important separator for next entry to come
 	close OUT;
 
 	#say "<h3>Candidate NAAN entry</h3><p>";
@@ -692,9 +712,9 @@ $safe_naa_entry
 </pre>
 EOT
 
-	my $validate = `cat $new_naa_file >> $main_naans`;
+	my $validate = `cat $new_naa_file >> $main_naans 2>&1`;
 	if ($? >> 8) {
-		perr("could not append $new_naa_file to $main_naans");
+		perr("could not append $new_naa_file to $main_naans: $validate");
 		exit 1;
 	}
 
@@ -721,19 +741,26 @@ EOT
 			# XXX show HTML better
 			exit 1;
 		}
+		my $out = `(cd $reponame; \
+			make confirm_naan diffs.txt all announce) 2>&1`;
+		if ($? >> 8) {
+			perr("could not do: make confirm_naan: $out");
+			exit 1;
+		}
+		debug("$out");
+
 # XXX where does $play_mode end up?
 #        ... and send email and derive files
 #        make (validate) diffs.txt all announce
 #        ... and comment out line in candidate_naans
 #        ... and check in main_naans and push to github
 #        ... and report actions and latest naa and counts to curator.
+# XXX should display email sent confirmation and other actions
+# button=$button, remail=$remail, name=$rname
 
 	say << "EOT";
 &nbsp; &nbsp; &nbsp; &nbsp;
 <br/>
-button=$button, remail=$remail, name=$rname
-<br/>
-XXX should display email sent confirmation and other actions
 <br/>
 Status: &nbsp; &nbsp; &nbsp; $safe_validate
 </p>
