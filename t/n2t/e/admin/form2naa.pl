@@ -6,6 +6,7 @@ use warnings;
 
 use utf8;
 use open ':encoding(utf8)';
+binmode(STDOUT, ":utf8");
 
 use Text::ParseWords;
 use YAML;
@@ -44,20 +45,22 @@ I would like	To request a new NAAN
 Organization name:	Acta Académica
 Are you a service provider?	Yes
 Service provider contact information:	Acta Académica, Pablo De Grande, pablodg@aacademica.org
-Contact name:	Queipo, Rodrigo
+Contact name:	Rodrigo Queipo
 Contact email address:	contacto@aacademica.org
 Position in organization:	archivist
 Organization address:	Pedro Morán 2946, Buenos Aires, Argentina
 Organization status:	Not-for-profit
 Organization acronym preferred:	AA
 Organization base URL:	https://aacademica.org
+Other information:	We're not in Kansas
 Committed to data persistence?	Agree
 EOT
 
 #my $response_admin = "naan-registrar\@googlegroups.com, $provider";
 my $request_file = 'request';
+my $other_info_file = 'other_info';
 my $new_naa_file = 'new_entry';
-my $working_naan = 'working_naan';
+my $confirmer = 'worked_naan';
 my $request_log = 'request_log';
 my $reponame = 'naan_reg_priv';
 my $default_naan = '98765';
@@ -270,8 +273,11 @@ sub from_request { my( $naan, $input )=@_;
 
 	$_ = $input;		# decoded form data
 
-	# make last char before tab be a :, replacing a : or ?, if any
-	s/[:?]?\t+/: /g and	# YAML needs : and forbids tab-for-space, and
+	s/\r//g;		# drop any CR's (pasted in from Windows)
+	s/\n*$/\n/s;		# make sure it ends in just one \n
+	# Make last char before tab be a :, replacing a : or ?, if any.
+	# Also, some clients (Windows) may add a space before tab -- drop these
+	s/[:?]? *\t+/: /g and	# YAML needs : and forbids tab-for-space, and
 		# as long as we're not doing CSV fields, elide \n in front of
 		s/\n([^:]*)$/ $1/m and	# lines with no colon (a contin. line),
 		s/$/\n/;		# but make sure whole thing ends in \n
@@ -358,12 +364,6 @@ EOT
 			$address = $h->{'Organization address'};
 			#$provider = $h->{'Service provider'} || '';
 			$provider = $h->{'Service provider contact information'} || '';
-# XXX decide whether to change this or not! (probably not)
-# XXX alter form letter to say that a service provider has submitted this
-#     on your behalf of you and your organization
-# XXX change "Thank you for your request." to "A request for a NAAN has been submitted on behalf of you and your organization by <insert name here> of <insert company name here>."
-# XXX make automatic form response go to service provider
-# Service provider contact information:   Guillaume LORY, solution Ligeo Archives : guillaume.lory@empreintedigitale.fr
 			$role = $h->{'Position in organization'} || '';
 			$other = $h->{'Other information'} || '';
 		}
@@ -409,14 +409,20 @@ EOT
 	my $provider_line = $provider;
 	$provider_line and
 		$provider_line = "\n!provider: $provider_line";
-	$other =~ /./ and		# if it has real content
-		say STDERR "Note other info: |$other|";		# not an error
 
 	if (! init_dir($naan)) {
 		say STDERR "Could not initialize directory for $naan";
 		return '';
 	}
 
+	if ($other =~ /./) {	# if has real content, save to file for later
+		#say STDERR "Note other info: |$other|";
+		open OUT, ">", "$other_info_file" or
+			perr("could not open $other_info_file for writing"),
+			return '';
+		say OUT "$other";
+		close OUT;
+	}
 	# This is Submit case, so build up request to save in a file.
 	my $request = '';
 	$request .= "Date:\t$year.$mon.$mday\n";	# date processed
@@ -453,12 +459,12 @@ sub confirmed { my( $orgname, $naan, $provider, $email, $firstname, $safe_naa_en
 		: "appears below"
 	;
 
-	# save $naan in a file
-	`echo $naan > $working_naan 2>&1`;
-	if ($? >> 8) {
-		perr("could not save $naan in $working_naan");
-		exit 1;
-	}
+#	# save $naan in a file
+#	`echo $naan > $working_naan 2>&1`;
+#	if ($? >> 8) {
+#		perr("could not save $naan in $working_naan");
+#		exit 1;
+#	}
 
 	# $request_file was saved earlier
 	`tr -d '\r' < $request_file >> $repodir/$request_log 2>&1`;
@@ -563,7 +569,7 @@ EOT
 	print OUT $response_letter;
 	close OUT;
 
-	if ($remail) {
+	if ($remail and $remail ne $default_remail) {
 		# send letter to admin address (may not work on some networks)
 		open OUT, "|sendmail $remail" or
 			perr("could not open pipe to email response"),
@@ -598,14 +604,14 @@ EOT
 
 	print $html_head;
 
+	my $out = '';
 	my $errs = 1;
 	my $warnings = 1;
 
 	# Read the input file.
 	local $/;		# set input mode to slurp whole file at once
 	$_ = <>;		# slurp entire file from stdin or named arg
-	s/\n+/\n/;		# make sure it ends in just one newline
-#	my $form_content = $_;	# make copy of form content, including NAAN
+	s/\n*/\n/;		# make sure it ends in just one newline
 
 	# check for a block in the file and isolate it into $_ by
 	# deleting everything around it
@@ -620,13 +626,9 @@ EOT
 		exit 2;
 	}
 	($button, $remail, $rname, $naan) = ($1, $2, $3, $4);
+	#debug "from CGI rname=$rname, remail=$remail, naan=$naan";
 
 	my ($naa_entry, $orgname, $firstname, $email, $provider);
-
-	#my $retest = 0;		# by default, assume first submission
-
-	#if (! $naan and /^naa:/) {	# Retest or Confirm case
-	#if (! $naan and ($button eq 'Retest' or $button eq 'Confirm')) {
 
 	if ($button eq 'Submit') {
 		$naan ||= $default_naan;
@@ -645,7 +647,6 @@ EOT
 
 		($naa_entry, $orgname, $naan, $firstname, $email, $provider) =
 			from_naa( $_ );
-debug "XXX from_naa returned 1=$1, orgname=$orgname, naan=$naan";
 		if (! $naa_entry) {
 			perr("Malformed/bad candidate NAAN entry: $_");
 			exit 1;
@@ -667,11 +668,12 @@ debug "XXX from_naa returned 1=$1, orgname=$orgname, naan=$naan";
 	}
 	else {
 		my $grep = `grep "$naan" $cand_naans 2>&1`;
-		if ($? >> 8) {
+		my $gstat = $? >> 8;
+		if ($gstat > 1) {
 			perr("could not do: grep $naan $cand_naans: $grep");
 			exit 1;
 		}
-		if ($grep !~ /^$naan\s+(\S+)\s+(.*)\n$/) {
+		elsif ($gstat == 1 or $grep !~ /^$naan\s+(\S+)\s+(.*)\n$/) {
 			perr( << "EOT" );
 the <em>candidate_naans</em> file on github contained no line of the form
 
@@ -682,16 +684,19 @@ EOT
 			exit 1;
 		}
 		($remail, $rname) = ($1, $2);
-# XXX pattern to comment out: /^$naan\s+$remail/ and s/^/# / 
-# perl -ni'.orig' -E "/^$naan\s+$remail/ and s/^/# /" $naan/naan_reg_priv
-# diff $naan/naan_reg_priv/candidate_naans{,.orig}
-# git checkin -m "new entry $naan"
-# git push
+		#debug "grepped rname=$rname, naan=$naan";
+		$play_mode = $rname =~ /Tester/ ? 1 : 0;
 	}
-	# xxx other tests? eg
-	#      other lines that are neither comment nor pure NAAN?
-	# xxx procedure for adding sDDDDDDDDD naans?
-	# xxx need daemon to expire and remove directories over N weeks old
+# XXX need daemon to expire and remove directories over N weeks old
+# XXX 38650
+
+	my ($f1, $f2);	# first letter of first and second name, respectively
+	($f1, $f2) = $rname =~ /^(.).*? +(.)/;	
+	$out = `echo "# $naan $f1$f2: $orgname" > $confirmer 2>&1`;
+	if ($? >> 8) {
+		perr("could not save file: $confirmer");
+		exit 1;
+	}
 
 	### save $naa_entry
 	open OUT, ">", "$new_naa_file" or
@@ -730,38 +735,56 @@ EOT
 
 	if ($button eq 'Confirm') {
 		if (! $ok) {
-			perr "validation error, go back and correct";
-			# XXX fall through to Retest button case?
-			# XXX show HTML better
+			perr "validation error: did you change something " .
+				"since your last test?";
 			exit 1;
 		}
 		if (! confirmed ($orgname, $naan, $provider, $email,
 					$firstname, $safe_naa_entry)) {
 			perr "error in confirmation step";
-			# XXX show HTML better
 			exit 1;
 		}
-		my $out = `(cd $reponame; \
-			make confirm_naan diffs.txt all announce) 2>&1`;
+		my $make_cmd;
+		$make_cmd = $play_mode
+			? "make confirm_naan"
+			: "make confirm_naan diffs.txt all announce";
+		$out = `(cd $reponame; $make_cmd) 2>&1`;
 		if ($? >> 8) {
-			perr("could not do: make confirm_naan: $out");
+			perr("error in: $make_cmd: $out");
 			exit 1;
 		}
-		debug("$out");
+		my $safe_other_info = '';
+		if (-e $other_info_file) {
+			my $other_info = `cat $other_info_file 2>&1`;
+			if ($? >> 8) {
+				perr("error opening $other_info_file: " .
+					"$other_info");
+				exit 1;
+			}
+			$other_info = "Recall that the requester supplied " .
+				"this other information: $other_info\n";
+			$safe_other_info = encode_entities( $other_info );
+			$safe_other_info =~ s|\n|<br/>|g;
+		}
+		if ($play_mode) {
+			my $msg = $remail eq $default_remail
+				? " email sent but"
+				: "";
+			$out = "Test mode:$msg no changes made\n" . $out;
+		}
+		else {
+			$out = "Success: check your email for a response " .
+				"letter to modify and forward\n" . $out;
+		}
 
-# XXX where does $play_mode end up?
-#        ... and send email and derive files
-#        make (validate) diffs.txt all announce
-#        ... and comment out line in candidate_naans
-#        ... and check in main_naans and push to github
-#        ... and report actions and latest naa and counts to curator.
-# XXX should display email sent confirmation and other actions
-# button=$button, remail=$remail, name=$rname
+		my $safe_out = encode_entities( $out );
+		$safe_out =~ s|\n|<br/>|g;
+
+		#debug "button=$button, remail=$remail, name=$rname";
 
 	say << "EOT";
-&nbsp; &nbsp; &nbsp; &nbsp;
-<br/>
-<br/>
+&nbsp; &nbsp; &nbsp; &nbsp; $safe_out
+<br/>$safe_other_info
 Status: &nbsp; &nbsp; &nbsp; $safe_validate
 </p>
 </form>
@@ -784,8 +807,14 @@ EOT
 	}
 	else {
 		$test_or_confirm = "Confirm";
-		$mesg = " &nbsp; &nbsp; (and send email " .
-			"to $remail for forwarding to requester)";
+		if ($play_mode) {
+			$mesg = " &nbsp; &nbsp; (not really, just a test " .
+				"without making changes)";
+		}
+		else {
+			$mesg = " &nbsp; &nbsp; (and send email " .
+				"to $remail for forwarding to requester)";
+		}
 		say "<p>";
 	}
 
@@ -795,8 +824,7 @@ EOT
 <input type="submit" name="button" value="$test_or_confirm">
 $mesg
 <br/>
-button=$button, remail=$remail, name=$rname
-<br/>
+<!-- button=$button, remail=$remail, name=$rname -->
 <br/>
 Status: &nbsp; &nbsp; &nbsp; $safe_validate
 </p>
