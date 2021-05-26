@@ -391,6 +391,7 @@ EOT
 		#     eg, who:    Euro France Médias (=) EFM?D
 		$acronym =~ s/\b's\b//g;
 		$acronym =~ s/\b(.).*?\b/\U$1/g;	# first letter
+		$acronym =~ s/\s//g;			# drop whitespace
 	}
 
 	my $bmodel =
@@ -584,6 +585,22 @@ EOT
 	return 1;
 }
 
+sub oinfo { my( $other_info_file )=@_;
+	! -e $other_info_file and
+		return '';
+	my $other_info = `cat $other_info_file 2>&1`;
+	if ($? >> 8) {
+		perr("error opening $other_info_file: " .
+			"$other_info");
+		exit 1;
+	}
+	$other_info = "Other information from the requester: "
+		. "$other_info\n";
+	my $safe_other_info = encode_entities( $other_info );
+	$safe_other_info =~ s|\n|<br/>|g;
+	return $safe_other_info;
+}
+
 # MAIN
 {
 	use open qw/:std :utf8/;
@@ -685,10 +702,9 @@ EOT
 		}
 		($remail, $rname) = ($1, $2);
 		#debug "grepped rname=$rname, naan=$naan";
-		$play_mode = $rname =~ /Tester/ ? 1 : 0;
+		$play_mode = $rname =~ /Tester/i ? 1 : 0;
 	}
 # XXX need daemon to expire and remove directories over N weeks old
-# XXX 38650
 
 	my ($f1, $f2);	# first letter of first and second name, respectively
 	($f1, $f2) = $rname =~ /^(.).*? +(.)/;	
@@ -711,7 +727,7 @@ EOT
 	say << "EOT";
 <pre>
 <form id="entryform" action="/e/admin/q2e.pl">
-<textarea name="request" cols="84" rows="13" id="request" form="entryform">
+<textarea name="request" cols="94" rows="13" id="request" form="entryform">
 $safe_naa_entry
 </textarea>
 </pre>
@@ -733,6 +749,8 @@ EOT
 	my $safe_validate = encode_entities( $msg );
 	$safe_validate =~ s|\n|<br/>|g;
 
+	my $safe_other_info = oinfo $other_info_file;
+
 	if ($button eq 'Confirm') {
 		if (! $ok) {
 			perr "validation error: did you change something " .
@@ -748,23 +766,10 @@ EOT
 		$make_cmd = $play_mode
 			? "make confirm_naan"
 			: "make confirm_naan diffs.txt all announce";
-		$out = `(cd $reponame; $make_cmd) 2>&1`;
+		$out = `(cd $reponame; env HOME=$home $make_cmd) 2>&1`;
 		if ($? >> 8) {
 			perr("error in: $make_cmd: $out");
 			exit 1;
-		}
-		my $safe_other_info = '';
-		if (-e $other_info_file) {
-			my $other_info = `cat $other_info_file 2>&1`;
-			if ($? >> 8) {
-				perr("error opening $other_info_file: " .
-					"$other_info");
-				exit 1;
-			}
-			$other_info = "Recall that the requester supplied " .
-				"this other information: $other_info\n";
-			$safe_other_info = encode_entities( $other_info );
-			$safe_other_info =~ s|\n|<br/>|g;
 		}
 		if ($play_mode) {
 			my $msg = $remail eq $default_remail
@@ -774,7 +779,8 @@ EOT
 		}
 		else {
 			$out = "Success: check your email for a response " .
-				"letter to modify and forward\n" . $out;
+				"letter to modify and forward\n";
+			#debug: "letter to modify and forward\n" . $out;
 		}
 
 		my $safe_out = encode_entities( $out );
@@ -782,9 +788,9 @@ EOT
 
 		#debug "button=$button, remail=$remail, name=$rname";
 
-	say << "EOT";
+		say << "EOT";
 &nbsp; &nbsp; &nbsp; &nbsp; $safe_out
-<br/>$safe_other_info
+<br/>NB: $safe_other_info
 Status: &nbsp; &nbsp; &nbsp; $safe_validate
 </p>
 </form>
@@ -820,7 +826,7 @@ EOT
 
 #<input type="hidden" id="request" name="origrequest" value="$orig_request">
 	say << "EOT";
-&nbsp; &nbsp; &nbsp; &nbsp;
+$safe_other_info
 <input type="submit" name="button" value="$test_or_confirm">
 $mesg
 <br/>
