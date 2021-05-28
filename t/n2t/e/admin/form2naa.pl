@@ -134,7 +134,10 @@ DESCRIPTION
 
 EOT
 
-my $html_head = << 'EOT';
+sub pr_head { my( $page_title )=@_;
+
+	#my $html_head = << "EOT";
+	print << "EOT";
 
 <html lang="en">
 <head>
@@ -153,7 +156,7 @@ my $html_head = << 'EOT';
   <link rel="shortcut icon" type="image/png" href="/e/images/favicon.ico?v=2"/>
   <link rel="icon" sizes="16x16 32x32" href="/e/images/favicon.ico?v=2">
 
-  <title>Review candidate NAAN entry</title>
+  <title>$page_title NAAN entry</title>
 </head>
 <body>
 <div class="content">
@@ -180,9 +183,10 @@ my $html_head = << 'EOT';
 
 <div class="container-narrowest">
 <div class="section" id="naanq2e">
-<h1>Review candidate NAAN entry</h1>
+<h1>$page_title NAAN entry</h1>
 
 EOT
+}
 
 my $no_gen = 1;			# yyy constant
 my $from_vim = 0;
@@ -424,6 +428,10 @@ EOT
 		say OUT "$other";
 		close OUT;
 	}
+	else {	# else remove, since it might exist from prior testing run
+		-e $other_info_file and
+			unlink $other_info_file;	# yyy ignore return
+	}
 	# This is Submit case, so build up request to save in a file.
 	my $request = '';
 	$request .= "Date:\t$year.$mon.$mday\n";	# date processed
@@ -586,6 +594,7 @@ EOT
 }
 
 sub oinfo { my( $other_info_file )=@_;
+
 	! -e $other_info_file and
 		return '';
 	my $other_info = `cat $other_info_file 2>&1`;
@@ -619,7 +628,7 @@ sub oinfo { my( $other_info_file )=@_;
 	$FormFile ne '-' and
 		unshift @ARGV, $FormFile;
 
-	print $html_head;
+	#print $html_head;
 
 	my $out = '';
 	my $errs = 1;
@@ -639,6 +648,7 @@ sub oinfo { my( $other_info_file )=@_;
 	# and params copied in from request form data.
 
 	if (! s/^button: (.*)\nremail: (.*)\nrname: (.*)\nunaan: (.*)\nrequest: //) {
+		pr_head("Missing form data");
 		perr("missing form data (block $_");
 		exit 2;
 	}
@@ -646,6 +656,8 @@ sub oinfo { my( $other_info_file )=@_;
 	#debug "from CGI rname=$rname, remail=$remail, naan=$naan";
 
 	my ($naa_entry, $orgname, $firstname, $email, $provider);
+
+	pr_head( $button eq 'Confirm' ? 'Final' : 'Review candidate' );
 
 	if ($button eq 'Submit') {
 		$naan ||= $default_naan;
@@ -787,10 +799,12 @@ EOT
 		$safe_out =~ s|\n|<br/>|g;
 
 		#debug "button=$button, remail=$remail, name=$rname";
+		$safe_other_info and
+			$safe_other_info = "NB: " . $safe_other_info;
 
 		say << "EOT";
 &nbsp; &nbsp; &nbsp; &nbsp; $safe_out
-<br/>NB: $safe_other_info
+<br/>$safe_other_info
 Status: &nbsp; &nbsp; &nbsp; $safe_validate
 </p>
 </form>
