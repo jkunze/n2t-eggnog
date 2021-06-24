@@ -13,9 +13,6 @@ index.html: index.rst makehtml.py
 
 ark_ids.html: ark_ids.rst makehtml.py
 	./makehtml.py ark_ids.rst "ARK"
-	# xxx temporary kludge to test live virtual host
-	egrep -v '(header|footer|breadcrumb_ark_ids).html' ark_ids.html \
-		> ../ruu.app/arks.html
 
 compact_ids.html: compact_ids.rst makehtml.py
 	./makehtml.py compact_ids.rst "Compact Identifiers"
@@ -32,14 +29,19 @@ partners.html: partners.rst makehtml.py
 suffix_passthrough.html: suffix_passthrough.rst makehtml.py
 	./makehtml.py suffix_passthrough.rst "Suffix Passthrough Explained"
 
+# *.html means homepage.html changes also get copied in
 test: all
-	# *.html means homepage.html changes also get copied in
 	cp -pr *.html *.txt *.pdf *.gz css fonts images \
 		$(HOME)/sv/cur/apache2/htdocs/e/
+
+# xxx placeholder
+ruu:
+	#cp -pr ruu.app/*.html \
+	#	$(HOME)/sv/cur/apache2/htdocs/e/
+	# xxx temporary kludge to test live virtual host
+	egrep -v '(header|footer|breadcrumb_ark_ids).html' ark_ids.html \
+		> ../ruu.app/arks.html
 	#cp -pr admin/*.{pl,html} admin/form2naa \
 	#	$(HOME)/sv/cur/apache2/htdocs/e/admin/
 	cp -pr ../ruu.app/*.html \
 		$(HOME)/sv/cur/apache2/htdocs/ruu.app/
-	# xxx temporary
-	#cp -pr ruu.app/*.html \
-	#	$(HOME)/sv/cur/apache2/htdocs/e/

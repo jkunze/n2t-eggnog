@@ -64,6 +64,7 @@ my $confirmer = 'worked_naan';
 my $request_log = 'request_log';
 my $reponame = 'naan_reg_priv';
 my $default_naan = '98765';
+my $example_naan = '12345';
 
 my $home = "/apps/n2t";
 my $workdirbase = "$home/naans";
@@ -260,7 +261,6 @@ sub from_naa { my( $naa )=@_;
 		 .*?\n
 		 (!provider:\s+(.+?)\n)?
 			}xs) {
-		perr("Malformed candidate NAAN entry: $_");
 		return ('');
 	}
 		 #(!provider:\s+.*?(\S+?@\S+?)\n)?
@@ -272,6 +272,38 @@ sub from_naa { my( $naa )=@_;
 	return ($naa, $orgname, $naan, $firstname, $email, $provider);
 }
 
+# Returns ($naa_entry, $orgname, $firstname, $email, $provider)
+# (returns same as from_naa except for $naan)
+
+sub fetch_naa { my( $naan, $update_request )=@_;
+
+	my $granvl_cmd = "$home/local/bin/granvl";
+	my $naa = `$granvl_cmd -x 'v("what") eq "$naan"' $main_naans 2>&1`;
+	my $gstat = $? >> 8;
+# XXX return instead of exit?
+	if ($gstat > 1) {
+		perr("could not do: granvl -x " .
+			qq|'v("what") eq "$naan"' $main_naans: $naa|);
+		exit 1;
+	}
+# XXX rename from $naa to ???
+	if ($naa !~ m{ who:\s+(.*?)\s*\n
+		 what:\s+(.*?)\s*\n
+		 .*?\n
+		 !contact:\s+[^,]*,\s+(\S+).*?\s*(\S+?@\S+)\s*\|.*?\n
+		 .*?\n
+		 (!provider:\s+(.+?)\n)?
+			}xs) {
+		return ('');
+	}
+		 #(!provider:\s+.*?(\S+?@\S+?)\n)?
+		 #(!provider:\s+(.+?)\n)?
+
+	my ($orgname, $xnaan, $firstname, $email, $provider) = 
+		($1, $2, $3, $4, $5);
+	$orgname =~ s/\s*\(=\).*//;
+	return ($naa, $orgname, $firstname, $email, $provider);
+}
 
 sub from_request { my( $naan, $input )=@_;
 
@@ -308,8 +340,7 @@ EOT
 		/\P{ascii}/ && /\p{Punctuation}/ && perr(
 			"warning: non-ascii punctuation: ", encode('utf8', $_))
 				for (@uchars);
-                return '';
-        };
+                return ''; };
 	#my @uchars = split '', decode('utf8', $_);
 
 
@@ -653,6 +684,13 @@ sub oinfo { my( $other_info_file )=@_;
 		exit 2;
 	}
 	($button, $remail, $rname, $naan) = ($1, $2, $3, $4);
+
+	# When we get here, $_ holds the remainder from the above substitution.
+	# In the Submit case, that's a raw request. In the Update case, it's
+	# also the raw request, the we still have to fetch the NAAN entry that
+	# we will work on. In the Retest and Confirm cases, it's the entry
+	# built from the request, plus any corrections applied to it.
+
 	#debug "from CGI rname=$rname, remail=$remail, naan=$naan";
 
 	my ($naa_entry, $orgname, $firstname, $email, $provider);
@@ -672,7 +710,20 @@ sub oinfo { my( $other_info_file )=@_;
 
 		$_ = $raw_orig_request;
 	}
-	elsif ($button eq 'Retest' or $button eq 'Confirm') {
+	elsif ($button eq 'Update') {
+		if (! $naan) {
+			$naan = $example_naan;
+			$play_mode = 1;
+		}
+		if (! init_dir($naan)) {
+			say STDERR "Could not initialize directory for $naan";
+			exit 1;
+		}
+		($naa_entry, $orgname, $firstname, $email, $provider) =
+			fetch_naa( $naan, $_ );
+	}
+	else {		# $button is Retest, Confirm, or Update
+	#elsif ($button eq 'Retest' or $button eq 'Confirm') {
 
 		($naa_entry, $orgname, $naan, $firstname, $email, $provider) =
 			from_naa( $_ );
@@ -690,7 +741,8 @@ sub oinfo { my( $other_info_file )=@_;
 	}
 	$naa_entry =~ s/\r//g;		# delete carriage returns (from web)
 
-	if ($naan eq $default_naan) {	# then we're just in test/play mode
+	# if one of these well-known NAANs then we're just in test/play mode
+	if ($naan eq $default_naan or $naan eq $example_naan) {
 		$play_mode = 1;
 		$remail = $default_remail;
 		$rname = $default_rname;
@@ -702,7 +754,7 @@ sub oinfo { my( $other_info_file )=@_;
 			perr("could not do: grep $naan $cand_naans: $grep");
 			exit 1;
 		}
-		elsif ($gstat == 1 or $grep !~ /^$naan\s+(\S+)\s+(.*)\n$/) {
+		elsif ($gstat == 1 or $grep !~ /^$naan\s+(\S+)\s+(.*)\s*;\n$/) {
 			perr( << "EOT" );
 the <em>candidate_naans</em> file on github contained no line of the form
 

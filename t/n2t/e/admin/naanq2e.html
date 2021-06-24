@@ -13,14 +13,15 @@
 <p>
 Use this form to generate a candidate NAAN entry from data that was emailed to
 you when a person (the requester) filled out and submitted a google form.
-Occasionally you may be asked to correct data on this page, but unless
-instructed otherwise, make most of your changes to the generated entry that
-will appear on subsequent pages.
+Do not correct data on this page unless instructed to do so (rare); instead
+apply corrections to subsequent pages.
 </p>
 <form id="naanform" action="/e/admin/q2e.pl">
+<!--
 <p>Replace the text below with the request text you're refining,
 or leave it alone to see what happens when you Submit.
 </p>
+-->
 <!--  <label for="request">Request Form Output:</label> -->
 <!-- text below line should match $request_default in main processing script -->
 <textarea name="request" cols="94" rows="14" id="request" form="naanform"
@@ -50,11 +51,22 @@ Committed to data persistence?	Agree"
 "request: ",	$cgi->param('request'), "\n",
 -->
 <p>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 <label for="unaan">Candidate NAAN:</label>
 <input type="text" id="unaan" name="unaan" placeholder="98765">
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 <input type="submit" name="button" value="Submit">
-<br/>
+</p>
+<p style="font-size: larger">
+<b>OR</b>
+</p>
+<p>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp;
+<label for="enaan">Existing NAAN:</label>
+<input type="text" id="enaan" name="unaan" placeholder="12345">
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<input type="submit" name="button" value="Update">
 </p>
 </form>
 

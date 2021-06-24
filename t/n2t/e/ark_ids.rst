@@ -40,11 +40,17 @@
 
 //BEGIN//
 
-Archival Resource Key (ARK) Identifiers
-=======================================
+Page Deprecated: please see https://arks.org instead
+====================================================
 
-**NOTE: as of February 2021, the best information about ARKs resides with the**
-`ARK Alliance`_ (https://arks.org). **This page may not be kept up-to-date.**
+NOTE: As of February 2021, the best information about ARKs resides with the `ARK Alliance`_ (https://arks.org).
+---------------------------------------------------------------------------------------------------------------
+
+This page on the N2T resolver site will not be kept up-to-date.
+---------------------------------------------------------------
+
+Text below will soon be obsolete.
+=================================
 
 ARK identifiers are URLs designed to support long-term access to
 information objects. To get started creating ARKs, first fill out the
