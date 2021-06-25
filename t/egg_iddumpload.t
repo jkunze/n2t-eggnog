@@ -1,6 +1,6 @@
 # XXX change file_value to flvl?
 use 5.10.1;
-use Test::More qw( no_plan );
+use Test::More;
 
 use strict;
 use warnings;
@@ -23,6 +23,11 @@ sub run_cmds_on_stdin { my( $cmdblock )=@_;
 
 $ENV{EGG} = "$hgbase -d $td/foo";	# initialize --home and --testdata
 $ENV{TMPDIR} = $td;			# for db_dump and db_load
+
+# This exits without error since it's skipped during first run 'make test'
+# XXX replace with appropriate variable
+! -e "/apps/n2t/sv/cur/apache2/conf/httpd.conf" and plan skip_all =>
+    "why: should only be run after the very first code rollout";
 
 {
 remake_td($td, $tdata);
