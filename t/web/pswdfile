@@ -6,6 +6,9 @@
 # the preferred file, ~/warts/pswdfile.web, does not exist.  The other
 # file is preferred because it is maintained outside the source repo.
 #
+# Changes to this file won't take effect until server rebuild and rollout,
+# which can be done with "n2t rollout".
+#
 # Both files have an identical format that defines logins and passwords
 # to be fed to Apache htpasswd in order to enable the web server to
 # recognize a separate authN realm for each populator.  You can have
