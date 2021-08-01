@@ -2,32 +2,45 @@
 <html lang="en">
 <head>
   <!--#include virtual="/e/prelim.html" -->
-  <title>Generate a new NAAN entry from a NAAN request</title>
+  <title>Process NAAN request</title>
 </head>
 <body>
 <div class="content">
 <!--#include virtual="/e/header.html" -->
 <div class="container-narrowest">
 <div class="section" id="naanq2e">
-<h1>Generate a new NAAN entry from a NAAN request</h1>
+<h1>Process NAAN request</h1>
 <p>
-Use this form to generate a candidate NAAN entry from data that was emailed to
+Use this form to create or update a NAAN entry based on data emailed to
 you when a person (the requester) filled out and submitted a google form.
-Do not correct data on this page unless instructed to do so (rare); instead
-apply corrections to subsequent pages.
+Do not correct requester data on this page unless instructed to do so (rare).
 </p>
 <form id="naanform" action="/e/admin/q2e.pl">
-<!--
-<p>Replace the text below with the request text you're refining,
-or leave it alone to see what happens when you Submit.
+<p>
+<b>Step 1.</b>
+On github edit the <code>candidate_naans</code> file and
+find the line with the first unused 5-digit number. If processing a new
+NAAN, add your email address and name after the NAAN on that line.
+If processing an update, before that line insert the NAAN in question and add
+them after it. Do not comment out this line. It will be commented out for you
+automatically after processing.
+Commit your edits before submitting.
 </p>
--->
+<p>
+<b>Step 2.</b>
+Enter the
+<label for="unaan">NAAN:</label>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<input type="text" id="unaan" name="unaan" placeholder="98765">
+</p>
+<p>
+<b>Step 3.</b>
+Paste the requester's data into this box,
+which shows the default new NAAN testing text.
 <!--  <label for="request">Request Form Output:</label> -->
 <!-- text below line should match $request_default in main processing script -->
 <textarea name="request" cols="94" rows="14" id="request" form="naanform"
- placeholder="Paste request in this box. Default testing text below.
-------------------------------------------------------
-I would like	To request a new NAAN
+ placeholder="I would like	To request a new NAAN
 Organization name:	Acta Académica
 Are you a service provider?	Yes
 Service provider contact information:	Acta Académica, Pablo De Grande, pablodg@aacademica.org
@@ -43,34 +56,18 @@ Committed to data persistence?	Agree"
 >
 </textarea>
 </p>
-<!--
-"button: ",	$cgi->param('button'), "\n",
-"remail: ",	$cgi->param('remail'), "\n",
-"rname: ",	$cgi->param('rname'), "\n",
-"unaan: ",	$cgi->param('unaan'), "\n",
-"request: ",	$cgi->param('request'), "\n",
--->
 <p>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-<label for="unaan">Candidate NAAN:</label>
-<input type="text" id="unaan" name="unaan" placeholder="98765">
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-<input type="submit" name="button" value="Submit">
-</p>
-<p style="font-size: larger">
+<b>Step 4.</b>
+Submit this form with the appropriate button:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<input type="submit" name="button" value="NEW">
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 <b>OR</b>
-</p>
-<p>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-&nbsp;&nbsp;&nbsp;
-<label for="enaan">Existing NAAN:</label>
-<input type="text" id="enaan" name="unaan" placeholder="12345">
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-<input type="submit" name="button" value="Update">
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<input type="submit" name="button" value="UPDATE">
 </p>
 </form>
 
-</div>
 </div>
 </div>
 </div>

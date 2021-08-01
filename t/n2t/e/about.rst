@@ -34,6 +34,7 @@
 .. _Compact, prefixed identifiers at N2T.net: /e/compact_ids.html
 .. _Original N2T vision: /e/n2t_vision.html
 .. _IETF: https://www.ietf.org/
+.. _CDL contact form: https://cdlib.org/contact/
 
 .. _n2t: https://n2t.net
 .. _Identifier Conventions: https://arks.org/about/identifier-concepts-and-conventions/
@@ -146,7 +147,8 @@ N2T is maintained at the `California Digital Library`_ (CDL) within the
 University of California (UC) Office of the President (UCOP). CDL supports
 electronic library services for ten UC campuses and affiliated law
 schools, medical centers, and national laboratories, as well as hundreds
-of museums, herbaria, botanical gardens, etc.
+of museums, herbaria, botanical gardens, etc. You may provide feedback on
+N2T via the `CDL contact form`_.
 
 N2T runs in the AWS (Amazon Web Services) cloud. On top of the foundational
 physical, network, and procedural security maintained by AWS datacenters
@@ -158,11 +160,6 @@ N2T is a critical piece of global infrastructure under the purview of
 the `ARK Alliance`_. Founded by the CDL and LYRASIS_, the ARK Alliance now
 enjoys the support of some 40 institutions.
 
-- `N2T partners`_
-- `N2T API Documentation`_
-- `Original N2T vision`_
-- `N2T Architecture diagram`_
-
 Maintenance Window
 ------------------
 
@@ -170,5 +167,13 @@ The N2T service may occasionally be suspended or interrupted for up to one hour
 during the routine maintenance window. If maintenance is to take place, it
 happens on Sundays beginning at 08:00 in California, UTC-08:00 (standard time),
 UTC-07:00 (daylight savings).
+
+Other Information
+-----------------
+
+- `N2T partners`_
+- `N2T API Documentation`_
+- `Original N2T vision`_
+- `N2T Architecture diagram`_
 
 //END//

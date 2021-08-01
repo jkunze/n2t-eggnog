@@ -56,10 +56,15 @@ Other information:	We're not in Kansas
 Committed to data persistence?	Agree
 EOT
 
+my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst);
 #my $response_admin = "naan-registrar\@googlegroups.com, $provider";
 my $request_file = 'request';
 my $other_info_file = 'other_info';
-my $new_naa_file = 'new_entry';
+
+my $op;			# operation context (NEW or UPDATE or '' (error))
+my $saved_naa_file = '';
+	my $NEW_NAA_OP = 'new_entry';		# a value of $saved_naa_file
+	my $UPDATE_NAA_OP = 'update_entry';	# a value of $saved_naa_file
 my $confirmer = 'worked_naan';
 my $request_log = 'request_log';
 my $reponame = 'naan_reg_priv';
@@ -80,16 +85,19 @@ SYNOPSIS
     $cmd [ --github ] FormFile [ NAAN ]
 
 DESCRIPTION
-    XXX heavily modified for the "-" stdin case, expecting
-    XXX when invoked via web, there will never be a NAAN arg
-    If any of the first 3 lines are empty, we're not doing this for real.
+    Meant to be invoked via a web CGI process, this script converts a NAAN
+    request form to a registry entry that is stored in the current directory
+    under the filename, "$saved_naa_file".
+
+    (This script was heavily adapted from an original script that was invoked
+    with command line arguments and these lines expected on STDIN ("-"):
        line 1: email
        line 2: your name (given name then family name, eg, Sam Smith)
        line 3: NAAN
        lines 4-: form output
+    )
 
-    The $cmd script converts a NAAN request form to a registry entry that
-    is stored in the current directory under the filename, "$new_naa_file".
+    The documentation below is out of date. Proceed at your own risk.
 
     The FormFile is a file of form data in YAML (or CSV format, but CSV is
     not really tested). Data is usually entered via the
@@ -135,9 +143,42 @@ DESCRIPTION
 
 EOT
 
+sub pr_foot {
+
+	print << "EOT";
+
+</div>
+</div>
+</div>
+
+<!-- Footer -->
+<div class="row footer">
+  <div class="col-xs-12 container-widest">
+    <div class="row">
+      <div class="col-xs-12 col-sm-12">
+        <p class="text-sm" align=center>
+	N2T.net is a service of the
+	<a href="http://www.cdlib.org/">California Digital Library</a>
+	(<a href="https://cdlib.org/contact/">contact us</a>),
+	a division of the <a href="http://www.universityofcalifornia.edu/">
+	University of California Office of the President</a>
+	<br/>
+        &copy; 2007-<script type="text/javascript">
+	document.write(new Date().getFullYear());</script>
+	The Regents of the University of California
+	</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
+EOT
+}
+
 sub pr_head { my( $page_title )=@_;
 
-	#my $html_head = << "EOT";
 	print << "EOT";
 
 <html lang="en">
@@ -250,18 +291,21 @@ sub init_dir { my( $naan )=@_;
 	return $out;
 }
 
-# Returns ($naa_entry, $orgname, $naan, $firstname, $email, $provider)
+# Returns ($emsg, $naa_entry, $orgname, $naan, $firstname, $email, $provider)
+# $emsg is error message, empty on success
 
 sub from_naa { my( $naa )=@_;
 
-	if ($naa !~ m{ who:\s+(.*?)\s*\n
-		 what:\s+(.*?)\s*\n
-		 .*?\n
-		 !contact:\s+[^,]*,\s+(\S+).*?\s*(\S+?@\S+)\s*\|.*?\n
-		 .*?\n
-		 (!provider:\s+(.+?)\n)?
-			}xs) {
-		return ('');
+	my $emsg = '';		# empty $emsg mean no error
+	if ($naa !~ m{  who:\s+(.*?)\s*\n
+			what:\s+(.*?)\s*\n
+			.*?\n
+			!contact:\s+[^,]*,\s+(\S+).*?\s*(\S+?@\S+)\s*\|.*?\n
+			.*?\n
+			(!provider:\s+(.+?)\n)?
+	    }xs) {
+		$emsg = "Malformed candidate NAAN entry formed: $naa";
+		return ($emsg);
 	}
 		 #(!provider:\s+.*?(\S+?@\S+?)\n)?
 		 #(!provider:\s+(.+?)\n)?
@@ -269,40 +313,59 @@ sub from_naa { my( $naa )=@_;
 	my ($orgname, $naan, $firstname, $email, $provider) = 
 		($1, $2, $3, $4, $5);
 	$orgname =~ s/\s*\(=\).*//;
-	return ($naa, $orgname, $naan, $firstname, $email, $provider);
+	return ($emsg, $naa, $orgname, $naan, $firstname, $email, $provider);
 }
 
-# Returns ($naa_entry, $orgname, $firstname, $email, $provider)
-# (returns same as from_naa except for $naan)
+# Returns ($emsg, $naa_entry, $orgname, $firstname, $email, $provider)
+# $emsg is error message, empty on success
 
-sub fetch_naa { my( $naan, $update_request )=@_;
+sub fetch_naa { my( $naan )=@_;
 
+	my $emsg = '';		# empty $emsg mean no error
 	my $granvl_cmd = "$home/local/bin/granvl";
-	my $naa = `$granvl_cmd -x 'v("what") eq "$naan"' $main_naans 2>&1`;
+	$granvl_cmd .= qq@ -x 'v("what") eq "$naan"' $main_naans 2>&1 @;
+
+	my $naa = `$granvl_cmd`;
 	my $gstat = $? >> 8;
-# XXX return instead of exit?
 	if ($gstat > 1) {
-		perr("could not do: granvl -x " .
-			qq|'v("what") eq "$naan"' $main_naans: $naa|);
-		exit 1;
+		$emsg = "could not do: $granvl_cmd";
+		return ($emsg);
 	}
-# XXX rename from $naa to ???
-	if ($naa !~ m{ who:\s+(.*?)\s*\n
-		 what:\s+(.*?)\s*\n
-		 .*?\n
-		 !contact:\s+[^,]*,\s+(\S+).*?\s*(\S+?@\S+)\s*\|.*?\n
-		 .*?\n
-		 (!provider:\s+(.+?)\n)?
-			}xs) {
-		return ('');
+	chop $naa;
+	if (! $naa) {
+		$emsg = "No existing NAA found for $naan";
+		return ($emsg);
 	}
-		 #(!provider:\s+.*?(\S+?@\S+?)\n)?
-		 #(!provider:\s+(.+?)\n)?
+
+	if ($naa !~ m{	who:\s+(.*?)\s*\n
+			what:\s+(.*?)\s*\n
+			.*?\n
+			!contact:\s+[^,]*,\s+(\S+).*?\s*(\S+?@\S+)\s*\|.*?\n
+			.*?\n
+			(!provider:\s+(.+?)\n)?
+	    }xs) {
+		$emsg = "Malformed NAAN entry fetched: $naa";
+		return ($emsg);
+	}
 
 	my ($orgname, $xnaan, $firstname, $email, $provider) = 
 		($1, $2, $3, $4, $5);
 	$orgname =~ s/\s*\(=\).*//;
-	return ($naa, $orgname, $firstname, $email, $provider);
+	return ($emsg, $naa, $orgname, $xnaan, $firstname, $email, $provider);
+}
+
+sub save_request { my( $input )=@_;
+
+	my $request = '';
+	$request .= "Date:\t$year.$mon.$mday\n";	# date processed
+	$from_vim and			# if from vim, clothe naked NAAN with
+		$request .= "Curator-supplied NAAN:\t";	# label prepended
+	$request .= $input;		# original request
+	open OUT, ">", "$request_file" or
+		perr("could not open $request_file for writing"),
+		return '';
+	say OUT "$request";
+	close OUT;
 }
 
 sub from_request { my( $naan, $input )=@_;
@@ -340,16 +403,9 @@ EOT
 		/\P{ascii}/ && /\p{Punctuation}/ && perr(
 			"warning: non-ascii punctuation: ", encode('utf8', $_))
 				for (@uchars);
-                return ''; };
+                return '';
+	};
 	#my @uchars = split '', decode('utf8', $_);
-
-
-
-	# Get parts of today's date.
-	my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime();
-	$year += 1900;
-	$mon = sprintf("%02d", $mon + 1);
-	$mday = sprintf("%02d", $mday);
 
 	# Only look for CSV input when a flag is set (in a way yet TBD).
 	my $csv_input = 0;
@@ -408,15 +464,13 @@ EOT
 	}
 	# yyy check if YAML strips surrounding whitespace
 	if ($copy_err) {
-		perr("Looks like an incomplete request. Please go back "
+		return ("Looks like an incomplete request. Please go back "
 			. "and check for a copy/paste error.\n$copy_err");
-		return '';
 	}
 
 	# Get part of personal name (just a guess, so bears checking)
 	($firstname, $lastname) = $fullname =~ /^\s*(.+)\s+(\S+)\s*$/ or
-		perr("could not parse personal name \"$fullname\""),
-		return '';
+		return ("could not parse personal name \"$fullname\"");
 	unless ($acronym) {
 		$acronym = $orgname;
 		# drop stop words in English, French, and Spanish
@@ -447,15 +501,17 @@ EOT
 		$provider_line = "\n!provider: $provider_line";
 
 	if (! init_dir($naan)) {
-		say STDERR "Could not initialize directory for $naan";
-		return '';
+		#say STDERR "Could not initialize directory for $naan";
+		#return '';
+		return ("Could not initialize directory for $naan");
 	}
 
 	if ($other =~ /./) {	# if has real content, save to file for later
 		#say STDERR "Note other info: |$other|";
 		open OUT, ">", "$other_info_file" or
-			perr("could not open $other_info_file for writing"),
-			return '';
+			return ("could not open $other_info_file for writing");
+			#perr("could not open $other_info_file for writing"),
+			#return '';
 		say OUT "$other";
 		close OUT;
 	}
@@ -463,17 +519,9 @@ EOT
 		-e $other_info_file and
 			unlink $other_info_file;	# yyy ignore return
 	}
-	# This is Submit case, so build up request to save in a file.
-	my $request = '';
-	$request .= "Date:\t$year.$mon.$mday\n";	# date processed
-	$from_vim and			# if from vim, clothe naked NAAN with
-		$request .= "Candidate NAAN:\t";	# label prepended
-	$request .= $input;		# original request
-	open OUT, ">", "$request_file" or
-		perr("could not open $request_file for writing"),
-		return '';
-	say OUT "$request";
-	close OUT;
+	if (! save_request($input)) {		# save request to a file after
+		return 'Failed to save request';	# printing own mesg
+	}
 
 	my $naa_entry = 
 "naa:
@@ -487,12 +535,12 @@ how:    $bmodel | (:unkn) unknown | $year |
 !address: $address$provider_line
 
 ";
-	return ($naa_entry, $orgname, $firstname, $email, $provider);
+	return ('', $naa_entry, $orgname, $firstname, $email, $provider);
 }
 
 # returns 1 on success, 0 on error
 
-sub confirmed { my( $orgname, $naan, $provider, $email, $firstname, $safe_naa_entry )=@_;
+sub confirmed { my( $op, $orgname, $naan, $provider, $email, $firstname, $safe_naa_entry )=@_;
 
 	my $form_dest = $remail
 		? "is being emailed to you"
@@ -523,7 +571,59 @@ sub confirmed { my( $orgname, $naan, $provider, $email, $firstname, $safe_naa_en
 		  . "<p>makes sense (requesters are often confused by this\n"
 		  . "means), also CC the provider. "
 		: "";
-	my $response_letter = << "EOT";
+
+	my $response_letter;
+	if ($op eq 'UPDATE') {
+		$response_letter = << "EOT";
+Subject: NAAN update request for $orgname
+Content-Type: text/html; charset=utf-8
+
+<html>
+<head>
+<title></title>
+</head>
+<body>
+<p>
+Proposed new entry:
+</p>
+<pre>
+$safe_naa_entry
+</pre>
+</p>
+<p>
+Below the cut line is a proposed response email, intended to be sent to: $email
+</p><p>
+When proofreading, adjust the salutation to use the recipient's given
+(first) name, and your signature is correct.
+It is not uncommon that an update request comes from somone not listed as
+the current contact person, in which case you should add an inquiry. Example:
+</p><p>
+<em>
+Our registry shows Sherlock Holmes as the current contact person. Could you
+confirm whether you should be listed as a contact person instead of or in
+addition to him?
+</em>
+</p>
+<p>
+--------- CUT HERE ---------
+</p>
+<p>
+Hi $firstname,
+</p><p>
+Thank you for helping to keep the NAAN registry up-to-date. The requested
+change has been made. It may take up to 24 hours for changes to be recognized
+by the N2T.net resolver.
+</p><p>
+All the best,
+</p><p>
+-$rname, on behalf of NAAN-Registrar\@googlegroups.com
+</p>
+</body>
+</html>
+EOT
+	}
+	else {
+		$response_letter = << "EOT";
 Subject: NAAN request for $orgname
 Content-Type: text/html; charset=utf-8
 
@@ -570,7 +670,7 @@ has been registered for "$institution" and you may begin using it immediately. I
 Please note that $naan is intended for assigning ARKs to content that your institution directly curates or creates.
 In case you work with other institutions that use your tools and services for content that they curate or create, those institutions should have their own NAANs.
 </p><p>
-In thinking about how to manage the namespace, you may find it helpful to consider the usual practice of partitioning it with reserved prefixes of, say 1-5 characters, eg, names of the form "ark:/$naan/xt3...." for each "sub-publisher" in an organization.
+In thinking about how to manage the namespace, you may find it helpful to consider the usual practice of partitioning it with reserved prefixes ("<a href="https://arks.org/about/shoulders/">shoulders</a>") of, say a letter followed by a number, eg, names of the form "ark:/$naan/x3...." for each "sub-publisher" in an organization.
 Opaque prefixes that only have meaning to information professionals are often a good idea and have precedent in schemes such as ISBN and ISSN.
 </p><p>
 The best starting place for information on ARKs (Archival Resource Keys) is the
@@ -596,6 +696,7 @@ welcome) and using if they wish.
 </body>
 </html>
 EOT
+	}
 
 	#open OUT,
 	#  "|mail -S ttycharset=UTF-8 -s 'NAAN request for $acronym' \
@@ -603,8 +704,8 @@ EOT
 	#  	or die("couldn't open pipe to email response");
 
 	# save letter to a file
-	open OUT, ">", "new_naa_response.html" or
-		perr("could not open new_naa_response.html file"),
+	open OUT, ">", "response.html" or
+		perr("could not open response.html file"),
 		return 0;
 	print OUT $response_letter;
 	close OUT;
@@ -624,21 +725,88 @@ EOT
 	return 1;
 }
 
-sub oinfo { my( $other_info_file )=@_;
+sub oinfo { my( $info_file, $update_request )=@_;
 
-	! -e $other_info_file and
-		return '';
-	my $other_info = `cat $other_info_file 2>&1`;
-	if ($? >> 8) {
-		perr("error opening $other_info_file: " .
-			"$other_info");
-		exit 1;
+	my $other_info;
+	if ($update_request) {
+		$other_info = $update_request;
 	}
-	$other_info = "Other information from the requester: "
-		. "$other_info\n";
+	elsif (! -e $info_file) {
+		return '';
+	}
+	else {
+		$other_info = `cat $info_file 2>&1`;
+		if ($? >> 8) {
+			perr("error opening $info_file: $other_info");
+			exit 1;
+		}
+	}
 	my $safe_other_info = encode_entities( $other_info );
+	$safe_other_info =~ s|(.*)\t|<b>$1</b>\t|g;
 	$safe_other_info =~ s|\n|<br/>|g;
-	return $safe_other_info;
+	$safe_other_info = "<br/> $safe_other_info <br/>\n";
+	if ($update_request) {			# UPDATE_NAA_OP
+		$other_info = "Information from the requester:"
+			. $safe_other_info;
+	}
+	else {					# NEW_NAA_OP
+		$other_info = "Other information from the requester:"
+			. $safe_other_info;
+	}
+	return $other_info;
+}
+
+# figure out and return (x, y), where x is which operation the curator
+# the curator started with (NEW or UPDATE) and y is which file the request
+# is save in (the filename persists and its existence informs us what the
+# operation was in the case of Retest or Confirm).;a
+
+sub which_op {
+
+	if (-e $NEW_NAA_OP and -e $UPDATE_NAA_OP) {
+		perr "both $NEW_NAA_OP and $UPDATE_NAA_OP exist";
+		return ('', 'ERROR_BOTH');
+	}
+	-e $NEW_NAA_OP and
+		return ('NEW', $NEW_NAA_OP);
+	-e $UPDATE_NAA_OP and
+		return ('UPDATE', $UPDATE_NAA_OP);
+	perr "neither $NEW_NAA_OP nor $UPDATE_NAA_OP exist";
+	return ('', 'ERROR_NEITHER');
+}
+
+# print HTML-formatted errors, one per line
+
+sub out_errs { my( $Rerrs )=@_;
+
+	my $numerrs = scalar(@$Rerrs);
+	if (! $numerrs) {
+		return 0;
+	}
+	say "<p>Errors:<ol>";
+	for my $e (@$Rerrs) {
+		say "<li>", encode_entities( $e ), "</li>";
+	}
+	say "</ol></p>";
+	say "<p>Changes required. &nbsp; &nbsp; &nbsp; &nbsp;";
+	return $numerrs;
+}
+
+sub confirm_mesg { my( $confirm_button )=@_;
+
+	if ($confirm_button) {	# in context of a Confirm button?
+		return '';
+	}
+	my $mesg;
+	if ($play_mode) {
+		$mesg = " &nbsp; &nbsp; (not really, just a test " .
+			"without making changes)";
+	}
+	else {
+		$mesg = " &nbsp; &nbsp; (and send email " .
+			"to $remail for forwarding to requester)";
+	}
+	return $mesg;
 }
 
 # MAIN
@@ -659,7 +827,11 @@ sub oinfo { my( $other_info_file )=@_;
 	$FormFile ne '-' and
 		unshift @ARGV, $FormFile;
 
-	#print $html_head;
+	# Get parts of today's date.
+	($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime();
+	$year += 1900;
+	$mon = sprintf("%02d", $mon + 1);
+	$mday = sprintf("%02d", $mday);
 
 	my $out = '';
 	my $errs = 1;
@@ -686,18 +858,21 @@ sub oinfo { my( $other_info_file )=@_;
 	($button, $remail, $rname, $naan) = ($1, $2, $3, $4);
 
 	# When we get here, $_ holds the remainder from the above substitution.
-	# In the Submit case, that's a raw request. In the Update case, it's
+	# In the Submit case, that's a raw request. In the UPDATE case, it's
 	# also the raw request, the we still have to fetch the NAAN entry that
 	# we will work on. In the Retest and Confirm cases, it's the entry
 	# built from the request, plus any corrections applied to it.
 
 	#debug "from CGI rname=$rname, remail=$remail, naan=$naan";
 
-	my ($naa_entry, $orgname, $firstname, $email, $provider);
+	my ($emsg, $naa_entry, $orgname, $firstname, $email, $provider);
+	my ($update_request);
 
 	pr_head( $button eq 'Confirm' ? 'Final' : 'Review candidate' );
 
-	if ($button eq 'Submit') {
+	if ($button eq 'NEW') {
+		$saved_naa_file = $NEW_NAA_OP;
+		$op = 'NEW';
 		$naan ||= $default_naan;
 		$orig_request = /^\s*$/		# if empty request
 			? $request_default	# use default
@@ -705,12 +880,18 @@ sub oinfo { my( $other_info_file )=@_;
 		;
 		my $raw_orig_request = decode_entities( $orig_request );
 
-		($naa_entry, $orgname, $firstname, $email, $provider) =
+		# this will call init_dir
+		($emsg, $naa_entry, $orgname, $firstname, $email, $provider) =
 			from_request($naan, $raw_orig_request);
-
+		if ($emsg) {
+			perr "$emsg ($button): $_";
+			exit 1;
+		}
 		$_ = $raw_orig_request;
 	}
-	elsif ($button eq 'Update') {
+	elsif ($button eq 'UPDATE') {
+		$saved_naa_file = $UPDATE_NAA_OP;
+		$op = 'UPDATE';
 		if (! $naan) {
 			$naan = $example_naan;
 			$play_mode = 1;
@@ -719,22 +900,30 @@ sub oinfo { my( $other_info_file )=@_;
 			say STDERR "Could not initialize directory for $naan";
 			exit 1;
 		}
-		($naa_entry, $orgname, $firstname, $email, $provider) =
-			fetch_naa( $naan, $_ );
+		$update_request = $_;
+		if (! save_request($update_request)) {	# save request to a file
+			exit 1;
+		}
+		($emsg, $naa_entry, $orgname, $firstname, $email, $provider) =
+			fetch_naa( $naan );
+		if ($emsg) {
+			perr "$emsg ($button): $_";
+			exit 1;
+		}
 	}
-	else {		# $button is Retest, Confirm, or Update
-	#elsif ($button eq 'Retest' or $button eq 'Confirm') {
-
-		($naa_entry, $orgname, $naan, $firstname, $email, $provider) =
+	else {		# by elimination, $button must be Retest or Confirm
+		($emsg, $naa_entry, $orgname, $naan, $firstname, $email,
+				$provider) =
 			from_naa( $_ );
-		if (! $naa_entry) {
-			perr("Malformed/bad candidate NAAN entry: $_");
+		if ($emsg) {
+			perr "$emsg ($button): $_";
 			exit 1;
 		}
 		if (! init_dir($naan)) {
 			say STDERR "Could not initialize directory for $naan";
 			exit 1;
 		}
+		($op, $saved_naa_file) = which_op();
 	}
 	if (! $naa_entry) {	# $naa_entry must be defined
 		exit 1;
@@ -754,7 +943,7 @@ sub oinfo { my( $other_info_file )=@_;
 			perr("could not do: grep $naan $cand_naans: $grep");
 			exit 1;
 		}
-		elsif ($gstat == 1 or $grep !~ /^$naan\s+(\S+)\s+(.*)\s*;\n$/) {
+		if ($gstat == 1 or $grep !~ /^$naan\s+(\S+)\s+(.*)\s*\n$/) {
 			perr( << "EOT" );
 the <em>candidate_naans</em> file on github contained no line of the form
 
@@ -762,6 +951,8 @@ the <em>candidate_naans</em> file on github contained no line of the form
 
 Cannot proceed without such a line. (Did you remember to COMMIT?)
 EOT
+			$grep =~ /.\n/ and
+				perr("Found this similar line |$grep|");
 			exit 1;
 		}
 		($remail, $rname) = ($1, $2);
@@ -778,12 +969,14 @@ EOT
 		exit 1;
 	}
 
-	### save $naa_entry
-	open OUT, ">", "$new_naa_file" or
-		perr("could not open $new_naa_file for writing"),
+	# Save $naa_entry in a file whose name reminds us whether this all
+	# started with a NEW or UPDATE.
+
+	open OUT, ">", "$saved_naa_file" or
+		perr("could not open $saved_naa_file for writing"),
 		exit 1;
 	print OUT "$naa_entry";
-	print OUT "\n";		# important separator for next entry to come
+	print OUT "\n";	# important separator for next entry to come
 	close OUT;
 
 	#say "<h3>Candidate NAAN entry</h3><p>";
@@ -797,31 +990,49 @@ $safe_naa_entry
 </pre>
 EOT
 
-	my $validate = `cat $new_naa_file >> $main_naans 2>&1`;
+	my ($save, $linenums);
+	my $safe_other_info = '';
+
+	#if ($saved_naa_file eq $NEW_NAA_OP) {
+	if ($op eq 'NEW') {
+		$save = `cat $saved_naa_file >> $main_naans 2>&1`;
+		$linenums = 0;		# usually at end of file
+		$safe_other_info = oinfo $other_info_file;
+	}
+	#elsif ($saved_naa_file eq $UPDATE_NAA_OP) {
+	elsif ($op eq 'UPDATE') {
+		# Replace relevant naa entry with modified entry.
+		# Read from file to avoid nightmare quoting problems
+		# worse than those below.
+		# Here $pentry is a Perl-local instance of $naa_entry.
+		$save = `perl -p000 -i'.bak' \\
+			-E "BEGIN { open IN, '<', '$saved_naa_file' or \\
+				 say(STDERR 'could not open $saved_naa_file for reading'), exit(1); \\
+				 local \\\$/; \\
+				\\\$pentry = <IN>; \\
+			}" \\
+			-E "/\\nwhat:\\s*$naan\\n/ and \\
+				s.*\\\$pentrys;" \\
+				$main_naans 2>&1`;
+		$linenums = 1;		# where in file, potentially anywhere
+		$safe_other_info = oinfo 1, $update_request;
+	}
 	if ($? >> 8) {
-		perr("could not append $new_naa_file to $main_naans: $validate");
+		perr("could not save $saved_naa_file to $main_naans: $save");
 		exit 1;
 	}
 
 	use lib "/apps/n2t/local/lib";
 	use NAAN;
 	my $contact_info = 1;	# 1 means contact info is present
-	my $linenums = 0;
 	my ($ok, $msg, $Rerrs) =
 		NAAN::validate_naans($main_naans, $contact_info, $linenums);
 
 	my $safe_validate = encode_entities( $msg );
 	$safe_validate =~ s|\n|<br/>|g;
 
-	my $safe_other_info = oinfo $other_info_file;
-
-	if ($button eq 'Confirm') {
-		if (! $ok) {
-			perr "validation error: did you change something " .
-				"since your last test?";
-			exit 1;
-		}
-		if (! confirmed ($orgname, $naan, $provider, $email,
+	if ($ok and $button eq 'Confirm') {
+		if (! confirmed ($op, $orgname, $naan, $provider, $email,
 					$firstname, $safe_naa_entry)) {
 			perr "error in confirmation step";
 			exit 1;
@@ -857,37 +1068,46 @@ EOT
 		say << "EOT";
 &nbsp; &nbsp; &nbsp; &nbsp; $safe_out
 <br/>$safe_other_info
-Status: &nbsp; &nbsp; &nbsp; $safe_validate
+Final validation status: &nbsp; &nbsp; &nbsp; $safe_validate
 </p>
 </form>
 EOT
-
+		pr_foot();
 		exit 0;
 	}
+	# elsif ! $ok and Confirm, then drop through to Test case
 	# if we get here, we should display a Retest or Confirm button
+# XXX or Test button for Update
 
 	my $test_or_confirm;
 	my $mesg = '';
-	if (! $ok and scalar(@$Rerrs)) {
+	if ($op eq 'UPDATE') {		# XXX Test if it's first time...
+		$test_or_confirm = $ok ? "Confirm" : "Test";
+		out_errs $Rerrs;	# display errors, if any
+		$mesg = confirm_mesg( ! $ok );
+	}
+	elsif (! $ok and scalar(@$Rerrs)) {
 		$test_or_confirm = "Retest";
-		say "<p>Errors:<ol>";
-		for my $e (@$Rerrs) {
-			say "<li>", encode_entities( $e ), "</li>";
-		}
-		say "</ol></p>";
-		say "<p>Changes required.";
+		out_errs $Rerrs;
+		#say "<p>Errors:<ol>";
+		#for my $e (@$Rerrs) {
+		#	say "<li>", encode_entities( $e ), "</li>";
+		#}
+		#say "</ol></p>";
+		#say "<p>Changes required.";
 	}
 	else {
 		$test_or_confirm = "Confirm";
-		if ($play_mode) {
-			$mesg = " &nbsp; &nbsp; (not really, just a test " .
-				"without making changes)";
-		}
-		else {
-			$mesg = " &nbsp; &nbsp; (and send email " .
-				"to $remail for forwarding to requester)";
-		}
+		$mesg = confirm_mesg();
 		say "<p>";
+		#if ($play_mode) {
+		#	$mesg = " &nbsp; &nbsp; (not really, just a test " .
+		#		"without making changes)";
+		#}
+		#else {
+		#	$mesg = " &nbsp; &nbsp; (and send email " .
+		#		"to $remail for forwarding to requester)";
+		#}
 	}
 
 #<input type="hidden" id="request" name="origrequest" value="$orig_request">
@@ -898,13 +1118,12 @@ $mesg
 <br/>
 <!-- button=$button, remail=$remail, name=$rname -->
 <br/>
-Status: &nbsp; &nbsp; &nbsp; $safe_validate
+Validation status: &nbsp; &nbsp; &nbsp; $safe_validate
 </p>
 </form>
 EOT
-
-exit 0;
-
+	pr_foot();
+	exit 0;
 }
 
 __END__

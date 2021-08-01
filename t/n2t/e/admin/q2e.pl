@@ -21,7 +21,7 @@ open(PIPE, "| ./form2naa.pl --github -") or
 	die("couldn't open pipe to form2naa.pl: $!");
 # XXX only unaan is relevant
 print PIPE
-	"button: ",	$cgi->param('button'),	"\n", # Submit, Update, Retest, Confirm
+	"button: ",	$cgi->param('button'),	"\n", # NEW, UPDATE, Retest, Confirm
 	"remail: ",	$cgi->param('remail'),	"\n", # responder email
 	"rname: ",	$cgi->param('rname'),	"\n", # responder email
 	"unaan: ",	$cgi->param('unaan'),	"\n", # used or unused NAAN
