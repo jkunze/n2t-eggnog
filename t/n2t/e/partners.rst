@@ -15,7 +15,7 @@
 .. _Archive.org: https://archive.org
 .. _YAMZ.net metadictionary: https://yamz.net
 .. _DataCite: https://www.datacite.org
-.. _Compact identifiers: /e/compact_ids.html
+.. _Compact identifiers (CURIEs): /e/compact_ids.html
 .. _Crossref: https://crossref.org
 .. _European Bioinformatics Institute: https://www.ebi.ac.uk
 .. _California Digital Library: https://www.cdlib.org
@@ -50,7 +50,7 @@ Development partners include
 - ARKetype_ - an identifer service for a consortium of Swiss universities under the INCIPIT project
 - Islandora_ - open source digital asset management
 
-`Compact identifiers`_ are implemented with scheme (prefix) records stored in N2T.net in partnership with
+`Compact identifiers (CURIEs)`_ are implemented with scheme (prefix) records stored in N2T.net in partnership with
 
 - `European Bioinformatics Institute`_ - identifiers.org
 - `Prefix Commons`_ - prefixcommons.org

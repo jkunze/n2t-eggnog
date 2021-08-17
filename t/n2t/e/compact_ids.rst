@@ -33,8 +33,8 @@
 
    <br />
 
-Compact Identifiers
-===================
+Compact Identifiers (CURIEs)
+============================
 
 .. parsed-literal::
 
@@ -56,8 +56,8 @@ How they work
 =============
 
 N2T.net is a kind of URL shortener for persistent identifiers. The above
-*compact identifiers* become actionable when appended to a URL based at
-N2T.net::
+*compact identifiers*, also known as CURIEs (Compact URIs).
+They become actionable when appended to a URL based at N2T.net::
 
  https://n2t.net/PDB:2gc4
  https://n2t.net/Taxon:9606

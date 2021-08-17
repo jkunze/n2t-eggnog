@@ -31,7 +31,6 @@
 .. _partners: /e/partners.html
 .. _N2T API Documentation: /e/n2t_apidoc.html
 .. _N2T Architecture diagram: /e/images/N2T_Anatomy.jpg
-.. _Compact, prefixed identifiers at N2T.net: /e/compact_ids.html
 .. _Original N2T vision: /e/n2t_vision.html
 .. _IETF: https://www.ietf.org/
 .. _CDL contact form: https://cdlib.org/contact/
