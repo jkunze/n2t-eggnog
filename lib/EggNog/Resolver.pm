@@ -604,6 +604,7 @@ sub idx_init { my( $idx )=@_;
 	#    blade	=> '',	# after end of shoulder, eg, 98765
 
 	#    slid	=> '',	# scheme-local id (id minus scheme)
+	#    nlid	=> '',	# NAAN-local id (id minus scheme minus NAAN)
 	#    query	=> '',	# URL query string, if any
 	#    pinfo	=> '',	# prefix (matching initial substring) info
 	#    # xxx drop pinfo?
@@ -619,6 +620,7 @@ sub idx_init { my( $idx )=@_;
 		$idx->{log_ok_ur_origid} =
 		$idx->{full_id} =
 		$idx->{slid} =
+		$idx->{nlid} =
 		$idx->{naan} =
 		$idx->{scheme} =
 		$idx->{fqnaan} =
@@ -966,6 +968,7 @@ sub id_decompose { my( $pfxs, $id )=@_;
 	#
 	#$idx->{slid} = $kludge . $idx->{naan} . $idx->{naan_sep} . $id;
 	$idx->{slid} = $kludge . $idx->{naan} . $idx->{naan_sep} . $id;
+	$idx->{nlid} = $id;
 	$idx->{shoshoblade} = $id;			# yyy needed??
 
 	$idx->{full_id} = $scheme . ':' . $idx->{slid} . $idx->{query};
@@ -1778,7 +1781,8 @@ sub resolve { my( $bh, $mods, $id, @headers )=@_;
 		#   ${blade} replaced with blade part of id
 		# $redirect =~ s/\${a}/$idx->{ slid }/g;	# maybe later
 		$redirect =~ s/\${blade}/$idx->{blade}/g;
-		$redirect =~ s/\$id\b/$idx->{slid}/g;
+		$redirect =~ s/\${nlid}/$idx->{nlid}/g;	# NAAN-local id
+		$redirect =~ s/\$id\b/$idx->{slid}/g;	# scheme-local id
 # xxx proto preservation should work for ALL targets, not just rule-based
 		$redirect =~ m|https?://| or	# if proto not specified by rule
 			$redirect =~ s|^|$proto://|;	# go with user's choice

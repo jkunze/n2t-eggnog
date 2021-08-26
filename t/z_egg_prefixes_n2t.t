@@ -201,11 +201,14 @@ $x = nresolve_stdin_hdr( "--home $buildout_root -d $td/dummy",
 							#  normally: "lc"
 	  '302 https://id.example.org/bc3gh&null',
 	  'tester shoulder redirects via blade, passes https through', 
+	'ark:/99998/pfx9this/that.other', '',		# nlid substitution
+							#  normally: "lc"
+	  '302 http://id.example.org/mydb/pfx9this/that.other',
+	  'tester shoulder redirects via nlid',
 	'ark:/99997/6andmore', '',	# minimal 1st-digit shoulder
 					#  normally: "mc"
 	  '302 http://id.example.org/nothing_to_subst',
 	  'minimal first digit tester shoulder redirects via const target', 
-
 	'ark:12148/btv1b8426258c', '',	# BnF, and no :/
 	  '302 http://ark.bnf.fr/ark:/12148/btv1b8426258c',
 	  'ark naan (BnF) prefix redirect, with only : instead of :/',

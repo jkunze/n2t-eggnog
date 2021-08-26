@@ -123,6 +123,13 @@ content with identifiers based at N2T. Some other unique features:
   then ``xyzzy-dev:foo`` forwards to ``a-dev.b.org/foo``. Just for ARK NAANs,
   instead of the "dev" after the hyphen (``-``) you can actually use any string
   to form the target domain name.
+- **Blade and NLID substitution.** For ARKs, DOIs, URNs, and Handles,
+  N2T has special forwarding rule substitution features.
+  Wherever the string ${blade} appears in the target string, the "blade"
+  (everything following the "shoulder") will be substituted.
+  Wherever the string ${nlid} appears in the target string, the NLID
+  (NAAN-local identifier) will be substituted; the NLID is everything
+  to the right of the "name authority" (eg, ARK NAAN, DOI Prefix, URN NID).
 
 Audience
 --------
