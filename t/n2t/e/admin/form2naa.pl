@@ -722,17 +722,17 @@ a été enregistré pour "$institution" et vous pouvez commencer à l'utiliser i
 Veuillez noter que le numéro d'autorité nommante $naan est destiné à attribuer des ARK au contenu que votre institution conserve ou crée directement.
 Si vous travaillez avec d'autres institutions qui utilisent vos outils et services pour du contenu qu'elles conservent ou créent, ces institutions doivent avoir leur propre NAAN.
 </p><p>
-Lorsque vous réfléchirez à la manière de gérer l'espace de nommage, il peut vous être utile de considérer la pratique habituelle consistant à le partitionner avec des préfixes réservés.
+Lorsque vous réfléchirez à la manière de gérer l'espace de nommage, il peut vous être utile de considérer la pratique habituelle consistant à le partitionner avec des préfixes réservés ("<a href="https://arks.org/about/shoulders/">shoulders</a>").
 Par exemple, un préfixe constitué d'une lettre suivie d'un chiffre, formerait des noms de commençant par "ark:/$naan/x3 ..." pour chaque "sous-autorité" d'une organisation.
 Les préfixes opaques qui n'ont de sens que pour les professionnels de l'information sont souvent une bonne idée et ont un précédent dans des systèmes tels que l'ISBN et l'ISSN.
 </p><p>
-Le meilleur point de départ pour obtenir des informations sur les ARK (Archival Resource Keys) est le site Web d'ARK Alliance.
-Vous pouvez également trouver des informations utiles dans la FAQ sur les ARK et dans cette présentation de l'identifiant ARK.
-La spécification ARK (en anglais) est actuellement le meilleur guide pour savoir comment créer des URL conformes aux règles ARK, bien qu'elle soit assez technique.
-Il existe un groupe de discussion francophone public sur les ARK destiné aux personnes désireuses de partager et d'apprendre des autres sur la manière dont les ARK ont été ou pourraient être utilisés dans des applications de gestion d'identifiants.
-Le meilleur logiciel libre pour mettre en œuvre votre propre service ARK est actuellement Noid.
+Le meilleur point de départ pour obtenir des informations sur les ARK (Archival Resource Keys) est le <a href="https://arks.org/">site Web d'ARK Alliance</a>.
+Vous pouvez également trouver des informations utiles dans la <a href="https://wiki.lyrasis.org/pages/viewpage.action?pageId=178880619">FAQ sur les ARK</a> et dans <a href="https://www.bnf.fr/fr/sommet-international-ark-journee-detude-et-dechanges-sur-lidentifiant-ark-archival-resource-key#bnf-ark-pour-les-d-butants">cette présentation de l'identifiant ARK</a>.
+La <a href="https://n2t.net/ark:/13030/c7cv4br18">spécification ARK</a> (en anglais) est actuellement le meilleur guide pour savoir comment créer des URL conformes aux règles ARK, bien qu'elle soit assez technique.
+Il existe un <a href="https://framalistes.org/sympa/info/arks-forum-fr">groupe de discussion francophone public</a> sur les ARK destiné aux personnes désireuses de partager et d'apprendre des autres sur la manière dont les ARK ont été ou pourraient être utilisés dans des applications de gestion d'identifiants.
+Le meilleur logiciel libre pour mettre en œuvre votre propre service ARK est actuellement <a href="http://n2t.net/e/noid.html">Noid</a>.
 </p><p>
-Vous n'avez rien d'autre à faire pour l'instant. Comme vous le savez peut-être, nous sommes en train de rédiger des déclarations de persistance normalisées (en anglais) que les autorités chargées de l'attribution des noms peuvent commencer à tester (les commentaires sont les bienvenus) et à utiliser si elles le souhaitent.
+Vous n'avez rien d'autre à faire pour l'instant. Comme vous le savez peut-être, nous sommes en train de rédiger des <a href="https://n2t.net/ark:/13030/c7833mx7t">déclarations de persistance normalisées</a> (en anglais) que les autorités chargées de l'attribution des noms peuvent commencer à tester (les commentaires sont les bienvenus) et à utiliser si elles le souhaitent.
 </p><p>
 -$rname, au nom de NAAN-Registrar\@googlegroups.com
 </p><p>
@@ -823,9 +823,10 @@ sub oinfo { my( $info_file, $update_request )=@_;
 		}
 	}
 	my $safe_other_info = encode_entities( $other_info );
-	$safe_other_info =~ s|(.*)\t|<b>$1</b>\t|g;
-	$safe_other_info =~ s|\n|<br/>|g;
-	$safe_other_info = "<br/> $safe_other_info <br/>\n";
+	#$safe_other_info =~ s|(.*)\t|<b>$1</b>\t|g;
+	#$safe_other_info =~ s|\n|<br/>|g;
+	#$safe_other_info = "<br/> $safe_other_info <br/>\n";
+	$safe_other_info = "<pre> $safe_other_info </pre>\n";
 	if ($update_request) {			# UPDATE_NAA_OP
 		$other_info = "Information from the requester:"
 			. $safe_other_info;
