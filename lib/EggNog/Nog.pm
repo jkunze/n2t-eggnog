@@ -232,9 +232,8 @@ my %ordxdig = (
 # often have other knowledge with which to determine that the wrong
 # retrieval occurred, this error is sometimes not readily apparent.
 # Check digits reduce the chances of this kind of error.
-# yyy ask Steve Silberstein (of III) about check digits?
 
-sub checkchar{ my( $id )=@_;
+sub checkchar { my( $id )=@_;
 	return undef
 		if (! $id );
 	my $lastchar = chop($id);
@@ -251,6 +250,40 @@ sub checkchar{ my( $id )=@_;
 	return $id . $checkchar
 		if ($lastchar eq "+" || $lastchar eq $checkchar);
 	return undef;		# must be request to check, but failed match
+	# xxx test if check char changes on permutations
+	# XXX include test of length to make sure < than 29 (R) chars long
+	# yyy will this work for doi/handles?
+}
+
+# This is a more user-friendly version of checkchar.
+# It strips away parts of the input string that look like they are not part
+# of "check zone", eg, given ark:/12345/bcd89/foo, it only checks 12345/bcd89.
+# In particular, it strips any initial string ending in ':' as well as zero or
+# one following '/'; if the remaining string contains 2 or more '/' chars, it
+# strips the 2nd '/' to the end. The remaining string is considered the check
+# zone.
+
+sub checkzone { my( $id )=@_;
+
+	return undef
+		if (! $id );
+	$id =~ s|^.*?:/?||;		# strip down to check zone
+	$id =~ s|(.*?/.*?)/.*$|$1|;	# strip down to check zone
+
+	my $lastchar = chop($id);
+	my $pos = 1;
+	my $sum = 0;
+	my $c;
+	for $c (split(//, $id)) {
+		# if character undefined, it's ordinal value is zero
+		$sum += $pos * (defined($ordxdig{"$c"}) ? $ordxdig{"$c"} : 0);
+		$pos++;
+	}
+	my $checkchar = $xdig[$sum % $alphacount];
+	#print "RADIX=$alphacount, mod=", $sum % $alphacount, "\n";
+	return $id . $checkchar
+		if ($lastchar eq "+" || $lastchar eq $checkchar);
+	return '';		# must be request to check, but failed match
 	# xxx test if check char changes on permutations
 	# XXX include test of length to make sure < than 29 (R) chars long
 	# yyy will this work for doi/handles?

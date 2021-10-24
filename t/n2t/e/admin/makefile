@@ -1,5 +1,5 @@
 FORM_URL= https://${EGNAPA_HOST}/e/admin/naanq2e.html
-WEBFILES= q2e.pl form2naa.pl naanq2e.html
+WEBFILES= q2e.pl form2naa.pl naanq2e.html regupdate.html
 PUBDIR=  $(HOME)/sv/cur/apache2/htdocs/e/admin
 
 # This "all" target is a no-op (build_server_tree does the file copying

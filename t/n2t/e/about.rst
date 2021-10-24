@@ -113,23 +113,38 @@ content with identifiers based at N2T. Some other unique features:
   respective servers are. Failing to find forwarding information for an
   identifier that it looks up (in its regular resolver role), it assumes its
   meta-resolver role and uses the identifier's type to look for an overall
-  target rule.
+  "target rule".
+- **NLID substitution.** N2T has a special target rule substitution feature
+  for an identifier with a NAAN-like component (ARK, DOI, URN, Handle).
+  Wherever the string ${nlid} appears in the target string, the NLID
+  (NAAN-local identifier), which is everything to the right of the NAAN, will
+  be substituted. It is best if the forwarding URL ends up showing the "compact
+  id" (eg, the part starting "ark:"), but the NLID is useful since it is the
+  identifier part over which most identifier creators have direct control.
+  While it is easy for a web server to recognize an incoming NAAN, it still
+  requires a one-time webmaster action, and that may not be feasible. The
+  ${nlid} substitution feature obviates that need because with a target rule
+  such as ::
+
+    https://mysite.example.org/blog/${nlid}
+
+  N2T will forward an ARK such as ``ark:/12345/67890`` directly to ::
+
+    https://mysite.example.org/blog/67890
+
+  instead of forwarding it to (using the compact ARK) ::
+
+    https://mysite.example.org/ark:/12345/67890
+
+  which avoids an extra local web server configuration step.
+
 - **Prefix extension.** N2T supports a "prefix extension" feature that permits
   developers to extend a scheme or an ARK NAAN (both of which "prefix" an
   identifier) with ``-dev`` in order to forward to an alternate destination.
   For example, if the NAAN ``12345`` forwards to domain ``a.b.org``, then
   ``ark:/12345-dev/678`` forwards to ``a-dev.b.org/678``. It works similarly
   for schemes, for example, if scheme ``xyzzy`` forwards to ``a.b.org/$id``,
-  then ``xyzzy-dev:foo`` forwards to ``a-dev.b.org/foo``. Just for ARK NAANs,
-  instead of the "dev" after the hyphen (``-``) you can actually use any string
-  to form the target domain name.
-- **Blade and NLID substitution.** For ARKs, DOIs, URNs, and Handles,
-  N2T has special forwarding rule substitution features.
-  Wherever the string ${blade} appears in the target string, the "blade"
-  (everything following the "shoulder") will be substituted.
-  Wherever the string ${nlid} appears in the target string, the NLID
-  (NAAN-local identifier) will be substituted; the NLID is everything
-  to the right of the "name authority" (eg, ARK NAAN, DOI Prefix, URN NID).
+  then ``xyzzy-dev:foo`` forwards to ``a-dev.b.org/foo``.
 
 Audience
 --------

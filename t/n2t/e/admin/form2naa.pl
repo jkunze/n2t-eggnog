@@ -1,4 +1,6 @@
 #! /usr/bin/env perl
+#
+# XXX to do: why are added comment lines on Update disappearing from repo?
 
 use 5.010;
 use strict;
@@ -52,7 +54,7 @@ Organization address:	Pedro Morán 2946, Buenos Aires, Argentina
 Organization status:	Not-for-profit
 Organization acronym preferred:	AA
 Organization base URL:	https://aacademica.org
-Other information:	We're not in Kansas
+Other information:	If you can, please don't give my institution NAAN 66666.
 Committed to data persistence?	Agree
 EOT
 
@@ -291,12 +293,23 @@ sub init_dir { my( $naan )=@_;
 	return $out;
 }
 
+# assemble and return comment lines in one block (string) from $naa
+# yyy unused
+
+sub scrape_comments { my( $naa )=@_;
+	join "\n", grep /^#/, split /\n/m, $naa;
+}
+
 # Returns ($emsg, $naa_entry, $orgname, $naan, $firstname, $email, $provider)
 # $emsg is error message, empty on success
 
-sub from_naa { my( $naa )=@_;
+# From curator form
+sub from_cform { my( $naa )=@_;
 
-	my $emsg = '';		# empty $emsg mean no error
+	my $emsg = '';			# empty $emsg mean no error
+	my $full_naa = $naa;
+	$naa =~ s/^\s*#.*\n//mg;	# drop comment lines
+
 	if ($naa !~ m{  who:\s+(.*?)\s*\n
 			what:\s+(.*?)\s*\n
 			.*?\n
@@ -313,7 +326,7 @@ sub from_naa { my( $naa )=@_;
 	my ($orgname, $naan, $firstname, $email, $provider) = 
 		($1, $2, $3, $4, $5);
 	$orgname =~ s/\s*\(=\).*//;
-	return ($emsg, $naa, $orgname, $naan, $firstname, $email, $provider);
+	return ($emsg, $full_naa, $orgname, $naan, $firstname, $email, $provider);
 }
 
 # Returns ($emsg, $naa_entry, $orgname, $firstname, $email, $provider)
@@ -336,6 +349,8 @@ sub fetch_naa { my( $naan )=@_;
 		$emsg = "No existing NAA found for $naan";
 		return ($emsg);
 	}
+	my $full_naa = $naa;		# save original with comments
+	$naa =~ s/^\s*#.*\n//mg;	# drop comment lines
 
 	if ($naa !~ m{	who:\s+(.*?)\s*\n
 			what:\s+(.*?)\s*\n
@@ -368,7 +383,8 @@ sub save_request { my( $input )=@_;
 	close OUT;
 }
 
-sub from_request { my( $naan, $input )=@_;
+# From user request form
+sub from_uform { my( $naan, $input )=@_;
 
 	$_ = $input;		# decoded form data
 
@@ -656,8 +672,8 @@ been addressed by adding your own customized response text (usually in the
 first paragraph).
 </p>
 <p>
---------- CUT HERE ---------
-</p>
+----- CUT HERE ---- English version, followed by French, then Spanish ----
+</p><p>
 <p>
 Hi $firstname,
 </p><p>
@@ -679,7 +695,7 @@ information in the
 <a href="https://wiki.lyrasis.org/display/ARKs/ARK+Identifiers+FAQ">ARKs FAQ</a>
 (<a href="https://wiki.lyrasis.org/pages/viewpage.action?pageId=178880619">version française</a>,
 <a href="https://wiki.lyrasis.org/pages/viewpage.action?pageId=185991610">version en español</a>)
-and <a href="http://n2t.net/e/ark_ids.html">this ARK identifier overview</a>.
+and <a href="https://arks.org/about/">this ARK identifier overview</a>.
 The <a href="https://n2t.net/ark:/13030/c7cv4br18">ARK specification</a> is currently the best guide for how to create URLs that comply with ARK rules, although it is fairly technical.
 There is a <a href="https://groups.google.com/group/arks-forum">public discussion group for ARKs</a>
 (<a href="https://framalistes.org/sympa/info/arks-forum-fr">forum francophone</a>)
@@ -692,7 +708,72 @@ statements</a> that name assigning authorities can begin testing (feedback is
 welcome) and using if they wish.
 </p><p>
 -$rname, on behalf of NAAN-Registrar\@googlegroups.com
+</p><p>
+---- French version ----
+</p><p>
+Bonjour $firstname,
+</p><p>
+Merci pour votre demande. Le NAAN,
+</p><p style="margin-left:4em">
+$naan
+</p><p>
+a été enregistré pour "$institution" et vous pouvez commencer à l'utiliser immédiatement. Cela peut prendre jusqu'à 24 heures avant que votre NAAN soit reconnu par le résolveur N2T.net.
+</p><p>
+Veuillez noter que le numéro d'autorité nommante $naan est destiné à attribuer des ARK au contenu que votre institution conserve ou crée directement.
+Si vous travaillez avec d'autres institutions qui utilisent vos outils et services pour du contenu qu'elles conservent ou créent, ces institutions doivent avoir leur propre NAAN.
+</p><p>
+Lorsque vous réfléchirez à la manière de gérer l'espace de nommage, il peut vous être utile de considérer la pratique habituelle consistant à le partitionner avec des préfixes réservés.
+Par exemple, un préfixe constitué d'une lettre suivie d'un chiffre, formerait des noms de commençant par "ark:/$naan/x3 ..." pour chaque "sous-autorité" d'une organisation.
+Les préfixes opaques qui n'ont de sens que pour les professionnels de l'information sont souvent une bonne idée et ont un précédent dans des systèmes tels que l'ISBN et l'ISSN.
+</p><p>
+Le meilleur point de départ pour obtenir des informations sur les ARK (Archival Resource Keys) est le site Web d'ARK Alliance.
+Vous pouvez également trouver des informations utiles dans la FAQ sur les ARK et dans cette présentation de l'identifiant ARK.
+La spécification ARK (en anglais) est actuellement le meilleur guide pour savoir comment créer des URL conformes aux règles ARK, bien qu'elle soit assez technique.
+Il existe un groupe de discussion francophone public sur les ARK destiné aux personnes désireuses de partager et d'apprendre des autres sur la manière dont les ARK ont été ou pourraient être utilisés dans des applications de gestion d'identifiants.
+Le meilleur logiciel libre pour mettre en œuvre votre propre service ARK est actuellement Noid.
+</p><p>
+Vous n'avez rien d'autre à faire pour l'instant. Comme vous le savez peut-être, nous sommes en train de rédiger des déclarations de persistance normalisées (en anglais) que les autorités chargées de l'attribution des noms peuvent commencer à tester (les commentaires sont les bienvenus) et à utiliser si elles le souhaitent.
+</p><p>
+-$rname, au nom de NAAN-Registrar\@googlegroups.com
+</p><p>
+---- Spanish version ----
+</p><p>
+<p>
+Hola, $firstname,
+</p> <p>
+Gracias por su solicitud. El NAAN,
+</p> <p style = "margin-left: 4em">
+$naan
+</p> <p>
+se ha registrado para "$institution" y puede comenzar a usarlo de inmediato. Pueden pasar hasta 24 horas antes de que el sistema de resolución de N2T.net reconozca su NAAN.
+</p> <p>
+Tenga en cuenta que $naan está destinado a asignar ARK a contenido que su institución selecciona o crea directamente.
+En caso de que trabaje con otras instituciones que utilizan sus herramientas y servicios para el contenido que ellos curan o crean, esas instituciones deben tener sus propios NAAN.
+</p> <p>
+Al pensar en cómo administrar el espacio de nombres, puede resultarle útil considerar la práctica habitual de dividirlo con prefijos reservados ("<a href="https://arks.org/about/shoulders/"> hombros </ a > ") de, diga una letra seguida de un número, por ejemplo, nombres de la forma" ark:/$naan/x3 .... "para cada" subeditor "en una organización.
+Los prefijos opacos que solo tienen significado para los profesionales de la información suelen ser una buena idea y tienen precedente en esquemas como ISBN e ISSN.
+</p> <p>
+El mejor lugar de partida para obtener información sobre las ARK (claves de recursos de archivo) es la
+Sitio web de <a href="https://arks.org"> ARK Alliance </a>. También puede resultarle útil
+información en el
+<a href="https://wiki.lyrasis.org/display/ARKs/ARK+Identifiers+FAQ"> Preguntas frecuentes sobre ARK </a>
+(<a href="https://wiki.lyrasis.org/pages/viewpage.action?pageId=178880619"> versión francesa </a>,
+<a href="https://wiki.lyrasis.org/pages/viewpage.action?pageId=185991610"> versión en español </a>)
+y <a href="https://arks.org/about/"> esta descripción general del identificador ARK </a>.
+La <a href="https://n2t.net/ark:/13030/c7cv4br18"> especificación ARK </a> es actualmente la mejor guía sobre cómo crear URL que cumplan con las reglas ARK, aunque es bastante técnica.
+Hay un <a href="https://groups.google.com/group/arks-forum"> grupo de debate público para ARK </a>
+(<a href="https://framalistes.org/sympa/info/arks-forum-fr"> foro francófono </a>)
+destinado a personas interesadas en compartir y aprender de otras personas sobre cómo se han utilizado o podrían utilizarse las ARK en aplicaciones de identificación.
+El mejor software de código abierto para configurar su propia implementación de servicio ARK es actualmente <a href="http://n2t.net/e/noid.html"> Noid </a>.
+</p> <p>
+No hay nada más que deba hacer ahora mismo. Como sabrá, estamos redactando
+alguna <a href="https://n2t.net/ark:/13030/c7833mx7t"> persistencia estandarizada
+declaraciones </a> de que las autoridades que asignan nombres pueden comenzar a probar (los comentarios son
+bienvenido) y usarlo si lo desea.
+</p> <p>
+- $rname, en nombre de NAAN-Registrar\@googlegroups.com
 </p>
+
 </body>
 </html>
 EOT
@@ -845,7 +926,6 @@ sub confirm_mesg { my( $confirm_button )=@_;
 	# check for a block in the file and isolate it into $_ by
 	# deleting everything around it
 	s/^\s*\n//mg;		# drop blank lines
-	s/^\s*#.*\n//mg;	# drop comment lines
 
 	# Split the input block into params added by CGI script
 	# and params copied in from request form data.
@@ -865,8 +945,8 @@ sub confirm_mesg { my( $confirm_button )=@_;
 
 	#debug "from CGI rname=$rname, remail=$remail, naan=$naan";
 
-	my ($emsg, $naa_entry, $orgname, $firstname, $email, $provider);
-	my ($update_request);
+	my ($naa_entry, $orgname, $firstname, $email, $provider);
+	my ($emsg, $update_request);
 
 	pr_head( $button eq 'Confirm' ? 'Final' : 'Review candidate' );
 
@@ -882,7 +962,7 @@ sub confirm_mesg { my( $confirm_button )=@_;
 
 		# this will call init_dir
 		($emsg, $naa_entry, $orgname, $firstname, $email, $provider) =
-			from_request($naan, $raw_orig_request);
+			from_uform($naan, $raw_orig_request);
 		if ($emsg) {
 			perr "$emsg ($button): $_";
 			exit 1;
@@ -904,7 +984,8 @@ sub confirm_mesg { my( $confirm_button )=@_;
 		if (! save_request($update_request)) {	# save request to a file
 			exit 1;
 		}
-		($emsg, $naa_entry, $orgname, $firstname, $email, $provider) =
+		($emsg, $naa_entry, $orgname, $firstname, $email,
+				$provider) =
 			fetch_naa( $naan );
 		if ($emsg) {
 			perr "$emsg ($button): $_";
@@ -914,7 +995,7 @@ sub confirm_mesg { my( $confirm_button )=@_;
 	else {		# by elimination, $button must be Retest or Confirm
 		($emsg, $naa_entry, $orgname, $naan, $firstname, $email,
 				$provider) =
-			from_naa( $_ );
+			from_cform( $_ );
 		if ($emsg) {
 			perr "$emsg ($button): $_";
 			exit 1;
@@ -937,10 +1018,10 @@ sub confirm_mesg { my( $confirm_button )=@_;
 		$rname = $default_rname;
 	}
 	else {
-		my $grep = `grep "$naan" $cand_naans 2>&1`;
+		my $grep = `grep "^$naan" $cand_naans 2>&1`;
 		my $gstat = $? >> 8;
 		if ($gstat > 1) {
-			perr("could not do: grep $naan $cand_naans: $grep");
+			perr("could not do: grep '$naan' $cand_naans: $grep");
 			exit 1;
 		}
 		if ($gstat == 1 or $grep !~ /^$naan\s+(\S+)\s+(.*)\s*\n$/) {

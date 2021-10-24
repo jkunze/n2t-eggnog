@@ -50,8 +50,6 @@ like $x->{shoshoblade}, qr|^s3crowdxyz$|,
 
 like $x->{query}, qr|^\?-z-\?$|, 'query returned with hyphen intact';
 
-# xxx document "base identifier", not quite defined yet in
-#    http://ezid.cdlib.org/learn/id_concepts 
 $x = id_decompose($pfx, "ark:b2345/3bladepart.foo/afterbasepart?qpart");
 like $x->{nlid}, qr|^3bladepart.foo/afterbasepart$|,
 	'ark has distinguished nlid (NAAN-local id)';
