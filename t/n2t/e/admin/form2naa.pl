@@ -686,7 +686,7 @@ has been registered for "$institution" and you may begin using it immediately. I
 Please note that $naan is intended for assigning ARKs to content that your institution directly curates or creates.
 In case you work with other institutions that use your tools and services for content that they curate or create, those institutions should have their own NAANs.
 </p><p>
-In thinking about how to manage the namespace, you may find it helpful to consider the usual practice of partitioning it with reserved prefixes ("<a href="https://arks.org/about/shoulders/">shoulders</a>") of, say a letter followed by a number, eg, names of the form "ark:/$naan/x3...." for each "sub-publisher" in an organization.
+In thinking about how to manage the namespace, you may find it helpful to consider the usual practice of partitioning it with reserved prefixes ("<a href="https://arks.org/about/shoulders/">shoulders</a>") of a letter followed by a number, eg, names of the form "ark:/$naan/x3...." for each "sub-publisher" in an organization.
 Opaque prefixes that only have meaning to information professionals are often a good idea and have precedent in schemes such as ISBN and ISSN.
 </p><p>
 The best starting place for information on ARKs (Archival Resource Keys) is the
@@ -750,12 +750,12 @@ se ha registrado para "$institution" y puede comenzar a usarlo de inmediato. Pue
 Tenga en cuenta que $naan está destinado a asignar ARK a contenido que su institución selecciona o crea directamente.
 En caso de que trabaje con otras instituciones que utilizan sus herramientas y servicios para el contenido que ellos curan o crean, esas instituciones deben tener sus propios NAAN.
 </p> <p>
-Al pensar en cómo administrar el espacio de nombres, puede resultarle útil considerar la práctica habitual de dividirlo con prefijos reservados ("<a href="https://arks.org/about/shoulders/"> hombros </ a > ") de, diga una letra seguida de un número, por ejemplo, nombres de la forma" ark:/$naan/x3 .... "para cada" subeditor "en una organización.
+Al pensar en cómo administrar el espacio de nombres, puede resultarle útil considerar la práctica habitual de dividirlo con prefijos reservados (<a href="https://arks.org/about/shoulders/">hombros</a> ) de una letra seguida de un número, por ejemplo, nombres de la forma "ark:/$naan/x3...." para cada "subeditor" en una organización.
 Los prefijos opacos que solo tienen significado para los profesionales de la información suelen ser una buena idea y tienen precedente en esquemas como ISBN e ISSN.
 </p> <p>
 El mejor lugar de partida para obtener información sobre las ARK (claves de recursos de archivo) es la
-Sitio web de <a href="https://arks.org"> ARK Alliance </a>. También puede resultarle útil
-información en el
+sitio web de <a href="https://arks.org"> ARK Alliance </a>.
+También puede resultarle útil información en el
 <a href="https://wiki.lyrasis.org/display/ARKs/ARK+Identifiers+FAQ"> Preguntas frecuentes sobre ARK </a>
 (<a href="https://wiki.lyrasis.org/pages/viewpage.action?pageId=178880619"> versión francesa </a>,
 <a href="https://wiki.lyrasis.org/pages/viewpage.action?pageId=185991610"> versión en español </a>)
@@ -766,9 +766,9 @@ Hay un <a href="https://groups.google.com/group/arks-forum"> grupo de debate pú
 destinado a personas interesadas en compartir y aprender de otras personas sobre cómo se han utilizado o podrían utilizarse las ARK en aplicaciones de identificación.
 El mejor software de código abierto para configurar su propia implementación de servicio ARK es actualmente <a href="http://n2t.net/e/noid.html"> Noid </a>.
 </p> <p>
-No hay nada más que deba hacer ahora mismo. Como sabrá, estamos redactando
-alguna <a href="https://n2t.net/ark:/13030/c7833mx7t"> persistencia estandarizada
-declaraciones </a> de que las autoridades que asignan nombres pueden comenzar a probar (los comentarios son
+No hay nada más que deba hacer ahora mismo. Estamos redactando
+algunas <a href="https://n2t.net/ark:/13030/c7833mx7t"> persistencia estandarizada
+declaraciones </a> que las autoridades que asignan nombres pueden comenzar a probar (los comentarios son
 bienvenido) y usarlo si lo desea.
 </p> <p>
 - $rname, en nombre de NAAN-Registrar\@googlegroups.com
