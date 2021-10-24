@@ -1,5 +1,6 @@
 # This is the master eggnog/n2t configuration file. It defines hosts,
 # classes, cron behavior, certain special redirects, and more.
+# See n2t_create/crontab.main for schedule.
 # Use "egg cfq _list" to check which values are in effect.
 
 # Note: changes made here do not take effect until the next "n2t rollout".
@@ -19,7 +20,7 @@ hosts:
     syserr_check: 1
     log_rotate: 1
     backup: 1
-    #new_cert_action: notify	# email to cron $MAILTO
+    new_cert_action: restart	# for cert_sync.sh restartcmd
     vhost_ruuapp: ruu.app
     # NB: no automatic patching in prd
 
