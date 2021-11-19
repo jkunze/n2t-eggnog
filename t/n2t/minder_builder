@@ -29,6 +29,9 @@ cat <<- EOT > $rwplus.pre
 
 #RewriteRule ^/ark:/?13960.*\$      "_rslv_\${map_oca:%{REQUEST_URI}.resolve \${$hdrblob}}"
 
+# Temporary transition rule for new s2 shoulder 2021.11.19
+RewriteRule ^/(ark:/?13960/s2.*)\$ "https://ark.archive.org/\$1" [L]
+    
 # Internet Archive YYY this one-off does not scale
 RewriteRule ^/(ark:/?13960.*)\$ \\
     "_rslv_\${map_oca:\${esc:\$1%{ENV:THUMPER}}.resolve \${$hdrblob}}" [NC]

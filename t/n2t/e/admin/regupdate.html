@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!--#include virtual="/e/prelim.html" -->
+  <title>Process NAAN request</title>
+</head>
+<body>
+<div class="content">
+<!--#include virtual="/e/header.html" -->
+<div class="container-narrowest">
+<div class="section" id="naanq2e">
+<h1>Process NAAN request</h1>
+<p>
+Use this form to create or update a NAAN entry based on data emailed to
+you when a person (the requester) filled out and submitted a google form.
+Do not correct requester data on this page unless instructed to do so (rare).
+</p>
+<form id="naanform" action="/e/admin/regupdate.pl">
+<p>
+<b>Step 1.</b>
+On github edit the <code>candidate_naans</code> file and
+find the line with the first unused 5-digit number. If processing a new
+NAAN, add your email address and name after the NAAN on that line.
+If processing an update, before that line insert the NAAN in question and add
+them after it. Do not comment out this line. It will be commented out for you
+automatically after processing.
+Commit your edits before submitting.
+</p>
+<p>
+<b>Step 2.</b>
+Enter the
+<label for="unaan">NAAN:</label>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<input type="text" id="unaan" name="unaan" placeholder="98765">
+</p>
+<p>
+<b>Step 3.</b>
+Paste the requester's data into this box
+(currently showing the default new NAAN test text).
+<!--  <label for="request">Request Form Output:</label> -->
+<!-- text below line should match $request_default in main processing script -->
+<textarea name="request" cols="94" rows="14" id="request" form="naanform"
+ placeholder="I would like	To request a new NAAN
+Information about the memory organization
+Organization name:	Journal of Cryptozoology
+Organization acronym preferred:	JoC
+Memory organization address:	oakland, CA 99999
+Memory organization type:	Mass media (journalism, television, ...)
+Memory organization status:	Not-for-profit
+N2T resolver rule:	https://NLN.example.org/ojs/${nlid}
+Organization homepage (URL):	https://NLN.example.org
+Contact information
+Are you a service provider?	No, or I'm not sure
+Primary contact name:	Jan Jones
+Primary contact email address:	janjjones@gmail.com
+Primary contact position/role:	coder
+Alternate contact name:	sam smith
+Alternate contact email:	janjjones@gmail.com
+Information about ARK usage plans
+What are you planning to assign ARKs to using the requested NAAN?	documents (text or page images, eg, journal articles, technical reports)
+supplemental data
+Which of the following practices do you plan to implement when you assign ARKs on this NAAN?	No re-assignment. Once a base identifier-to-object association has been made public, that association shall remain unique into the indefinite future.
+Opacity. Base identifiers shall be assigned with no widely recognizable semantic information. This can be achieved with a string generator such as Noid. Assigning ARKs based on a simple numerical counter is another option.
+Check characters. A check character will be generated in assigned identifiers to guard against common transcription errors. This can be achieved with a string generator such as Noid.
+Lowercase only. Any letters in assigned base identifiers will be lowercase.
+Does the memory organization commit to data persistence?	Yes, this organization agrees to commit to data persistence.
+Other information:	nothing else"
+>
+</textarea>
+</p>
+<p>
+<b>Step 4.</b>
+Submit this form with the appropriate button:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<input type="submit" name="button" value="NEW">
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<b>OR</b>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<input type="submit" name="button" value="UPDATE">
+</p>
+</form>
+
+</div>
+</div>
+</div>
+<!--#include virtual="/e/footer.html" -->
+</body>
+</html>
+<!--  <input type="text" id="request" size="60" name="request"><br/> -->
