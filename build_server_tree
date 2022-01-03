@@ -1353,7 +1353,7 @@ build_passwd || {
 
 # create password file pwdfile_naan_curators for NAAN curators from input:
 #    Working Email       Generated Password
-#    jak@ucop.edu        lkajsjfoiwe
+#    jakkbl@gmail.com        lkajsjfoiwe
 #    bertrand@bnf.fr     woruouweuou
 # generate 12-char password for every member of NAAN WG
 # yyy       date +%s | md5sum | head -c 12

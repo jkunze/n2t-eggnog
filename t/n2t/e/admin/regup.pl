@@ -56,6 +56,8 @@ Other information:	If you can, please don't give my institution NAAN 66666.
 Committed to data persistence?	Agree
 EOT
 
+# XXX XXX make sure Test ARK works at BOTH n2t and their own site
+
 $request_default = << 'EOT';
 I would like	To request a new NAAN
 Information about the memory organization
@@ -65,6 +67,7 @@ Memory organization address:	oakland, CA 99999
 Memory organization type:	Mass media (journalism, television, ...)
 Memory organization status:	Not-for-profit
 N2T resolver rule:	https://NLN.example.org/ojs/${nlid}
+Test ARK:	https://NLN.example.org/ark:/12345/x8rd9
 Organization homepage (URL):	https://NLN.example.org
 Contact information
 Are you a service provider?	No, or I'm not sure

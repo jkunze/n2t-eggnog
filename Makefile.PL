@@ -26,7 +26,7 @@ my $pm = {
 WriteMakefile(
     EXE_FILES	   => [ 'egg', 'nog', 'anvl2egg', 'orlogs' ],
     NAME	   => 'File::EggNog',	# XXX 'EggNog'
-    AUTHOR	   => 'John A. Kunze <jak@ucop.edu>',
+    AUTHOR	   => 'John A. Kunze <jakkbl@gmail.com>',
     VERSION_FROM   => 'VERSION',
     ABSTRACT	   => 'commands and routines to make and resolve identifiers',
    ($ExtUtils::MakeMaker::VERSION ge 6.3002

@@ -4,7 +4,7 @@ use 5.006;
 use strict;
 use warnings;
 
-# Author:  John A. Kunze, jak@ucop.edu, California Digital Library
+# Author:  John A. Kunze, jakkbl@gmail.com, California Digital Library
 # Copyright (c) 2013-2015 UC Regents
 # 
 # Permission to use, copy, modify, distribute, and sell this software and

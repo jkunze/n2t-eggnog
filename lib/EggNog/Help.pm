@@ -18,7 +18,7 @@ our @EXPORT_OK = qw(
 );
 our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
 
-# Author:  John A. Kunze, jak@ucop.edu, California Digital Library
+# Author:  John A. Kunze, jakkbl@gmail.com, California Digital Library
 # 
 # Copyright 2011-2012 UC Regents.  Open source BSD license.
 

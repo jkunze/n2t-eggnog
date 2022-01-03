@@ -8,7 +8,7 @@
 
 service: n2t
 role_account: n2t		# defaults to service name
-contact_email: jak@ucop.edu
+contact_email: jakkbl@gmail.com
 
 hosts:
   ids-n2t2-prd.n2t.net:

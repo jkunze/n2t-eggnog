@@ -68,7 +68,7 @@ use EggNog::Minder ':all';	# xxx be more restricitve
 
 # Nog - Nice opaque generator (Perl module)
 # 
-# Author:  John A. Kunze, jak@ucop.edu, California Digital Library
+# Author:  John A. Kunze, jakkbl@gmail.com, California Digital Library
 #		Originally created, UCSF/CKM, November 2002
 # 
 # Copyright 2008-2012 UC Regents.  Open source BSD license.

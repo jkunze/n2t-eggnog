@@ -4,7 +4,7 @@ use 5.006;
 use strict;
 use warnings;
 
-# Author:  John A. Kunze, jak@ucop.edu, California Digital Library
+# Author:  John A. Kunze, jakkbl@gmail.com, California Digital Library
 # Copyright (c) 2014 UC Regents
 
 # The arg should be a DOI prefix tail, ie, the prefix part following "10.",

@@ -46,7 +46,7 @@ our @suffixable = ( EggNog::Binder::TRGT_MAIN );
 
 # Resolver - resolver functions (Perl module)
 # 
-# Author:  John A. Kunze, jak@ucop.edu, California Digital Library
+# Author:  John A. Kunze, jakkbl@gmail.com, California Digital Library
 #		Originally created, UCSF/CKM, November 2002
 # 
 # Copyright 2008-2017 UC Regents.  Open source BSD license.
@@ -2399,7 +2399,7 @@ sub doip2naan { my $prefix = shift or return '';
 #where:  http://n2t.net
 #how:    NP | NR, OP | 2011 |
 #!why:   ARK
-#!contact: Kunze, John | California Digital Library || jak@ucop.edu
+#!contact: Kunze, John | California Digital Library || jakkbl@gmail.com
 ##! 97720 = Burns, Oregon
 
 # We don't check, but both args should be non-empty strings,
