@@ -45,6 +45,7 @@ WriteMakefile(
 	'File::Find'		=> '0',
 	'File::Path'		=> '0',
 	'File::Spec'		=> '0',
+	'File::ANVL'		=> '0',
 	'File::Value'		=> '1.01',
 	'File::Namaste'		=> '1.00',
 	'File::Pairtree'	=> '1.01',
