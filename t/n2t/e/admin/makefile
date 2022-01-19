@@ -1,4 +1,5 @@
 FORM_URL= https://${EGNAPA_HOST}/e/admin/naanq2e.html
+NEWFORM_URL= https://${EGNAPA_HOST}/e/admin/regupdate.html
 WEBFILES= q2e.pl form2naa.pl naanq2e.html regup.pl regupdate.html regupdate.pl
 PUBDIR=  $(HOME)/sv/cur/apache2/htdocs/e/admin
 
@@ -11,3 +12,4 @@ all:
 test:
 	cp -pr $(WEBFILES) $(PUBDIR)/
 	@echo "Visit $(FORM_URL) to test."
+	@echo "NEW: Visit $(NEWFORM_URL) to test."

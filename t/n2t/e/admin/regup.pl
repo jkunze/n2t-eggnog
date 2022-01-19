@@ -79,10 +79,13 @@ Alternate contact email:	janjjones@gmail.com
 Information about ARK usage plans
 What are you planning to assign ARKs to using the requested NAAN?	documents (text or page images, eg, journal articles, technical reports)
 supplemental data
-Which of the following practices do you plan to implement when you assign ARKs on this NAAN?	No re-assignment. Once a base identifier-to-object association has been made public, that association shall remain unique into the indefinite future.
-Opacity. Base identifiers shall be assigned with no widely recognizable semantic information. This can be achieved with a string generator such as Noid. Assigning ARKs based on a simple numerical counter is another option.
-Check characters. A check character will be generated in assigned identifiers to guard against common transcription errors. This can be achieved with a string generator such as Noid.
-Lowercase only. Any letters in assigned base identifiers will be lowercase.
+Assignment practices:	re-assignment. Once a base name-to-object association has been made public, that association shall remain unique into the indefinite future. (NR)
+Opacity. Base names shall be assigned with no widely recognizable semantic information. This can be achieved with a string generator such as Noid. Assigning ARKs based on a simple numerical counter is another option. (OP)
+Check characters. A check character will be generated in assigned base names to guard against common transcription errors. This can be achieved with a string generator such as Noid. (CC)
+Lowercase only. Any letters in assigned ARKs will be lowercase. (LC)
+Uppercase only. Any letters in assigned ARKs will be uppercase. (UC)
+Mixed case. Letters in ARKs may be assigned in lowercase or uppercase. (MC)
+Other...
 Does the memory organization commit to data persistence?	Yes, this organization agrees to commit to data persistence.
 Other information:	nothing else
 EOT
@@ -307,8 +310,22 @@ my $naan_restored = 0;
 my $real_thing;
 my ($workdir, $repodir, $main_naans, $cand_naans);
 
+sub start_http_response {
+
+	# Need to unbuffer STDOUT since often what's printed to STDERR comes
+	# out before the critical newline starting a valid HTTP Response body.
+	# If we don't do this, it generates an internal server error and we
+	# never see the message we're trying to print.
+	# NB: not a bad idea to call this before writing anything to STDERR
+	# as it is harmless even if the HTTP Response body is already started.
+
+	$| = 1;		# unbuffer STDOUT
+	print "\n";	# newline that separates HTTP header from body
+}
+
 sub perr {
-	print "\n";
+
+	start_http_response();
 	say STDERR '<pre>';
 	print STDERR ($from_vim ? "# Error: " : "Error: ");
 	say STDERR @_;
@@ -316,11 +333,23 @@ sub perr {
 }
 
 sub debug {
-	print "\n";
+
+	start_http_response();
 	say STDERR '<pre>';
 	print STDERR ($from_vim ? "# debug: " : "debug: ");
 	say STDERR @_;
 	say STDERR '</pre>';
+}
+
+# Save string $s to a file and return "" on success, or message on error.
+
+sub file_save { my ($s, $filename)=@_;
+
+	open OUT, ">", $filename or
+		return "could not open file $filename for writing";
+	print OUT $s;
+	close OUT;
+	return "";
 }
 
 # Initialize working directory and set some globals:
@@ -460,12 +489,16 @@ sub from_uform { my( $naan, $input )=@_;
 
 	s/\r//g;		# drop any CR's (pasted in from Windows)
 	s/\n*$/\n/s;		# make sure it ends in just one \n
+	s/^Information about[^:\n]*\n//gm;	# drop two headers
+	s/^Contact information\n//m;		# drop another header
 	# Make last char before tab be a :, replacing a : or ?, if any.
 	# Also, some clients (Windows) may add a space before tab -- drop these
-	s/[:?]? *\t+/: /g and	# YAML needs : and forbids tab-for-space, and
-		# as long as we're not doing CSV fields, elide \n in front of
-		s/\n([^:]*)$/ $1/m and	# lines with no colon (a contin. line),
-		s/$/\n/;		# but make sure whole thing ends in \n
+	#s/[:?]? *\t+/: /g and	# YAML needs : and forbids tab-for-space, and
+	s/[:?]? *\t+/: /g;	# YAML needs : and forbids tab-for-space.
+# as long as we're not doing CSV fields, elide \n in front of
+#s/\n([^:]*)$/ $1/m and	# lines with no colon (a contin. line),
+	s/\n([^:\n]+)$/ ||| $1/gm;	# lines with no colon (a contin. line),
+	s/$/\n/;		# but make sure whole thing ends in \n
 
 	# Flag annoying non-ascii punctuation (eg, ' and -). Unicode errors
 	# happen that raise fatal exceptions happen too often to leave them
@@ -525,33 +558,38 @@ EOT
 			$h = Load($_);	# YAML parse, returning hash reference
 
 			# If the first and last fields aren't present,
-			# there's likely an incomplete copy/paste job.
+			# there's often an incomplete copy/paste job.
 
 			$copy_err = ! $h->{'Organization name'} ||
-				    ! $h->{'Committed to data persistence'}
+				    ! $h->{'Does the memory organization commit to data persistence'}
 				    ? "Missing organization name or commitment."
 				    : '';
 
-			$fullname = $h->{'Contact name'} || '';
+			$fullname = $h->{'Primary contact name'} || '';
 			$orgname = $h->{'Organization name'} || '';
 			$acronym = $h->{'Organization acronym preferred'} || '';
 			$ostatus = $h->{'Organization status'} || '';
-			$URL = $h->{'Organization base URL'};
-			$email = $h->{'Contact email address'};
-			$address = $h->{'Organization address'};
+			$URL = $h->{'N2T resolver rule'};
+			$email = $h->{'Primary contact email address'};
+			$address = $h->{'Memory organization address'};
 			#$provider = $h->{'Service provider'} || '';
-			$provider = $h->{'Service provider contact information'} || '';
-			$role = $h->{'Position in organization'} || '';
+$provider = $h->{'Alternate contact email'} || '';
+			$role = $h->{'Primary contact position/role'} || '';
 			$other = $h->{'Other information'} || '';
 		}
 		catch {
-			$copy_err = "YAML error, likely a copy paste problem.";
+			$copy_err = "There was a YAML formatting error.";
 		}
 	}
 	# yyy check if YAML strips surrounding whitespace
 	if ($copy_err) {
+		my $msg = file_save($_, "new_input_bad.yaml");
+		# saved in directory .../apache2/htdocs/e/admin
 		return ("Looks like an incomplete request. Please go back "
-			. "and check for a copy/paste error.\n$copy_err");
+			. "and check for a copy/paste error.\n"
+			. "$copy_err\n" . ($msg ? $msg :
+				"Input saved in new_input_bad.yaml\n")
+			);
 	}
 
 	# Get part of personal name (just a guess, so bears checking)
@@ -1016,7 +1054,6 @@ sub confirm_mesg { my( $confirm_button )=@_;
 	my ($emsg, $update_request);
 
 	pr_head( $button eq 'Confirm' ? 'Final' : 'Review candidate' );
-say "XXXwyyy button=$button";
 
 	if ($button eq 'NEW') {
 		$saved_naa_file = $NEW_NAA_OP;
@@ -1032,7 +1069,7 @@ say "XXXwyyy button=$button";
 		($emsg, $naa_entry, $orgname, $firstname, $email, $provider) =
 			from_uform($naan, $raw_orig_request);
 		if ($emsg) {
-			perr "$emsg ($button): $_";
+			perr("$emsg ($button): $_");
 			exit 1;
 		}
 		$_ = $raw_orig_request;
@@ -1045,6 +1082,7 @@ say "XXXwyyy button=$button";
 			$play_mode = 1;
 		}
 		if (! init_dir($naan)) {
+			start_http_response();
 			say STDERR "Could not initialize directory for $naan";
 			exit 1;
 		}
@@ -1069,6 +1107,7 @@ say "XXXwyyy button=$button";
 			exit 1;
 		}
 		if (! init_dir($naan)) {
+			start_http_response();
 			say STDERR "Could not initialize directory for $naan";
 			exit 1;
 		}
