@@ -532,7 +532,7 @@ EOT
 	# "Timestamp","Contact name:","Contact email address:","Organization name:","Position in organization:","Organization address:","Organization base URL:","Organization status:","Service provider:","Organization acronym preferred:","Other information:"
 	my $timestamp;			# unused field if it's a CSV parse
 	my $h;				# hash if it's a YAML parse
-	my ($fullname, $email, $orgname, $role, $address,
+	my ($fullname, $email, $orgname, $role, $address, $practices,
 		$URL, $ostatus, $provider, $acronym, $other);
 	my ($firstname, $lastname);
 	my $copy_err;
@@ -568,9 +568,10 @@ EOT
 			$fullname = $h->{'Primary contact name'} || '';
 			$orgname = $h->{'Organization name'} || '';
 			$acronym = $h->{'Organization acronym preferred'} || '';
-			$ostatus = $h->{'Organization status'} || '';
+			$ostatus = $h->{'Memory organization status'} || '';
 			$URL = $h->{'N2T resolver rule'};
 			$email = $h->{'Primary contact email address'};
+			$practices = $h->{'Assignment practices'};
 			$address = $h->{'Memory organization address'};
 			#$provider = $h->{'Service provider'} || '';
 $provider = $h->{'Alternate contact email'} || '';
@@ -606,6 +607,14 @@ $provider = $h->{'Alternate contact email'} || '';
 		$acronym =~ s/\b(.).*?\b/\U$1/g;	# first letter
 		$acronym =~ s/\s//g;			# drop whitespace
 	}
+
+	my $pract = '';
+	foreach my $p (split / *\|\|\| */, $practices) {
+		$p =~ s/.*\(([A-Z][A-Z])\).*/$1/;
+		$pract .= ", $p";
+	}
+	$pract =~ s/^, //;
+	$pract ||= "(:unkn) unknown";
 
 	my $bmodel =
 		($ostatus eq 'For profit' ? 'FP' :
@@ -653,7 +662,7 @@ who:    $orgname (=) $acronym
 what:   $naan
 when:   $year.$mon.$mday
 where:  $URL
-how:    $bmodel | (:unkn) unknown | $year |
+how:    $bmodel | $pract | $year |
 !why:   ARK
 !contact: $lastname, $firstname ($role) ||| $email |
 !address: $address$provider_line

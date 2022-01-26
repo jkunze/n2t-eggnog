@@ -1695,10 +1695,11 @@ AliasMatch ^/\$ $document_root/e/homepage.html
 #     should rewritemap do it's own count and die, and does it restart
 #     automatically?
 
-# new (2.4) log levels
-LogLevel warn rewrite:trace8
-# XXX writes lots of log info -- remember to truncate or set level to 0
-#RewriteLogLevel 9
+# Apache 2.4 log levels
+LogLevel warn
+#LogLevel warn rewrite:trace8
+#rewrite:trace8 writes maximum amount of log info
+# used to be RewriteLogLevel 9
 
 # new (2.4) can't do separate rewrite logging
 ## !! RewriteLock file must not exist on startup [jak]
