@@ -611,9 +611,11 @@ $provider = $h->{'Alternate contact email'} || '';
 	my $pract = '';
 	foreach my $p (split / *\|\|\| */, $practices) {
 		$p =~ s/.*\(([A-Z][A-Z])\).*/$1/;
-		$pract .= ", $p";
+		$p =~ s/.*Other...//;
+		$pract .= ", $p";	# starts with "," as a side-effect
 	}
-	$pract =~ s/^, //;
+	$pract =~ s/^, //;		# clean up side-effect
+	$pract =~ s/, $//;		# clean up an empty Other... entry
 	$pract ||= "(:unkn) unknown";
 
 	my $bmodel =
@@ -750,6 +752,25 @@ by the N2T.net resolver.
 All the best,
 </p><p>
 -$rname, on behalf of NAAN-Registrar\@googlegroups.com
+</p><p>
+---- French version ----
+</p><p>
+Bonjour $firstname,
+</p><p>
+Merci de nous aider à garder le registre NAAN à jour. La modification demandée
+a été effectuée. Le résolveur N2T.net peut mettre jusqu'à 24 heures pour la
+prendre en compte.
+</p><p>
+-$rname, au nom de NAAN-Registrar\@googlegroups.com
+</p><p>
+---- Spanish version ----
+Hola $firstname,
+</p><p>
+Gracias por ayudarnos a mantener el registro de NAAN al día. El cambio
+solicitado esta hecho. Los cambios pueden tardar hasta 24 horas para ser
+reconocidos por el sistema de resolución N2T.net.
+</p><p>
+-$rname, en nombre de NAAN-Registrar\@googlegroups.com
 </p>
 </body>
 </html>
@@ -856,7 +877,7 @@ Vous n'avez rien d'autre à faire pour l'instant. Comme vous le savez peut-être
 ---- Spanish version ----
 </p><p>
 <p>
-Hola, $firstname,
+Hola $firstname,
 </p> <p>
 Gracias por su solicitud. El NAAN,
 </p> <p style = "margin-left: 4em">
@@ -949,7 +970,8 @@ sub oinfo { my( $info_file, $update_request )=@_;
 			. $safe_other_info;
 	}
 	else {					# NEW_NAA_OP
-		$other_info = "Other information from the requester:"
+		$other_info =
+			"Here is some other information from the requester:"
 			. $safe_other_info;
 	}
 	return $other_info;
@@ -987,7 +1009,7 @@ sub out_errs { my( $Rerrs )=@_;
 		say "<li>", encode_entities( $e ), "</li>";
 	}
 	say "</ol></p>";
-	say "<p>Changes required. &nbsp; &nbsp; &nbsp; &nbsp;";
+	say "<p><b>Changes required.</b> &nbsp; &nbsp;";
 	return $numerrs;
 }
 
@@ -1220,7 +1242,10 @@ EOT
 	}
 
 	use lib "/apps/n2t/local/lib";
-	use NAAN;
+	use NAAN;	# used to check registry for well-formedness
+			# master copy maintained in $sn (n2t_create)
+			# xxx should be sync'd with copy in naan_reg_priv so
+			#     "make validate" reports consistent results
 	my $contact_info = 1;	# 1 means contact info is present
 	my ($ok, $msg, $Rerrs) =
 		NAAN::validate_naans($main_naans, $contact_info, $linenums);
