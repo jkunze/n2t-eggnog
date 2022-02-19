@@ -27,14 +27,17 @@ cat <<- EOT > $rwplus.pre
 # AND a rewrite rule for when a specific single resolver is requested
 # (using ^/r/...) by a user/tester.
 
-#RewriteRule ^/ark:/?13960.*\$      "_rslv_\${map_oca:%{REQUEST_URI}.resolve \${$hdrblob}}"
+# Feb 2022: all IA ARKs to be resolved by IA resolver
+# Removed special case RewriteRule to consult N2T's IA/OCA binder,
+# and that way the first lookup will fail and fall through to NAAN
+# registry setting.
 
-# Temporary transition rule for new s2 shoulder 2021.11.19
-RewriteRule ^/(ark:/?13960/s2.*)\$ "https://ark.archive.org/\$1" [L]
+## Temporary transition rule for new s2 shoulder 2021.11.19
+#RewriteRule ^/(ark:/?13960/s2.*)\$ "https://ark.archive.org/\$1" [L]
     
-# Internet Archive YYY this one-off does not scale
-RewriteRule ^/(ark:/?13960.*)\$ \\
-    "_rslv_\${map_oca:\${esc:\$1%{ENV:THUMPER}}.resolve \${$hdrblob}}" [NC]
+## Internet Archive YYY this one-off does not scale
+#RewriteRule ^/(ark:/?13960.*)\$ \\
+#    "_rslv_\${map_oca:\${esc:\$1%{ENV:THUMPER}}.resolve \${$hdrblob}}" [NC]
 
 # Added "[^/]*" to end of NAAN below to accommodate NAAN-dev constructs.
 
@@ -66,6 +69,7 @@ RewriteRule ^/ark:/?(99999[^/]*/9([^_]+)_.*)\$ "/ark:/\$2/\$1" [NC,R=302]
 
 #RewriteRule ^/ark:/?99152.*\$      "_rslv_\${map_yamz:%{REQUEST_URI}.resolve \${$hdrblob}}"
 
+# XXX drop this and rely on shoulder file?
 # TemaTres YYY this one-off does not scale
 #ark:/99152/t3				# TemaTres vocabulary shoulder
 RewriteRule ^/(ark:/?99152[^/]*/t3.*)\$ \\
@@ -78,9 +82,11 @@ RewriteRule ^/(ark:/?99152[^/]*/t3.*)\$ \\
 #  manager: "ezid"
 #  name: "OpenContext PeriodO"
 #  date: "2015.01.26"
+# XXX drop this and rely on shoulder file?
 RewriteRule ^/(ark:/?99152[^/]*/p0.*)\$ \\
     "_rslv_\${map_ezid:\${esc:\$1%{ENV:THUMPER}}.resolve \${$hdrblob}}" [NC]
 
+# XXX drop this and rely on shoulder file?
 # YAMZ YYY this one-off does not scale
 RewriteRule ^/(ark:/?99152.*)\$ \\
     "_rslv_\${map_yamz:\${esc:\$1%{ENV:THUMPER}}.resolve \${$hdrblob}}" [NC]
@@ -191,6 +197,7 @@ RewriteRule ^/(.*) http://n2t.net/\$1 [L,R=permanent]
 #RewriteRule ^/[tT]-ark:/?99152/?.*\$      "_rslv_\${map_yamz_test:%{REQUEST_URI}.resolve \${$hdrblob}}" [NC]
 #RewriteRule ^/[tT]-ark:/?.*\$             "_rslv_\${map_ezid_test:%{REQUEST_URI}.resolve \${$hdrblob}}" [NC]
 
+# yyy leave these? they're used in some binder tests
 RewriteRule ^/([tT]-ark:/?13960.*)\$ \\
    "_rslv_\${map_oca_test:\${esc:\$1%{ENV:THUMPER}}.resolve \${$hdrblob}}" [NC]
 RewriteRule ^/([tT]-ark:/?99152.*)\$ \\
@@ -344,6 +351,7 @@ else
 	)
 fi
 
+# XXX remove this stuff soon
 ppltr=yamz
 mtemplate=ddd
 # -Mblib again.
@@ -368,6 +376,7 @@ do
 	fi
 done
 
+# XXX remove this stuff soon
 ppltr=oca
 naanshdr=13960/t
 mtemplate=deedeedk

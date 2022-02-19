@@ -2513,8 +2513,6 @@ cat << EOT >> conf/rewrite3-generic.conf
 # been looked up via RewriteMap, ie, we're POST database lookup processing.
 #############
 
-# xxx maybe a good idea for speed:  RewriteRule ^/ark:/?(13960/.*)\$  ...
-
 # * These inflection checks should come after rewritemap lookups
 # * because SPT will have left them intact.
 #

@@ -123,11 +123,6 @@ if ($production_data eq "yes\n") {
 	like $x, qr{^Location: http://bibnum.*}m,
 		"U Lyon target redirect";
 
-	#  http://www.archive.org/details/testsandreagents031780mbp
-	$x = `wegn -v locate "ark:/13960/t00000m0v"`;
-	like $x, qr/^Location: http:.*testsandreagents031780mbp/m,
-		"OCA target redirect";
-
 	$x = `wegn locate "ark:/99152/h1023"`;
 	like $x, qr{^Location: http://yamz.net/term/concept=h1023.*}m,
 		"YAMZ target redirect";
@@ -152,6 +147,30 @@ if ($production_data eq "yes\n") {
 else {
 	say "--- SKIPPED tests requiring production data";
 }
+
+# Test two of long-time partner OCA/IA's ARKs to make sure that the new
+# 2022 arrangement is working. It doesn't use the live IA service but
+# does use some ARKs IA is known to have been minted at one time.
+#
+# IA is ok to test these two ARKs against their live service; in particular,
+# curl -vL http://$EGNAPA_HOST/ark:/13960/t00000m0v
+#  --> Location: https://www.archive.org/details/testsandreagents031780mbp
+# curl -vL https://$EGNAPA_HOST/ark:13960/s2qwhrnc184
+#  --> Location: https://archive.org/details/utesforgottenpeo0000rock
+# Here's a third one to try:
+# curl -vL https://$EGNAPA_HOST/ark:/13960/s2m3w6wn30f
+#  --> https://archive.org/details/potts-euclid
+
+$x = `wegn -v locate "ark:/13960/t00000m0v"`;
+like $x, qr|^Location: https://ark.archive.org/ark:/13960/t00000m0v|m,
+	"OCA target https redirect, old-style ARK, original t shoulder";
+
+# XXX at some point N2T should forward new arks (no first slash) without adding
+# the slash, ie, preserving the incoming style
+# XXX ... or should that be an NMA option?
+$x = `wegn -v locate "ark:13960/s2m3w6wn30f"`;
+like $x, qr|^Location: https://ark.archive.org/ark:/13960/s2m3w6wn30f|m,
+	"OCA target https redirect, new-style ARK, new s2 shoulder";
 
 #$x = `crontab -l`;
 #like $x, qr/replicate/, 'crontab replicates periodically';
@@ -267,21 +286,21 @@ $x = `wegn resolve "$cdl_ark??"`;
 like $x, qr|erc:.*who: CDL.*when: 2014.*persistence:|s,
 	"?? inflection produces kernel plus persistence elements";
 
-my $yamz_ark = 'ark:/99152/dummy';		# don't clobber real term!
-my $yamz_tgt = 'https://yamz.net/term=dummy';
-my $ubdr = '@yamz@@yamz';	# user and binder for HUMB argument
-
-$x = `wegn $ubdr $yamz_ark.set _t $yamz_tgt`;
-like $x, qr/^egg-status: 0/m, "egg sets target for $yamz_ark";
-
-$x = `wegn $ubdr $yamz_ark.set erc.who id`;
-$x = `wegn $ubdr $yamz_ark.set erc.when 2018`;
-$x = `wegn $ubdr $yamz_ark.set erc.what association_between_string_and_thing`;
-like $x, qr/^egg-status: 0/m, "egg sets definition for $yamz_ark";
-
-$x = `wegn resolve "$yamz_ark?"`;
-like $x, qr|erc:.*who: id.*what: assoc.*when: 2018|s,
-	"? inflection produces kernel elements for non-ezid ark";
+#my $yamz_ark = 'ark:/99152/dummy';		# don't clobber real term!
+#my $yamz_tgt = 'https://yamz.net/term=dummy';
+#my $ubdr = '@yamz@@yamz';	# user and binder for HUMB argument
+#
+#$x = `wegn $ubdr $yamz_ark.set _t $yamz_tgt`;
+#like $x, qr/^egg-status: 0/m, "egg sets target for $yamz_ark";
+#
+#$x = `wegn $ubdr $yamz_ark.set erc.who id`;
+#$x = `wegn $ubdr $yamz_ark.set erc.when 2018`;
+#$x = `wegn $ubdr $yamz_ark.set erc.what association_between_string_and_thing`;
+#like $x, qr/^egg-status: 0/m, "egg sets definition for $yamz_ark";
+#
+#$x = `wegn resolve "$yamz_ark?"`;
+#like $x, qr|erc:.*who: id.*what: assoc.*when: 2018|s,
+#	"? inflection produces kernel elements for non-ezid ark";
 
 #$x = `wegn locate "$srch_ark$srch_ext"`;
 #wegn resolve 'ark:/12345/fk1234??'
