@@ -151,6 +151,9 @@ my $rwind = '^==* report window .* to \([0-9].*\)$';
 #	| sed -n -e 's/^.=mod== [^ ][^ ]* //p' -e 's/$rwind/# end: \\1/p'`;
 my $changed_ids = `tlog --iddump $changetime $td/logs/transaction_log`;
 
+#say "xxx cmd: tlog --iddump $changetime $td/logs/transaction_log";
+#say "xxxxxx premature end. changed_ids=$changed_ids"; exit;
+
 my $report_end_time;	# in practice, a tlog parameter for next harvest
 $changed_ids =~ s/^# next harvest: (\S+) \S+\n//m and
 	$report_end_time = $1;
