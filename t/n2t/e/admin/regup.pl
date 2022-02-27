@@ -823,13 +823,15 @@ has been registered for "$institution" and you may begin using it immediately. I
 </p><p>
 Please note that $naan is intended for assigning ARKs to content that your institution directly curates or creates.
 In case you work with other institutions that use your tools and services for content that they curate or create, those institutions should have their own NAANs.
+To request a change for your NAAN registration, such as to update its N2T resolver URL or your contact information, please use <a href="https://n2t.net/e/naan_request">this form</a>.
 </p><p>
 In thinking about how to manage the namespace, you may find it helpful to consider the usual practice of partitioning it with reserved prefixes ("<a href="https://arks.org/about/shoulders/">shoulders</a>") of a letter followed by a number, eg, names of the form "ark:/$naan/x3...." for each "sub-publisher" in an organization.
 Opaque prefixes that only have meaning to information professionals are often a good idea and have precedent in schemes such as ISBN and ISSN.
 </p><p>
-The best starting place for information on ARKs (Archival Resource Keys) is the
-<a href="https://arks.org">ARK Alliance</a> website. You may also find useful
-information in the
+The best way to get started with ARKs (Archival Resource Keys) is to become
+familiar with <a href="https://arks.org/about/getting-started">this brief
+guide</a> and to browse the <a href="https://arks.org">ARK Alliance</a> website.
+You may also find useful information in the
 <a href="https://wiki.lyrasis.org/display/ARKs/ARK+Identifiers+FAQ">ARKs FAQ</a>
 (<a href="https://wiki.lyrasis.org/pages/viewpage.action?pageId=178880619">version française</a>,
 <a href="https://wiki.lyrasis.org/pages/viewpage.action?pageId=185991610">version en español</a>)
@@ -859,12 +861,16 @@ a été enregistré pour "$institution" et vous pouvez commencer à l'utiliser i
 </p><p>
 Veuillez noter que le numéro d'autorité nommante $naan est destiné à attribuer des ARK au contenu que votre institution conserve ou crée directement.
 Si vous travaillez avec d'autres institutions qui utilisent vos outils et services pour du contenu qu'elles conservent ou créent, ces institutions doivent avoir leur propre NAAN.
+Pour demander une modification de votre enregistrement NAAN, par exemple pour mettre à jour son URL de résolution N2T ou vos informations de contact, veuillez utiliser <a href="https://n2t.net/e/naan_request">ce formulaire</a>.
 </p><p>
 Lorsque vous réfléchirez à la manière de gérer l'espace de nommage, il peut vous être utile de considérer la pratique habituelle consistant à le partitionner avec des préfixes réservés ("<a href="https://arks.org/about/shoulders/">shoulders</a>").
 Par exemple, un préfixe constitué d'une lettre suivie d'un chiffre, formerait des noms de commençant par "ark:/$naan/x3 ..." pour chaque "sous-autorité" d'une organisation.
 Les préfixes opaques qui n'ont de sens que pour les professionnels de l'information sont souvent une bonne idée et ont un précédent dans des systèmes tels que l'ISBN et l'ISSN.
 </p><p>
-Le meilleur point de départ pour obtenir des informations sur les ARK (Archival Resource Keys) est le <a href="https://arks.org/">site Web d'ARK Alliance</a>.
+La meilleure façon de démarrer avec les ARK (Archival Resource Key) est de se
+familiariser avec ce <a href="https://arks.org/about/getting-started">
+bref guide</a> et de parcourir le <a href="https://arks.org/">site Web de
+d'ARK Alliance</a>.
 Vous pouvez également trouver des informations utiles dans la <a href="https://wiki.lyrasis.org/pages/viewpage.action?pageId=178880619">FAQ sur les ARK</a> et dans <a href="https://www.bnf.fr/fr/sommet-international-ark-journee-detude-et-dechanges-sur-lidentifiant-ark-archival-resource-key#bnf-ark-pour-les-d-butants">cette présentation de l'identifiant ARK</a>.
 La <a href="https://n2t.net/ark:/13030/c7cv4br18">spécification ARK</a> (en anglais) est actuellement le meilleur guide pour savoir comment créer des URL conformes aux règles ARK, bien qu'elle soit assez technique.
 Il existe un <a href="https://framalistes.org/sympa/info/arks-forum-fr">groupe de discussion francophone public</a> sur les ARK destiné aux personnes désireuses de partager et d'apprendre des autres sur la manière dont les ARK ont été ou pourraient être utilisés dans des applications de gestion d'identifiants.
@@ -887,12 +893,14 @@ se ha registrado para "$institution" y puede comenzar a usarlo de inmediato. Pue
 </p> <p>
 Tenga en cuenta que $naan está destinado a asignar ARK a contenido que su institución selecciona o crea directamente.
 En caso de que trabaje con otras instituciones que utilizan sus herramientas y servicios para el contenido que ellos curan o crean, esas instituciones deben tener sus propios NAAN.
+Para solicitar un cambio en su registro de NAAN, como actualizar su URL de resolución de N2T o su información de contacto, utilice <a href="https://n2t.net/e/naan_request">este formulario</a>.
 </p> <p>
 Al pensar en cómo administrar el espacio de nombres, puede resultarle útil considerar la práctica habitual de dividirlo con prefijos reservados (<a href="https://arks.org/about/shoulders/">hombros</a> ) de una letra seguida de un número, por ejemplo, nombres de la forma "ark:/$naan/x3...." para cada "subeditor" en una organización.
 Los prefijos opacos que solo tienen significado para los profesionales de la información suelen ser una buena idea y tienen precedente en esquemas como ISBN e ISSN.
 </p> <p>
-El mejor lugar de partida para obtener información sobre las ARK (claves de recursos de archivo) es la
-sitio web de <a href="https://arks.org"> ARK Alliance </a>.
+La mejor manera de comenzar con las ARK (Clave de recursos de archivo) es
+familiarizarse con <a href="https://arks.org/about/getting-started">esta breve
+guía</a> y navegar por el sitio web de <a href="https://arks.org">ARK Alliance</a>.
 También puede resultarle útil información en el
 <a href="https://wiki.lyrasis.org/display/ARKs/ARK+Identifiers+FAQ"> Preguntas frecuentes sobre ARK </a>
 (<a href="https://wiki.lyrasis.org/pages/viewpage.action?pageId=178880619"> versión francesa </a>,
