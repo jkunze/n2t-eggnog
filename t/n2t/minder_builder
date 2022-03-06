@@ -72,8 +72,8 @@ RewriteRule ^/ark:/?(99999[^/]*/9([^_]+)_.*)\$ "/ark:/\$2/\$1" [NC,R=302]
 # XXX drop this and rely on shoulder file?
 # TemaTres YYY this one-off does not scale
 #ark:/99152/t3				# TemaTres vocabulary shoulder
-RewriteRule ^/(ark:/?99152[^/]*/t3.*)\$ \\
-    "https://vocabularyserver.com/\$1" [R=302,L,NC]
+#RewriteRule ^/(ark:/?99152[^/]*/t3.*)\$ \\
+#    "https://vocabularyserver.com/\$1" [R=302,L,NC]
 
 # Periodo YYY this one-off does not scale
 #  # This shoulder is designed to support the single ARK, ark:/99152/p0,
@@ -88,8 +88,8 @@ RewriteRule ^/(ark:/?99152[^/]*/p0.*)\$ \\
 
 # XXX drop this and rely on shoulder file?
 # YAMZ YYY this one-off does not scale
-RewriteRule ^/(ark:/?99152.*)\$ \\
-    "_rslv_\${map_yamz:\${esc:\$1%{ENV:THUMPER}}.resolve \${$hdrblob}}" [NC]
+#RewriteRule ^/(ark:/?99152.*)\$ \\
+#    "_rslv_\${map_yamz:\${esc:\$1%{ENV:THUMPER}}.resolve \${$hdrblob}}" [NC]
 
 # xxx The handful of Exceptions below should be done via scheme/shoulder DB
 #
@@ -102,8 +102,13 @@ RewriteRule ^/(ark:/?99152.*)\$ \\
 RewriteRule ^/eoi:/?.*\$ \\
   "_rslv_\${map_xref:%{REQUEST_URI}.resolve \${$hdrblob}}" [NC]
 
-RewriteRule ^/purl:/?.*\$ \\
-  "_rslv_\${map_purl:%{REQUEST_URI}.resolve \${$hdrblob}}" [NC]
+# XXX drop this since it's a defined prefix and we don't really do purls?
+#RewriteRule ^/purl:/?.*\$ \\
+#  "_rslv_\${map_purl:%{REQUEST_URI}.resolve \${$hdrblob}}" [NC]
+
+# XXX 
+# XXX is there a default n2t binder that we drop through to for namespace
+#     splitting? called "split?"
 
 #
 # Exception: PURL.org project

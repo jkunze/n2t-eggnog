@@ -917,6 +917,8 @@ sub id_decompose { my( $pfxs, $id )=@_;
 #     they were ids ... maybe need to set flag here that, if set,
 #     causes resolve() to check for exact match to shoulder record
 
+# XXX 99152/h problem
+
 	# NB: $kludge holds '' or the '/' that begins (for now) ARK NAANs
 	# but is empty otherwise; $idx->{naan} does NOT have an initial '/'.
 

@@ -1696,7 +1696,9 @@ AliasMatch ^/\$ $document_root/e/homepage.html
 #     automatically?
 
 # Apache 2.4 log levels
-LogLevel warn
+#LogLevel warn
+LogLevel warn rewrite:trace8
+
 #LogLevel warn rewrite:trace8
 #rewrite:trace8 writes maximum amount of log info
 # used to be RewriteLogLevel 9

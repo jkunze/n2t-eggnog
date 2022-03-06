@@ -229,6 +229,12 @@ $x = nresolve_stdin_hdr( "--home $buildout_root -d $td/dummy",
 	'ark:/67531/metapth346793', '',	# UNT example from ARK docs
 	  '302 http://digital.library.unt.edu/ark:/67531/metapth346793',
 	  'ark naan (UNT) prefix redirect from ARK documentation',
+# XXX not working
+# tests for {http,https} in combo with {www,}yamz.{net,link}/ark:/?99152/...
+#     id.cci.drexel.edu should also resolve everything else
+#	'ark:/99152/h1023', '',		# YAMZ
+#	  'https://yamz.link/ark:/99152/h1023',
+#	  'ark YAMZ shoulder prefix',
 	'ark:/99152/t3foo', '',		# TemaTres
 	  'https://vocabularyserver.com/ark:/99152/t3foo',
 	  'ark TemaTres shoulder prefix',
@@ -336,7 +342,7 @@ $x = nresolve_stdin_hdr( "--home $buildout_root -d $td/dummy",
 	'chebi:36927', '',		# biorxiv article
 	 
 	  '302 https://www.ebi.ac.uk/chebi/searchId.do?chebiId=CHEBI:36927',
-	  'biorxiv article scheme redirect -- chebi:',
+	  'biorxiv article scheme redirect -- chebi',
 	'pmc:PMC3084216', '',		# biorxiv article
 	  '302 http://europepmc.org/articles/PMC3084216',
 	  'biorxiv article scheme redirect -- pmc',
