@@ -284,7 +284,7 @@ sub init_dir { my( $naan )=@_;
 	my $out = `pwd; ls`;
 	$out = `
 		rm -fr $reponame;
-		git clone git\@github.com:jkunze/$reponame.git 2>&1;
+		git clone git\@github.com:CDLUC3/$reponame.git 2>&1;
 	`;
 	if ($? >> 8) {
 		perr("could not clone git repo: $out");

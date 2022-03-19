@@ -108,6 +108,7 @@ my $example_naan = '12345';
 my $home = "/apps/n2t";
 my $workdirbase = "$home/naans";
 my $validator = "$home/local/bin/validate_naans";
+my $curation_form = '<a href="/e/admin/regupdate.html">Back to curation form</a>';
 
 my $cmd = $0;
 $cmd =~ s,.*/,,;		# drop path part
@@ -209,6 +210,7 @@ sub called_from_cgi {
 	## XXX only unaan is relevant?
 	return (
 		$cgi->param('button'),	# NEW, UPDATE, Retest, Confirm
+		$cgi->param('new_or_update'),	# NEW or UPDATE radio button
 		$cgi->param('remail'),	# responder email
 		$cgi->param('rname'),	# responder email
 		$cgi->param('unaan'),	# used or unused NAAN
@@ -383,7 +385,7 @@ sub init_dir { my( $naan )=@_;
 	my $out = `pwd; ls`;
 	$out = `
 		rm -fr $reponame;
-		git clone git\@github.com:jkunze/$reponame.git 2>&1;
+		git clone git\@github.com:CDLUC3/$reponame.git 2>&1;
 	`;
 	if ($? >> 8) {
 		perr("could not clone git repo: $out");
@@ -737,6 +739,10 @@ the current contact person, in which case you should add an inquiry. Example:
 Our registry shows Sherlock Holmes as the current contact person. Could you
 confirm whether you should be listed as a contact person instead of or in
 addition to him?
+<br/>
+Notre registre indique Sherlock Holmes comme interlocuteur actuel. Pourriez-vous confirmer si vous devriez être enregistré en tant que personne de contact à sa place ou en plus de lui ?
+<br/>
+Nuestro registro muestra Sherlock Holmes como la persona de contacto actual. ¿Podría confirmar si usted debe figurar como persona de contacto en lugar de él o además de él?
 </em>
 </p>
 <p>
@@ -1299,6 +1305,7 @@ EOT
 &nbsp; &nbsp; &nbsp; &nbsp; $safe_out
 <br/>$safe_other_info
 Final validation status: &nbsp; &nbsp; &nbsp; $safe_validate
+<br/>$curation_form
 </p>
 </form>
 EOT
@@ -1349,6 +1356,7 @@ $mesg
 <!-- button=$button, remail=$remail, name=$rname -->
 <br/>
 Validation status: &nbsp; &nbsp; &nbsp; $safe_validate
+<br/>$curation_form
 </p>
 </form>
 EOT

@@ -19,12 +19,26 @@ Do not correct requester data on this page unless instructed to do so (rare).
 <p>
 <b>Step 1.</b>
 On github edit the <code>candidate_naans</code> file and
-find the line with the first unused 5-digit number. If processing a new
-NAAN, add your email address and name after the NAAN on that line.
-If processing an update, before that line insert the NAAN in question and add
-them after it. Do not comment out this line. It will be commented out for you
-automatically after processing.
-Commit your edits before submitting.
+find the line with the first unused 5-digit number.
+</p><p>
+&nbsp;&nbsp;&nbsp;
+<input type="radio" id="new" name="new_or_update" value="NEW" checked="checked">
+<label for="new">
+&nbsp;&nbsp;
+To create a <b>new</b> NAAN, append your email address and name to the NAAN on that line.
+</label>
+</p><p>
+&nbsp;&nbsp;&nbsp;
+<input type="radio" id="update" name="new_or_update" value="UPDATE">
+<label for="update">
+&nbsp;&nbsp;
+To <b>update</b> a NAAN, enter it on a new line and
+append your email address and name.
+</p><p>
+Don't comment out the line in this step. It will be commented out for
+you automatically after processing.
+Remember to commit your edits before submitting.
+</label>
 </p>
 <p>
 <b>Step 2.</b>

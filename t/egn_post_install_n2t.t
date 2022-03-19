@@ -123,11 +123,6 @@ if ($production_data eq "yes\n") {
 	like $x, qr{^Location: http://bibnum.*}m,
 		"U Lyon target redirect";
 
-# XXX move this out of prd tests
-	$x = `wegn locate "ark:/99152/h1023"`;
-	like $x, qr{^Location: http://yamz.net/term/concept=h1023.*}m,
-		"YAMZ target redirect";
-
 	# xxx currently this perio.do works by SPT on a short id (.../p0)
 	#     should it not work with a shoulder redirect rule?
 
@@ -165,6 +160,11 @@ else {
 $x = `wegn -v locate "ark:/13960/t00000m0v"`;
 like $x, qr|^Location: https://ark.archive.org/ark:/13960/t00000m0v|m,
 	"OCA target https redirect, old-style ARK, original t shoulder";
+
+# long-time partner YAMZ ARKs moved out of prd tests
+$x = `wegn locate "ark:/99152/h1023"`;
+like $x, qr{^Location: https://yamz.net/term=h1023.*}m,
+	"YAMZ target redirect";
 
 # XXX at some point N2T should forward new arks (no first slash) without adding
 # the slash, ie, preserving the incoming style
